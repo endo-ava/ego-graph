@@ -33,6 +33,7 @@ data class ChatState(
     val isLoadingMessages: Boolean = false,
     val isLoadingModels: Boolean = false,
     val isSending: Boolean = false,
+    val streamingMessageId: String? = null,
     val threadsError: String? = null,
     val messagesError: String? = null,
     val modelsError: String? = null,

@@ -83,6 +83,7 @@ class ChatScreen : Screen {
                 modifier = Modifier.padding(paddingValues),
                 isLoading = state.isLoadingMessages,
                 errorMessage = state.messagesError,
+                streamingMessageId = state.streamingMessageId,
             )
         }
     }

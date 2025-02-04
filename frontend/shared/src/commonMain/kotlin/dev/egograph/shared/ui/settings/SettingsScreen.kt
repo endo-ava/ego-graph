@@ -211,8 +211,8 @@ fun SettingsScreen(
 
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar("Settings saved")
+                            onBack()
                         }
-                        onBack()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled =

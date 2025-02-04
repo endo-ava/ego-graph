@@ -231,6 +231,7 @@ internal object ChatReducerImpl :
                 copy(
                     isSending = true,
                     messages = msg.messages,
+                    streamingMessageId = msg.messages.lastOrNull()?.messageId,
                     messagesError = null,
                 )
 
@@ -238,6 +239,7 @@ internal object ChatReducerImpl :
                 copy(
                     isSending = false,
                     messages = msg.messages,
+                    streamingMessageId = null,
                     selectedThread = resolveSelectedThread(msg),
                     messagesError = null,
                 )
@@ -245,6 +247,7 @@ internal object ChatReducerImpl :
             is ChatView.MessageSendFailed ->
                 copy(
                     isSending = false,
+                    streamingMessageId = null,
                     messagesError = msg.error,
                 )
 

@@ -22,8 +22,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.dto.Thread
 
@@ -45,7 +45,11 @@ fun ThreadList(
     val listState = rememberLazyListState()
     var lastRequestedSize by remember { mutableIntStateOf(0) }
     val lastVisibleIndex by remember {
-        derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+        derivedStateOf {
+            listState.layoutInfo.visibleItemsInfo
+                .lastOrNull()
+                ?.index
+        }
     }
 
     LaunchedEffect(lastVisibleIndex, threads.size, isLoading, isLoadingMore, hasMore) {
