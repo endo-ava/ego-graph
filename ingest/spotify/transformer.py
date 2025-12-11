@@ -4,18 +4,18 @@
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from dateutil import parser as date_parser
 
-from egograph.models import (
+from shared.models import (
     UnifiedDataModel,
     DataSource,
     DataType,
     SensitivityLevel,
 )
-from egograph.utils import safe_get, format_duration_ms
+from shared.utils import safe_get, format_duration_ms
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ class SpotifyTransformer:
         duration_ms = track.get("duration_ms", 0)
         explicit = track.get("explicit", False)
 
-        # コンテキスト情報（プレイリスト、アルバム、アーティスト）
+        # コンテキスト情報(プレイリスト、アルバム、アーティスト)
         context_type = safe_get(context, "type", default="unknown")
         context_uri = safe_get(context, "uri", default="")
 
@@ -103,7 +103,7 @@ class SpotifyTransformer:
             "context_uri": context_uri,
         }
 
-        # 利用可能な場合、オーディオ特徴量を追加（URLなど）
+        # 利用可能な場合、オーディオ特徴量を追加(URLなど)
         if "external_urls" in track:
             metadata["spotify_url"] = safe_get(
                 track, "external_urls", "spotify", default=""
@@ -119,36 +119,6 @@ class SpotifyTransformer:
             nsfw=explicit,  # ExplicitコンテンツをNSFWとしてマーク
         )
 
-    def transform_playlists(
-        self,
-        playlists: List[Dict[str, Any]]
-    ) -> List[UnifiedDataModel]:
-        """Transform playlists to unified model.
-
-        Args:
-            playlists: List of playlist dictionaries from Spotify API
-
-        Returns:
-            List of UnifiedDataModel instances
-        """
-        logger.info(f"Transforming {len(playlists)} playlists")
-
-        models = []
-        for playlist in playlists:
-            try:
-                model = self._transform_playlist_item(playlist)
-                models.append(model)
-            except Exception as e:
-                logger.warning(
-                    f"Failed to transform playlist "
-                    f"{playlist.get('name', 'unknown')}: {e}"
-                )
-                continue
-
-        logger.info(
-            f"Successfully transformed {len(models)}/{len(playlists)} playlists"
-        )
-        return models
 
     def transform_playlists(
         self,
@@ -259,8 +229,8 @@ class SpotifyTransformer:
                 playlist, "external_urls", "spotify", default=""
             )
 
-        # 現在時刻をタイムスタンプとして使用（収集時刻）
-        timestamp = datetime.utcnow()
+        # 現在時刻をタイムスタンプとして使用(収集時刻)
+        timestamp = datetime.now(timezone.utc)
 
         return UnifiedDataModel(
             source=DataSource.SPOTIFY,

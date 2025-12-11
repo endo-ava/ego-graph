@@ -4,21 +4,21 @@
 1. Spotify APIからデータを収集
 2. 統一スキーマへの変換
 3. LlamaIndex ETLによる処理
-4. Nomic APIによる埋め込み生成
+4. ローカル埋め込みモデルによる埋め込み生成
 5. Qdrant Cloudへの保存
 """
 
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
-from egograph.config import Config
-from egograph.utils import log_execution_time
+from shared.config import Config
+from shared.utils import log_execution_time
 from ingest.spotify.collector import SpotifyCollector
 from ingest.spotify.transformer import SpotifyTransformer
-from pipeline.etl import ETLPipeline
-from pipeline.embeddings import NomicEmbedder
-from pipeline.storage import QdrantStorage
+from ingest.pipeline.etl import ETLPipeline
+from ingest.pipeline.embeddings import LocalEmbedder
+from ingest.pipeline.storage import QdrantStorage
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ def main():
     """メインパイプラインの実行。"""
     logger.info("=" * 60)
     logger.info("EgoGraph Spotify MVP Pipeline")
-    logger.info(f"Started at: {datetime.utcnow().isoformat()}Z")
+    logger.info(f"Started at: {datetime.now(timezone.utc).isoformat()}")
     logger.info("=" * 60)
 
     try:
@@ -84,17 +84,17 @@ def main():
             logger.warning("No nodes created. Exiting.")
             return
 
-        # Step 4: Nomicで埋め込みを生成
-        logger.info("\n[Step 4/5] Generating embeddings with Nomic API...")
-        embedder = NomicEmbedder(
-            api_key=config.nomic.api_key,
-            model=config.nomic.model,
-            base_url=config.nomic.base_url,
-            batch_size=config.nomic.batch_size,
+        # Step 4: ローカルモデルで埋め込みを生成
+        logger.info("\n[Step 4/5] Generating embeddings with Local Model...")
+        embedder = LocalEmbedder(
+            model_name=config.embedding.model_name,
+            batch_size=config.embedding.batch_size,
+            device=config.embedding.device,
+            expected_dimension=config.embedding.expected_dimension,
         )
 
         texts = [node.text for node in nodes]
-        embeddings = embedder.embed_texts(texts, task_type="search_document")
+        embeddings = embedder.embed_texts(texts)
         logger.info(
             f"✓ Generated {len(embeddings)} embeddings "
             f"({embedder.get_embedding_dimension()}-dimensional)"
@@ -124,7 +124,7 @@ def main():
         logger.info(f"Created: {len(nodes)} nodes")
         logger.info(f"Embedded: {len(embeddings)} vectors")
         logger.info(f"Stored: {upserted_count} vectors")
-        logger.info(f"Completed at: {datetime.utcnow().isoformat()}Z")
+        logger.info(f"Completed at: {datetime.now(timezone.utc).isoformat()}")
         logger.info("=" * 60)
 
     except Exception as e:

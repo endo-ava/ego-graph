@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "egograph-ingest"
 version = "0.1.0"
 description = "Data ingestion service for EgoGraph"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "egograph",
     "spotipy>=2.25.0",

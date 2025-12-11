@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "egograph"
 version = "0.1.0"
 description = "Shared data models and utilities for EgoGraph"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
@@ -21,8 +21,6 @@ dev = [
     "mypy>=1.14.0",
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ["egograph"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

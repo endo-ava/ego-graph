@@ -11,7 +11,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from llama_index.core.schema import TextNode
 
-from egograph.utils import batch_items
+from shared.utils import batch_items
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ class QdrantStorage:
 
         # ポイントの作成
         points = []
-        for node, embedding in zip(nodes, embeddings):
+        for node, embedding in zip(nodes, embeddings, strict=True):
             # 埋め込みが無効（すべてゼロ）の場合はスキップ
             if all(v == 0.0 for v in embedding):
                 logger.warning(f"Skipping node with zero embedding: {node.node_id}")

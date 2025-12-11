@@ -8,7 +8,7 @@ import logging
 import os
 from typing import Optional
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,19 +30,18 @@ class SpotifyConfig(BaseSettings):
     )
 
 
-class NomicConfig(BaseSettings):
-    """Nomic API設定。"""
+class EmbeddingConfig(BaseSettings):
+    """埋め込みモデル設定(ローカル実行)。"""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    api_key: str = Field(..., alias="NOMIC_API_KEY")
-    model: str = Field("nomic-embed-text-v1.5", alias="NOMIC_MODEL")
-    embedding_dimension: int = Field(768, alias="NOMIC_EMBEDDING_DIM")
-    batch_size: int = Field(100, alias="NOMIC_BATCH_SIZE")
-    base_url: str = Field(
-        "https://api-atlas.nomic.ai/v1/embedding/text",
-        alias="NOMIC_BASE_URL"
+    model_name: str = Field(
+        "cl-nagoya/ruri-v3-310m",
+        alias="EMBEDDING_MODEL_NAME"
     )
+    batch_size: int = Field(32, alias="EMBEDDING_BATCH_SIZE")
+    device: Optional[str] = Field(None, alias="EMBEDDING_DEVICE")
+    expected_dimension: int = Field(1024, alias="EMBEDDING_DIMENSION")
 
 
 class QdrantConfig(BaseSettings):
@@ -53,10 +52,10 @@ class QdrantConfig(BaseSettings):
     url: str = Field(..., alias="QDRANT_URL")
     api_key: str = Field(..., alias="QDRANT_API_KEY")
     collection_name: str = Field(
-        "egograph_spotify",
+        "egograph_spotify_ruri",
         alias="QDRANT_COLLECTION_NAME"
     )
-    vector_size: int = Field(768, alias="QDRANT_VECTOR_SIZE")
+    vector_size: int = Field(1024, alias="QDRANT_VECTOR_SIZE")
     batch_size: int = Field(1000, alias="QDRANT_BATCH_SIZE")
 
     @field_validator("url")
@@ -79,7 +78,7 @@ class Config(BaseSettings):
 
     # サブ設定
     spotify: Optional[SpotifyConfig] = None
-    nomic: Optional[NomicConfig] = None
+    embedding: Optional[EmbeddingConfig] = None
     qdrant: Optional[QdrantConfig] = None
 
     @classmethod
@@ -97,17 +96,17 @@ class Config(BaseSettings):
         # サブ設定のロード
         try:
             config.spotify = SpotifyConfig()
-        except Exception as e:
+        except (ValidationError, ValueError) as e:
             logging.warning(f"Failed to load Spotify config: {e}")
 
         try:
-            config.nomic = NomicConfig()
-        except Exception as e:
-            logging.warning(f"Failed to load Nomic config: {e}")
+            config.embedding = EmbeddingConfig()
+        except (ValidationError, ValueError) as e:
+            logging.warning(f"Failed to load Embedding config: {e}")
 
         try:
             config.qdrant = QdrantConfig()
-        except Exception as e:
+        except (ValidationError, ValueError) as e:
             logging.warning(f"Failed to load Qdrant config: {e}")
 
         # ロギングの設定
@@ -126,7 +125,7 @@ class Config(BaseSettings):
         """
         if not self.spotify:
             raise ValueError("Spotify configuration is required")
-        if not self.nomic:
-            raise ValueError("Nomic configuration is required")
+        if not self.embedding:
+            raise ValueError("Embedding configuration is required")
         if not self.qdrant:
             raise ValueError("Qdrant configuration is required")

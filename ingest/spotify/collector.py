@@ -1,7 +1,7 @@
 """Spotifyデータコレクター。
 
 Spotify Web APIに接続し、以下を収集します:
-- 最近再生したトラック（視聴履歴）
+- 最近再生したトラック(視聴履歴)
 - ユーザーのプレイリストとトラック一覧
 """
 
@@ -49,7 +49,7 @@ class SpotifyCollector:
             client_secret: Spotifyアプリのクライアントシークレット
             refresh_token: OAuthリフレッシュトークン
             redirect_uri: OAuthリダイレクトURI
-            scope: OAuthスコープ（スペース区切り）
+            scope: OAuthスコープ(スペース区切り)
         """
         self.client_id = client_id
         self.client_secret = client_secret
@@ -66,10 +66,10 @@ class SpotifyCollector:
 
         # アクセストークンのリフレッシュ
         try:
-            token_info = self.auth_manager.refresh_access_token(refresh_token)
+            self.auth_manager.refresh_access_token(refresh_token)
             logger.info("Successfully refreshed Spotify access token")
-        except Exception as e:
-            logger.error(f"Failed to refresh access token: {e}")
+        except Exception:
+            logger.exception("Failed to refresh access token")
             raise
 
         # Spotifyクライアントの初期化
@@ -85,7 +85,7 @@ class SpotifyCollector:
         """最近再生したトラックを取得します。
 
         Args:
-            limit: 取得するトラックの最大数（最大50）
+            limit: 取得するトラックの最大数(最大50)
 
         Returns:
             メタデータを含むトラック辞書のリスト
@@ -100,8 +100,8 @@ class SpotifyCollector:
             items = results.get("items", [])
             logger.info(f"Successfully fetched {len(items)} recently played tracks")
             return items
-        except spotipy.SpotifyException as e:
-            logger.error(f"Failed to fetch recently played tracks: {e}")
+        except spotipy.SpotifyException:
+            logger.exception("Failed to fetch recently played tracks")
             raise
 
     @retry(
@@ -144,8 +144,8 @@ class SpotifyCollector:
             logger.info(f"Successfully fetched {len(playlists)} playlists")
             return playlists
 
-        except spotipy.SpotifyException as e:
-            logger.error(f"Failed to fetch playlists: {e}")
+        except spotipy.SpotifyException:
+            logger.exception("Failed to fetch playlists")
             raise
 
     @retry(
@@ -193,8 +193,8 @@ class SpotifyCollector:
             logger.debug(f"Fetched {len(tracks)} tracks from playlist {playlist_id}")
             return tracks
 
-        except spotipy.SpotifyException as e:
-            logger.error(f"Failed to fetch playlist tracks: {e}")
+        except spotipy.SpotifyException:
+            logger.exception("Failed to fetch playlist tracks")
             raise
 
     def get_playlists_with_tracks(

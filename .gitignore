@@ -21,6 +21,11 @@ wheels/
 *.egg
 MANIFEST
 
+# Node.js (Frontend)
+node_modules/
+dist/
+.next/
+
 # Virtual environments
 venv/
 ENV/
@@ -68,3 +73,5 @@ dmypy.json
 data/
 *.db
 *.sqlite
+
+tmp/

@@ -11,7 +11,7 @@ from llama_index.core import Document
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import TextNode
 
-from egograph.models import UnifiedDataModel
+from shared.models import UnifiedDataModel
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class ETLPipeline:
 
     LlamaIndexを使用して以下を行います:
     - データをDocumentオブジェクトに変換
-    - チャンクに分割（長いテキスト用）
+    - チャンクに分割(長いテキスト用)
     - メタデータのエンリッチメント
     - 埋め込み用テキストの正規化
     """
@@ -68,7 +68,7 @@ class ETLPipeline:
         # LlamaIndex Documentに変換
         documents = self._create_documents(unified_data)
 
-        # テキストノードにパース（チャンキング含む）
+        # テキストノードにパース(チャンキング含む)
         nodes = self.splitter.get_nodes_from_documents(documents)
 
         logger.info(

@@ -89,20 +89,23 @@ def log_execution_time(func):
     Returns:
         ラップされた関数
     """
+    from datetime import timezone
+
     def wrapper(*args, **kwargs):
-        start_time = datetime.now()
+        start_time = datetime.now(timezone.utc)
         logger.info(f"Starting {func.__name__}")
 
         try:
             result = func(*args, **kwargs)
-            elapsed = (datetime.now() - start_time).total_seconds()
+            elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
             logger.info(f"Completed {func.__name__} in {elapsed:.2f}s")
-            return result
-        except Exception as e:
-            elapsed = (datetime.now() - start_time).total_seconds()
-            logger.error(
-                f"Failed {func.__name__} after {elapsed:.2f}s: {e}"
+        except Exception:
+            elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
+            logger.exception(
+                f"Failed {func.__name__} after {elapsed:.2f}s"
             )
             raise
+        else:
+            return result
 
     return wrapper

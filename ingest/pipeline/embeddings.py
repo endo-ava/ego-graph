@@ -13,7 +13,7 @@ from typing import List, Optional
 from sentence_transformers import SentenceTransformer
 import torch
 
-from egograph.utils import batch_items
+from shared.utils import batch_items
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +68,9 @@ class LocalEmbedder:
                     "Re-indexing may be required."
                 )
                 
-        except Exception as e:
-            logger.error(f"Failed to load model {model_name}: {e}")
-            raise e
+        except Exception:
+            logger.exception(f"Failed to load model {model_name}")
+            raise
 
     def _embed_batch(
         self,
@@ -98,18 +98,16 @@ class LocalEmbedder:
     def embed_texts(
         self,
         texts: List[str],
-        task_type: str = "search_document",  # 互換性のための引数
         show_progress: bool = True,
     ) -> List[List[float]]:
         """複数のテキストを埋め込みます。
 
         Args:
             texts: 埋め込むテキストのリスト
-            task_type: タスクタイプ (互換性のために維持、現在は使用しません)
             show_progress: 進捗をログ出力するかどうか
 
         Returns:
-            埋め込みベクトルのリスト（入力と同じ順序）
+            埋め込みベクトルのリスト(入力と同じ順序)
         """
         if not texts:
             logger.warning("No texts to embed")
@@ -127,10 +125,10 @@ class LocalEmbedder:
             try:
                 embeddings = self._embed_batch(batch)
                 all_embeddings.extend(embeddings)
-            except Exception as e:
-                logger.error(f"Failed to embed batch {i}: {e}")
+            except Exception:
+                logger.exception(f"Failed to embed batch {i}")
                 # 失敗時は例外を投げるか、空を埋めるか。ローカル実行なので基本は例外で落とす方が安全。
-                raise e
+                raise
 
         logger.info(
             f"Successfully embedded {len(all_embeddings)}/{len(texts)} texts"
