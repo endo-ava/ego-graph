@@ -36,7 +36,7 @@ class QdrantStorage:
             url: QdrantクラスターのURL
             api_key: Qdrant APIキー
             collection_name: コレクション名
-            vector_size: ベクトルの次元数（Nomicは768）
+            vector_size: ベクトルの次元数（Ruri-v3は768）
             batch_size: バッチごとのアップサート数
         """
         self.collection_name = collection_name
@@ -131,6 +131,7 @@ class QdrantStorage:
         # バッチアップサート
         batches = batch_items(points, self.batch_size)
         total_upserted = 0
+        failed_batches = []
 
         for i, batch in enumerate(batches, 1):
             if show_progress and len(batches) > 1:
@@ -143,7 +144,11 @@ class QdrantStorage:
                 )
                 total_upserted += len(batch)
             except Exception as e:
-                logger.error(f"Failed to upsert batch {i}: {e}")
+                logger.exception(f"Failed to upsert batch {i}")
+                failed_batches.append(i)
+
+        if failed_batches:
+            raise RuntimeError(f"Failed to upsert batches: {failed_batches}")
 
         logger.info(
             f"Successfully upserted {total_upserted}/{len(points)} vectors"

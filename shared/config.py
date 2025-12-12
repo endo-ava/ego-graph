@@ -5,7 +5,6 @@
 """
 
 import logging
-import os
 from typing import Optional
 
 from pydantic import Field, field_validator, ValidationError
@@ -41,7 +40,7 @@ class EmbeddingConfig(BaseSettings):
     )
     batch_size: int = Field(32, alias="EMBEDDING_BATCH_SIZE")
     device: Optional[str] = Field(None, alias="EMBEDDING_DEVICE")
-    expected_dimension: int = Field(1024, alias="EMBEDDING_DIMENSION")
+    expected_dimension: int = Field(768, alias="EMBEDDING_DIMENSION")
 
 
 class QdrantConfig(BaseSettings):
@@ -55,7 +54,7 @@ class QdrantConfig(BaseSettings):
         "egograph_spotify_ruri",
         alias="QDRANT_COLLECTION_NAME"
     )
-    vector_size: int = Field(1024, alias="QDRANT_VECTOR_SIZE")
+    vector_size: int = Field(768, alias="QDRANT_VECTOR_SIZE")
     batch_size: int = Field(1000, alias="QDRANT_BATCH_SIZE")
 
     @field_validator("url")

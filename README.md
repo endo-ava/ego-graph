@@ -20,15 +20,16 @@ EgoGraphは、Spotify、YouTube、ブラウザ履歴、金融データなど、�
 ## アーキテクチャ
 
 ```
-Spotify API → Collector → Transformer → ETL (LlamaIndex) → Embeddings (Nomic) → Qdrant Cloud
+Spotify API → Collector → Transformer → ETL (LlamaIndex) → Embeddings (Ruri-v3 Local) → Qdrant Cloud
 ```
 
 ### 技術スタック
 
-- **Python 3.13**: メイン言語
+- **Python 3.13以上**: メイン言語
 - **Spotipy**: Spotify API連携
 - **LlamaIndex**: ETLパイプライン
-- **Nomic**: 埋め込み生成（768次元）
+- **sentence-transformers**: ローカル埋め込み生成
+- **cl-nagoya/ruri-v3-310m**: 埋め込みモデル（768次元）
 - **Qdrant Cloud**: ベクトルデータベース
 - **GitHub Actions**: 自動実行オーケストレーション
 
@@ -46,7 +47,6 @@ Spotify API → Collector → Transformer → ETL (LlamaIndex) → Embeddings (N
 
 必要なクレデンシャル:
 - Spotify Client ID、Client Secret、Refresh Token
-- Nomic API Key
 - Qdrant Cloud URL、API Key
 
 ### 2. リポジトリのクローン
@@ -82,7 +82,7 @@ GitHub Actions用:
 ### 5. ローカルでテスト実行
 
 ```bash
-uv run --package egograph-ingest python ingest/src/main.py
+uv run --package egograph-ingest python ingest/main.py
 ```
 
 ### 6. GitHub Actionsの有効化
@@ -136,7 +136,7 @@ GitHub Actionsは毎日02:00 UTC（日本時間11:00）に自動実行されま�
 
 ローカル環境で:
 ```bash
-uv run --package egograph-ingest python ingest/src/main.py
+uv run --package egograph-ingest python ingest/main.py
 ```
 
 GitHub Actionsで:

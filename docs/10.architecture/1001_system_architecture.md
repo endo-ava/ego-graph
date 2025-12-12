@@ -22,7 +22,7 @@
 │ - Location   │     │             │                 │                          ▼
 │ - etc        │     │             │                 │              ┌────────────────────────┐
 └──────────────┘     └─────────────┘                 │              │ Embedding Layer        │
-                                                      │              │ (Nomic API)            │
+                                                      │              │ (Ruri-v3 Local)            │
                      ┌─────────────┐                 │              │                        │
                      │ Sanitizer / │                 │              │ - text vectorization   │
                      │ Masker      │                 │              │ - optional encryption  │
@@ -170,17 +170,18 @@ Auxiliary: Secrets (GitHub Secrets / Vault), Backups (S3 / Offsite), CI/CD, Logg
 
 **役割**：テキストをベクトル表現に変換
 
-**使用モデル**：Nomic Embed（Hosted API）
+**使用モデル**：cl-nagoya/ruri-v3-310m（ローカル実行）
 
 - **特徴**：
-  - 多言語対応（日本語も高精度）
-  - 長いコンテキスト対応
-  - コスト効率が良い
+  - 日本語特化（ベンチマーク最高水準）
+  - 8192トークンまでのロングコンテキスト対応
+  - ローカル実行でプライバシー保護を最大化
+  - GitHub Actions環境でも実行可能
 
 **処理フロー**：
 
 ```
-処理済みテキスト → Nomic API → ベクトル（768次元）
+処理済みテキスト → Ruri-v3（ローカル） → ベクトル（768次元）
 ```
 
 詳細は[Embedding戦略](../20.technical_selections/01_embedding.md)を参照。

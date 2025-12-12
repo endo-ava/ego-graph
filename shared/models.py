@@ -65,7 +65,7 @@ class UnifiedDataModel(BaseModel):
         timestamp: データが作成/収集された日時
         raw_text: データの検索可能なテキスト表現
         metadata: ソース固有のメタデータ（柔軟な構造）
-        embedding: ベクトル埋め込み（Nomic APIによって入力される）
+        embedding: ベクトル埋め込み（ruri-v3-310mによって入力される）
         sensitivity: プライバシー機密レベル
         nsfw: コンテンツがNSFW/不適切かどうかのフラグ
     """
@@ -83,7 +83,7 @@ class UnifiedDataModel(BaseModel):
     )
     embedding: Optional[List[float]] = Field(
         None,
-        description="ベクトル埋め込み (Nomic用768次元)"
+        description="ベクトル埋め込み (ruri-v3用768次元)"
     )
     sensitivity: SensitivityLevel = Field(
         SensitivityLevel.LOW,

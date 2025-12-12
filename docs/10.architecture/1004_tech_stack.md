@@ -51,17 +51,17 @@
 
 | 項目 | 選定 | 理由 |
 |---|---|---|
-| **モデル** | Nomic Embed (hosted API) | - 日本語対応が優秀<br>- 長いコンテキスト対応（8192トークン）<br>- コスト効率が良い<br>- APIが高速 |
-| **次点候補** | OpenAI `text-embedding-3-small` | 高精度だがコストが高い |
-| **将来検討** | ローカルモデル（ruri-v3等） | プライバシー最優先の場合 |
+| **モデル** | cl-nagoya/ruri-v3-310m (ローカル実行) | - 日本語汎用SOTA（JMTEBベンチマーク77.2）<br>- ローカル実行で外部API不要<br>- 長いコンテキスト対応（8192トークン）<br>- GitHub ActionsのCPUで実行可能 |
+| **次点候補** | EmbeddingGemma | 多言語対応が重要な場合 |
+| **非推奨** | OpenAI `text-embedding-3-small` | コストが高い |
 
 詳細は[Embedding戦略](../20.technical_selections/01_embedding.md)を参照。
 
-**Nomic Embedを選んだ理由**：
+**Ruri-v3を選んだ理由**：
 
-- ホスティングAPIなので運用が楽
-- 日本語でも高精度
-- 価格が手頃（OpenAIの1/3程度）
+- 日本語性能がSOTA（EgoGraphは日本語ライフログが中心）
+- ローカル実行でプライバシー最大化、APIキー不要
+- GitHub Actions環境で安定稼働
 
 ### 2.5 Vector Database（ベクトルDB）
 

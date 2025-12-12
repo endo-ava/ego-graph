@@ -7,7 +7,7 @@
 - Spotifyデータ収集（視聴履歴、プレイリスト）
 - 統一スキーマへのデータ変換
 - LlamaIndex ETLパイプライン
-- Nomic埋め込み生成
+- ローカル埋め込み生成（ruri-v3-310m）
 - Qdrantベクトルストレージ
 
 ## セットアップ
@@ -21,7 +21,7 @@ uv sync --package egograph-ingest
 
 3. 実行（リポジトリルートから）:
 ```bash
-uv run --package egograph-ingest python ingest/src/main.py
+uv run --package egograph-ingest python ingest/main.py
 ```
 
 ## 自動実行

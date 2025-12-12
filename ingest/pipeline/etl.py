@@ -71,10 +71,13 @@ class ETLPipeline:
         # テキストノードにパース(チャンキング含む)
         nodes = self.splitter.get_nodes_from_documents(documents)
 
-        logger.info(
-            f"Created {len(nodes)} nodes from {len(documents)} documents "
-            f"(avg {len(nodes)/len(documents):.1f} nodes per document)"
-        )
+        if documents:
+            logger.info(
+                f"Created {len(nodes)} nodes from {len(documents)} documents "
+                f"(avg {len(nodes)/len(documents):.1f} nodes per document)"
+            )
+        else:
+            logger.info("No documents to process")
 
         return nodes
 
