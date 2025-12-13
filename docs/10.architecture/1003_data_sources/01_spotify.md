@@ -2,327 +2,92 @@
 
 ## 1. 概要
 
-Spotifyの再生履歴を取り込み、自然言語検索可能にするための設計。
+Spotifyの再生履歴を取り込み、**分析（Analytics）** と **想起（Recall）** の両方を実現するためのハイブリッド設計。
 
-### データの性質
-
-- **タイプ**：構造化ログ
-- **粒度**：1再生 = 1イベント（Atomic）
-- **更新頻度**：リアルタイム（再生ごと）
-- **センシティビティ**：Low〜Medium
+- **Supabase (SQL)**: すべての再生ログを保存し、正確な集計を行う。
+- **Qdrant (Vector)**: 日次要約を保存し、雰囲気や文脈での検索を行う。
 
 ---
 
-## 2. 入力データ構造
+## 2. データ構造 (Input)
 
-Spotify APIまたはエクスポートデータから取得される情報：
+### 2.1 取得する情報
+Spotify API (`Get Recently Played Tracks`, `Get Track`) から以下を取得：
 
-### 2.1 基本情報
+- `track_id`, `track_name`, `artist_name`, `album_name`
+- `played_at` (ISO8601)
+- `duration_ms`
+- `features` (tempo, valence, energy, etc.)
 
-| フィールド | 説明 | 例 |
+---
+
+## 3. SQL Schema (Supabase)
+
+### 3.1 `events` テーブルへのマッピング
+
+再生ログはすべて `events` テーブルに格納する。
+
+| Column | Value | 備考 |
 |---|---|---|
-| `track_id` | 曲の一意識別子 | `"6MCjmGYoSDoyr6K2nAlWAV"` |
-| `track_name` | 曲名 | `"アイドル"` |
-| `artist_name` | アーティスト名 | `"YOASOBI"` |
-| `album_name` | アルバム名 | `"アイドル"` |
-| `played_at` | 再生日時 | `"2023-12-11T15:00:00Z"` |
-| `duration_ms` | 曲の長さ（ミリ秒） | `222000` |
+| `source` | `'spotify'` | |
+| `category` | `'music'` | |
+| `occurred_at_utc` | `played_at` | |
+| `data` | `{ "track_name": "...", "artist": "...", "features": {...} }` | |
+| `metadata` | `{ "context_uri": "...", "device": "..." }` | |
 
-### 2.2 拡張情報（取得可能な場合）
-
-| フィールド | 説明 | 例 |
-|---|---|---|
-| `genre` | ジャンル | `"J-Pop"` |
-| `release_date` | リリース日 | `"2023-04-12"` |
-| `popularity` | 人気度（0-100） | `95` |
-| `explicit` | 露骨な表現の有無 | `false` |
+**検索・分析用クエリ例**:
+- 「昨日何曲聴いた？」 → `SELECT COUNT(*) FROM events ...`
+- 「一番聴いているアーティストは？」 → `SELECT data->>'artist', COUNT(*) ... GROUP BY 1 ...`
 
 ---
 
-## 3. Semantification（文章化）戦略
+## 4. Semantification & Vectorization (Daily Summary)
 
-### 3.1 基本テンプレート
+**個別の再生ログはベクトル化しない**。
+代わりに「1日のリスニング傾向」を文章化してベクトル化する。
 
-**目的**：検索用の自然言語テキストを生成
+### 4.1 要約プロセス (Daily Batch)
 
-**テンプレート形式**：
+1. **集計**: その日の再生ログをSupabaseから取得。
+   - 総再生時間
+   - トップアーティスト
+   - ジャンル傾向（Pop 60%, Jazz 40% など）
+   - Audio Features平均（Valence: 0.2 → 「悲しい/落ち着いた」）
 
-```
-{{date}}に{{artist}}の「{{track_name}}」を再生した。
-```
+2. **LLM生成 (Prompt)**:
+   > "以下の再生リストと特徴から、この日の音楽鑑賞の傾向を要約してください。感情やムードも含めてください。"
+   
+   **生成テキスト例**:
+   > "今日は一日雨だったせいか、RadioheadやBon Iverなどの**メランコリックな曲**を多く再生した。夜にはLo-fi Hip Hopで集中して作業をしたようだ。"
 
-**出力例**：
-
-```
-2023年12月11日にYOASOBIの「アイドル」を再生した。
-```
-
-### 3.2 拡張テンプレート（詳細情報含む）
-
-より詳細な情報を含めたバージョン：
-
-```
-{{date}}に{{artist}}の「{{track_name}}」（アルバム: {{album_name}}）を再生した。曲の長さは{{duration_readable}}。
-```
-
-**出力例**：
-
-```
-2023年12月11日にYOASOBIの「アイドル」（アルバム: アイドル）を再生した。曲の長さは3分42秒。
-```
-
-### 3.3 ジャンル・ムード情報の付加
-
-検索性を高めるため、ジャンルやムード情報を含める：
-
-```
-{{date}}に{{genre}}アーティストの{{artist}}が歌う「{{track_name}}」を再生した。
-```
-
-**出力例**：
-
-```
-2023年12月11日にJ-Popアーティストのヨルシカが歌う「だから僕は音楽を辞めた」を再生した。
-```
-
-### 3.4 テンプレート選択基準
-
-| 条件 | 使用テンプレート | 理由 |
-|---|---|---|
-| 標準的な再生 | 基本テンプレート | シンプルで検索しやすい |
-| ジャンル情報あり | ジャンル付きテンプレート | 「邦ロック」等の検索を可能に |
-| Explicit = true | 拡張テンプレート + NSFWフラグ | センシティビティ管理 |
+3. **Vector保存**:
+   - `text`: 生成された要約テキスト
+   - `metadata`: `{ "date": "2023-12-11", "top_artist": "Radiohead" }`
 
 ---
 
-## 4. メタデータマッピング
+## 5. Agent Query Strategy
 
-Lexia標準スキーマへのマッピング：
+ユーザーの質問に応じて、Agentがツールを選択する。
 
-### 4.1 基本属性
-
-| Lexiaフィールド | Spotifyフィールド | 変換処理 |
-|---|---|---|
-| `source` | - | 固定値: `"spotify"` |
-| `category` | `genre` | ジャンルから推測: `"music"` |
-| `timestamp` | `played_at` | ISO8601のまま使用 |
-| `date_bucket` | `played_at` | 日付部分のみ抽出: `"2023-12-11"` |
-
-### 4.2 生成用生データ
-
-`original_data`フィールドに、元のJSON全体を文字列化して格納：
-
-- 曲ID、アルバム情報、人気度など
-- LLMが正確な回答を生成するために参照
-
-### 4.3 階層・粒度
-
-| フィールド | 値 | 説明 |
-|---|---|---|
-| `granularity` | `"atomic"` | 1再生 = 1ノード |
-| `parent_id` | 日次要約ノードID | 後述の「要約ノード」に紐付け |
-
-### 4.4 セキュリティ・制御
-
-| フィールド | 判定ロジック |
-|---|---|
-| `sensitivity` | `explicit == true` → `"high"`, それ以外 → `"low"` |
-| `nsfw` | `explicit == true` → `true`, それ以外 → `false` |
-| `access_group` | 固定値: `"private"` |
+| ユーザーの質問 | 意図 | 使用ツール | 処理内容 |
+|---|---|---|---|
+| 「先週**何回**ミセスを聴いた？」 | 定量分析 | **SQL Client** | `COUNT(*)` クエリを実行し、正確な回数を返す。 |
+| 「最近**どんな感じ**の曲聴いてる？」 | 定性要約 | **Vector Search** | 直近のDaily Summaryを検索し、傾向を回答する。 |
+| 「**悲しい時**によく聴く曲は？」 | パターン発見 | **Vector Search** | "悲しい" で検索し、ヒットした日のログから共通するアーティストを抽出。 |
+| 「去年のクリスマスの**セットリスト**教えて」 | 事実列挙 | **SQL Client** | 特定日のログを全件リストアップする。 |
 
 ---
 
-## 5. 要約ノードの生成
+## 6. 実装ステップ
 
-### 5.1 目的
-
-「今日聴いた曲を教えて」のような質問に対して、個別の再生ログを全件取得せずに効率的に回答する。
-
-### 5.2 生成タイミング
-
-- **日次バッチ**：1日の終わり（深夜0時）に前日分を集約
-- **リアルタイム**：一定件数（例：10曲）ごとに中間要約を生成
-
-### 5.3 要約の内容
-
-**集約対象**：
-
-- 1日に再生した全曲リスト
-- アーティスト別集計
-- ジャンル別集計
-- 総再生時間
-
-**LLMによる要約生成例**：
-
-入力：
-
-```
-- YOASOBI「アイドル」
-- ヨルシカ「だから僕は音楽を辞めた」
-- 米津玄師「Lemon」
-- YOASOBI「夜に駆ける」
-- Official髭男dism「Pretender」
-```
-
-出力（要約ノードのtext）：
-
-```
-2023年12月11日は主にJ-Popを中心に5曲再生した。YOASOBIを2曲、ヨルシカ、米津玄師、髭男を各1曲ずつ聴いた。
-```
-
-### 5.4 要約ノードのメタデータ
-
-| フィールド | 値 |
-|---|---|
-| `granularity` | `"summary"` |
-| `date_bucket` | 対象日 |
-| `source` | `"spotify"` |
-| `original_data` | 全曲のリスト（JSON配列） |
+1. **Collector**: Spotify API -> Supabase `events` へのInsert
+2. **Summarizer**: Supabase -> LLM -> Qdrant への日次バッチ
+3. **Agent**: LangChain/LlamaIndex での SQL/Vector ツールの定義
 
 ---
 
-## 6. 検索シナリオ例
+## 7. 考慮事項
 
-### 6.1 曲名・アーティスト名での検索
-
-**質問**：「最近YOASOBIで何聴いた？」
-
-**検索戦略**：
-
-- フィルタ：`source: spotify`, `granularity: atomic`
-- クエリ：「YOASOBI」
-- 期待結果：YOASOBIの個別再生ログ
-
-### 6.2 日次サマリの取得
-
-**質問**：「昨日どんな音楽聴いてた？」
-
-**検索戦略**：
-
-- フィルタ：`source: spotify`, `granularity: summary`, `date_bucket: 昨日`
-- 期待結果：1日の要約ノード1件
-
-### 6.3 ジャンル・ムードでの検索
-
-**質問**：「最近聴いた邦ロックは？」
-
-**検索戦略**：
-
-- フィルタ：`source: spotify`, `category: music`
-- クエリ：「邦ロック」
-- 期待結果：ジャンル情報を含むSemanificationテキストにヒット
-
----
-
-## 7. データ取り込みフロー
-
-```
-Spotify API / Export Data
-         ↓
-    JSON解析
-         ↓
-    Semantification
-    - テンプレート適用
-    - 日時フォーマット変換
-    - ジャンル判定
-         ↓
-    メタデータ付与
-    - sensitivity判定（explicit）
-    - date_bucket生成
-         ↓
-    TextNode生成
-         ↓
-    Embedding生成（ruri-v3）
-         ↓
-    Qdrantへ保存
-         ↓
-    日次バッチ（要約ノード生成）
-```
-
----
-
-## 8. 実装時の考慮事項
-
-### 8.1 重複排除
-
-- 同じ曲を短時間に複数回再生した場合、`track_id + played_at`でユニーク判定
-- リピート再生も1件ごとに記録（行動履歴として価値がある）
-
-### 8.2 部分一致への対応
-
-- アーティスト名のバリエーション（「ヨルシカ」「yorushika」）
-- 曲名の表記揺れ（「夜に駆ける」「夜にかける」）
-
-→ Embeddingベースの検索により、ある程度吸収可能
-
-### 8.3 プレイリスト情報（将来拡張）
-
-現在は「1再生 = 1イベント」だが、将来的にはプレイリスト単位での取り込みも検討：
-
-- プレイリスト全体を1つのSummaryノードに
-- 個別の曲はAtomicノードとして紐付け
-
----
-
-## 9. サンプルデータ
-
-### 9.1 入力JSON
-
-```json
-{
-  "track_id": "6MCjmGYoSDoyr6K2nAlWAV",
-  "track_name": "アイドル",
-  "artist_name": "YOASOBI",
-  "album_name": "アイドル",
-  "played_at": "2023-12-11T15:00:00Z",
-  "duration_ms": 222000,
-  "genre": "J-Pop",
-  "explicit": false
-}
-```
-
-### 9.2 変換後のTextNode（概念図）
-
-```json
-{
-  "id": "uuid-abc123...",
-  "text": "2023年12月11日にYOASOBIの「アイドル」を再生した。",
-  "metadata": {
-    "source": "spotify",
-    "category": "music",
-    "timestamp": "2023-12-11T15:00:00Z",
-    "date_bucket": "2023-12-11",
-    "original_data": "{\"track_id\": \"6MCjmGYoSDoyr6K2nAlWAV\", ...}",
-    "granularity": "atomic",
-    "parent_id": "uuid-of-daily-summary",
-    "sensitivity": "low",
-    "nsfw": false,
-    "access_group": "private"
-  }
-}
-```
-
----
-
-## 10. 次のステップ
-
-### 実装順序
-
-1. **基本Semantificationの実装**
-   - シンプルなテンプレートで動作確認
-
-2. **サンプルデータでの検証**
-   - 10〜20件の実際の再生履歴を取り込み
-
-3. **要約ノード生成機能**
-   - 日次バッチの実装
-
-4. **ジャンル自動判定**
-   - Spotify APIから取得できない場合の補完
-
-### テスト項目
-
-- [ ] 日本語曲名・アーティスト名の正しい変換
-- [ ] Explicitフラグによるsensitivity判定
-- [ ] 同一日の複数再生の要約生成
-- [ ] ジャンル検索の精度
+- **Audio Features**: `valence` (ポジティブ度) や `energy` は、ムード判定に非常に有用なため、必ず取得して `data` カラムに入れる。
+- **Explicit Content**: フィルタリングが必要な場合、SQLの `WHERE data->>'explicit' = 'false'` で対応可能。

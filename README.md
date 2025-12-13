@@ -1,173 +1,93 @@
-# EgoGraph
+# CLAUDE.md
 
-プライバシーを重視した個人データ統合RAG（Retrieval-Augmented Generation）システム
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 概要
+## プロジェクト概要
 
-EgoGraphは、Spotify、YouTube、ブラウザ履歴、金融データなど、あらゆる個人データを統合し、プライバシーを最優先にした「分身RAG」を自動構築・運用するシステムです。
+EgoGraphは、個人データ統合RAGシステム。
+**ハイブリッド・アーキテクチャ (SQL + Vector)** を採用し、正確な分析と意味検索の両立を目指す。
 
-### MVP（Minimum Viable Product）
+## アーキテクチャ方針
 
-現在のMVPでは、Spotifyの視聴履歴とプレイリストデータの収集・埋め込み生成・ベクトルストレージを実装しています。
+### 1. Hybrid Storage Strategy
+- **Supabase (PostgreSQL)**: **事実 (Facts)** のためのSSOT（Single Source of Truth）。
+  - 履歴・時系列などの構造化データ
+  - 用途: 集計 (COUNT, SUM), 時系列分析, 正確な値の取得
+- **Qdrant (Vector DB)**: **意味 (Meaning)** のための検索インデックス。
+  - 用途: あいまい検索, 要約の検索 (Recall), 履歴・時系列データの**デイリーサマリー**
+  - **重要**: Atomicなログ（1曲ごとの再生など）は原則ベクトル化しない。
 
-## 特徴
+### 2. Agentic Workflow
+- ユーザーのクエリに対して、**Agent** がツールを使い分ける。
+- `Tool: SQL_Client` vs `Tool: Vector_Search`
 
-- **プライバシー優先**: データは暗号化され、機密情報は適切に分類・保護
-- **自動収集**: GitHub Actionsによる毎日の自動データ収集
-- **ベクトル検索**: Qdrant Cloudによる高速なセマンティック検索
-- **スケーラブル**: モジュラー設計で新しいデータソースを簡単に追加可能
-
-## アーキテクチャ
-
-```
-Spotify API → Collector → Transformer → ETL (LlamaIndex) → Embeddings (Ruri-v3 Local) → Qdrant Cloud
-```
-
-### 技術スタック
-
-- **Python 3.13以上**: メイン言語
-- **Spotipy**: Spotify API連携
-- **LlamaIndex**: ETLパイプライン
-- **sentence-transformers**: ローカル埋め込み生成
-- **cl-nagoya/ruri-v3-310m**: 埋め込みモデル（768次元）
-- **Qdrant Cloud**: ベクトルデータベース
-- **GitHub Actions**: 自動実行オーケストレーション
-
-## セットアップ
-
-### 前提条件
-
-- Python 3.13以上
-- GitHubアカウント
-- Spotifyアカウント（無料でOK）
-
-### 1. APIクレデンシャルの取得
-
-詳細な手順は [docs/plan/02.api_keys.md](./docs/plan/02.api_keys.md) を参照してください。
-
-必要なクレデンシャル:
-- Spotify Client ID、Client Secret、Refresh Token
-- Qdrant Cloud URL、API Key
-
-### 2. リポジトリのクローン
+## 開発コマンド (uv)
 
 ```bash
-git clone https://github.com/yourusername/ego-graph.git
-cd ego-graph
-```
-
-### 3. 依存関係のインストール
-
-このプロジェクトはパッケージ管理に [uv](https://github.com/astral-sh/uv) を使用しています。
-
-```bash
-# uvのインストール (未インストールの場合)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 依存関係の同期（全パッケージ）
+# 全依存関係の同期
 uv sync
-```
 
-### 4. 環境変数の設定
-
-ローカルテスト用:
-```bash
-cp .env.example .env
-# .env ファイルを編集してクレデンシャルを入力
-```
-
-GitHub Actions用:
-- [docs/plan/03.github_secrets.md](./docs/plan/03.github_secrets.md) を参照してGitHub Secretsを設定
-
-### 5. ローカルでテスト実行
-
-```bash
+# Spotify取り込み (現状のIngestコードは要改修)
 uv run --package egograph-ingest python ingest/main.py
 ```
 
-### 6. GitHub Actionsの有効化
+## データモデル
 
-1. リポジトリの「Actions」タブを開く
-2. ワークフローを有効化
-3. 「Spotify Data Ingestion」を選択
-4. 「Run workflow」で手動実行してテスト
-
-## プロジェクト構造
-
-```
-ego-graph/
-├── .github/workflows/       # GitHub Actions settings
-├── ingest/                  # Data collection service (GitHub Actions)
-│   ├── src/
-│   │   ├── main.py          # Entry point
-│   │   ├── ingest/          # Data collection logic
-│   │   │   └── spotify/
-│   │   └── pipeline/        # Processing pipeline (ETL, Embeddings, Storage)
-│   ├── tests/
-│   └── pyproject.toml
-├── shared/                  # Shared Python package (egograph)
-│   ├── egograph/            # Shared modules (models, config, utils)
-│   ├── tests/
-│   └── pyproject.toml
-├── backend/                 # Backend API (FastAPI) - Placeholder
-│   ├── app/
-│   └── tests/
-├── frontend/                # Frontend App (Next.js) - Placeholder
-│   ├── app/
-│   └── package.json
-└── docs/                    # Documentation
-    └── plan/                # Setup guides
+### SQL: `events` Table (Supabase)
+```sql
+TABLE events (
+  id UUID,
+  source VARCHAR,      -- 'spotify', 'bank'
+  category VARCHAR,    -- 'music', 'transaction'
+  occurred_at_utc TIMESTAMPTZ,
+  data JSONB,          -- { "track": "...", "amount": 1000 }
+  metadata JSONB
+)
 ```
 
-## ドキュメント
+### Vector: Payload (Qdrant)
+- `text`: 日次要約などの自然言語テキスト
+- `metadata`: `source: daily_summary`, `date: 2023-12-11`
 
-- [01.user_setup.md](./docs/plan/01.user_setup.md) - セットアップの全体概要
-- [02.api_keys.md](./docs/plan/02.api_keys.md) - APIクレデンシャル取得方法
-- [03.github_secrets.md](./docs/plan/03.github_secrets.md) - GitHub Secrets設定
-- [04.troubleshooting.md](./docs/plan/04.troubleshooting.md) - トラブルシューティング
+## ディレクトリ構成
 
-## 使い方
+- **`ingest/`**: データ収集 (SuppabaseへのInsert担当)
+- **`shared/`**: 共通モデル (SQLModel/Pydantic)
+- **`backend/`**: Agent API (FastAPI)
+- **`docs/`**: 設計ドキュメント
 
-### データ収集の自動実行
+## 重要な実装ポイント
 
-GitHub Actionsは毎日02:00 UTC（日本時間11:00）に自動実行されます。
+1. **Atomic Logs are SQL only**:
+   - 個別のログ（曲再生、取引）はSQLにのみ保存する。
+   - ベクトル化するのは「要約」のみ。
 
-### 手動実行
+2. **Summarization Batch**:
+   - 定期的にSQLからデータを引き、「要約」を生成してQdrantへSyncするバッチが必要。
 
-ローカル環境で:
-```bash
-uv run --package egograph-ingest python ingest/main.py
-```
+3. **Function Calling**:
+   - Agentは必ずTool経由でデータにアクセスする。直接DBを叩くRAGではない。
 
-GitHub Actionsで:
-1. Actionsタブ → 「Spotify Data Ingestion」
-2. 「Run workflow」をクリック
+## 主要ファイル
 
-### データの確認
+### コアモデル
+- `shared/models.py`: UnifiedDataModelとEnum定義
+- `shared/config.py`: 設定管理
 
-Qdrant Cloudのダッシュボード (https://cloud.qdrant.io) でデータを確認できます。
+### 取り込みパイプライン
+- `ingest/main.py`: メインパイプライン（5ステップ）
+- `ingest/spotify/collector.py`: Spotify API収集
+- `ingest/spotify/transformer.py`: Spotify→UnifiedDataModel変換
+- `ingest/pipeline/etl.py`: LlamaIndex ETL処理
+- `ingest/pipeline/embeddings.py`: ローカル埋め込み生成
+- `ingest/pipeline/storage.py`: Qdrant保存
 
-## テスト
+### ドキュメント
+- `docs/10.architecture/1001_system_architecture.md`: システム設計全体
+- `docs/10.architecture/1002_data_model.md`: Lexiaスキーマ詳細
+- `docs/90.plan/mvp_spotify/00.plan.md`: MVP実装計画
 
-```bash
-# 全テスト実行
-uv run pytest
+## Obsidianの活用
 
-# 特定のテスト
-uv run pytest ingest/tests/test_etl.py
-```
-
-## トラブルシューティング
-
-問題が発生した場合:
-1. [docs/plan/04.troubleshooting.md](./docs/plan/04.troubleshooting.md) を確認
-2. GitHub Actionsのログを確認
-3. GitHub Issuesで質問
-
-## 今後の予定
-
-- [ ] RAGクエリエンドポイント（FastAPI）
-- [ ] Next.jsフロントエンドダッシュボード
-- [ ] データ重複排除
-- [ ] インクリメンタル更新
-- [ ] 追加データソース（YouTube、ブラウザ履歴など）
+技術的な学びなどのナレッジや、複雑な問題が解決できた場合、知識財産としてObsidianにまとめます。
+`~/myVault` がObsidianのデータディレクトリです。

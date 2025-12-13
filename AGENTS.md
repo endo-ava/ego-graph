@@ -67,27 +67,3 @@ TABLE events (
 
 3. **Function Calling**:
    - Agentは必ずTool経由でデータにアクセスする。直接DBを叩くRAGではない。
-
-## 主要ファイル
-
-### コアモデル
-- `shared/models.py`: UnifiedDataModelとEnum定義
-- `shared/config.py`: 設定管理
-
-### 取り込みパイプライン
-- `ingest/main.py`: メインパイプライン（5ステップ）
-- `ingest/spotify/collector.py`: Spotify API収集
-- `ingest/spotify/transformer.py`: Spotify→UnifiedDataModel変換
-- `ingest/pipeline/etl.py`: LlamaIndex ETL処理
-- `ingest/pipeline/embeddings.py`: ローカル埋め込み生成
-- `ingest/pipeline/storage.py`: Qdrant保存
-
-### ドキュメント
-- `docs/10.architecture/1001_system_architecture.md`: システム設計全体
-- `docs/10.architecture/1002_data_model.md`: Lexiaスキーマ詳細
-- `docs/90.plan/mvp_spotify/00.plan.md`: MVP実装計画
-
-## Obsidianの活用
-
-技術的な学びなどのナレッジや、複雑な問題が解決できた場合、知識財産としてObsidianにまとめます。
-`~/myVault` がObsidianのデータディレクトリです。

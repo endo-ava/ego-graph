@@ -2,256 +2,124 @@
 
 ## 1. 全体構成図
 
+**ハイブリッド・アーキテクチャ**：
+構造化データ（事実・統計）はRDBに、非構造化データ（意味・文脈）はVector DBに保存し、**Agent（LLM + Tools）** がユーザーの意図に応じて最適なデータソースを選択して回答する。
+
 ```
                                             ┌────────────────────┐
                                             │ Monitoring / APM   │
                                             │ (Prometheus/Graf.) │
                                             └──────────┬─────────┘
                                                        │
-┌──────────────┐     ┌─────────────┐     ┌───────────▼──────────┐     ┌────────────────────┐
-│ Data Sources │────▶│ Collectors  │────▶│ Ingestion Orchestr.  │────▶│ Processing Layer   │
-│              │     │             │     │ (GitHub Actions /    │     │ (LlamaIndex ETL)   │
-│ - Spotify    │     │ - Spotify   │     │  Cloud Run cron)     │     │                    │
-│ - YouTube    │     │ - YouTube   │     │                      │     │ - chunking         │
-│ - Browser    │     │ - Browser   │     │ - scheduling         │     │ - metadata enrich  │
-│ - Bank       │     │ - Bank      │     │ - logs               │     │ - normalize text   │
-│ - Amazon     │     │ - etc       │     └───────────┬──────────┘     └─────────┬──────────┘
-│ - Gmail      │     │             │                 │                          │
-│ - Calendar   │     │             │                 │                          │
-│ - Notes      │     │             │                 │                          │
-│ - Location   │     │             │                 │                          ▼
-│ - etc        │     │             │                 │              ┌────────────────────────┐
-└──────────────┘     └─────────────┘                 │              │ Embedding Layer        │
-                                                      │              │ (Ruri-v3 Local)            │
-                     ┌─────────────┐                 │              │                        │
-                     │ Sanitizer / │                 │              │ - text vectorization   │
-                     │ Masker      │                 │              │ - optional encryption  │
-                     │             │                 │              └─────────┬──────────────┘
-                     │ - PII mask  │                 │                        │
-                     │ - NSFW flag │                 │                        │
-                     └──────┬──────┘                 │                        ▼
-                            │                        │              ┌────────────────────────┐
-                            │                        │              │ Vector DB Router       │
-                            ▼                        │              │                        │
-                     ┌─────────────┐                 │              │ ┌──────────────────┐   │
-                     │ Gateway /   │◀────────────────┘              │ │ Qdrant Cloud     │   │
-                     │ Router      │                                │ │ (Public)         │   │
-                     │             │                                │ └──────────────────┘   │
-                     │ - access    │                                │                        │
-                     │   control   │                                │ ┌──────────────────┐   │
-                     │ - decide    │                                │ │ Qdrant on NAS    │   │
-                     │   storage   │                                │ │ (Private)        │   │
-                     └──────┬──────┘                                │ └──────────────────┘   │
-                            │                                       └─────────┬──────────────┘
-                            │                                                 │
-                            │                                                 ▼
-                            │                                       ┌────────────────────────┐
-                            │                                       │ Retrieval / Query      │
-                            │                                       │                        │
-                            │                                       │ - LlamaIndex Query     │
-                            │                                       │ - Router: select DB    │
-                            │                                       └─────────┬──────────────┘
-                            │                                                 │
-                            │                                                 ▼
-                            │                                       ┌────────────────────────┐
-                            │                                       │ Application Layer      │
-                            │                                       │                        │
-                            │                                       │ - FastAPI (RAG API)    │
-                            │                                       │ - Auth (Supabase)      │
-                            │                                       │ - Prompt mgmt          │
-                            │                                       └─────────┬──────────────┘
-                            │                                                 │
-                            │                                                 ├──────────────┐
-                            │                                                 │              │
-                            │                                                 ▼              ▼
-                            │                                       ┌──────────────┐  ┌────────────┐
-                            │                                       │ Frontend     │  │ LLM Chat   │
-                            │                                       │ (Next.js)    │  │ (DeepSeek) │
-                            │                                       │              │  │            │
-                            └──────────────────────────────────────▶│ - dashboard  │  │ - privacy  │
-                                                                    │ - prompt UI  │  │   aware    │
-                                                                    └──────────────┘  └────────────┘
-
-Auxiliary: Secrets (GitHub Secrets / Vault), Backups (S3 / Offsite), CI/CD, Logging
+┌──────────────┐     ┌─────────────┐     ┌───────────▼──────────┐
+│ Data Sources │────▶│ Collectors  │────▶│ Ingestion Orchestr.  │
+│              │     │             │     │ (GitHub Actions)     │
+└──────────────┘     └─────────────┘     └───────────┬──────────┘
+                                                     │
+                                                     ▼
+                                         ┌──────────────────────────┐
+                                         │ Data Warehouse (Events)  │
+                                         │ (Supabase / PostgreSQL)  │
+                                         │                          │
+                                         │ - Raw JSON logs          │
+                                         │ - Normalized tables      │
+                                         └───────────┬──────────────┘
+                                                     │
+                                         ┌───────────▼──────────────┐
+                                         │ Summarizer / Embedder    │
+                                         │ (LlamaIndex / Ruri-v3)   │
+                                         │                          │
+                                         │ - Generate Daily Summary │
+                                         │ - Semantification        │
+                                         │ - Vectorize              │
+                                         └───────────┬──────────────┘
+                                                     │
+                                                     ▼
+                                         ┌──────────────────────────┐
+                                         │ Vector Database          │
+                                         │ (Qdrant)                 │
+                                         │                          │
+                                         │ - Summaries              │
+                                         │ - Unstructured Chunks    │
+                                         └───────────┬──────────────┘
+                                                     │
+                                                     │
+┌──────────────┐                                     │
+│ User Query   │                                     │
+└──────┬───────┘                                     │
+       │                                             │
+       ▼                                             │
+┌──────────────┐    ┌────────────────────────────────▼──────────────────┐
+│ Application  │    │ Agent Layer (Function Calling / Reasoning)        │
+│ Layer        │───▶│                                                   │
+│ (FastAPI)    │    │ ┌───────────────┐  ┌───────────────────────────┐  │
+└──────────────┘    │ │ Tool: SQL     │  │ Tool: Vector Search       │  │
+                    │ │ (Analytics)   │  │ (Fuzzy Recall)            │  │
+                    │ └───────┬───────┘  └─────────────┬─────────────┘  │
+                    └─────────┼────────────────────────┼────────────────┘
+                              │                        │
+                              ▼                        ▼
+                       (Query Supabase)          (Query Qdrant)
 ```
 
 ---
 
 ## 2. 各レイヤーの詳細
 
-### 2.1 Data Sources（データソース層）
+### 2.1 Storage Layer（ストレージ層）：ハイブリッド構成
 
-**役割**：個人のデジタルライフ全体からデータを提供
+データの性質に応じて保存先を厳格に分離する。
 
-**対象サービス**：
+#### A. Data Warehouse (Supabase / PostgreSQL)
+**「事実（Facts）」の保存場所**。
+- **役割**:
+  - 生データ（Raw JSON）の永続化
+  - 構造化データの正規化保存（SQLテーブル）
+  - 正確な集計・分析（SUM, COUNT, AVG, 推移）の実行
+- **格納データ**:
+  - Spotify再生履歴（全件）
+  - 銀行取引明細
+  - 位置情報ログ
+  - 健康データ（歩数、心拍数）
 
-| カテゴリ | データソース | 備考 |
-|---|---|---|
-| メディア | Spotify, YouTube | 視聴履歴、プレイリスト、検索語 |
-| ブラウジング | Chrome/Firefox | 閲覧履歴、ブックマーク |
-| 金融 | 銀行、クレジットカード、証券 | 取引明細（Gmail/PDF解析） |
-| EC | Amazon | 購入履歴、レビュー |
-| コミュニケーション | Gmail, Twitter (X) | メール、ツイート履歴 |
-| 行動ログ | Google Maps, PC/Android | 位置情報、アプリ起動履歴 |
-| スケジュール | Google Calendar | イベント、予定 |
-| ゲーム | Steam, Nintendo Switch | プレイ履歴 |
-| ナレッジ | Notion, Obsidian | メモ、ドキュメント |
-| その他 | Adult content | 隔離対象（Private DB only） |
+#### B. Vector Database (Qdrant)
+**「意味（Meaning）」の保存場所**。
+- **役割**:
+  - テキストの意味検索（Semantic Search）
+  - 曖昧な記憶の想起（Recall）
+  - 膨大なログの「要約」の保持
+- **格納データ**:
+  - デイリーサマリー（「今日は13~15時にXXの音楽を聴いた」）
+  - 日記、メモ、メール本文
+  - Web記事のチャンク
 
-### 2.2 Collectors（収集層）
+### 2.2 Ingestion & Processing（取り込み・処理層）
 
-**役割**：各データソースからデータを取得
+1. **Collection**: GitHub Actionsで各APIからデータを取得。
+2. **Load to SQL**: まずSupabaseに生データ（Raw）と正規化データ（Structured）を格納。**ここが正（Source of Truth）となる**。
+3. **Summarization**:
+   - Supabaseから「昨日のデータ」を読み込む。
+   - LLMを使って「デイリーサマリー」や「特徴的なイベント」を文章化（Semantification）。
+4. **Embedding**: 生成されたテキストを `Ruri-v3` でベクトル化し、Qdrantへ保存。
 
-**実装方法**：
+### 2.3 Agent Layer（エージェント層）
 
-- **API連携**：Spotify API, YouTube Data API, Google Calendar API等
-- **メール解析**：GmailからHTML/PDF添付ファイルを抽出
-- **Webスクレイピング**：Playwright（明細PDF自動ダウンロード）
-- **クライアント拡張**：
-  - Chrome拡張機能（ブラウザ履歴）
-  - Android小型collector（UsageStats API）
+従来の「いきなりベクトル検索」ではなく、**ユーザーの質問意図を解釈してツールを使い分けるエージェント**を配置する。
 
-**出力形式**：JSON（各データソース固有フォーマット）
+- **Tool: SQL Client**
+  - **発動条件**: 「何回？」「合計は？」「いつ？」「推移は？」などの分析的質問。
+  - **動作**: LLMがSQLクエリを生成し、Supabaseに対して実行。正確な値を返す。
+  - **例**: 「先月の食費の合計は？」→ `SELECT SUM(amount) FROM transactions WHERE category = 'food' ...`
 
-### 2.3 Ingestion Orchestrator（取り込み調整層）
+- **Tool: Vector Search**
+  - **発動条件**: 「どんな感じ？」「あれなんだっけ？」「要約して」などの定性的・探索的質問。
+  - **動作**: クエリをベクトル化し、Qdrantから類似テキスト（要約やメモ）を検索。
+  - **例**: 「先月、悲しい時に聴いてた曲は？」→ `vector_search("sad music last month")`
 
-**役割**：データ収集のスケジューリングと実行管理
+### 2.4 Application Layer（アプリケーション層）
 
-**実装**：
-
-- **GitHub Actions**（cron job）：定期的な収集タスクを実行
-- **Cloud Run**（将来）：重い処理のオフロード
-
-**機能**：
-
-- スケジューリング（日次、週次、リアルタイム）
-- ログ記録
-- エラーハンドリング・リトライ
-
-### 2.4 Sanitizer / Masker（サニタイゼーション層）
-
-**役割**：プライバシー保護のための前処理
-
-**主な処理**：
-
-| 処理 | 内容 |
-|---|---|
-| **PII検出・マスク** | 個人情報（氏名、住所、電話番号等）を検出し、マスク |
-| **NSFW判定** | 不適切なコンテンツにフラグ付け |
-| **センシティビティ判定** | データの機密度レベル（Low/Medium/High）を自動判定 |
-
-**実装手法**：
-
-- 正規表現・ヒューリスティック
-- 軽量LLMによる判定（将来）
-
-### 2.5 Processing Layer（処理層）
-
-**役割**：データをRAG用に変換・加工
-
-**主な処理**：
-
-1. **Semantification**（構造化データ）：
-   - JSONを自然言語テキストに変換
-   - 詳細は[データタイプ別処理戦略](./1003_data_sources/README.md)を参照
-
-2. **Chunking**（非構造化データ）：
-   - 長文を適切なサイズに分割
-   - 階層構造（親子関係）の構築
-
-3. **Metadata Enrichment**：
-   - 日付バケット生成
-   - カテゴリ自動分類
-   - タグ・キーワード抽出
-
-**使用ライブラリ**：LlamaIndex
-
-### 2.6 Embedding Layer（ベクトル化層）
-
-**役割**：テキストをベクトル表現に変換
-
-**使用モデル**：cl-nagoya/ruri-v3-310m（ローカル実行）
-
-- **特徴**：
-  - 日本語特化（ベンチマーク最高水準）
-  - 8192トークンまでのロングコンテキスト対応
-  - ローカル実行でプライバシー保護を最大化
-  - GitHub Actions環境でも実行可能
-
-**処理フロー**：
-
-```
-処理済みテキスト → Ruri-v3（ローカル） → ベクトル（768次元）
-```
-
-詳細は[Embedding戦略](../20.technical_selections/01_embedding.md)を参照。
-
-### 2.7 Vector DB Router（ベクトルDB振り分け層）
-
-**役割**：データの機密度に応じて保存先を決定
-
-**ルーティングロジック**：
-
-| センシティビティ | 保存先 | 例 |
-|---|---|---|
-| **Low** | Qdrant Cloud（Public） | 音楽再生履歴、一般メモ |
-| **Medium** | Qdrant Cloud（Public） | カレンダー、購買履歴 |
-| **High** | Qdrant on NAS（Private） | 銀行取引、Adult content |
-
-**セキュリティ**：
-
-- Private DBはVPN/Firewall背後に配置
-- TLS暗号化通信
-- メタデータレベルでの暗号化（オプション）
-
-### 2.8 Retrieval / Query（検索層）
-
-**役割**：ユーザークエリに対して関連データを取得
-
-**機能**：
-
-- **Hybrid Search**：ベクトル検索 + メタデータフィルタリング
-- **Multi-DB Query**：PublicとPrivateの両DBから検索
-- **Re-ranking**：検索結果の精度向上
-
-**実装**：LlamaIndex Query Engine
-
-### 2.9 Application Layer（アプリケーション層）
-
-**役割**：RAG機能を提供するバックエンドAPI
-
-**実装**：FastAPI
-
-**主な機能**：
-
-- RAGクエリエンドポイント
-- 認証・認可（Supabase）
-- プロンプト管理
-- クエリログ（オプション）
-
-### 2.10 Frontend（フロントエンド層）
-
-**役割**：ユーザーインターフェース
-
-**実装**：Next.js
-
-**画面構成**：
-
-- **Dashboard**：データソース別の統計、可視化
-- **Chat UI**：LLMとの対話インターフェース
-- **Prompt Editor**：プロンプトテンプレート管理
-- **Settings**：データソース接続設定、プライバシー設定
-
-### 2.11 LLM Chat Interface（LLM対話層）
-
-**役割**：自然言語での質問応答
-
-**使用モデル**：DeepSeek v3（API）
-
-**プライバシー保護**：
-
-- RAGで取得したコンテキストを再度マスク処理
-- 機密情報を含む場合は送信しない設定が可能
+- **FastAPI**: エージェントのホスティング、認証（Supabase Auth）、API提供。
+- **Next.js**: チャットUI、ダッシュボード（Supabaseから直接統計データを引くことも可能）。
 
 ---
 
@@ -260,102 +128,45 @@ Auxiliary: Secrets (GitHub Secrets / Vault), Backups (S3 / Offsite), CI/CD, Logg
 ### 3.1 Ingestion Flow（取り込みフロー）
 
 ```
-1. Data Sources
+1. Data Sources (Spotify, Bank, etc.)
    ↓
-2. Collectors（データ取得）
+2. Collectors (Python Scripts)
    ↓
-3. Sanitizer（PII検出・NSFW判定）
+3. Supabase (Insert Raw/Structured Data)  <-- ここでデータ確定
    ↓
-4. Processing Layer（Semantification / Chunking）
+4. Processing Job (Daily/Weekly Batch)
+   ↓ (Fetch structured data)
+5. LLM Summarizer (Generate Text Summary)
    ↓
-5. Embedding Layer（ベクトル化）
+6. Embedding (Ruri-v3)
    ↓
-6. Vector DB Router（保存先振り分け）
-   ↓
-7. Qdrant Cloud / Qdrant on NAS（保存）
+7. Qdrant (Upsert Vectors)
 ```
 
 ### 3.2 Query Flow（検索フロー）
 
 ```
-1. User Query（ユーザーの質問）
+1. User Query ("先月の食費は？")
    ↓
-2. Application Layer（クエリ受付）
+2. Agent (Router)
+   ↓ (Decision: Analytics needed -> Use SQL Tool)
+3. Tool: SQL Client
+   ↓ (Generate & Execute SQL)
+4. Supabase
+   ↓ (Return: 45,000 JPY)
+5. Agent (Format response)
    ↓
-3. Retrieval Layer（検索実行）
-   ├─ Qdrant Cloud（Public DB）
-   └─ Qdrant on NAS（Private DB）
-   ↓
-4. Re-ranking（結果精査）
-   ↓
-5. Context Masking（再マスク処理）
-   ↓
-6. LLM（回答生成）
-   ↓
-7. Response（ユーザーへ返答）
+6. Response ("先月の食費は45,000円でした。")
 ```
 
 ---
 
-## 4. スケーラビリティ戦略
+## 4. スケーラビリティとプライバシー
 
-### 4.1 ストレージのスケーリング
+### 4.1 プライバシー（機密データの扱い）
+- **Supabase**: RLS (Row Level Security) を設定し、将来的なマルチユーザー対応やアクセス制御に備える。
+- **機密性の高いテキスト**: ベクトル化する際、個人情報（PII）はマスクするか、ローカル/プライベートなQdrantインスタンス（NAS）のみに保存するルーティングを行う。
 
-| フェーズ | 想定データ量 | 対応策 |
-|---|---|---|
-| Phase 1（MVP） | 〜1万ノード | Qdrant Cloud Free Tier |
-| Phase 2 | 〜10万ノード | Qdrant Cloud Paid Tier |
-| Phase 3 | 10万〜100万ノード | NAS拡張 + Sharding |
-
-### 4.2 処理のスケーリング
-
-- **並列処理**：GitHub Actions Matrixで複数データソースを並列収集
-- **バッチ最適化**：Embedding APIへのリクエストをバッチ化
-- **キャッシュ**：頻繁に検索されるクエリ結果をキャッシュ
-
----
-
-## 5. 障害対策
-
-### 5.1 可用性
-
-| コンポーネント | 障害時の対応 |
-|---|---|
-| Qdrant Cloud | 自動フェイルオーバー（サービス提供） |
-| Qdrant on NAS | 手動復旧（バックアップから） |
-| GitHub Actions | リトライ機構（3回まで） |
-| FastAPI | Cloud Runでのオートスケール（将来） |
-
-### 5.2 データ保護
-
-- **バックアップ頻度**：
-  - Qdrant Cloud：自動（サービス提供）
-  - NAS：週次フルバックアップ + 日次差分
-- **保存先**：S3（暗号化） + オフサイトバックアップ
-
----
-
-## 6. 今後の拡張
-
-### 6.1 マルチモーダル対応
-
-- 画像（写真、スクリーンショット）のEmbedding
-- 音声データ（会議録音、音声メモ）のTranscription + Embedding
-
-### 6.2 リアルタイム取り込み
-
-- WebSocket経由でブラウザ閲覧履歴をリアルタイム送信
-- Android/iOSアプリからの位置情報ストリーミング
-
-### 6.3 コラボレーション機能
-
-- 家族間でのデータ共有（access_group: family）
-- チームワークスペース（access_group: work）
-
----
-
-## 参考
-
-- [データモデル](./1002_data_model.md)
-- [データソース別設計](./1003_data_sources/)
-- [技術スタック](./1004_tech_stack.md)
+### 4.2 スケーラビリティ
+- **Supabase**: 数百万行レベルならPostgreSQLの標準機能で十分高速。パーティショニングも検討。
+- **Qdrant**: 全ログをベクトル化せず「要約」のみを保存するため、インデックスサイズを抑制できる。
