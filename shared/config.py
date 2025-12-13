@@ -7,7 +7,7 @@
 import logging
 from typing import Optional
 
-from pydantic import Field, field_validator, ValidationError
+from pydantic import Field, SecretStr, field_validator, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,8 +17,8 @@ class SpotifyConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     client_id: str = Field(..., alias="SPOTIFY_CLIENT_ID")
-    client_secret: str = Field(..., alias="SPOTIFY_CLIENT_SECRET")
-    refresh_token: str = Field(..., alias="SPOTIFY_REFRESH_TOKEN")
+    client_secret: SecretStr = Field(..., alias="SPOTIFY_CLIENT_SECRET")
+    refresh_token: SecretStr = Field(..., alias="SPOTIFY_REFRESH_TOKEN")
     redirect_uri: str = Field(
         "http://localhost:8888/callback",
         alias="SPOTIFY_REDIRECT_URI"
@@ -49,7 +49,7 @@ class QdrantConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     url: str = Field(..., alias="QDRANT_URL")
-    api_key: str = Field(..., alias="QDRANT_API_KEY")
+    api_key: SecretStr = Field(..., alias="QDRANT_API_KEY")
     collection_name: str = Field(
         "egograph_spotify_ruri",
         alias="QDRANT_COLLECTION_NAME"
@@ -95,18 +95,18 @@ class Config(BaseSettings):
         # サブ設定のロード
         try:
             config.spotify = SpotifyConfig()
-        except (ValidationError, ValueError) as e:
-            logging.warning(f"Failed to load Spotify config: {e}")
+        except (ValidationError, ValueError):
+            logging.exception("Failed to load Spotify config")
 
         try:
             config.embedding = EmbeddingConfig()
-        except (ValidationError, ValueError) as e:
-            logging.warning(f"Failed to load Embedding config: {e}")
+        except (ValidationError, ValueError):
+            logging.exception("Failed to load Embedding config")
 
         try:
             config.qdrant = QdrantConfig()
-        except (ValidationError, ValueError) as e:
-            logging.warning(f"Failed to load Qdrant config: {e}")
+        except (ValidationError, ValueError):
+            logging.exception("Failed to load Qdrant config")
 
         # ロギングの設定
         logging.basicConfig(

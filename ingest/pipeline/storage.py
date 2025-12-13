@@ -5,7 +5,6 @@ Qdrant Cloudを使用したベクトルの保存と検索を処理します。
 
 import logging
 from typing import Any, Dict, List
-from uuid import uuid4
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
@@ -112,13 +111,20 @@ class QdrantStorage:
         # ポイントの作成
         points = []
         for node, embedding in zip(nodes, embeddings, strict=True):
+            # 埋め込み次元の検証
+            if len(embedding) != self.vector_size:
+                raise ValueError(
+                    f"Invalid embedding dimension for node {node.node_id}: "
+                    f"got {len(embedding)}, expected {self.vector_size}"
+                )
+
             # 埋め込みが無効（すべてゼロ）の場合はスキップ
             if all(v == 0.0 for v in embedding):
                 logger.warning(f"Skipping node with zero embedding: {node.node_id}")
                 continue
 
             point = PointStruct(
-                id=str(uuid4()),  # Qdrant用に一意なIDを生成
+                id=node.node_id,  # 再実行でも同じノードは上書きされる
                 vector=embedding,
                 payload={
                     "text": node.text,

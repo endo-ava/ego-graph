@@ -41,8 +41,8 @@ def main():
         logger.info("\n[Step 1/5] Collecting data from Spotify API...")
         collector = SpotifyCollector(
             client_id=config.spotify.client_id,
-            client_secret=config.spotify.client_secret,
-            refresh_token=config.spotify.refresh_token,
+            client_secret=config.spotify.client_secret.get_secret_value(),
+            refresh_token=config.spotify.refresh_token.get_secret_value(),
             redirect_uri=config.spotify.redirect_uri,
             scope=config.spotify.scope,
         )
@@ -104,7 +104,7 @@ def main():
         logger.info("\n[Step 5/5] Storing vectors in Qdrant Cloud...")
         storage = QdrantStorage(
             url=config.qdrant.url,
-            api_key=config.qdrant.api_key,
+            api_key=config.qdrant.api_key.get_secret_value(),
             collection_name=config.qdrant.collection_name,
             vector_size=config.qdrant.vector_size,
             batch_size=config.qdrant.batch_size,
