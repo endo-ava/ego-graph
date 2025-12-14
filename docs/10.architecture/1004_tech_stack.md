@@ -5,7 +5,7 @@
   - **Extension: `parquet`**: ローカルのParquetファイル群に対してSQLを実行する。
   - **Extension: `httpfs`**: Cloudflare R2 (S3互換) 上のデータを参照するために使用。
 - **Qdrant Cloud**: **ベクトル検索専用エンジン**。
-  - **Free Tier**: 1GBメモリまで無料（約10万ベクトル）。
+  - **Free Tier**: 1GBメモリまで無料（約10万ベクトル※次元数に依存）。
   - **役割**: 日次要約やチャンクの意味検索を担当し、BEサーバーのメモリ負荷を下げる。
 
 ## 2. Ingestion Pipeline

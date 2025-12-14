@@ -20,14 +20,14 @@
 ソースデータから抽出・加工された実データ（Parquet形式推奨）の永続化場所。
 
 - **Raw Documents**:
-    - 収集したドキュメントの原文（Markdown, Text, HTMLなど）。
-    - Path: `s3://{bucket}/docs/raw/{source}/{doc_id}.{ext}`
+  - 収集したドキュメントの原文（Markdown, Text, HTMLなど）。
+  - Path: `s3://{bucket}/docs/raw/{source}/{doc_id}.{ext}`
 - **Document Chunks**:
-    - RAG用に分割されたテキストチャンク（Parquet）。
-    - Path: `s3://{bucket}/docs/chunks/{doc_id}.parquet`
+  - RAG用に分割されたテキストチャンク（Parquet）。
+  - Path: `s3://{bucket}/docs/chunks/{doc_id}.parquet`
 - **Spotify Archives**:
-    - 再生履歴の事実データ（Parquet）。
-    - Path: `s3://{bucket}/spotify/events/year={yyyy}/month={mm}/{uuid}.parquet`
+  - 再生履歴の事実データ（Parquet）。
+  - Path: `s3://{bucket}/spotify/events/year={yyyy}/month={mm}/{uuid}.parquet`
 
 ---
 
@@ -48,20 +48,20 @@ CREATE SCHEMA IF NOT EXISTS ops;   -- ingest状態・ログ
 ### 3.1 管理データ (Meta & Ops)
 
 - **Documents Ledger (`mart.documents`)**
-    - **役割**: ドキュメントの管理台帳。
-    - **主な項目**: `doc_id`, `title`, `uri` (S3 path), `hash` (変更検知用), `updated_at`.
+  - **役割**: ドキュメントの管理台帳。
+  - **主な項目**: `doc_id`, `title`, `uri` (S3 path), `hash` (変更検知用), `updated_at`.
 - **Ingest State (`ops.ingest_state`)**
-    - **役割**: 取り込み処理の進捗管理（カーソル）。
-    - **主な項目**: `source`, `cursor_value` (timestamp/token), `status`.
+  - **役割**: 取り込み処理の進捗管理（カーソル）。
+  - **主な項目**: `source`, `cursor_value` (timestamp/token), `status`.
 
 ### 3.2 分析・参照データ (Analytics & Lookup)
 
 - **Spotify History (`mart.spotify_plays`)**
-    - **役割**: 履歴の検索・集計用ビュー。R2上のParquetを参照。
-    - **主な項目**: `play_id`, `track_name`, `played_at`, `artist_names`.
+  - **役割**: 履歴の検索・集計用ビュー。R2上のParquetを参照。
+  - **主な項目**: `play_id`, `track_name`, `played_at`, `artist_names`.
 - **Daily Summaries (`mart.daily_summaries`)**
-    - **役割**: エージェントが生成した日次サマリーの正本（テキスト）。
-    - **主な項目**: `summary_id`, `date`, `summary_text`, `stats_json`.
+  - **役割**: エージェントが生成した日次サマリーの正本（テキスト）。
+  - **主な項目**: `summary_id`, `date`, `summary_text`, `stats_json`.
 
 ---
 
@@ -72,16 +72,16 @@ CREATE SCHEMA IF NOT EXISTS ops;   -- ingest状態・ログ
 ### 4.1 Document Index (`doc_chunks_v1`)
 - **Vector**: チャンクテキストの埋め込み。
 - **Payload**: フィルタリング用メタデータのみ。
-    - `type`: "doc_chunk"
-    - `doc_id`: UUID
-    - `lang`: "ja"
-    - `source`: "drive", "notion" etc.
-    - `tags`: ["topic:RAG"]
+  - `type`: "doc_chunk"
+  - `doc_id`: UUID
+  - `lang`: "ja"
+  - `source`: "drive", "notion" etc.
+  - `tags`: ["topic:RAG"]
 
 ### 4.2 Summary Index (`daily_summaries_v1`)
 - **Vector**: サマリーテキストの埋め込み。
 - **Payload**: 日付検索用メタデータ。
-    - `type`: "daily_summary"
-    - `summary_id`: UUID
-    - `date`: "YYYY-MM-DD"
-    - `mood`: ["focus", "chill"]
+  - `type`: "daily_summary"
+  - `summary_id`: UUID
+  - `date`: "YYYY-MM-DD"
+  - `mood`: ["focus", "chill"]

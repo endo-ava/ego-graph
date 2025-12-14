@@ -15,7 +15,7 @@ EgoGraphは、個人のデジタルライフログ（Spotify, Web, Bank, etc.）
 
 ## System Architecture
 
-```
+```text
 [Mobile App] ──(HTTPS)──▶ [Agent API]
                              │
             ┌────────────────┴────────────────┐

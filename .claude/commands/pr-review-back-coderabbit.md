@@ -10,7 +10,7 @@ description: PRレビュー指摘を要約・評価し、対応するための�
    - 以下のコマンドで、PRのレビューとコメントをJSON形式で取得し、ファイルに保存します（ノイズを減らすため）。
 
      ```bash
-     gh pr view <PR_NUMBER> --json reviews,comments > pr_data.json
+     gh pr view "$PR_NUMBER" --json reviews,comments > pr_data.json
      ```
 
    - 保存された `pr_data.json` を読み込み、以下の手順でレビュアーからの指摘を抽出してください。
