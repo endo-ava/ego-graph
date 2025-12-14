@@ -1,172 +1,138 @@
 # システムアーキテクチャ
 
-## 1. 全体構成図
+## 1. 全体構成図 (Hybrid: DuckDB + Qdrant)
 
-**ハイブリッド・アーキテクチャ**：
-構造化データ（事実・統計）はRDBに、非構造化データ（意味・文脈）はVector DBに保存し、**Agent（LLM + Tools）** がユーザーの意図に応じて最適なデータソースを選択して回答する。
+軽量サーバー（e2-micro等）での稼働を前提とし、メモリ負荷の高いベクトル検索を **Qdrant Cloud** にオフロードする構成。
+データの取り込み（Ingestion）は **GitHub Actions** で定期実行し、サーバー負荷を最小化する。
 
-```
-                                            ┌────────────────────┐
-                                            │ Monitoring / APM   │
-                                            │ (Prometheus/Graf.) │
-                                            └──────────┬─────────┘
-                                                       │
-┌──────────────┐     ┌─────────────┐     ┌───────────▼──────────┐
-│ Data Sources │────▶│ Collectors  │────▶│ Ingestion Orchestr.  │
-│              │     │             │     │ (GitHub Actions)     │
-└──────────────┘     └─────────────┘     └───────────┬──────────┘
-                                                     │
-                                                     ▼
-                                         ┌──────────────────────────┐
-                                         │ Data Warehouse (Events)  │
-                                         │ (Supabase / PostgreSQL)  │
-                                         │                          │
-                                         │ - Raw JSON logs          │
-                                         │ - Normalized tables      │
-                                         └───────────┬──────────────┘
-                                                     │
-                                         ┌───────────▼──────────────┐
-                                         │ Summarizer / Embedder    │
-                                         │ (LlamaIndex / Ruri-v3)   │
-                                         │                          │
-                                         │ - Generate Daily Summary │
-                                         │ - Semantification        │
-                                         │ - Vectorize              │
-                                         └───────────┬──────────────┘
-                                                     │
-                                                     ▼
-                                         ┌──────────────────────────┐
-                                         │ Vector Database          │
-                                         │ (Qdrant)                 │
-                                         │                          │
-                                         │ - Summaries              │
-                                         │ - Unstructured Chunks    │
-                                         └───────────┬──────────────┘
-                                                     │
-                                                     │
-┌──────────────┐                                     │
-│ User Query   │                                     │
-└──────┬───────┘                                     │
-       │                                             │
-       ▼                                             │
-┌──────────────┐    ┌────────────────────────────────▼──────────────────┐
-│ Application  │    │ Agent Layer (Function Calling / Reasoning)        │
-│ Layer        │───▶│                                                   │
-│ (FastAPI)    │    │ ┌───────────────┐  ┌───────────────────────────┐  │
-└──────────────┘    │ │ Tool: SQL     │  │ Tool: Vector Search       │  │
-                    │ │ (Analytics)   │  │ (Fuzzy Recall)            │  │
-                    │ └───────┬───────┘  └─────────────┬─────────────┘  │
-                    └─────────┼────────────────────────┼────────────────┘
-                              │                        │
-                              ▼                        ▼
-                       (Query Supabase)          (Query Qdrant)
+```mermaid
+flowchart TB
+    subgraph "Client"
+        Mobile[Mobile/Web App]
+    end
+
+    subgraph "Ingestion (GitHub Actions)"
+        Action[Scheduled Workflows]
+    end
+
+    subgraph "External Server (VPS/GCP)"
+        Agent[Agent API\n(FastAPI)]
+        DuckDB[(DuckDB Engine)]
+    end
+    
+    subgraph "Storage"
+        GCS{Object Storage\n(GCS/NAS)}
+    end
+
+    subgraph "Managed Services"
+        Qdrant[Qdrant Cloud\n(Vector DB)]
+    end
+
+    subgraph "Data Sources"
+        Spotify
+        Docs[Documents]
+    end
+
+    Mobile <-->|HTTPS| Agent
+    
+    Agent <-->|SQL Analytics| DuckDB
+    Agent <-->|Vector Search| Qdrant
+    
+    DuckDB <-->|Read Only| GCS
+    
+    Spotify --> Action
+    Docs --> Action
+    
+    Action -->|Write Parquet/Raw| GCS
+    Action -->|Upsert Vectors| Qdrant
 ```
 
 ---
 
-## 2. 各レイヤーの詳細
+## 2. コンポーネント詳細
 
-### 2.1 Storage Layer（ストレージ層）：ハイブリッド構成
+### 2.1 Ingestion Layer (GitHub Actions)
+- **Role**: 定期的なデータ収集と加工。
+- **Workflow**:
+  - **Extract**: Spotify APIやドライブからデータを取得。
+  - **Transform**: 構造化データ（Parquet）やベクトル（Embedding）に変換。
+  - **Load**:
+    - **GCS/NAS**: 「正本」としてParquet/Rawファイルを保存。
+    - **Qdrant**: 検索用ベクトルインデックスを更新。
 
-データの性質に応じて保存先を厳格に分離する。
+### 2.2 Storage Layer
+- **Object Storage (GCS / NAS)**:
+  - **正本 (Original)**。すべての事実データとドキュメントの実体を保持。
+  - DuckDBから `httpfs` またはローカルマウント経由で参照される。
+- **Semantic Data (Qdrant)**:
+  - 意味検索用のインデックスのみを保持。
 
-#### A. Data Warehouse (Supabase / PostgreSQL)
-**「事実（Facts）」の保存場所**。
-- **役割**:
-  - 生データ（Raw JSON）の永続化
-  - 構造化データの正規化保存（SQLテーブル）
-  - 正確な集計・分析（SUM, COUNT, AVG, 推移）の実行
-- **格納データ**:
-  - Spotify再生履歴（全件）
-  - 銀行取引明細
-  - 位置情報ログ
-  - 健康データ（歩数、心拍数）
+### 2.3 Analysis Layer (Dual Engine)
+- **DuckDB**: **「事実」の集計 & 台帳管理**。
+  - 例: 「去年、何回再生した？」「あのドキュメントどこ？」
+  - Agentプロセスに内包されるライブラリとして動作。
+- **Qdrant**: **「意味」の検索**。
+  - 例: 「悲しい時に聴いた曲は？」
+  - 高速なベクトル検索を提供。
 
-#### B. Vector Database (Qdrant)
-**「意味（Meaning）」の保存場所**。
-- **役割**:
-  - テキストの意味検索（Semantic Search）
-  - 曖昧な記憶の想起（Recall）
-  - 膨大なログの「要約」の保持
-- **格納データ**:
-  - デイリーサマリー（「今日は13~15時にXXの音楽を聴いた」）
-  - 日記、メモ、メール本文
-  - Web記事のチャンク
+### 2.4 Application Layer (Agent)
+ユーザーの問いかけに対し、ツールを使い分けて回答を作る。
 
-### 2.2 Ingestion & Processing（取り込み・処理層）
+- **LangChain / LlamaIndex**: SQL生成とツール実行の制御。
+- **Tool definitions**:
+  - `query_analytics(sql)`: 数値的な集計や台帳参照。
+  - `search_vectors(query_text)`: 意味的なインデックス検索。
 
-1. **Collection**: GitHub Actionsで各APIからデータを取得。
-2. **Load to SQL**: まずSupabaseに生データ（Raw）と正規化データ（Structured）を格納。**ここが正（Source of Truth）となる**。
-3. **Summarization**:
-   - Supabaseから「昨日のデータ」を読み込む。
-   - LLMを使って「デイリーサマリー」や「特徴的なイベント」を文章化（Semantification）。
-4. **Embedding**: 生成されたテキストを `Ruri-v3` でベクトル化し、Qdrantへ保存。
-
-### 2.3 Agent Layer（エージェント層）
-
-従来の「いきなりベクトル検索」ではなく、**ユーザーの質問意図を解釈してツールを使い分けるエージェント**を配置する。
-
-- **Tool: SQL Client**
-  - **発動条件**: 「何回？」「合計は？」「いつ？」「推移は？」などの分析的質問。
-  - **動作**: LLMがSQLクエリを生成し、Supabaseに対して実行。正確な値を返す。
-  - **例**: 「先月の食費の合計は？」→ `SELECT SUM(amount) FROM transactions WHERE category = 'food' ...`
-
-- **Tool: Vector Search**
-  - **発動条件**: 「どんな感じ？」「あれなんだっけ？」「要約して」などの定性的・探索的質問。
-  - **動作**: クエリをベクトル化し、Qdrantから類似テキスト（要約やメモ）を検索。
-  - **例**: 「先月、悲しい時に聴いてた曲は？」→ `vector_search("sad music last month")`
-
-### 2.4 Application Layer（アプリケーション層）
-
-- **FastAPI**: エージェントのホスティング、認証（Supabase Auth）、API提供。
-- **Next.js**: チャットUI、ダッシュボード（Supabaseから直接統計データを引くことも可能）。
+### 2.5 Client Layer (Capacitor)
+ユーザーとのインターフェース。
+- **Framework**: Capacitor (Web技術でモバイル/Web対応)
+- **Role**: チャットUI、ダッシュボード表示。
 
 ---
 
-## 3. データフロー
+## 3. データフロー (Search & Retrieval)
 
-### 3.1 Ingestion Flow（取り込みフロー）
+### 3.1 書き込み (Ingestion by GitHub Actions)
+1.  **Fetch**: ActionsがAPI等からRawデータ（JSON）を取得。
+2.  **Transform**: 共通スキーマ（Unified Schema）に変換。
+3.  **Save**: 
+    - **GCS (正本)**: 生ログ、ドキュメント本文、Parquetファイルを保存。
+    - **Qdrant (索引)**: IDとベクトル、フィルタ用タグを登録。
 
-```
-1. Data Sources (Spotify, Bank, etc.)
-   ↓
-2. Collectors (Python Scripts)
-   ↓
-3. Supabase (Insert Raw/Structured Data)  <-- ここでデータ確定
-   ↓
-4. Processing Job (Daily/Weekly Batch)
-   ↓ (Fetch structured data)
-5. LLM Summarizer (Generate Text Summary)
-   ↓
-6. Embedding (Ruri-v3)
-   ↓
-7. Qdrant (Upsert Vectors)
-```
+> **Note**: サーバー側のDuckDBは、GCS上の更新されたファイルを読み取る（メタデータ更新はサーバー起動時や定期タスクで行う、あるいはActionsからトリガーする）。
 
-### 3.2 Query Flow（検索フロー）
+### 3.2 読み取り (Search Pattern)
 
-```
-1. User Query ("先月の食費は？")
-   ↓
-2. Agent (Router)
-   ↓ (Decision: Analytics needed -> Use SQL Tool)
-3. Tool: SQL Client
-   ↓ (Generate & Execute SQL)
-4. Supabase
-   ↓ (Return: 45,000 JPY)
-5. Agent (Format response)
-   ↓
-6. Response ("先月の食費は45,000円でした。")
-```
+#### A. ドキュメントRAG (doc_chunks)
+1.  **Embed**: ユーザーの質問をベクトル化。
+2.  **Index Search**: Qdrant (`doc_chunks_v1`) から候補の `chunk_id` を取得。
+3.  **Ledger Lookup**: DuckDB (`mart.documents`) で `chunk_id` を照会し、実データの場所 (`gcs_uri`) を特定。
+4.  **Fetch Original**: GCS (またはキャッシュ済みParquet) から本文を取得。
+5.  **Generate**: LLMに渡して回答生成。
+
+#### B. Spotify "思い出し" RAG (daily_summaries)
+「台帳」自体が分析可能なデータを持つケース（DuckDBがデータをマウントしている場合）。
+
+1.  **Embed**: 質問をベクトル化。
+2.  **Index Search**: Qdrant (`spotify_daily_summaries_v1`) から `summary_id` を取得。
+3.  **Retrieve**: DuckDB (`mart.daily_summaries`) からサマリー本文と、関連する統計データを取得（DuckDBがGCS上のParquetを透過的に扱う）。
+4.  **Generate**: 回答生成。
 
 ---
 
-## 4. スケーラビリティとプライバシー
+## 4. スケーラビリティと制限
 
-### 4.1 プライバシー（機密データの扱い）
-- **Supabase**: RLS (Row Level Security) を設定し、将来的なマルチユーザー対応やアクセス制御に備える。
-- **機密性の高いテキスト**: ベクトル化する際、個人情報（PII）はマスクするか、ローカル/プライベートなQdrantインスタンス（NAS）のみに保存するルーティングを行う。
+### 4.1 データ量
+- **DuckDB**: 数億行〜TB級のParquetファイルでも、単一ノードで十分に高速処理可能。
+- **メモリ**: Aggregationなどの重い処理も、DuckDBの "Out-of-core" 処理により、メモリ容量を超えてもディスク（Temp領域）を使って実行できる。
 
-### 4.2 スケーラビリティ
-- **Supabase**: 数百万行レベルならPostgreSQLの標準機能で十分高速。パーティショニングも検討。
-- **Qdrant**: 全ログをベクトル化せず「要約」のみを保存するため、インデックスサイズを抑制できる。
+### 4.2 同時実行性
+- **Read**: 複数のAgentプロセス（Worker）からの同時読み取りは可能（Parquetファイルベースであれば）。
+- **Write**: GitHub Actionsによるバッチ書き込みが主のため、サーバー側のロック競合は最小限。
+
+---
+
+## 5. セキュリティ
+- **認証**: 実装しない（ローカル/個人利用前提）。
+- **データ保護**: 必要であれば、Parquetファイルの暗号化や、ファイルシステムレベルでのアクセス権限設定を行う。
+

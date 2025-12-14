@@ -1,88 +1,45 @@
-# 技術スタック
+# 技術スタック (DuckDB + Qdrant)
 
-## 1. 概要
+## 1. Core Database Engine
+- **DuckDB**: **OLAP (分析) 専用エンジン**。
+  - **Extension: `parquet`**: ローカルのParquetファイル群に対してSQLを実行する。
+  - **Extension: `httpfs`**: 将来的にS3上のデータを参照するために使用。
+- **Qdrant Cloud**: **ベクトル検索専用エンジン**。
+  - **Free Tier**: 1GBメモリまで無料（約10万ベクトル）。
+  - **役割**: 日次要約やチャンクの意味検索を担当し、BEサーバーのメモリ負荷を下げる。
 
-本ドキュメントでは、EgoGraphの各コンポーネントにおける技術選定とその理由を記載する。
-**ハイブリッド・アーキテクチャ（SQL + Vector）** への移行に伴い、Supabaseをコアコンポーネントとして採用する。
+## 2. Ingestion Pipeline
+- **Language**: **Python 3.13+**
+- **Libraries**:
+  - `pandas` / `polars`: データ加工用。DuckDBとのZero-Copy連携が強力。
+  - `spotipy`: Spotify APIクライアント。
+  - `playwright`: Webスクレイピング。
 
----
+## 3. Application / Agent Layer
+- **Framework**: **FastAPI** (Python)
+  - 軽量なREST APIサーバーとして、Agentのインターフェースを提供。
+- **Agent Framework**: **LangChain** or **LlamaIndex**
+  - Toolとして `DuckDBQueryTool` を定義し、LLMにSQLを書かせる。
+- **LLM**:
+  - **Agent Reasoning**: OpenAI GPT-4o / DeepSeek v3.
+  - **Embedding**: `cl-nagoya/ruri-v3-310m` (Local execution via `sentence-transformers`).
 
-## 2. コンポーネント別技術選定
+## 4. Frontend / Client
+- **Mobile/Web App**: **Capacitor** (Cross-platform).
+  - ユーザーインターフェースの主役。
+  - チャット、ダッシュボード
 
-### 2.1 Data Warehouse (Core Storage)
-
-| 用途 | 技術 | 理由 |
-|---|---|---|
-| **構造化データ保存** | **Supabase (PostgreSQL)** | - **必須**: 堅牢なRDB機能（ACIDトランザクション）<br>- **分析**: SQLによる正確な集計が可能<br>- **Auth**: 認証機能が統合されている<br>- **API**: REST/GraphQL APIが自動生成される |
-| **生データ保存** | PostgreSQL JSONB | JSONをそのまま格納しつつインデックスが効く |
-
-**Supabaseを選んだ理由**：
-- フルマネージドなPostgreSQLであり、運用コストが低い
-- Row Level Security (RLS) により、将来的なマルチユーザー対応時のセキュリティが確保しやすい
-- ベクトル検索機能（pgvector）も一応持っているが、今回は**分析用DB**として特化して使用する
-
-### 2.2 Vector Database (Semantic Storage)
-
-| 用途 | 技術 | 理由 |
-|---|---|---|
-| **意味検索** | **Qdrant** | - 検索速度と精度（HNSW）<br>- メタデータフィルタリングが強力<br>- Pythonクライアントが使いやすい |
-| **保存対象** | 要約、非構造化テキスト | Fact（事実）ではなくMeaning（意味）を保存 |
-
-### 2.3 Agent / LLM Provider
-
-| 用途 | 技術 | 理由 |
-|---|---|---|
-| **Agent LLM** | **OpenAI GPT-4o** or **DeepSeek v3** | - **必須**: 高度なFunction Calling能力<br>- 複雑なSQL生成やツール選択の判断が必要 |
-| **Embedding** | **Ruri-v3 (Local)** | - 日本語特化、プライバシー保護 |
-| **Summarizer** | **DeepSeek v3** | - コストパフォーマンスが高く、大量のログ要約に適する |
-
-### 2.4 Data Collection（データ収集）
-
-| 用途 | 技術 | 理由 |
-|---|---|---|
-| **API連携** | Python + `requests` | 汎用性が高く、各種APIクライアントライブラリが充実 |
-| **Spotify API** | `spotipy` | Spotify公式推奨のPythonライブラリ |
-| **Webスクレイピング** | Playwright | JavaScriptレンダリング対応、PDFダウンロード可能 |
-| **Batch処理** | GitHub Actions | 定期実行（cron）基盤として利用 |
-
-### 2.5 Orchestration (Agentic Workflow)
-
-| 用途 | 技術 | 理由 |
-|---|---|---|
-| **Framework** | **LangChain** or **LlamaIndex** | - Agent構築、Tool定義が容易<br>- SQLChainなどの既存コンポーネントが活用できる |
-| **Server** | **FastAPI** | Python製のAgentをAPIとして公開 |
+## 5. Deployment Infrastructure
+- **Server**: **VPS (Hetzner / Sakura)** or **Cloud VM (AWS EC2 / GCP Compute)**.
+  - Docker Compose で Agent + Ingestion Worker を同居させる。
+- **Storage**:
+  - **Object Storage (GCS / R2 / S3 / NAS)**: **正本 (Original)**。生データとParquetファイルの主格納場所。
+  - **Local SSD (Volume)**: **Cache & Ledger**。DuckDBファイルと、頻繁にアクセスするParquetのキャッシュ。
 
 ---
 
-## 3. デプロイ構成
+## 理由: なぜ DuckDB + Qdrant か？
 
-### Phase 1 (MVP)
-
-| コンポーネント | デプロイ先 |
-|---|---|
-| **Data Warehouse** | **Supabase Cloud (Free Tier)** |
-| **Vector DB** | **Qdrant Cloud (Free Tier)** |
-| **Ingestion** | GitHub Actions |
-| **Agent API** | Local / Cloud Run (Optional) |
-
----
-
-## 4. 技術選定の原則（改定）
-
-1. **適材適所 (Right Tool for the Right Job)**
-   - **集計・分析** → RDB (SQL)
-   - **探索・想起** → Vector DB (Semantic Search)
-   
-2. **プライバシーとセキュリティ**
-   - 機密データ（Raw Logs）はRLSで保護されたSupabaseへ
-   - Embeddingモデルはローカル実行を推奨
-
-3. **Agentic Design**
-   - 静的なパイプラインではなく、LLMが自律的にツール（SQL, Search）を選択する動的な構成を目指す
-
----
-
-## 参考
-
-- [システムアーキテクチャ](./1001_system_architecture.md)
-- [データモデル](./1002_data_model.md)
+1.  **Separation of Concerns**: 分析（集計）と探索（意味検索）のワークロードを分離。重いベクトル検索をマネージドサービス（Qdrant）に逃がすことで、Agentサーバーを軽量に保てる。
+2.  **Performance**: DuckDBは列指向処理により、大規模データの集計が非常に高速。QdrantはRust製の専用エンジンでベクトル検索が高速。
+3.  **Simplicity**: 大掛かりなDWHを構築せずとも、ファイルベースでお手軽に本格的なOLAP環境が手に入る。個人運用に最適。

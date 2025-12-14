@@ -1,153 +1,87 @@
-# データモデル
+# データモデル (GCS / DuckDB / Qdrant)
 
-## 1. 概要
+## 1. 責務の分離 (3層モデル)
 
-EgoGraphは、データの性質に応じて「**事実（Facts）**」と「**意味（Meaning）**」を分離して管理する。
+データの保管場所と役割を以下の3つに明確に分離する。
 
-- **Supabase (PostgreSQL)**: すべての「事実」データ（構造化ログ、トランザクション）を格納。
-- **Qdrant (Vector DB)**: 「意味」データ（要約、自然言語テキスト、埋め込みベクトル）を格納。
+1.  **GCS (Google Cloud Storage) or 個人NAS**: **正本 (Original)**
+    - データの「原本」置き場。テキスト本文やログの実体はここに置く。
+2.  **DuckDB**: **台帳 (Ledger) & 運用 (Ops)**
+    - データの「所在」と「状態」を管理するカタログ。
+    - 「昨日の曲」のような決定論的なクエリ（集計・分析）を担当。
+3.  **Qdrant**: **索引 (Index)**
+    - 意味検索（ベクトル検索）のためのディクショナリ。
+    - 正本は持たず、IDと検索に必要な最小限のタグのみを持つ。
 
 ---
 
-## 2. SQL Schema definition (Supabase)
+## 2. Layer 1: 正本 (GCS) - "The Bookshelf"
 
-Supabaseは「Data Warehouse」として機能し、すべての生データと構造化データを保持する。
+ソースデータから抽出・加工された実データ（Parquet形式推奨）の永続化場所。
 
-### 2.1 `events` Table (Universal Log)
+- **Raw Documents**:
+    - 収集したドキュメントの原文（Markdown, Text, HTMLなど）。
+    - Path: `gs://{bucket}/docs/raw/{source}/{doc_id}.{ext}`
+- **Document Chunks**:
+    - RAG用に分割されたテキストチャンク（Parquet）。
+    - Path: `gs://{bucket}/docs/chunks/{doc_id}.parquet`
+- **Spotify Archives**:
+    - 再生履歴の事実データ（Parquet）。
+    - Path: `gs://{bucket}/spotify/events/year={yyyy}/month={mm}/{uuid}.parquet`
 
-すべての時系列イベントを格納する統合テーブル。
-検索性を高めるため、JSONBカラムに詳細データを格納する。
+---
+
+## 3. Layer 2: 台帳 (DuckDB) - "The Catalog"
+
+実データへの参照（パス）、メタデータ、運用状態を管理する。LLMやAPIはこの層を通じてデータにアクセスする。
+
+### 3.1 Schema Layers
+
+データの用途に応じて3つのスキーマを使い分ける。
 
 ```sql
-CREATE TABLE events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  
-  -- 基本属性
-  user_id UUID NOT NULL REFERENCES auth.users(id),
-  source VARCHAR(50) NOT NULL,    -- 'spotify', 'bank', 'location'
-  category VARCHAR(50) NOT NULL,  -- 'music', 'transaction', 'place'
-  
-  -- 時間情報 (Timezone aware & Local)
-  occurred_at_utc TIMESTAMPTZ NOT NULL,
-  local_date DATE NOT NULL,       -- '2023-12-11' (パーティショニング用)
-  
-  -- データ本体
-  data JSONB NOT NULL,            -- 構造化データの本体
-  metadata JSONB,                 -- その他の付属情報
-  
-  -- 管理用
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- インデックス
-CREATE INDEX idx_events_source_date ON events (source, local_date);
-CREATE INDEX idx_events_data_gin ON events USING GIN (data);
+CREATE SCHEMA IF NOT EXISTS raw;   -- 取り込み直後（ほぼ生）
+CREATE SCHEMA IF NOT EXISTS mart;  -- API/LLMが使う整形済み
+CREATE SCHEMA IF NOT EXISTS ops;   -- ingest状態・ログ
 ```
 
-### 2.2 `daily_summaries` Table
+### 3.1 管理データ (Meta & Ops)
 
-1日ごとの要約テキストを保持するテーブル。ここからQdrantへの同期を行う。
+- **Documents Ledger (`mart.documents`)**
+    - **役割**: ドキュメントの管理台帳。
+    - **主な項目**: `doc_id`, `title`, `uri` (GCS path), `hash` (変更検知用), `updated_at`.
+- **Ingest State (`ops.ingest_state`)**
+    - **役割**: 取り込み処理の進捗管理（カーソル）。
+    - **主な項目**: `source`, `cursor_value` (timestamp/token), `status`.
 
-```sql
-CREATE TABLE daily_summaries (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id),
-  target_date DATE NOT NULL,
-  
-  content TEXT NOT NULL,          -- 生成された要約テキスト
-  summary_metadata JSONB,         -- 'mood', 'primary_activity' など
-  
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
+### 3.2 分析・参照データ (Analytics & Lookup)
 
----
-
-## 3. Lexia標準スキーマ (Vector DB / Qdrant)
-
-Qdrantには、上記のSQLデータから派生した「**意味（Meaning）**」のみを格納する。
-主に「要約（Summary）」や「非構造化チャンク（Chunk）」が対象となる。
-
-### 3.1 Payload構造
-
-```json
-{
-  "id": "uuid-v4",
-  "text": "テキスト本文（要約やチャンク）",
-  
-  "metadata": {
-    // リンク情報
-    "source": "daily_summary",
-    "linked_sql_ids": ["uuid-1", "uuid-2"], // 関連するSupabase上のID
-    "date": "2023-12-11",
-    
-    // 文脈情報
-    "topics": ["work", "coding", "jazz"],
-    "sentiment": "positive",
-    
-    // アクセス制御
-    "access_group": "private"
-  },
-  
-  "vector": [/* 768 dim vector */]
-}
-```
-
-### 3.2 粒度（Granularity）の方針変更
-
-以前はすべてのログ（Atomic）をベクトル化しようとしていたが、**Atomicデータのベクトル化は廃止（または限定的）**とする。
-
-| データ種別 | 以前の方針 | **新方針** | 理由 |
-|---|---|---|---|
-| スポット再生 (Spotify) | 全曲ベクトル化 | **しない** (SQLで集計) | 「あの曲」検索はSQLまたは外部APIで十分。 |
-| 銀行取引 (Bank) | 全件ベクトル化 | **しない** (SQLで集計) | 「食費いくら？」はSQLの方が正確。 |
-| 位置情報 (Location) | 全ログベクトル化 | **しない** (Daily Summaryに統合) | 「渋谷にいた」という事実だけ要約に残す。 |
-| 日記・メモ (Note) | ベクトル化 | **ベクトル化 (Chunk)** | 意味検索の対象として最適。 |
-| Web記事 (Browser) | 全件ベクトル化 | **要約のみベクトル化** | 全文検索より「どんな記事読んだ？」の想起を優先。 |
+- **Spotify History (`mart.spotify_plays`)**
+    - **役割**: 履歴の検索・集計用ビュー。GCS上のParquetを参照。
+    - **主な項目**: `play_id`, `track_name`, `played_at`, `artist_names`.
+- **Daily Summaries (`mart.daily_summaries`)**
+    - **役割**: エージェントが生成した日次サマリーの正本（テキスト）。
+    - **主な項目**: `summary_id`, `date`, `summary_text`, `stats_json`.
 
 ---
 
-## 4. データフローと連携
+## 4. Layer 3: 索引 (Qdrant) - "The Index Cards"
 
-### 4.1 SQL → Vector (Summarization)
+意味検索を行い、候補となるIDリストを返すことに特化する。**本文（Text）は保持しない。**
 
-Agentic Workflowにより、SQLに溜まった「事実」をLLMが読み込み、「意味」に変換してVector DBへ送る。
+### 4.1 Document Index (`doc_chunks_v1`)
+- **Vector**: チャンクテキストの埋め込み。
+- **Payload**: フィルタリング用メタデータのみ。
+    - `type`: "doc_chunk"
+    - `doc_id`: UUID
+    - `lang`: "ja"
+    - `source`: "drive", "notion" etc.
+    - `tags`: ["topic:RAG"]
 
-> **例：12月11日の処理**
-> 1. **SQL Query**: `SELECT * FROM events WHERE local_date = '2023-12-11'`
-> 2. **Result**: Spotify 50曲, 銀行取引 3件（コンビニ）, 位置情報（会社→自宅）
-> 3. **LLM Generation**: *"12月11日は一日中会社で仕事をした。SpotifyでJazzを聴きながら集中し、帰りにコンビニで夕食を買った。"*
-> 4. **Vector Upsert**: 生成されたテキストをEmbedしてQdrantへ。
-
-### 4.2 検索時の使い分け (Function Calling)
-
-ユーザーの質問に対して、AgentがどちらのDBを使うか判断する。
-
-| 質問 | 判断 | 実行されるクエリ |
-|---|---|---|
-| **「先月いくら使った？」** | **分析 (SQL)** | `SELECT SUM(amount) FROM events WHERE category='transaction' ...` |
-| **「最近どんな曲聴いてる？」** | **分析 (SQL)** | `SELECT data->>'track_name', COUNT(*) FROM events ... GROUP BY ...` |
-| **「仕事が辛かったのはいつ？」** | **意味 (Vector)** | `qdrant.search("仕事 辛い")` → 要約から該当日を特定 |
-| **「あの時買ったコーヒー、美味しかったっけ？」** | **ハイブリッド** | 1. `qdrant.search("コーヒー 美味しい")` (日記検索)<br>2. `sql.query(...)` (購入日時特定) |
-
----
-
-## 5. データ品質管理
-
-### 5.1 Supabase (SQL) 側
-
-- **型制約**: `occurred_at_utc` などの必須カラムはNOT NULL制約で守る。
-- **整合性**: `foreign key` 制約により、ユーザーID等の整合性を保つ。
-
-### 5.2 Qdrant (Vector) 側
-
-- **同期ズレの許容**: Vectorデータはあくまで「検索インデックス」であり、マスターデータではないため、多少の遅延は許容する。
-- **再生成**: ロジック変更時は、Supabaseの生データからいつでもVectorを再生成（Re-index）できるようにする。
-
----
-
-## 参考
-
-- [システムアーキテクチャ](./1001_system_architecture.md)
-- [技術スタック](./1004_tech_stack.md)
+### 4.2 Summary Index (`daily_summaries_v1`)
+- **Vector**: サマリーテキストの埋め込み。
+- **Payload**: 日付検索用メタデータ。
+    - `type`: "daily_summary"
+    - `summary_id`: UUID
+    - `date`: "YYYY-MM-DD"
+    - `mood`: ["focus", "chill"]
