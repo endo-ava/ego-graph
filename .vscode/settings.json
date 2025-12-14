@@ -1,13 +1,36 @@
 {
+    "python.defaultInterpreterPath": ".venv/bin/python",
     "python.analysis.extraPaths": [
         "./shared",
-        "./ingest/src",
+        "./ingest",
         "./backend"
     ],
-    "python.autoComplete.extraPaths": [
-        "./shared",
-        "./ingest/src",
-        "./backend"
-    ],
-    "python.analysis.typeCheckingMode": "basic"
+    "python.analysis.typeCheckingMode": "basic",
+    "python.formatting.provider": "black",
+    "editor.formatOnSave": true,
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": true,
+    "python.linting.mypyEnabled": true,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.venv": true
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/dist": true,
+        "**/.venv": true
+    },
+    "scm.alwaysShowRepositories": true
 }
