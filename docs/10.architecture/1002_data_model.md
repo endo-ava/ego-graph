@@ -1,10 +1,10 @@
-# データモデル (GCS / DuckDB / Qdrant)
+# データモデル (Cloudflare R2 / DuckDB / Qdrant)
 
 ## 1. 責務の分離 (3層モデル)
 
 データの保管場所と役割を以下の3つに明確に分離する。
 
-1.  **GCS (Google Cloud Storage) or 個人NAS**: **正本 (Original)**
+1.  **Cloudflare R2 (Object Storage)**: **正本 (Original)**
     - データの「原本」置き場。テキスト本文やログの実体はここに置く。
 2.  **DuckDB**: **台帳 (Ledger) & 運用 (Ops)**
     - データの「所在」と「状態」を管理するカタログ。
@@ -15,19 +15,19 @@
 
 ---
 
-## 2. Layer 1: 正本 (GCS) - "The Bookshelf"
+## 2. Layer 1: 正本 (Cloudflare R2) - "The Bookshelf"
 
 ソースデータから抽出・加工された実データ（Parquet形式推奨）の永続化場所。
 
 - **Raw Documents**:
     - 収集したドキュメントの原文（Markdown, Text, HTMLなど）。
-    - Path: `gs://{bucket}/docs/raw/{source}/{doc_id}.{ext}`
+    - Path: `s3://{bucket}/docs/raw/{source}/{doc_id}.{ext}`
 - **Document Chunks**:
     - RAG用に分割されたテキストチャンク（Parquet）。
-    - Path: `gs://{bucket}/docs/chunks/{doc_id}.parquet`
+    - Path: `s3://{bucket}/docs/chunks/{doc_id}.parquet`
 - **Spotify Archives**:
     - 再生履歴の事実データ（Parquet）。
-    - Path: `gs://{bucket}/spotify/events/year={yyyy}/month={mm}/{uuid}.parquet`
+    - Path: `s3://{bucket}/spotify/events/year={yyyy}/month={mm}/{uuid}.parquet`
 
 ---
 
@@ -49,7 +49,7 @@ CREATE SCHEMA IF NOT EXISTS ops;   -- ingest状態・ログ
 
 - **Documents Ledger (`mart.documents`)**
     - **役割**: ドキュメントの管理台帳。
-    - **主な項目**: `doc_id`, `title`, `uri` (GCS path), `hash` (変更検知用), `updated_at`.
+    - **主な項目**: `doc_id`, `title`, `uri` (S3 path), `hash` (変更検知用), `updated_at`.
 - **Ingest State (`ops.ingest_state`)**
     - **役割**: 取り込み処理の進捗管理（カーソル）。
     - **主な項目**: `source`, `cursor_value` (timestamp/token), `status`.
@@ -57,7 +57,7 @@ CREATE SCHEMA IF NOT EXISTS ops;   -- ingest状態・ログ
 ### 3.2 分析・参照データ (Analytics & Lookup)
 
 - **Spotify History (`mart.spotify_plays`)**
-    - **役割**: 履歴の検索・集計用ビュー。GCS上のParquetを参照。
+    - **役割**: 履歴の検索・集計用ビュー。R2上のParquetを参照。
     - **主な項目**: `play_id`, `track_name`, `played_at`, `artist_names`.
 - **Daily Summaries (`mart.daily_summaries`)**
     - **役割**: エージェントが生成した日次サマリーの正本（テキスト）。

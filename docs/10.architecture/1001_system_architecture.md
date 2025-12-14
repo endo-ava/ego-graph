@@ -21,7 +21,7 @@ flowchart TB
     end
     
     subgraph "Storage"
-        GCS{Object Storage\n(GCS/NAS)}
+        R2{Object Storage\n(Cloudflare R2)}
     end
 
     subgraph "Managed Services"
@@ -38,12 +38,12 @@ flowchart TB
     Agent <-->|SQL Analytics| DuckDB
     Agent <-->|Vector Search| Qdrant
     
-    DuckDB <-->|Read Only| GCS
+    DuckDB <-->|Read Only| R2
     
     Spotify --> Action
     Docs --> Action
     
-    Action -->|Write Parquet/Raw| GCS
+    Action -->|Write Parquet/Raw| R2
     Action -->|Upsert Vectors| Qdrant
 ```
 
@@ -57,11 +57,11 @@ flowchart TB
   - **Extract**: Spotify APIやドライブからデータを取得。
   - **Transform**: 構造化データ（Parquet）やベクトル（Embedding）に変換。
   - **Load**:
-    - **GCS/NAS**: 「正本」としてParquet/Rawファイルを保存。
+    - **Cloudflare R2**: 「正本」としてParquet/Rawファイルを保存。
     - **Qdrant**: 検索用ベクトルインデックスを更新。
 
 ### 2.2 Storage Layer
-- **Object Storage (GCS / NAS)**:
+- **Object Storage (Cloudflare R2)**:
   - **正本 (Original)**。すべての事実データとドキュメントの実体を保持。
   - DuckDBから `httpfs` またはローカルマウント経由で参照される。
 - **Semantic Data (Qdrant)**:
@@ -96,18 +96,18 @@ flowchart TB
 1.  **Fetch**: ActionsがAPI等からRawデータ（JSON）を取得。
 2.  **Transform**: 共通スキーマ（Unified Schema）に変換。
 3.  **Save**: 
-    - **GCS (正本)**: 生ログ、ドキュメント本文、Parquetファイルを保存。
+    - **Cloudflare R2 (正本)**: 生ログ、ドキュメント本文、Parquetファイルを保存。
     - **Qdrant (索引)**: IDとベクトル、フィルタ用タグを登録。
 
-> **Note**: サーバー側のDuckDBは、GCS上の更新されたファイルを読み取る（メタデータ更新はサーバー起動時や定期タスクで行う、あるいはActionsからトリガーする）。
+> **Note**: サーバー側のDuckDBは、R2上の更新されたファイルを読み取る（メタデータ更新はサーバー起動時や定期タスクで行う、あるいはActionsからトリガーする）。
 
 ### 3.2 読み取り (Search Pattern)
 
 #### A. ドキュメントRAG (doc_chunks)
 1.  **Embed**: ユーザーの質問をベクトル化。
 2.  **Index Search**: Qdrant (`doc_chunks_v1`) から候補の `chunk_id` を取得。
-3.  **Ledger Lookup**: DuckDB (`mart.documents`) で `chunk_id` を照会し、実データの場所 (`gcs_uri`) を特定。
-4.  **Fetch Original**: GCS (またはキャッシュ済みParquet) から本文を取得。
+3.  **Ledger Lookup**: DuckDB (`mart.documents`) で `chunk_id` を照会し、実データの場所 (`s3_uri`) を特定。
+4.  **Fetch Original**: R2 (またはキャッシュ済みParquet) から本文を取得。
 5.  **Generate**: LLMに渡して回答生成。
 
 #### B. Spotify "思い出し" RAG (daily_summaries)
@@ -115,7 +115,7 @@ flowchart TB
 
 1.  **Embed**: 質問をベクトル化。
 2.  **Index Search**: Qdrant (`spotify_daily_summaries_v1`) から `summary_id` を取得。
-3.  **Retrieve**: DuckDB (`mart.daily_summaries`) からサマリー本文と、関連する統計データを取得（DuckDBがGCS上のParquetを透過的に扱う）。
+3.  **Retrieve**: DuckDB (`mart.daily_summaries`) からサマリー本文と、関連する統計データを取得（DuckDBがR2上のParquetを透過的に扱う）。
 4.  **Generate**: 回答生成。
 
 ---

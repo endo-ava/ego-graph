@@ -3,7 +3,7 @@
 ## 1. Core Database Engine
 - **DuckDB**: **OLAP (分析) 専用エンジン**。
   - **Extension: `parquet`**: ローカルのParquetファイル群に対してSQLを実行する。
-  - **Extension: `httpfs`**: 将来的にS3上のデータを参照するために使用。
+  - **Extension: `httpfs`**: Cloudflare R2 (S3互換) 上のデータを参照するために使用。
 - **Qdrant Cloud**: **ベクトル検索専用エンジン**。
   - **Free Tier**: 1GBメモリまで無料（約10万ベクトル）。
   - **役割**: 日次要約やチャンクの意味検索を担当し、BEサーバーのメモリ負荷を下げる。
@@ -33,7 +33,7 @@
 - **Server**: **VPS (Hetzner / Sakura)** or **Cloud VM (AWS EC2 / GCP Compute)**.
   - Docker Compose で Agent + Ingestion Worker を同居させる。
 - **Storage**:
-  - **Object Storage (GCS / R2 / S3 / NAS)**: **正本 (Original)**。生データとParquetファイルの主格納場所。
+  - **Object Storage (Cloudflare R2)**: **正本 (Original)**。生データとParquetファイルの主格納場所。
   - **Local SSD (Volume)**: **Cache & Ledger**。DuckDBファイルと、頻繁にアクセスするParquetのキャッシュ。
 
 ---
