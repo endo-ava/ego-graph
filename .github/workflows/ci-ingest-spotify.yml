@@ -1,0 +1,48 @@
+name: Test Spotify Ingestion
+
+on:
+  push:
+    branches: [main, features/**]
+    paths:
+      - 'ingest/spotify/**'
+      - 'ingest/tests/**'
+      - 'ingest/spotify_duckdb_main.py'
+      - 'shared/**'
+      - 'ingest/pyproject.toml'
+  pull_request:
+    paths:
+      - 'ingest/spotify/**'
+      - 'ingest/tests/**'
+      - 'ingest/spotify_duckdb_main.py'
+      - 'shared/**'
+      - 'ingest/pyproject.toml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-packages
+
+      - name: Run tests
+        run: |
+          cd ingest
+          uv run pytest tests/ -v --cov=ingest --cov-report=xml --cov-report=term
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./ingest/coverage.xml
+          fail_ci_if_error: false
