@@ -14,13 +14,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class SpotifyConfig(BaseSettings):
     """Spotify API設定。"""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     client_id: str = Field(..., alias="SPOTIFY_CLIENT_ID")
     client_secret: SecretStr = Field(..., alias="SPOTIFY_CLIENT_SECRET")
     refresh_token: SecretStr = Field(..., alias="SPOTIFY_REFRESH_TOKEN")
     redirect_uri: str = Field(
-        "http://localhost:8888/callback",
+        "http://127.0.0.1:8888/callback",
         alias="SPOTIFY_REDIRECT_URI"
     )
     scope: str = Field(
@@ -32,7 +32,7 @@ class SpotifyConfig(BaseSettings):
 class EmbeddingConfig(BaseSettings):
     """埋め込みモデル設定(ローカル実行)。"""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     model_name: str = Field(
         "cl-nagoya/ruri-v3-310m",
@@ -46,7 +46,7 @@ class EmbeddingConfig(BaseSettings):
 class QdrantConfig(BaseSettings):
     """Qdrant Cloud設定。"""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     url: str = Field(..., alias="QDRANT_URL")
     api_key: SecretStr = Field(..., alias="QDRANT_API_KEY")
@@ -64,6 +64,27 @@ class QdrantConfig(BaseSettings):
         return v.rstrip("/")
 
 
+class R2Config(BaseSettings):
+    """Cloudflare R2設定 (S3互換)。"""
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    endpoint_url: str = Field(..., alias="R2_ENDPOINT_URL")
+    access_key_id: str = Field(..., alias="R2_ACCESS_KEY_ID")
+    secret_access_key: SecretStr = Field(..., alias="R2_SECRET_ACCESS_KEY")
+    bucket_name: str = Field("egograph", alias="R2_BUCKET_NAME")
+    key_prefix: str = Field("duckdb/", alias="R2_KEY_PREFIX")
+
+
+class DuckDBConfig(BaseSettings):
+    """DuckDB設定。"""
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    db_path: str = Field("data/analytics.duckdb", alias="DUCKDB_PATH")
+    r2: Optional[R2Config] = None
+
+
 class Config(BaseSettings):
     """メイン設定オブジェクト。
 
@@ -79,6 +100,7 @@ class Config(BaseSettings):
     spotify: Optional[SpotifyConfig] = None
     embedding: Optional[EmbeddingConfig] = None
     qdrant: Optional[QdrantConfig] = None
+    duckdb: Optional[DuckDBConfig] = None
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -107,6 +129,16 @@ class Config(BaseSettings):
             config.qdrant = QdrantConfig()
         except (ValidationError, ValueError):
             logging.exception("Failed to load Qdrant config")
+
+        try:
+            config.duckdb = DuckDBConfig()
+            # R2設定をオプショナルでロード
+            try:
+                config.duckdb.r2 = R2Config()
+            except (ValidationError, ValueError):
+                logging.info("R2 config not available, DuckDB will run in local-only mode")
+        except (ValidationError, ValueError):
+            logging.exception("Failed to load DuckDB config")
 
         # ロギングの設定
         logging.basicConfig(
