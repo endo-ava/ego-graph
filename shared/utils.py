@@ -60,7 +60,7 @@ def format_duration_ms(duration_ms: int) -> str:
     return f"{minutes}:{seconds:02d}"
 
 
-def safe_get(data: Dict[str, Any], *keys: str, default: Any = None) -> Any:
+def safe_get(data: dict[str, Any], *keys: str, default: Any = None) -> Any:
     """ネストされた辞書の値を安全に取得します。
 
     Args:
