@@ -40,6 +40,7 @@ def test_init(mock_boto_client):
         endpoint_url="http://test-endpoint",
         aws_access_key_id="test-key",
         aws_secret_access_key="test-secret",
+        region_name="auto",
     )
 
 
