@@ -86,7 +86,7 @@ uv run python ingest/spotify_duckdb_main.py
 
 GitHub Actionsで毎日02:00 UTC（11:00 JST）と14:00 UTC（23:00 JST）に自動実行されます。
 
-ワークフロー: `.github/workflows/spotify_ingest.yml`
+ワークフロー: `.github/workflows/job-spotify-ingest.yml`
 
 ## テスト
 
@@ -104,7 +104,7 @@ uv run pytest tests/ -m "not integration"
 
 ## アーキテクチャ
 
-```
+```text
 Spotify API (最新50件)
   ↓
 collector.py (データ収集)

@@ -12,15 +12,15 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from tenacity import (
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
 )
 
 from .config import (
-    RECENTLY_PLAYED_LIMIT,
-    PLAYLISTS_LIMIT,
     MAX_RETRIES,
+    PLAYLISTS_LIMIT,
+    RECENTLY_PLAYED_LIMIT,
     RETRY_BACKOFF_FACTOR,
 )
 
@@ -40,7 +40,10 @@ class SpotifyCollector:
         client_secret: str,
         refresh_token: str,
         redirect_uri: str = "http://127.0.0.1:8888/callback",
-        scope: str = "user-read-recently-played playlist-read-private playlist-read-collaborative",
+        scope: str = (
+            "user-read-recently-played playlist-read-private "
+            "playlist-read-collaborative"
+        ),
     ):
         """Spotifyコレクターを初期化します。
 
@@ -82,16 +85,14 @@ class SpotifyCollector:
         wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
     )
     def get_recently_played(
-        self,
-        limit: int = RECENTLY_PLAYED_LIMIT,
-        after: int | None = None
+        self, limit: int = RECENTLY_PLAYED_LIMIT, after: int | None = None
     ) -> list[dict[str, Any]]:
         """最近再生したトラックを取得します。
 
         Args:
             limit: 取得するトラックの最大数(最大50)
             after: この時刻以降の再生履歴のみ取得するUnixミリ秒タイムスタンプ。
-                   Noneの場合は全件取得（デフォルト）。
+                   Noneの場合は全件取得(デフォルト)。
 
         Returns:
             メタデータを含むトラック辞書のリスト
@@ -101,7 +102,7 @@ class SpotifyCollector:
 
         Note:
             afterパラメータを使用すると、指定したタイムスタンプより後の
-            再生履歴のみが返されます（タイムスタンプ自体は含まれません）。
+            再生履歴のみが返されます(タイムスタンプ自体は含まれません)。
         """
         # ログ出力: 増分取得か全件取得かを明示
         if after is not None:
@@ -204,9 +205,7 @@ class SpotifyCollector:
         try:
             while True:
                 results = self.sp.playlist_tracks(
-                    playlist_id,
-                    limit=limit,
-                    offset=offset
+                    playlist_id, limit=limit, offset=offset
                 )
                 items = results.get("items", [])
 
@@ -228,8 +227,7 @@ class SpotifyCollector:
             raise
 
     def get_playlists_with_tracks(
-        self,
-        limit: int = PLAYLISTS_LIMIT
+        self, limit: int = PLAYLISTS_LIMIT
     ) -> list[dict[str, Any]]:
         """ユーザーのプレイリストと全トラックを取得します。
 
@@ -284,7 +282,7 @@ class SpotifyCollector:
         Returns:
             Audio Featuresオブジェクトのリスト。
             IDに対応する特徴量が見つからない場合はNoneが含まれる可能性があります。
-            
+
         Note:
             取得できる特徴量:
             - danceability: 踊りやすさ
@@ -298,7 +296,7 @@ class SpotifyCollector:
             return []
 
         logger.debug(f"Fetching audio features for {len(track_ids)} tracks")
-        
+
         # Spotify APIは一度に最大100IDまで
         chunk_size = 100
         all_features = []
@@ -309,15 +307,21 @@ class SpotifyCollector:
                 features = self.sp.audio_features(tracks=chunk)
                 if features:
                     all_features.extend(features)
-            
-            logger.info(f"Successfully fetched audio features for {len(all_features)} tracks")
+
+            logger.info(
+                f"Successfully fetched audio features for {len(all_features)} tracks"
+            )
             return all_features
 
         except spotipy.SpotifyException as e:
             if e.http_status == 403:
-                logger.warning("Audio Features endpoint is restricted (403). This feature is deprecated for new Spotify Apps created after Nov 2024.")
+                logger.warning(
+                    "Failed to fetch audio features. "
+                    "Your account is restricted (403). "
+                    "This feature is deprecated for new Spotify Apps "
+                    "created after Nov 2024."
+                )
                 return []
-            
+
             logger.exception("Failed to fetch audio features")
             raise
-

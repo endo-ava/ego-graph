@@ -47,17 +47,20 @@ jobs:
       - name: Verify DuckDB integrity
         if: success()
         run: |
-          uv run python -c "
+          uv run python - << 'PY'
           import duckdb
-          conn = duckdb.connect('data/analytics.duckdb', read_only=True)
-          plays = conn.execute('SELECT COUNT(*) FROM raw.spotify_plays').fetchone()[0]
-          tracks = conn.execute('SELECT COUNT(*) FROM mart.spotify_tracks').fetchone()[0]
-          latest = conn.execute('SELECT MAX(played_at_utc) FROM raw.spotify_plays').fetchone()[0]
-          print(f'✅ Total plays: {plays}')
-          print(f'✅ Total tracks: {tracks}')
-          print(f'✅ Latest play: {latest}')
+
+          conn = duckdb.connect("data/analytics.duckdb", read_only=True)
+          plays = conn.execute("SELECT COUNT(*) FROM raw.spotify_plays").fetchone()[0]
+          tracks = conn.execute("SELECT COUNT(*) FROM mart.spotify_tracks").fetchone()[0]
+          latest = conn.execute("SELECT MAX(played_at_utc) FROM raw.spotify_plays").fetchone()[0]
+
+          print(f"✅ Total plays: {plays}")
+          print(f"✅ Total tracks: {tracks}")
+          print(f"✅ Latest play: {latest}")
+
           conn.close()
-          "
+          PY
 
       - name: Upload logs on failure
         if: failure()
