@@ -12,12 +12,12 @@ import os
 import sys
 from datetime import datetime, timezone
 
-from shared.config import Config
-from shared.utils import log_execution_time, iso8601_to_unix_ms
 from ingest.spotify.collector import SpotifyCollector
+from ingest.spotify.r2_sync import R2Sync
 from ingest.spotify.schema import SpotifySchema
 from ingest.spotify.writer import SpotifyDuckDBWriter
-from ingest.spotify.r2_sync import R2Sync
+from shared.config import Config
+from shared.utils import iso8601_to_unix_ms, log_execution_time
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +131,9 @@ def main():
             logger.info("\n[Step 5/5] Uploading DuckDB to R2...")
             r2_sync.upload_db(db_path)
         else:
-            logger.info(f"\n[Step 5/5] DuckDB saved locally at {db_path} (R2 sync disabled)")
+            logger.info(
+                f"\n[Step 5/5] DuckDB saved locally at {db_path} (R2 sync disabled)"
+            )
 
         # サマリー
         logger.info("\n" + "=" * 60)

@@ -2,8 +2,9 @@
 
 import pytest
 import responses
-from ingest.spotify.collector import SpotifyCollector
 from tests.fixtures.spotify_responses import get_mock_recently_played
+
+from ingest.spotify.collector import SpotifyCollector
 
 
 @pytest.fixture
@@ -14,7 +15,7 @@ def spotify_collector():
     return SpotifyCollector(
         client_id="test_client_id",
         client_secret="test_client_secret",
-        refresh_token="test_refresh_token"
+        refresh_token="test_refresh_token",
     )
 
 
@@ -26,7 +27,7 @@ def test_get_recently_played_success():
         responses.POST,
         "https://accounts.spotify.com/api/token",
         json={"access_token": "mock_token", "expires_in": 3600, "token_type": "Bearer"},
-        status=200
+        status=200,
     )
 
     # 最近再生したトラックエンドポイントをモック
@@ -34,13 +35,13 @@ def test_get_recently_played_success():
         responses.GET,
         "https://api.spotify.com/v1/me/player/recently-played",
         json=get_mock_recently_played(2),
-        status=200
+        status=200,
     )
 
     collector = SpotifyCollector(
         client_id="test_client_id",
         client_secret="test_client_secret",
-        refresh_token="test_refresh_token"
+        refresh_token="test_refresh_token",
     )
 
     result = collector.get_recently_played(limit=2)
@@ -58,7 +59,7 @@ def test_get_recently_played_empty():
         responses.POST,
         "https://accounts.spotify.com/api/token",
         json={"access_token": "mock_token", "expires_in": 3600, "token_type": "Bearer"},
-        status=200
+        status=200,
     )
 
     # 空のレスポンスをモック
@@ -66,13 +67,13 @@ def test_get_recently_played_empty():
         responses.GET,
         "https://api.spotify.com/v1/me/player/recently-played",
         json={"items": []},
-        status=200
+        status=200,
     )
 
     collector = SpotifyCollector(
         client_id="test_client_id",
         client_secret="test_client_secret",
-        refresh_token="test_refresh_token"
+        refresh_token="test_refresh_token",
     )
 
     result = collector.get_recently_played()
@@ -83,9 +84,10 @@ def test_get_recently_played_empty():
 def test_get_recently_played_with_after_parameter():
     """afterパラメータを使用した増分取得をテストする。"""
     from tests.fixtures.spotify_responses import (
+        INCREMENTAL_TEST_TIMESTAMPS,
         get_mock_recently_played_with_timestamps,
-        INCREMENTAL_TEST_TIMESTAMPS
     )
+
     from shared.utils import iso8601_to_unix_ms
 
     # トークンリフレッシュをモック
@@ -93,26 +95,25 @@ def test_get_recently_played_with_after_parameter():
         responses.POST,
         "https://accounts.spotify.com/api/token",
         json={"access_token": "mock_token", "expires_in": 3600, "token_type": "Bearer"},
-        status=200
+        status=200,
     )
 
     # afterより新しいトラックのみ返す
-    newer_tracks = get_mock_recently_played_with_timestamps([
-        INCREMENTAL_TEST_TIMESTAMPS["newer"],
-        INCREMENTAL_TEST_TIMESTAMPS["newest"]
-    ])
+    newer_tracks = get_mock_recently_played_with_timestamps(
+        [INCREMENTAL_TEST_TIMESTAMPS["newer"], INCREMENTAL_TEST_TIMESTAMPS["newest"]]
+    )
 
     responses.add(
         responses.GET,
         "https://api.spotify.com/v1/me/player/recently-played",
         json=newer_tracks,
-        status=200
+        status=200,
     )
 
     collector = SpotifyCollector(
         client_id="test_client_id",
         client_secret="test_client_secret",
-        refresh_token="test_refresh_token"
+        refresh_token="test_refresh_token",
     )
 
     after_ms = iso8601_to_unix_ms(INCREMENTAL_TEST_TIMESTAMPS["recent"])
@@ -132,20 +133,20 @@ def test_get_recently_played_incremental_no_new_data():
         responses.POST,
         "https://accounts.spotify.com/api/token",
         json={"access_token": "mock_token", "expires_in": 3600, "token_type": "Bearer"},
-        status=200
+        status=200,
     )
 
     responses.add(
         responses.GET,
         "https://api.spotify.com/v1/me/player/recently-played",
         json={"items": []},
-        status=200
+        status=200,
     )
 
     collector = SpotifyCollector(
         client_id="test_client_id",
         client_secret="test_client_secret",
-        refresh_token="test_refresh_token"
+        refresh_token="test_refresh_token",
     )
 
     after_ms = iso8601_to_unix_ms("2025-12-14T03:00:00.000Z")
@@ -161,26 +162,27 @@ def test_get_recently_played_backward_compatible():
         responses.POST,
         "https://accounts.spotify.com/api/token",
         json={"access_token": "mock_token", "expires_in": 3600, "token_type": "Bearer"},
-        status=200
+        status=200,
     )
 
     responses.add(
         responses.GET,
         "https://api.spotify.com/v1/me/player/recently-played",
         json=get_mock_recently_played(2),
-        status=200
+        status=200,
     )
 
     collector = SpotifyCollector(
         client_id="test_client_id",
         client_secret="test_client_secret",
-        refresh_token="test_refresh_token"
+        refresh_token="test_refresh_token",
     )
 
     result = collector.get_recently_played()
 
     assert len(result) == 2
     assert result[0]["track"]["name"] == "Mr. Brightside"
+
 
 @responses.activate
 def test_get_audio_features_success():
@@ -190,42 +192,33 @@ def test_get_audio_features_success():
         responses.POST,
         "https://accounts.spotify.com/api/token",
         json={"access_token": "mock_token", "expires_in": 3600, "token_type": "Bearer"},
-        status=200
+        status=200,
     )
 
     # Audio Featuresエンドポイントをモック
     mock_features = {
         "audio_features": [
-            {
-                "id": "track1",
-                "danceability": 0.5,
-                "energy": 0.8,
-                "valence": 0.3
-            },
-            {
-                "id": "track2",
-                "danceability": 0.7,
-                "energy": 0.4,
-                "valence": 0.9
-            }
+            {"id": "track1", "danceability": 0.5, "energy": 0.8, "valence": 0.3},
+            {"id": "track2", "danceability": 0.7, "energy": 0.4, "valence": 0.9},
         ]
     }
-    
+
     # URLパラメータにidsが含まれるため、正規表現またはquery string matchingが必要だが、
     # シンプルにパスでマッチさせてクエリパラメータは検証しない簡易実装、
     # または responses の match_querystring 機能を使う
     import re
+
     responses.add(
         responses.GET,
         re.compile(r"https://api.spotify.com/v1/audio-features.*"),
         json=mock_features,
-        status=200
+        status=200,
     )
 
     collector = SpotifyCollector(
         client_id="test_client_id",
         client_secret="test_client_secret",
-        refresh_token="test_refresh_token"
+        refresh_token="test_refresh_token",
     )
 
     result = collector.get_audio_features(track_ids=["track1", "track2"])

@@ -8,42 +8,29 @@ MOCK_RECENTLY_PLAYED_RESPONSE = {
             "track": {
                 "id": "3n3Ppam7vgaVa1iaRUc9Lp",
                 "name": "Mr. Brightside",
-                "artists": [
-                    {"id": "0C0XlULifJtAgn6ZNCW2eu", "name": "The Killers"}
-                ],
-                "album": {
-                    "id": "4OHNH3sDzIxnmUADXzv2kT",
-                    "name": "Hot Fuss"
-                },
+                "artists": [{"id": "0C0XlULifJtAgn6ZNCW2eu", "name": "The Killers"}],
+                "album": {"id": "4OHNH3sDzIxnmUADXzv2kT", "name": "Hot Fuss"},
                 "duration_ms": 222973,
                 "popularity": 85,
             },
             "played_at": "2025-12-14T02:30:00.000Z",
             "context": {
                 "type": "playlist",
-                "uri": "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M"
-            }
+                "uri": "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M",
+            },
         },
         {
             "track": {
                 "id": "0VjIjW4GlUZAMYd2vXMi3b",
                 "name": "Blinding Lights",
-                "artists": [
-                    {"id": "1Xyo4u8uXC1ZmMpatF05PJ", "name": "The Weeknd"}
-                ],
-                "album": {
-                    "id": "4yP0hdKOZPNshxUOjY0cZj",
-                    "name": "After Hours"
-                },
+                "artists": [{"id": "1Xyo4u8uXC1ZmMpatF05PJ", "name": "The Weeknd"}],
+                "album": {"id": "4yP0hdKOZPNshxUOjY0cZj", "name": "After Hours"},
                 "duration_ms": 200040,
                 "popularity": 92,
             },
             "played_at": "2025-12-14T02:26:00.000Z",
-            "context": {
-                "type": "album",
-                "uri": "spotify:album:4yP0hdKOZPNshxUOjY0cZj"
-            }
-        }
+            "context": {"type": "album", "uri": "spotify:album:4yP0hdKOZPNshxUOjY0cZj"},
+        },
     ]
 }
 
@@ -61,8 +48,7 @@ def get_mock_recently_played(count: int = 2):
 
 
 def get_mock_recently_played_with_timestamps(
-    timestamps: List[str],
-    base_track_index: int = 0
+    timestamps: List[str], base_track_index: int = 0
 ) -> Dict[str, Any]:
     """指定したタイムスタンプでモックレスポンスを生成する。
 
@@ -83,7 +69,9 @@ def get_mock_recently_played_with_timestamps(
         item = {
             "track": base_item["track"].copy(),
             "played_at": timestamp,
-            "context": base_item.get("context", {}).copy() if base_item.get("context") else None
+            "context": base_item.get("context", {}).copy()
+            if base_item.get("context")
+            else None,
         }
         items.append(item)
 

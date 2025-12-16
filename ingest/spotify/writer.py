@@ -1,10 +1,11 @@
 """Spotify データ用の DuckDB ライター。"""
 
 import logging
-import duckdb
 from datetime import timezone
 from typing import Any
 from uuid import uuid4
+
+import duckdb
 
 logger = logging.getLogger(__name__)
 
@@ -54,24 +55,39 @@ class SpotifyDuckDBWriter:
                 "album_id": track.get("album", {}).get("id"),
                 "album_name": track.get("album", {}).get("name"),
                 "ms_played": track.get("duration_ms"),
-                "context_type": item.get("context", {}).get("type") if item.get("context") else None,
+                "context_type": item.get("context", {}).get("type")
+                if item.get("context")
+                else None,
                 "device_name": None,  # recently_played API には含まれない
             }
             rows.append(row)
 
         # べき等性のため INSERT OR REPLACE を使用
-        self.conn.executemany("""
+        self.conn.executemany(
+            """
             INSERT OR REPLACE INTO raw.spotify_plays
             (play_id, played_at_utc, track_id, track_name,
              artist_ids, artist_names, album_id, album_name,
              ms_played, context_type, device_name)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, [
-            (r["play_id"], r["played_at_utc"], r["track_id"], r["track_name"],
-             r["artist_ids"], r["artist_names"], r["album_id"], r["album_name"],
-             r["ms_played"], r["context_type"], r["device_name"])
-            for r in rows
-        ])
+        """,
+            [
+                (
+                    r["play_id"],
+                    r["played_at_utc"],
+                    r["track_id"],
+                    r["track_name"],
+                    r["artist_ids"],
+                    r["artist_names"],
+                    r["album_id"],
+                    r["album_name"],
+                    r["ms_played"],
+                    r["context_type"],
+                    r["device_name"],
+                )
+                for r in rows
+            ],
+        )
 
         logger.info(f"Successfully upserted {len(rows)} plays")
         return len(rows)
@@ -88,7 +104,7 @@ class SpotifyDuckDBWriter:
         if not items:
             return 0
 
-        logger.info(f"Upserting track master data")
+        logger.info("Upserting track master data")
 
         # ユニークな楽曲を抽出
         tracks_dict = {}
@@ -113,16 +129,27 @@ class SpotifyDuckDBWriter:
             return 0
 
         # 楽曲を upsert
-        self.conn.executemany("""
+        self.conn.executemany(
+            """
             INSERT OR REPLACE INTO mart.spotify_tracks
             (track_id, name, artist_ids, artist_names,
              album_id, album_name, duration_ms, popularity)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, [
-            (r["track_id"], r["name"], r["artist_ids"], r["artist_names"],
-             r["album_id"], r["album_name"], r["duration_ms"], r["popularity"])
-            for r in rows
-        ])
+        """,
+            [
+                (
+                    r["track_id"],
+                    r["name"],
+                    r["artist_ids"],
+                    r["artist_names"],
+                    r["album_id"],
+                    r["album_name"],
+                    r["duration_ms"],
+                    r["popularity"],
+                )
+                for r in rows
+            ],
+        )
 
         logger.info(f"Successfully upserted {len(rows)} tracks")
         return len(rows)
@@ -140,7 +167,9 @@ class SpotifyDuckDBWriter:
         stats["total_plays"] = result[0] if result else 0
 
         # 楽曲数をカウント
-        result = self.conn.execute("SELECT COUNT(*) FROM mart.spotify_tracks").fetchone()
+        result = self.conn.execute(
+            "SELECT COUNT(*) FROM mart.spotify_tracks"
+        ).fetchone()
         stats["total_tracks"] = result[0] if result else 0
 
         # 最新の再生日時を取得

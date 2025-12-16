@@ -1,7 +1,9 @@
 """共有ユーティリティ関数のテスト。"""
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
+
 from shared.utils import iso8601_to_unix_ms
 
 

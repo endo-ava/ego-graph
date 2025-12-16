@@ -2,7 +2,6 @@
 # python3 scripts/spotify_auth.py で実行
 
 # spotify_auth.py
-import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 # Client IDとClient Secretを入力
@@ -18,7 +17,7 @@ sp_oauth = SpotifyOAuth(
     client_id=CLIENT_ID,
     client_secret=CLIENT_SECRET,
     redirect_uri=REDIRECT_URI,
-    scope=SCOPE
+    scope=SCOPE,
 )
 
 # 認証URLを取得

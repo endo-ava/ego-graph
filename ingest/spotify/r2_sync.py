@@ -1,9 +1,10 @@
 """DuckDB 永続化のための Cloudflare R2 同期。"""
 
 import logging
-import boto3
 from pathlib import Path
 from typing import Any
+
+import boto3
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ class R2Sync:
         access_key_id: str,
         secret_access_key: str,
         bucket_name: str,
-        key_prefix: str = "duckdb/"
+        key_prefix: str = "duckdb/",
     ):
         """R2 同期を初期化する。
 
@@ -85,12 +86,14 @@ class R2Sync:
             local_path,
             self.bucket_name,
             r2_key,
-            ExtraArgs={"ContentType": "application/octet-stream"}
+            ExtraArgs={"ContentType": "application/octet-stream"},
         )
 
         logger.info("Upload successful")
 
-    def get_db_metadata(self, db_name: str = "analytics.duckdb") -> dict[str, Any] | None:
+    def get_db_metadata(
+        self, db_name: str = "analytics.duckdb"
+    ) -> dict[str, Any] | None:
         """保存されている DB ファイルのメタデータを取得する。
 
         Args:

@@ -1,8 +1,9 @@
 """Spotify データ用の DuckDB スキーマ定義。"""
 
 import logging
-import duckdb
 from pathlib import Path
+
+import duckdb
 
 logger = logging.getLogger(__name__)
 

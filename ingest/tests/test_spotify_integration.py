@@ -2,10 +2,11 @@
 
 import pytest
 import responses
+from tests.fixtures.spotify_responses import get_mock_recently_played
+
 from ingest.spotify.collector import SpotifyCollector
 from ingest.spotify.schema import SpotifySchema
 from ingest.spotify.writer import SpotifyDuckDBWriter
-from tests.fixtures.spotify_responses import get_mock_recently_played
 
 
 @pytest.mark.integration
@@ -20,7 +21,7 @@ def test_full_pipeline(tmp_path):
         responses.POST,
         "https://accounts.spotify.com/api/token",
         json={"access_token": "mock_token", "expires_in": 3600, "token_type": "Bearer"},
-        status=200
+        status=200,
     )
 
     # Spotify API をモック
@@ -28,14 +29,12 @@ def test_full_pipeline(tmp_path):
         responses.GET,
         "https://api.spotify.com/v1/me/player/recently-played",
         json=get_mock_recently_played(2),
-        status=200
+        status=200,
     )
 
     # 1. データ収集
     collector = SpotifyCollector(
-        client_id="test_id",
-        client_secret="test_secret",
-        refresh_token="test_token"
+        client_id="test_id", client_secret="test_secret", refresh_token="test_token"
     )
     recently_played = collector.get_recently_played()
 
@@ -121,9 +120,10 @@ def test_idempotent_pipeline(tmp_path):
 def test_incremental_pipeline_run(tmp_path):
     """増分取得モードでのパイプライン実行をテストする。"""
     from tests.fixtures.spotify_responses import (
+        INCREMENTAL_TEST_TIMESTAMPS,
         get_mock_recently_played_with_timestamps,
-        INCREMENTAL_TEST_TIMESTAMPS
     )
+
     from shared.utils import iso8601_to_unix_ms
 
     db_path = tmp_path / "analytics.duckdb"
@@ -133,25 +133,22 @@ def test_incremental_pipeline_run(tmp_path):
         responses.POST,
         "https://accounts.spotify.com/api/token",
         json={"access_token": "mock_token", "expires_in": 3600, "token_type": "Bearer"},
-        status=200
+        status=200,
     )
 
-    initial_data = get_mock_recently_played_with_timestamps([
-        INCREMENTAL_TEST_TIMESTAMPS["old"],
-        INCREMENTAL_TEST_TIMESTAMPS["recent"]
-    ])
+    initial_data = get_mock_recently_played_with_timestamps(
+        [INCREMENTAL_TEST_TIMESTAMPS["old"], INCREMENTAL_TEST_TIMESTAMPS["recent"]]
+    )
 
     responses.add(
         responses.GET,
         "https://api.spotify.com/v1/me/player/recently-played",
         json=initial_data,
-        status=200
+        status=200,
     )
 
     collector = SpotifyCollector(
-        client_id="test_id",
-        client_secret="test_secret",
-        refresh_token="test_token"
+        client_id="test_id", client_secret="test_secret", refresh_token="test_token"
     )
     recently_played_1 = collector.get_recently_played()
 
@@ -173,19 +170,18 @@ def test_incremental_pipeline_run(tmp_path):
         responses.POST,
         "https://accounts.spotify.com/api/token",
         json={"access_token": "mock_token", "expires_in": 3600, "token_type": "Bearer"},
-        status=200
+        status=200,
     )
 
-    incremental_data = get_mock_recently_played_with_timestamps([
-        INCREMENTAL_TEST_TIMESTAMPS["newer"],
-        INCREMENTAL_TEST_TIMESTAMPS["newest"]
-    ])
+    incremental_data = get_mock_recently_played_with_timestamps(
+        [INCREMENTAL_TEST_TIMESTAMPS["newer"], INCREMENTAL_TEST_TIMESTAMPS["newest"]]
+    )
 
     responses.add(
         responses.GET,
         "https://api.spotify.com/v1/me/player/recently-played",
         json=incremental_data,
-        status=200
+        status=200,
     )
 
     conn = SpotifySchema.initialize_db(str(db_path))
@@ -197,9 +193,7 @@ def test_incremental_pipeline_run(tmp_path):
     after_ms = iso8601_to_unix_ms(latest_play)
 
     collector_2 = SpotifyCollector(
-        client_id="test_id",
-        client_secret="test_secret",
-        refresh_token="test_token"
+        client_id="test_id", client_secret="test_secret", refresh_token="test_token"
     )
     recently_played_2 = collector_2.get_recently_played(after=after_ms)
 

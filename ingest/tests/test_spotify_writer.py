@@ -1,8 +1,8 @@
 """DuckDB ライターのテスト。"""
 
-import pytest
-from ingest.spotify.writer import SpotifyDuckDBWriter
 from tests.fixtures.spotify_responses import get_mock_recently_played
+
+from ingest.spotify.writer import SpotifyDuckDBWriter
 
 
 def test_upsert_plays(temp_db):

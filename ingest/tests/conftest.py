@@ -1,7 +1,7 @@
 """ingest テスト用の共有 pytest フィクスチャ。"""
 
 import pytest
-import duckdb
+
 from ingest.spotify.schema import SpotifySchema
 
 

@@ -22,6 +22,14 @@ uv run pytest
 
 # Spotify接続テスト (Live Env)
 python3 -m ingest.tests.test_live_collector
+
+# Lint & Format (Ruff)
+# チェックのみ
+uv run ruff check .
+# フォーマット実行
+uv run ruff format .
+# 自動修正可能なLintエラーの修正
+uv run ruff check --fix .
 ```
 
 ## アーキテクチャとデータモデル
