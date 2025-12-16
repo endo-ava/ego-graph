@@ -96,7 +96,9 @@ class Config(BaseSettings):
     全てのサブ設定を集約し、グローバル設定を提供します。
     """
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     # ロギング
     log_level: str = Field("INFO", alias="LOG_LEVEL")
@@ -133,7 +135,9 @@ class Config(BaseSettings):
         try:
             config.qdrant = QdrantConfig()
         except (ValidationError, ValueError):
-            logging.exception("Failed to load Qdrant config")
+            logging.info(
+                "Qdrant config not available, vector search features will be disabled"
+            )
 
         try:
             r2_config = None

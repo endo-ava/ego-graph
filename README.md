@@ -15,15 +15,7 @@ EgoGraphは、個人のデジタルライフログ（Spotify, Web, Bank, etc.）
 
 ## System Architecture
 
-```text
-[Mobile App] ──(HTTPS)──▶ [Agent API]
-                             │
-            ┌────────────────┴────────────────┐
-            ▼                                 ▼
-   [DuckDB (OLAP)]                  [Qdrant (Vector)]
-            │                                 │
-     (Scan Parquet)                    (Semantic Search)
-```
+![Architecture Diagram](./docs/10.architecture/assets/architecture_diagram.png)
 
 ## 技術スタック
 

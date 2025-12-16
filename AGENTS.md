@@ -1,5 +1,3 @@
-# CLAUDE.md
-
 EgoGraph開発におけるガイドライン。
 **Architecture Pivot: DuckDB Centric**
 
@@ -92,3 +90,6 @@ GitHub Actionsのワークフローファイル (`.github/workflows/`) は、役
 - **言語**:
   - **日本語**: コードコメント、PR/Issue、レビュー
   - **英語**: コミットメッセージ
+
+## その他
+ユーザーの要望が曖昧で作業内容が確実に判断できない場合は、必ずまとめて質問すること。
