@@ -9,11 +9,12 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DataSource(str, Enum):
     """データソースの種類。"""
+
     SPOTIFY = "spotify"
     YOUTUBE = "youtube"
     BROWSER = "browser"
@@ -33,6 +34,7 @@ class DataSource(str, Enum):
 
 class DataType(str, Enum):
     """データコンテンツの種類。"""
+
     MUSIC = "music"
     VIDEO = "video"
     PURCHASE = "purchase"
@@ -47,6 +49,7 @@ class DataType(str, Enum):
 
 class SensitivityLevel(str, Enum):
     """データの機密レベル分類。"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -78,16 +81,13 @@ class UnifiedDataModel(BaseModel):
     timestamp: datetime = Field(..., description="データの日時 (ISO8601)")
     raw_text: str = Field(..., description="検索可能なテキストコンテンツ")
     metadata: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="ソース固有のメタデータ"
+        default_factory=dict, description="ソース固有のメタデータ"
     )
     embedding: Optional[List[float]] = Field(
-        None,
-        description="ベクトル埋め込み (ruri-v3用768次元)"
+        None, description="ベクトル埋め込み (ruri-v3用768次元)"
     )
     sensitivity: SensitivityLevel = Field(
-        SensitivityLevel.LOW,
-        description="プライバシー機密レベル"
+        SensitivityLevel.LOW, description="プライバシー機密レベル"
     )
     nsfw: bool = Field(False, description="NSFW/不適切なコンテンツフラグ")
 
@@ -97,7 +97,7 @@ class UnifiedDataModel(BaseModel):
         Returns:
             JSONシリアル化可能な全フィールドを含む辞書
         """
-        return self.model_dump(mode='json')
+        return self.model_dump(mode="json")
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "UnifiedDataModel":

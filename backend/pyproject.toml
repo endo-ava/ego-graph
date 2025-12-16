@@ -13,6 +13,9 @@ dependencies = [
     "egograph",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
 [tool.uv.sources]
 egograph = { workspace = true }
 
