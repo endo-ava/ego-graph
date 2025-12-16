@@ -50,6 +50,12 @@ uv run ruff check --fix .
    - Backend (FastAPI) は、モバイルアプリからの利用を前提としたREST APIを提供する。
    - 認証はシンプルに（Basic Auth / API Key）実装し、ステートレスにする。
 
+3. **Pythonパッケージング (`__init__.py`)**:
+   - **ライブラリ型**（`shared/`）: 公開APIを`__init__.py`で再エクスポート。`from shared import X`で使えるようにする。`__all__`で公開範囲を明示。
+   - **アプリケーション型**（`ingest/`, `backend/`）: 最小限の`__init__.py`（docstring + `__version__`のみ）。直接インポートを前提。
+   - **バージョン管理**: `pyproject.toml`を単一ソースとし、`importlib.metadata.version()`で動的取得。
+   - **サブパッケージ**: 空の`__init__.py`でも配置し、相対インポート（`.`）を可能にする。
+
 ## ディレクトリ構成
 
 - `ingest/`: データ収集ワーカー (Python)

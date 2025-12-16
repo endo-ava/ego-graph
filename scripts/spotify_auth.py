@@ -1,13 +1,16 @@
 # SPOTIFY_REFRESH_TOKEN を取得するためのScript
 # python3 scripts/spotify_auth.py で実行
 
-# spotify_auth.py
 from spotipy.oauth2 import SpotifyOAuth
 
-# Client IDとClient Secretを入力
-CLIENT_ID = "あなたのClient ID"
-CLIENT_SECRET = "あなたのClient Secret"
-REDIRECT_URI = "http://127.0.0.1:8888/callback"
+# Client IDとClient Secretを.envファイルまたは環境変数から取得
+import os
+CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "")
+CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "")
+
+if not CLIENT_ID or not CLIENT_SECRET:
+    print("エラー: SPOTIFY_CLIENT_IDとSPOTIFY_CLIENT_SECRETを環境変数に設定してください")
+    exit(1)
 
 # 必要なスコープ
 SCOPE = "user-read-recently-played playlist-read-private playlist-read-collaborative"
