@@ -1,4 +1,6 @@
-# CLAUDE.md
+---
+trigger: always_on
+---
 
 EgoGraph開発におけるガイドライン。
 **Architecture Pivot: DuckDB Centric**
