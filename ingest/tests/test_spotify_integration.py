@@ -124,7 +124,7 @@ def test_incremental_pipeline_run(tmp_path):
         get_mock_recently_played_with_timestamps,
     )
 
-    from shared.utils import iso8601_to_unix_ms
+    from shared import iso8601_to_unix_ms
 
     db_path = tmp_path / "analytics.duckdb"
 

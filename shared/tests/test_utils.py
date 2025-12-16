@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from shared.utils import iso8601_to_unix_ms
+from shared import iso8601_to_unix_ms
 
 
 def test_iso8601_to_unix_ms_standard_format():

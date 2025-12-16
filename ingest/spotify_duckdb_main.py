@@ -16,8 +16,7 @@ from ingest.spotify.collector import SpotifyCollector
 from ingest.spotify.r2_sync import R2Sync
 from ingest.spotify.schema import SpotifySchema
 from ingest.spotify.writer import SpotifyDuckDBWriter
-from shared.config import Config
-from shared.utils import iso8601_to_unix_ms, log_execution_time
+from shared import Config, iso8601_to_unix_ms, log_execution_time
 
 logger = logging.getLogger(__name__)
 

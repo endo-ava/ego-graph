@@ -88,7 +88,7 @@ def test_get_recently_played_with_after_parameter():
         get_mock_recently_played_with_timestamps,
     )
 
-    from shared.utils import iso8601_to_unix_ms
+    from shared import iso8601_to_unix_ms
 
     # トークンリフレッシュをモック
     responses.add(
@@ -127,7 +127,7 @@ def test_get_recently_played_with_after_parameter():
 @responses.activate
 def test_get_recently_played_incremental_no_new_data():
     """増分取得で新しいデータがない場合をテストする。"""
-    from shared.utils import iso8601_to_unix_ms
+    from shared import iso8601_to_unix_ms
 
     responses.add(
         responses.POST,

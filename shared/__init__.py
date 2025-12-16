@@ -5,6 +5,7 @@ from .models import DataSource, DataType, SensitivityLevel, UnifiedDataModel
 from .utils import (
     batch_items,
     format_duration_ms,
+    iso8601_to_unix_ms,
     log_execution_time,
     safe_get,
     serialize_for_json,
@@ -26,6 +27,7 @@ __all__ = [
     "UnifiedDataModel",
     "batch_items",
     "format_duration_ms",
+    "iso8601_to_unix_ms",
     "log_execution_time",
     "safe_get",
     "serialize_for_json",
