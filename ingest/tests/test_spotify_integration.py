@@ -2,7 +2,7 @@
 
 import pytest
 import responses
-from tests.fixtures.spotify_responses import get_mock_recently_played
+from .fixtures.spotify_responses import get_mock_recently_played
 
 from ingest.spotify.collector import SpotifyCollector
 from ingest.spotify.schema import SpotifySchema
@@ -119,7 +119,7 @@ def test_idempotent_pipeline(tmp_path):
 @responses.activate
 def test_incremental_pipeline_run(tmp_path):
     """増分取得モードでのパイプライン実行をテストする。"""
-    from tests.fixtures.spotify_responses import (
+    from .fixtures.spotify_responses import (
         INCREMENTAL_TEST_TIMESTAMPS,
         get_mock_recently_played_with_timestamps,
     )

@@ -1,6 +1,6 @@
 """DuckDB ライターのテスト。"""
 
-from tests.fixtures.spotify_responses import get_mock_recently_played
+from .fixtures.spotify_responses import get_mock_recently_played
 
 from ingest.spotify.writer import SpotifyDuckDBWriter
 

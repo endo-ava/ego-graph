@@ -2,7 +2,7 @@
 
 import pytest
 import responses
-from tests.fixtures.spotify_responses import get_mock_recently_played
+from .fixtures.spotify_responses import get_mock_recently_played
 
 from ingest.spotify.collector import SpotifyCollector
 
@@ -83,7 +83,7 @@ def test_get_recently_played_empty():
 @responses.activate
 def test_get_recently_played_with_after_parameter():
     """afterパラメータを使用した増分取得をテストする。"""
-    from tests.fixtures.spotify_responses import (
+    from .fixtures.spotify_responses import (
         INCREMENTAL_TEST_TIMESTAMPS,
         get_mock_recently_played_with_timestamps,
     )
