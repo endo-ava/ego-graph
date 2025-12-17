@@ -77,6 +77,8 @@ class R2Config(BaseSettings):
     secret_access_key: SecretStr = Field(..., alias="R2_SECRET_ACCESS_KEY")
     bucket_name: str = Field("egograph", alias="R2_BUCKET_NAME")
     key_prefix: str = Field("duckdb/", alias="R2_KEY_PREFIX")
+    raw_path: str = Field("raw/", alias="R2_RAW_PATH")
+    events_path: str = Field("events/", alias="R2_EVENTS_PATH")
 
 
 class DuckDBConfig(BaseSettings):
