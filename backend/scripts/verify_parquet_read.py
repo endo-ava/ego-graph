@@ -9,8 +9,9 @@ Usage:
 """
 
 import logging
-import sys
 import os
+import sys
+
 import duckdb
 from tabulate import tabulate
 
@@ -30,8 +31,8 @@ def test_parquet_read():
 
     try:
         config = Config.from_env()
-    except Exception as e:
-        logger.error(f"Failed to load config: {e}")
+    except Exception:
+        logger.exception("Failed to load config")
         return
 
     if not config.duckdb or not config.duckdb.r2:
@@ -60,8 +61,10 @@ def test_parquet_read():
     """)
 
     # Parquetファイルのパスパターン
-    # events/spotify/plays/year=*/month=*/ -> 再帰的に読み込むには **/*.parquet が便利ですが
-    # glob構文はDuckDBのバージョンやhttpfsの実装によるため、まずはワイルドカードを試します。
+    # events/spotify/plays/year=*/month=*/
+    # 再帰的に読み込むには **/*.parquet が便利ですが
+    # glob構文はDuckDBのバージョンやhttpfsの実装によるため、
+    # まずはワイルドカードを試します。
     parquet_url = (
         f"s3://{r2_conf.bucket_name}/{r2_conf.events_path}spotify/plays/**/*.parquet"
     )
@@ -86,13 +89,14 @@ def test_parquet_read():
             """).df()
             print(tabulate(df, headers="keys", tablefmt="simple_grid"))
 
-    except duckdb.IOException as e:
-        logger.error(f"❌ Failed to read Parquet: {e}")
+    except duckdb.IOException:
+        logger.exception("Failed to read Parquet")
         logger.info(
-            "Hint: Parquetファイルがまだ生成されていない可能性があります。Ingestを実行してください。"
+            "Hint: Parquetファイルがまだ生成されていない可能性があります。"
+            "Ingestを実行してください。"
         )
-    except Exception as e:
-        logger.error(f"❌ Unexpected error: {e}")
+    except Exception:
+        logger.exception("Unexpected error")
     finally:
         conn.close()
 

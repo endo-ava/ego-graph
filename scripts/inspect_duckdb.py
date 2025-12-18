@@ -1,7 +1,7 @@
 """R2上のDuckDBファイルを検査するユーティリティスクリプト。
 
 このスクリプトは、Cloudflare R2に保存されたDuckDBファイルを一時的にダウンロードし、
-その内容（テーブル一覧や各テーブルのレコード数、サンプルデータ）を表示します。
+その内容(テーブル一覧や各テーブルのレコード数、サンプルデータ)を表示します。
 
 Usage:
     uv run --with pandas --with tabulate python scripts/inspect_duckdb.py
@@ -37,8 +37,8 @@ def inspect_duckdb():
 
     try:
         config = Config.from_env()
-    except Exception as e:
-        logger.error(f"Failed to load config: {e}")
+    except Exception:
+        logger.exception("Failed to load config")
         return
 
     if not config.duckdb or not config.duckdb.r2:
@@ -108,7 +108,7 @@ def inspect_duckdb():
                     logger.info(f"Count: {count}")
 
                     if count > 0:
-                        # 直近のレコードを表示（時刻カラムがある場合）
+                        # 直近のレコードを表示(時刻カラムがある場合)
                         columns = conn.execute(f"DESCRIBE {full_name}").df()
                         time_col = None
                         for col in columns["column_name"]:
@@ -123,13 +123,13 @@ def inspect_duckdb():
 
                         df = conn.execute(query).df()
                         print(tabulate(df, headers="keys", tablefmt="simple_grid"))
-                except Exception as e:
-                    logger.error(f"Failed to query table {full_name}: {e}")
+                except Exception:
+                    logger.exception(f"Failed to query table {full_name}")
 
         conn.close()
 
-    except Exception as e:
-        logger.error(f"Error inspecting DuckDB: {e}")
+    except Exception:
+        logger.exception("Error inspecting DuckDB")
     finally:
         # クリーンアップ
         if os.path.exists(local_db_path):

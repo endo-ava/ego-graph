@@ -2,11 +2,12 @@
 
 import pytest
 import responses
-from .fixtures.spotify_responses import get_mock_recently_played
 
 from ingest.spotify.collector import SpotifyCollector
 from ingest.spotify.schema import SpotifySchema
 from ingest.spotify.writer import SpotifyDuckDBWriter
+
+from .fixtures.spotify_responses import get_mock_recently_played
 
 
 @pytest.mark.integration
@@ -119,12 +120,12 @@ def test_idempotent_pipeline(tmp_path):
 @responses.activate
 def test_incremental_pipeline_run(tmp_path):
     """増分取得モードでのパイプライン実行をテストする。"""
+    from shared import iso8601_to_unix_ms
+
     from .fixtures.spotify_responses import (
         INCREMENTAL_TEST_TIMESTAMPS,
         get_mock_recently_played_with_timestamps,
     )
-
-    from shared import iso8601_to_unix_ms
 
     db_path = tmp_path / "analytics.duckdb"
 

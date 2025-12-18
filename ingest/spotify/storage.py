@@ -58,8 +58,8 @@ class SpotifyStorage:
         Path format: raw/{prefix}/YYYY/MM/DD/{timestamp}_{uuid}.json
 
         Args:
-            data: 保存するデータ（リストまたは辞書）
-            prefix: データカテゴリー（例: "spotify/recently_played"）
+            data: 保存するデータ(リストまたは辞書)
+            prefix: データカテゴリー(例: "spotify/recently_played")
 
         Returns:
             保存されたオブジェクトのキー (失敗時はNone)
@@ -83,8 +83,8 @@ class SpotifyStorage:
             )
             logger.info(f"Saved raw JSON to {key}")
             return key
-        except ClientError as e:
-            logger.error(f"Failed to save raw JSON: {e}")
+        except ClientError:
+            logger.exception("Failed to save raw JSON")
             return None
 
     def save_parquet(
@@ -99,7 +99,7 @@ class SpotifyStorage:
         Path format: events/{prefix}/year={YYYY}/month={MM}/{uuid}.parquet
 
         Args:
-            data: 保存するデータ（辞書のリスト）
+            data: 保存するデータ(辞書のリスト)
             year: パーティション年
             month: パーティション月
             prefix: イベントカテゴリー
@@ -112,7 +112,10 @@ class SpotifyStorage:
             return None
 
         unique_id = str(uuid.uuid4())
-        key = f"{self.events_path}{prefix}/year={year}/month={month:02d}/{unique_id}.parquet"
+        key = (
+            f"{self.events_path}{prefix}/"
+            f"year={year}/month={month:02d}/{unique_id}.parquet"
+        )
 
         try:
             # Pandas DataFrameに変換
@@ -132,10 +135,10 @@ class SpotifyStorage:
             logger.info(f"Saved Parquet to {key}")
             return key
         except ImportError:
-            logger.error("Pandas or PyArrow is required for Parquet saving.")
+            logger.exception("Pandas or PyArrow is required for Parquet saving")
             return None
-        except Exception as e:
-            logger.error(f"Failed to save Parquet: {e}")
+        except Exception:
+            logger.exception("Failed to save Parquet")
             return None
 
     def get_ingest_state(
@@ -156,10 +159,10 @@ class SpotifyStorage:
             if e.response["Error"]["Code"] == "NoSuchKey":
                 logger.info("No ingest state found.")
                 return None
-            logger.error(f"Failed to get ingest state: {e}")
+            logger.exception("Failed to get ingest state")
             return None
-        except Exception as e:
-            logger.error(f"Failed to read ingest state: {e}")
+        except Exception:
+            logger.exception("Failed to read ingest state")
             return None
 
     def save_ingest_state(
@@ -179,5 +182,5 @@ class SpotifyStorage:
                 ContentType="application/json",
             )
             logger.info(f"Saved ingest state to {key}")
-        except Exception as e:
-            logger.error(f"Failed to save ingest state: {e}")
+        except Exception:
+            logger.exception("Failed to save ingest state")

@@ -89,16 +89,20 @@ def main():
         # 5. Parquet 保存 (パーティショニング)
         events = transform_plays_to_events(items)
 
+        # 最新のタイムスタンプを元データから取得 (堅牢性の向上)
+        latest_played_at_in_batch = None
+        for item in items:
+            p_at = item.get("played_at")
+            if p_at and (
+                not latest_played_at_in_batch or p_at > latest_played_at_in_batch
+            ):
+                latest_played_at_in_batch = p_at
+
         # 年月でグルーピング
         grouped_events = defaultdict(list)
-        latest_played_at_in_batch = None
 
         for event in events:
-            # 最新のタイムスタンプを追跡
             played_at = event["played_at_utc"]
-            if not latest_played_at_in_batch or played_at > latest_played_at_in_batch:
-                latest_played_at_in_batch = played_at
-
             # パーティションキー
             try:
                 dt = parser.parse(played_at)
@@ -122,8 +126,8 @@ def main():
 
         logger.info("Pipeline completed successfully!")
 
-    except Exception as e:
-        logger.error(f"Pipeline failed: {e}", exc_info=True)
+    except Exception:
+        logger.exception("Pipeline failed")
         sys.exit(1)
 
 
