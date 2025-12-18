@@ -107,17 +107,28 @@ def main():
                 logger.warning(f"Failed to parse date {played_at}: {e}")
                 continue
 
+        # Parquet保存の成功を追跡
+        all_saved = True
         for (year, month), partition_events in grouped_events.items():
-            storage.save_parquet(partition_events, year, month, prefix="spotify/plays")
+            result = storage.save_parquet(
+                partition_events, year, month, prefix="spotify/plays"
+            )
+            if result is None:
+                logger.error(f"Failed to save Parquet for {year}-{month:02d}")
+                all_saved = False
 
         # 6. ステート更新
-        if latest_played_at_in_batch:
+        if latest_played_at_in_batch and all_saved:
             new_state = {
                 "latest_played_at": latest_played_at_in_batch,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             storage.save_ingest_state(new_state, key=state_key)
             logger.info(f"State updated to {latest_played_at_in_batch}")
+        elif latest_played_at_in_batch and not all_saved:
+            logger.warning(
+                "Some Parquet saves failed. State not updated to prevent data loss."
+            )
 
         logger.info("Pipeline completed successfully!")
 

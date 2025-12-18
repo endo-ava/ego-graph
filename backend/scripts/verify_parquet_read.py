@@ -80,19 +80,22 @@ def test_parquet_read():
     try:
         # 件数確認
         count = conn.execute(
-            f"SELECT COUNT(*) FROM read_parquet('{parquet_url}')"
+            "SELECT COUNT(*) FROM read_parquet(?)", [parquet_url]
         ).fetchone()[0]
-        logger.info(f"✅ Total Records found in R2 Parquet: {count}")
+        logger.info(f"Total Records found in R2 Parquet: {count}")
 
         if count > 0:
             # 最新5件を表示
-            logger.info("\n📊 Latest 5 Records:")
-            df = conn.execute(f"""
+            logger.info("\nLatest 5 Records:")
+            df = conn.execute(
+                """
                 SELECT played_at_utc, track_name, artist_names, album_name 
-                FROM read_parquet('{parquet_url}')
+                FROM read_parquet(?)
                 ORDER BY played_at_utc DESC
                 LIMIT 5
-            """).df()
+            """,
+                [parquet_url],
+            ).df()
             print(tabulate(df, headers="keys", tablefmt="simple_grid"))
 
     except duckdb.IOException:
