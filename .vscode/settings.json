@@ -15,7 +15,7 @@
         }
     },
     "[json]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "editor.defaultFormatter": "vscode.json-language-features"
     },
     "[markdown]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
@@ -31,5 +31,10 @@
         "**/dist": true,
         "**/.venv": true
     },
-    "scm.alwaysShowRepositories": true
+    "scm.alwaysShowRepositories": true,
+    "python.testing.pytestArgs": [
+        "ingest"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }
