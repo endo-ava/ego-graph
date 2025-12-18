@@ -45,29 +45,37 @@ jobs:
 
       - name: Verify Parquet Data Integrity (R2)
         if: success()
+        env:
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
         run: |
           uv run python - << 'PY'
           import duckdb
           import os
-          from shared.config import Config
 
-          config = Config.from_env()
-          r2 = config.duckdb.r2
+          # R2設定を環境変数から直接読み取り
+          endpoint_url = os.environ["R2_ENDPOINT_URL"]
+          access_key_id = os.environ["R2_ACCESS_KEY_ID"]
+          secret_access_key = os.environ["R2_SECRET_ACCESS_KEY"]
+          bucket_name = os.environ["R2_BUCKET_NAME"]
+          events_path = os.environ.get("R2_EVENTS_PATH", "events/")
 
           conn = duckdb.connect(":memory:")
           conn.execute("INSTALL httpfs; LOAD httpfs;")
           conn.execute(f"""
               CREATE SECRET (
                   TYPE S3,
-                  KEY_ID '{r2.access_key_id}',
-                  SECRET '{r2.secret_access_key.get_secret_value()}',
+                  KEY_ID '{access_key_id}',
+                  SECRET '{secret_access_key}',
                   REGION 'auto',
-                  ENDPOINT '{r2.endpoint_url.replace("https://", "")}',
+                  ENDPOINT '{endpoint_url.replace("https://", "")}',
                   URL_STYLE 'path'
               );
           """)
 
-          parquet_url = f"s3://{r2.bucket_name}/{r2.events_path}spotify/plays/**/*.parquet"
+          parquet_url = f"s3://{bucket_name}/{events_path}spotify/plays/**/*.parquet"
           print(f"🧐 Querying: {parquet_url}")
 
           try:
