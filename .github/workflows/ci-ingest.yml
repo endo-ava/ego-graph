@@ -1,4 +1,4 @@
-name: Test Spotify Ingestion
+name: Test Ingestion
 
 on:
   push:
@@ -6,14 +6,14 @@ on:
     paths:
       - 'ingest/spotify/**'
       - 'ingest/tests/**'
-      - 'ingest/spotify_duckdb_main.py'
+      - 'ingest/spotify_r2_main.py'
       - 'shared/**'
       - 'ingest/pyproject.toml'
   pull_request:
     paths:
       - 'ingest/spotify/**'
       - 'ingest/tests/**'
-      - 'ingest/spotify_duckdb_main.py'
+      - 'ingest/spotify_r2_main.py'
       - 'shared/**'
       - 'ingest/pyproject.toml'
 

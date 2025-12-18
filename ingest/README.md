@@ -60,14 +60,14 @@ R2_EVENTS_PATH=events/  # オプション（デフォルト: events/）
 ### 3. ローカル実行
 ```bash
 # リポジトリルートから
-uv run python ingest/spotify_duckdb_main.py
+uv run python ingest/spotify_r2_main.py
 ```
 
 ## 自動実行
 
 GitHub Actionsで毎日02:00 UTC（11:00 JST）と14:00 UTC（23:00 JST）に自動実行されます。
 
-ワークフロー: `.github/workflows/job-spotify-ingest.yml`
+ワークフロー: `.github/workflows/job-ingest-spotify.yml`
 
 ## テスト
 
@@ -135,7 +135,7 @@ play_id = f"{played_at_utc}_{track_id}"
 3. ログレベルをDEBUGに設定して詳細を確認:
 
    ```bash
-   LOG_LEVEL=DEBUG uv run python ingest/spotify_duckdb_main.py
+   LOG_LEVEL=DEBUG uv run python ingest/spotify_r2_main.py
    ```
 
 ### テストが失敗する場合

@@ -69,9 +69,9 @@ uv run ruff check --fix .
 GitHub Actionsのワークフローファイル (`.github/workflows/`) は、役割を示すプレフィックスを付ける。
 
 - **`ci-*.yml`**: テスト、Lint、ビルドチェックなど、コード品質を保証するための定常CI。
-  - 例: `ci-ingest-spotify.yml`, `ci-backend.yml`
+  - 例: `ci-ingest.yml`, `ci-backend.yml`
 - **`job-*.yml`**: 定期実行 (Cron) や手動トリガーで動作する実処理ジョブ。
-  - 例: `job-spotify-ingest.yml`, `job-db-backup.yml`
+  - 例: `job-ingest-spotify.yml`, `job-db-backup.yml`
 - **`deploy-*.yml`**: アプリケーションのデプロイなど。
   - 例: `deploy-web-app.yml`
 
