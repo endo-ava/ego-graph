@@ -16,6 +16,7 @@ Requirements:
 import logging
 import os
 import sys
+import tempfile
 
 import duckdb
 from tabulate import tabulate
@@ -56,30 +57,28 @@ def inspect_duckdb():
         key_prefix=r2_config.key_prefix,
     )
 
-    local_db_path = "temp_inspect.duckdb"
-
-    # 重複を避けるため既存の一時ファイルを削除
-    if os.path.exists(local_db_path):
-        os.remove(local_db_path)
+    with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as tmp:
+        local_db_path = tmp.name
 
     logger.info(
         f"Attempting to download from Bucket: {r2.bucket_name}, Prefix: {r2.key_prefix}"
     )
 
     # ダウンロード試行
-    if r2.download_db(local_db_path):
-        logger.info("✅ Downloaded from standard path.")
-    else:
-        logger.error("❌ Could not find DuckDB file in R2.")
-        return
-
-    # DB内容の検査
     try:
+        if not r2.download_db(local_db_path):
+            logger.error("Could not find DuckDB file in R2.")
+            return
+
+        logger.info("Downloaded from standard path.")
+
+        # DB内容の検査
         conn = duckdb.connect(local_db_path, read_only=True)
 
         # 1. テーブル一覧の表示 (全スキーマ)
-        logger.info("\n📊 Tables (all schemas):")
+        logger.info("\nTables (all schemas):")
 
+        # 識別子のクォートは duckdb において重要
         tables = conn.execute("""
             SELECT table_schema, table_name 
             FROM information_schema.tables 
@@ -96,35 +95,40 @@ def inspect_duckdb():
             for _, row in tables.iterrows():
                 schema = row["table_schema"]
                 name = row["table_name"]
-                full_name = f"{schema}.{name}"
+                # 識別子をクォートしてSQLインジェクション対策
+                full_name_quoted = f'"{schema}"."{name}"'
 
-                logger.info(f"\n🔎 Inspecting table: {full_name}")
+                logger.info(f"\nInspecting table: {full_name_quoted}")
 
                 # レコード数
                 try:
                     count = conn.execute(
-                        f"SELECT COUNT(*) FROM {full_name}"
+                        f"SELECT COUNT(*) FROM {full_name_quoted}"
                     ).fetchone()[0]
                     logger.info(f"Count: {count}")
 
                     if count > 0:
                         # 直近のレコードを表示(時刻カラムがある場合)
-                        columns = conn.execute(f"DESCRIBE {full_name}").df()
+                        columns = conn.execute(f"DESCRIBE {full_name_quoted}").df()
                         time_col = None
                         for col in columns["column_name"]:
                             if "at" in col or "time" in col or "date" in col:
                                 time_col = col
                                 break
 
-                        query = f"SELECT * FROM {full_name}"
+                        # クエリ構築 (識別子は引用符で囲む)
                         if time_col:
-                            query += f" ORDER BY {time_col} DESC"
-                        query += " LIMIT 5"
+                            query = (
+                                f"SELECT * FROM {full_name_quoted} "
+                                f'ORDER BY "{time_col}" DESC LIMIT 5'
+                            )
+                        else:
+                            query = f"SELECT * FROM {full_name_quoted} LIMIT 5"
 
                         df = conn.execute(query).df()
                         print(tabulate(df, headers="keys", tablefmt="simple_grid"))
                 except Exception:
-                    logger.exception(f"Failed to query table {full_name}")
+                    logger.exception(f"Failed to query table {full_name_quoted}")
 
         conn.close()
 

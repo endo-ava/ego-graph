@@ -47,18 +47,24 @@ def test_parquet_read():
     # S3(R2) 設定の適用
     # httpfs 拡張機能が自動的に使用されます
     logger.info("Configuring DuckDB S3 secrets...")
-    conn.execute(f"""
-        INSTALL httpfs;
-        LOAD httpfs;
+    conn.execute("INSTALL httpfs; LOAD httpfs;")
+    conn.execute(
+        """
         CREATE SECRET (
             TYPE S3,
-            KEY_ID '{r2_conf.access_key_id}',
-            SECRET '{r2_conf.secret_access_key.get_secret_value()}',
+            KEY_ID ?,
+            SECRET ?,
             REGION 'auto',
-            ENDPOINT '{r2_conf.endpoint_url.replace("https://", "")}',
+            ENDPOINT ?,
             URL_STYLE 'path'
         );
-    """)
+        """,
+        [
+            r2_conf.access_key_id,
+            r2_conf.secret_access_key.get_secret_value(),
+            r2_conf.endpoint_url.replace("https://", ""),
+        ],
+    )
 
     # Parquetファイルのパスパターン
     # events/spotify/plays/year=*/month=*/

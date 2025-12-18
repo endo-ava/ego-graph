@@ -90,13 +90,8 @@ def main():
         events = transform_plays_to_events(items)
 
         # 最新のタイムスタンプを元データから取得 (堅牢性の向上)
-        latest_played_at_in_batch = None
-        for item in items:
-            p_at = item.get("played_at")
-            if p_at and (
-                not latest_played_at_in_batch or p_at > latest_played_at_in_batch
-            ):
-                latest_played_at_in_batch = p_at
+        played_ats = [item.get("played_at") for item in items if item.get("played_at")]
+        latest_played_at_in_batch = max(played_ats) if played_ats else None
 
         # 年月でグルーピング
         grouped_events = defaultdict(list)
@@ -108,7 +103,7 @@ def main():
                 dt = parser.parse(played_at)
                 key = (dt.year, dt.month)
                 grouped_events[key].append(event)
-            except Exception as e:
+            except (ValueError, parser.ParserError) as e:
                 logger.warning(f"Failed to parse date {played_at}: {e}")
                 continue
 
