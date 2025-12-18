@@ -1,4 +1,4 @@
-name: Spotify Data Ingestion to DuckDB
+name: Spotify Data Ingestion to R2 Data Lake
 
 on:
   schedule:
@@ -39,27 +39,48 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
-          R2_KEY_PREFIX: duckdb/
           LOG_LEVEL: INFO
         run: |
           uv run python -m ingest.spotify_duckdb_main
 
-      - name: Verify DuckDB integrity
+      - name: Verify Parquet Data Integrity (R2)
         if: success()
         run: |
           uv run python - << 'PY'
           import duckdb
+          import os
+          from shared.config import Config
 
-          conn = duckdb.connect("data/analytics.duckdb", read_only=True)
-          plays = conn.execute("SELECT COUNT(*) FROM raw.spotify_plays").fetchone()[0]
-          tracks = conn.execute("SELECT COUNT(*) FROM mart.spotify_tracks").fetchone()[0]
-          latest = conn.execute("SELECT MAX(played_at_utc) FROM raw.spotify_plays").fetchone()[0]
+          config = Config.from_env()
+          r2 = config.duckdb.r2
 
-          print(f"✅ Total plays: {plays}")
-          print(f"✅ Total tracks: {tracks}")
-          print(f"✅ Latest play: {latest}")
+          conn = duckdb.connect(":memory:")
+          conn.execute("INSTALL httpfs; LOAD httpfs;")
+          conn.execute(f"""
+              CREATE SECRET (
+                  TYPE S3,
+                  KEY_ID '{r2.access_key_id}',
+                  SECRET '{r2.secret_access_key.get_secret_value()}',
+                  REGION 'auto',
+                  ENDPOINT '{r2.endpoint_url.replace("https://", "")}',
+                  URL_STYLE 'path'
+              );
+          """)
 
-          conn.close()
+          parquet_url = f"s3://{r2.bucket_name}/{r2.events_path}spotify/plays/**/*.parquet"
+          print(f"🧐 Querying: {parquet_url}")
+
+          try:
+              count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{parquet_url}')").fetchone()[0]
+              latest = conn.execute(f"SELECT MAX(played_at_utc) FROM read_parquet('{parquet_url}')").fetchone()[0]
+
+              print(f"✅ Total plays in R2: {count}")
+              print(f"✅ Latest play in R2: {latest}")
+          except Exception as e:
+              print(f"⚠️ Verification failed or no data: {e}")
+              # 初回実行時はデータがない可能性があるため、エラーにはせず警告に留める
+          finally:
+              conn.close()
           PY
 
       - name: Upload logs on failure

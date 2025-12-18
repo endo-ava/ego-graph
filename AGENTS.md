@@ -1,5 +1,4 @@
 EgoGraph開発におけるガイドライン。
-**Architecture Pivot: DuckDB Centric**
 
 ## プロジェクト概要
 
@@ -32,17 +31,20 @@ uv run ruff check --fix .
 
 ## アーキテクチャとデータモデル
 
-- **データ配置 (Server-side)**:
-  - `data/events/**/*.parquet`: データレイクとしてParquetファイルを保存。
-  - `data/analytics.duckdb`: 永続化が必要なDuckDB本体。
+- **データ配置 (Data Lake)**:
+  - **Cloudflare R2**: 正本。Parquetファイル、Raw JSON、State管理をすべてR2に保存。
+    - `events/**/*.parquet`: 分析用の構造化データ（年月パーティショニング）
+    - `raw/**/*.json`: APIレスポンスの正本（監査用）
+    - `state/*.json`: 増分取り込み用のカーソル管理
+  - **DuckDB**: Viewレイヤー。Backendで`:memory:`初期化し、R2のParquetを直接クエリ。
 - **クライアント**:
   - `frontend/`: モバイル/Webアプリ (Capacitor) がHTTPSでAPIを叩く。
 
 ## 実装上の重要ルール
 
 1. **Parquet中心のデータ収集**:
-   - Collectorは `data/` ディレクトリ（永続化ボリューム）にParquetファイルを書き出す。
-   - DuckDBはこれを参照するが、書き込み競合を避けるため直接INSERTはしない。
+   - GitHub ActionsがCollectorを実行し、R2にParquetファイルを書き出す。
+   - DuckDBはR2のParquetを`read_parquet()`で直接読み取る（ステートレス設計）。
 
 2. **Mobile First API**:
    - Backend (FastAPI) は、モバイルアプリからの利用を前提としたREST APIを提供する。

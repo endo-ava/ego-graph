@@ -45,6 +45,9 @@ env/
 .env.local
 .env.*.local
 
+# Spotify credentials cache (contains access_token and refresh_token)
+.cache
+
 # Logs
 logs/
 *.log
