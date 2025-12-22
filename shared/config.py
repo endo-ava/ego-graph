@@ -11,6 +11,17 @@ from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+class LastFmConfig(BaseSettings):
+    """Last.fm API設定。"""
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
+
+    api_key: str = Field(..., alias="LASTFM_API_KEY")
+    api_secret: SecretStr = Field(..., alias="LASTFM_API_SECRET")
+
+
 class SpotifyConfig(BaseSettings):
     """Spotify API設定。"""
 
@@ -106,6 +117,7 @@ class Config(BaseSettings):
 
     # サブ設定
     spotify: Optional[SpotifyConfig] = None
+    lastfm: Optional[LastFmConfig] = None
     embedding: Optional[EmbeddingConfig] = None
     qdrant: Optional[QdrantConfig] = None
     duckdb: Optional[DuckDBConfig] = None
@@ -132,6 +144,11 @@ class Config(BaseSettings):
             config.embedding = EmbeddingConfig()
         except (ValidationError, ValueError):
             logging.exception("Failed to load Embedding config")
+
+        try:
+            config.lastfm = LastFmConfig()
+        except (ValidationError, ValueError):
+            logging.info("Last.fm config not available")
 
         try:
             config.qdrant = QdrantConfig()

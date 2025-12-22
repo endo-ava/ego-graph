@@ -16,15 +16,13 @@ logger = logging.getLogger(__name__)
 
 def main():
     # .env ファイルの読み込み
-    # カレントディレクトリの .env を探す
     load_dotenv()
 
-    # 環境変数の取得
+    # Arrange: 環境変数の取得と検証
     client_id = os.getenv("SPOTIFY_CLIENT_ID")
     client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
     refresh_token = os.getenv("SPOTIFY_REFRESH_TOKEN")
 
-    # 環境変数の存在確認
     missing_vars = []
     if not client_id:
         missing_vars.append("SPOTIFY_CLIENT_ID")
@@ -39,18 +37,19 @@ def main():
         return
 
     try:
+        # Act 1: Collector の初期化
         logger.info("SpotifyCollectorを初期化しています...")
-        # Collectorの初期化
         collector = SpotifyCollector(
             client_id=client_id,
             client_secret=client_secret,
             refresh_token=refresh_token,
         )
 
-        # 最近再生した曲の取得テスト
+        # Act 2: 最近再生した曲の取得
         logger.info("get_recently_played() を実行中...")
         tracks = collector.get_recently_played(limit=5)
 
+        # Assert (Manual): 取得結果の表示
         print("\n" + "=" * 50)
         print("🎵 最近再生した曲 (最新5件)")
         print("=" * 50)

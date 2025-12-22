@@ -2,7 +2,8 @@ from ingest.spotify.transform import transform_plays_to_events
 
 
 def test_transform_plays_to_events_basic():
-    # Arrange
+    """再生履歴からイベントへの基本的な変換をテストする。"""
+    # Arrange: 生の再生履歴データの準備
     raw_items = [
         {
             "played_at": "2023-10-27T10:00:00Z",
@@ -19,10 +20,10 @@ def test_transform_plays_to_events_basic():
         }
     ]
 
-    # Act
+    # Act: 変換を実行
     events = transform_plays_to_events(raw_items)
 
-    # Assert
+    # Assert: 変換後のイベント内容を検証
     assert len(events) == 1
     event = events[0]
     assert event["play_id"] == "2023-10-27T10:00:00Z_track1"
@@ -35,30 +36,30 @@ def test_transform_plays_to_events_basic():
 
 
 def test_transform_plays_missing_track():
-    # Arrange
+    """トラック情報が欠落している場合の処理をテストする。"""
+    # Arrange: トラックが None のアイテムを準備
     raw_items = [{"played_at": "2023-10-27T10:00:00Z", "track": None}]
 
-    # Act
+    # Act: 変換を実行
     events = transform_plays_to_events(raw_items)
 
-    # Assert
+    # Assert: 結果が空であることを検証
     assert len(events) == 0
 
 
 def test_transform_plays_uuids_for_missing_ids():
-    # Arrange
+    """ID が欠落している場合に UUID が生成されることをテストする。"""
+    # Arrange: 楽曲名のみが指定された不完全なデータを準備
     raw_items = [
         {
-            # No played_at
             "track": {"name": "Unknown Song"}
         }
     ]
 
-    # Act
+    # Act: 変換を実行
     events = transform_plays_to_events(raw_items)
 
-    # Assert
+    # Assert: play_id が自動生成されていることを検証
     assert len(events) == 1
-    # Check if play_id is generated (not empty)
     assert events[0]["play_id"]
     assert len(events[0]["play_id"]) > 0
