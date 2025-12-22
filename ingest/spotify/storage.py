@@ -142,7 +142,7 @@ class SpotifyStorage:
             return None
 
     def get_ingest_state(
-        self, key: str = "state/ingest_state.json"
+        self, key: str = "state/spotify_ingest_state.json"
     ) -> dict[str, Any] | None:
         """インジェスト状態(カーソル)を取得する。
 
@@ -166,7 +166,7 @@ class SpotifyStorage:
             return None
 
     def save_ingest_state(
-        self, state: dict[str, Any], key: str = "state/ingest_state.json"
+        self, state: dict[str, Any], key: str = "state/spotify_ingest_state.json"
     ):
         """インジェスト状態(カーソル)を保存する。
 

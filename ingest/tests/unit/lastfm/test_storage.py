@@ -35,7 +35,7 @@ def test_save_parquet_success(storage, mock_s3_client):
 
     # Assert: 保存結果と s3.put_object の呼び出しを検証
     assert key is not None
-    assert "lastfm/tracks/year=2023/month=12/" in key
+    assert "master/lastfm/tracks/year=2023/month=12/" in key
     assert key.endswith(".parquet")
 
     mock_s3.put_object.assert_called_once()
@@ -62,12 +62,12 @@ def test_get_ingest_state_success(storage, mock_s3_client):
     mock_s3.get_object.return_value = {"Body": mock_body}
 
     # Act: ステートを取得
-    state = storage.get_ingest_state("state/test_state.json")
+    state = storage.get_ingest_state()
 
     # Assert: 取得されたステートを検証
     assert state == state_data
     mock_s3.get_object.assert_called_with(
-        Bucket="test-bucket", Key="state/test_state.json"
+        Bucket="test-bucket", Key="state/lastfm_ingest_state.json"
     )
 
 
@@ -91,12 +91,12 @@ def test_save_ingest_state(storage, mock_s3_client):
     state = {"cursor": "xyz"}
 
     # Act: ステートの保存を実行
-    storage.save_ingest_state(state, "state/test.json")
+    storage.save_ingest_state(state)
 
     # Assert: 正しい引数で put_object が呼ばれたことを検証
     mock_s3_client.return_value.put_object.assert_called_once_with(
         Bucket="test-bucket",
-        Key="state/test.json",
+        Key="state/lastfm_ingest_state.json",
         Body=json.dumps(state),
         ContentType="application/json",
     )
@@ -110,8 +110,8 @@ def test_list_parquet_files(storage, mock_s3_client):
     mock_s3.get_paginator.return_value = mock_paginator
 
     mock_paginator.paginate.return_value = [
-        {"Contents": [{"Key": "events/lastfm/tracks/year=2023/month=12/f1.parquet"}]},
-        {"Contents": [{"Key": "events/lastfm/tracks/year=2023/month=12/f2.parquet"}]},
+        {"Contents": [{"Key": "master/lastfm/tracks/year=2023/month=12/f1.parquet"}]},
+        {"Contents": [{"Key": "master/lastfm/tracks/year=2023/month=12/f2.parquet"}]},
     ]
 
     # Act: ファイルリストを取得
@@ -119,5 +119,5 @@ def test_list_parquet_files(storage, mock_s3_client):
 
     # Assert: 全てのファイル名が含まれていることを検証
     assert len(files) == 2
-    assert "events/lastfm/tracks/year=2023/month=12/f1.parquet" in files
-    assert "events/lastfm/tracks/year=2023/month=12/f2.parquet" in files
+    assert "master/lastfm/tracks/year=2023/month=12/f1.parquet" in files
+    assert "master/lastfm/tracks/year=2023/month=12/f2.parquet" in files

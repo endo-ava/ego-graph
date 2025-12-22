@@ -89,6 +89,7 @@ class R2Config(BaseSettings):
     bucket_name: str = Field("egograph", alias="R2_BUCKET_NAME")
     raw_path: str = Field("raw/", alias="R2_RAW_PATH")
     events_path: str = Field("events/", alias="R2_EVENTS_PATH")
+    master_path: str = Field("master/", alias="R2_MASTER_PATH")
 
 
 class DuckDBConfig(BaseSettings):

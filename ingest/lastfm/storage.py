@@ -25,11 +25,13 @@ class LastFmStorage:
         bucket_name: str,
         raw_path: str = "raw/",
         events_path: str = "events/",
+        master_path: str = "master/",
     ):
         """ストレージを初期化します。"""
         self.bucket_name = bucket_name
         self.raw_path = raw_path.rstrip("/") + "/"
         self.events_path = events_path.rstrip("/") + "/"
+        self.master_path = master_path.rstrip("/") + "/"
 
         self.s3 = boto3.client(
             "s3",
@@ -53,7 +55,7 @@ class LastFmStorage:
 
         unique_id = str(uuid.uuid4())
         key = (
-            f"{self.events_path}{prefix}/"
+            f"{self.master_path}{prefix}/"
             f"year={year}/month={month:02d}/{unique_id}.parquet"
         )
 
@@ -111,7 +113,7 @@ class LastFmStorage:
         keys = []
         paginator = self.s3.get_paginator("list_objects_v2")
         for page in paginator.paginate(
-            Bucket=self.bucket_name, Prefix=f"{self.events_path}{prefix}"
+            Bucket=self.bucket_name, Prefix=f"{self.master_path}{prefix}"
         ):
             if "Contents" in page:
                 for obj in page["Contents"]:

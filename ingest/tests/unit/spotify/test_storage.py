@@ -72,7 +72,7 @@ class TestSpotifyStorage(unittest.TestCase):
         # Assert: 取得された状態を検証
         self.assertEqual(state, {"cursor": 123})
         self.mock_s3.get_object.assert_called_with(
-            Bucket="test-bucket", Key="state/ingest_state.json"
+            Bucket="test-bucket", Key="state/spotify_ingest_state.json"
         )
 
     def test_save_ingest_state(self):
@@ -85,5 +85,5 @@ class TestSpotifyStorage(unittest.TestCase):
         # Assert: put_object が正しい引数で呼ばれたことを検証
         self.mock_s3.put_object.assert_called()
         call_args = self.mock_s3.put_object.call_args[1]
-        self.assertEqual(call_args["Key"], "state/ingest_state.json")
+        self.assertEqual(call_args["Key"], "state/spotify_ingest_state.json")
         self.assertEqual(json.loads(call_args["Body"]), state)

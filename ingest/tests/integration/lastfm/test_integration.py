@@ -107,7 +107,7 @@ def test_deduplication_logic(temp_spotify_db, mock_s3_client):
         bucket_name="b"
     )
 
-    existing_files = ["events/lastfm/tracks/year=2023/month=10/existing.parquet"]
+    existing_files = ["master/lastfm/tracks/year=2023/month=10/existing.parquet"]
     
     # Act: 重複排除ロジックの確認（現在はプレースホルダー）
     with patch.object(storage, 'list_parquet_files', return_value=existing_files):

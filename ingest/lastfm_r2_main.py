@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from ingest.lastfm.collector import LastFmCollector
 from ingest.lastfm.storage import LastFmStorage
 from ingest.lastfm.transform import transform_artist_info, transform_track_info
+from ingest.lastfm.schema import LastFmSchema
 from shared import Config, log_execution_time
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ def main():
             bucket_name=r2_conf.bucket_name,
             raw_path=r2_conf.raw_path,
             events_path=r2_conf.events_path,
+            master_path=r2_conf.master_path,
         )
 
         collector = LastFmCollector(
@@ -66,9 +68,12 @@ def main():
         setup_duckdb_r2(conn, config)
 
         # 1. 既に取得済みのトラック/アーティストを取得 (重複排除用)
-        tracks_glob = f"s3://{r2_conf.bucket_name}/{r2_conf.events_path}lastfm/tracks/*/*/*.parquet"
-        artists_glob = f"s3://{r2_conf.bucket_name}/{r2_conf.events_path}lastfm/artists/*/*/*.parquet"
+        tracks_glob = f"s3://{r2_conf.bucket_name}/{r2_conf.master_path}lastfm/tracks/*/*/*.parquet"
+        artists_glob = f"s3://{r2_conf.bucket_name}/{r2_conf.master_path}lastfm/artists/*/*/*.parquet"
         spotify_plays_glob = f"s3://{r2_conf.bucket_name}/{r2_conf.events_path}spotify/plays/*/*/*.parquet"
+
+        # Mart ビューの初期化
+        LastFmSchema.initialize_mart(conn, tracks_glob, artists_glob)
 
         logger.info("Identifying unique tracks and artists from Spotify plays...")
 
@@ -85,16 +90,13 @@ def main():
 
         # 既知のトラックを取得
         try:
-            conn.execute(
-                f"CREATE VIEW existing_tracks AS SELECT track_name, artist_name FROM read_parquet('{tracks_glob}')"
-            )
             known_tracks = set(
                 conn.execute(
-                    "SELECT track_name, artist_name FROM existing_tracks"
+                    "SELECT track_name, artist_name FROM mart.lastfm_tracks"
                 ).fetchall()
             )
         except Exception:
-            logger.info("No existing Last.fm tracks found.")
+            logger.info("No existing Last.fm tracks found in mart.")
             known_tracks = set()
 
         # 2. 未取得のトラックをフィルタリング
@@ -105,20 +107,17 @@ def main():
         limit = 50  # 1回の実行あたりの上限
         enrich_tracks(collector, storage, to_enrich_tracks[:limit])
 
-        # 4. アーティストのエンリッチメント
+        # 既知のアーティストを取得
         unique_artists = {c[1] for c in candidates}
         try:
-            conn.execute(
-                f"CREATE VIEW existing_artists AS SELECT artist_name FROM read_parquet('{artists_glob}')"
-            )
             known_artists = {
                 r[0]
                 for r in conn.execute(
-                    "SELECT artist_name FROM existing_artists"
+                    "SELECT artist_name FROM mart.lastfm_artists"
                 ).fetchall()
             }
         except Exception:
-            logger.info("No existing Last.fm artists found.")
+            logger.info("No existing Last.fm artists found in mart.")
             known_artists = set()
 
         to_enrich_artists = [a for a in unique_artists if a not in known_artists]
