@@ -72,8 +72,8 @@ def test_save_parquet_success(self, storage, mock_s3_client):
 GitHub Actions (`ci-ingest.yml` 等) において、以下のポリシーでテストを実行する。
 
 - **トリガー**: 関連ディレクトリ (`ingest/**`, `shared/**`) の変更時。
-- **実行コマンド**: `uv run pytest tests/ -v`
-- **カバレッジ**: 重要なロジック変更時はカバレッジレポートを確認し、テスト漏れを防ぐ。
+- **実行コマンド**: `uv run pytest tests/ -v --cov=ingest --cov-report=xml --cov-report=term`
+- **カバレッジ**: ワークフロー実行ごとに自動的に計測され、Codecov へアップロードされる。重要なロジック変更時はレポートを確認し、テスト漏れを防ぐ。
 
 ## 5. チェックリスト
 

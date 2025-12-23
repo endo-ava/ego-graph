@@ -1,6 +1,6 @@
 """Last.fm データのエンリッチメントパイプラインのインテグレーションテスト。"""
 
-import os
+
 from unittest.mock import MagicMock, patch
 
 import duckdb
@@ -41,7 +41,7 @@ def temp_spotify_db(tmp_path):
 
 
 @pytest.mark.integration
-def test_lastfm_enrichment_full_flow(temp_spotify_db, mock_s3_client):
+def test_lastfm_enrichment_full_flow(mock_s3_client):
     """Spotify 再生履歴から Last.fm メタデータを取得し R2 に保存する一連の流れをテストする。"""
     # Arrange: コレクター、ストレージの初期化と pylast のモック設定
     collector = LastFmCollector(api_key="test_key", api_secret="test_secret")
@@ -96,7 +96,7 @@ def test_lastfm_enrichment_full_flow(temp_spotify_db, mock_s3_client):
 
 
 @pytest.mark.integration
-def test_deduplication_logic(temp_spotify_db, mock_s3_client):
+def test_deduplication_logic(mock_s3_client):
     """既得データが適切にスキップされることをテストする。"""
     # Arrange: 既に R2 にファイルが存在する状態をモック
     collector = LastFmCollector(api_key="test_key", api_secret="test_secret")

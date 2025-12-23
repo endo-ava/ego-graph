@@ -149,8 +149,8 @@ def enrich_tracks(
                 enriched_results.append(transform_track_info(info))
             else:
                 logger.info("  -> Not found on Last.fm")
-        except Exception as e:
-            logger.error(f"  -> Error: {e}")
+        except Exception:
+            logger.exception(f"  -> Error enriching {artist_name} - {track_name}")
 
     if enriched_results:
         now = datetime.now(timezone.utc)
@@ -175,8 +175,8 @@ def enrich_artists(
             info = collector.get_artist_info(artist_name)
             if info:
                 artist_results.append(transform_artist_info(info))
-        except Exception as e:
-            logger.error(f"  -> Error: {e}")
+        except Exception:
+            logger.exception(f"  -> Error enriching artist {artist_name}")
 
     if artist_results:
         now = datetime.now(timezone.utc)

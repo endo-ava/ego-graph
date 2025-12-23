@@ -126,10 +126,6 @@ class LastFmCollector:
             )
             return None
 
-        except Exception as e:
-            logger.exception(f"Unexpected error for {artist_name} - {track_name}")
-            raise
-
     def get_artist_info(self, artist_name: str) -> dict[str, Any] | None:
         """アーティストのメタデータを取得します。
 

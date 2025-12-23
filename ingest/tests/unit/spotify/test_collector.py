@@ -2,22 +2,14 @@
 
 import pytest
 import responses
+import re
 
 from ingest.spotify.collector import SpotifyCollector
 
 from ingest.tests.fixtures.spotify_responses import get_mock_recently_played
 
 
-@pytest.fixture
-def spotify_collector():
-    """テスト用の SpotifyCollector インスタンスを作成する。"""
-    # 注: トークンリフレッシュのため初期化時に失敗する可能性があるので、
-    # 実際のテストでは auth manager をモックする必要がある
-    return SpotifyCollector(
-        client_id="test_client_id",
-        client_secret="test_client_secret",
-        refresh_token="test_refresh_token",
-    )
+
 
 
 @responses.activate
@@ -194,7 +186,6 @@ def test_get_recently_played_backward_compatible():
 def test_get_audio_features_success():
     """Audio Featuresの取得成功をテストする。"""
     # Arrange: Audio Features エンドポイントをモック
-    import re
     responses.add(
         responses.POST,
         "https://accounts.spotify.com/api/token",

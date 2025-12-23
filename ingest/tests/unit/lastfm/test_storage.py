@@ -39,7 +39,7 @@ def test_save_parquet_success(storage, mock_s3_client):
     assert key.endswith(".parquet")
 
     mock_s3.put_object.assert_called_once()
-    args, kwargs = mock_s3.put_object.call_args
+    _, kwargs = mock_s3.put_object.call_args
     assert kwargs["Bucket"] == "test-bucket"
     assert kwargs["Key"] == key
     assert kwargs["ContentType"] == "application/octet-stream"

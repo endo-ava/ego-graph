@@ -51,12 +51,18 @@ jobs:
           uv run python - << 'PY'
           import duckdb
           import os
+          import re
+          from urllib.parse import urlparse
 
           endpoint_url = os.environ["R2_ENDPOINT_URL"]
           access_key_id = os.environ["R2_ACCESS_KEY_ID"]
           secret_access_key = os.environ["R2_SECRET_ACCESS_KEY"]
           bucket_name = os.environ["R2_BUCKET_NAME"]
           events_path = os.environ.get("R2_EVENTS_PATH", "events/")
+
+          # URLパースでホスト名を抽出
+          parsed_url = urlparse(endpoint_url)
+          endpoint_host = parsed_url.netloc if parsed_url.netloc else parsed_url.path
 
           conn = duckdb.connect(":memory:")
           conn.execute("INSTALL httpfs; LOAD httpfs;")
@@ -66,7 +72,7 @@ jobs:
                   KEY_ID '{access_key_id}',
                   SECRET '{secret_access_key}',
                   REGION 'auto',
-                  ENDPOINT '{endpoint_url.replace("https://", "")}',
+                  ENDPOINT '{endpoint_host}',
                   URL_STYLE 'path'
               );
           """)
@@ -75,8 +81,14 @@ jobs:
           artists_url = f"s3://{bucket_name}/{events_path}lastfm/artists/**/*.parquet"
 
           try:
+              # パスの検証を追加
+              if not re.match(r'^s3://[a-zA-Z0-9\-]+/[\w/]+\*\*\/\*\.parquet$', tracks_url):
+                  raise ValueError(f"Invalid S3 path: {tracks_url}")
               track_count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{tracks_url}')").fetchone()[0]
               print(f"✅ Total enriched tracks in R2: {track_count}")
+
+              if not re.match(r'^s3://[a-zA-Z0-9\-]+/[\w/]+\*\*\/\*\.parquet$', artists_url):
+                  raise ValueError(f"Invalid S3 path: {artists_url}")
               artist_count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{artists_url}')").fetchone()[0]
               print(f"✅ Total enriched artists in R2: {artist_count}")
           except Exception as e:
