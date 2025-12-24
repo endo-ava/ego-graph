@@ -9,6 +9,7 @@ import sys
 from datetime import datetime, timezone
 
 import duckdb
+import re
 from pydantic import ValidationError
 
 from ingest.lastfm.collector import LastFmCollector
@@ -20,15 +21,13 @@ from shared import Config, log_execution_time
 logger = logging.getLogger(__name__)
 
 
-import re
-
 def validate_s3_config_value(value: str) -> str:
     """S3設定値を検証し、SQLインジェクション対策としてシングルクォートをエスケープします。"""
     return value.replace("'", "''")
 
 
 def validate_s3_path_component(value: str) -> str:
-    """S3パスコンポーネントを検証します（英数字、ハイフン、アンダースコア、スラッシュ、ドットのみ許可）。"""
+    """S3パスコンポーネントを検証します (英数字、ハイフン、アンダースコア、スラッシュ、ドットのみ許可)。"""
     if not re.match(r'^[a-zA-Z0-9\-_/.]+$', value):
         raise ValueError(f"Invalid S3 path component: {value}")
     return value
@@ -101,13 +100,7 @@ def main():
         logger.info("Identifying unique tracks and artists from Spotify plays...")
 
         # Spotify 再生履歴からユニークな楽曲を抽出
-        query_candidates = f"""
-            SELECT DISTINCT 
-                track_name, 
-                artist_names[1] as artist_name
-            FROM read_parquet('{spotify_plays_glob}')
-            WHERE track_name IS NOT NULL AND artist_names[1] IS NOT NULL
-        """
+        query_candidates = _build_candidates_query(spotify_plays_glob)
         candidates = conn.execute(query_candidates).fetchall()
         logger.info(f"Found {len(candidates)} unique candidates from Spotify history.")
 
@@ -118,7 +111,7 @@ def main():
                     "SELECT track_name, artist_name FROM mart.lastfm_tracks"
                 ).fetchall()
             )
-        except Exception:
+        except duckdb.CatalogException:
             logger.info("No existing Last.fm tracks found in mart.")
             known_tracks = set()
 
@@ -139,7 +132,7 @@ def main():
                     "SELECT artist_name FROM mart.lastfm_artists"
                 ).fetchall()
             }
-        except Exception:
+        except duckdb.CatalogException:
             logger.info("No existing Last.fm artists found in mart.")
             known_artists = set()
 
@@ -207,6 +200,17 @@ def enrich_artists(
             artist_results, now.year, now.month, prefix="lastfm/artists"
         )
     return None
+
+
+def _build_candidates_query(spotify_plays_glob: str) -> str:
+    """Spotify再生履歴から候補を抽出するためのSQLクエリを構築します。"""
+    return f"""
+        SELECT DISTINCT 
+            track_name, 
+            artist_names[1] as artist_name
+        FROM read_parquet('{spotify_plays_glob}')
+        WHERE track_name IS NOT NULL AND artist_names[1] IS NOT NULL
+    """
 
 
 if __name__ == "__main__":

@@ -1,6 +1,9 @@
-
 import pytest
-from ingest.lastfm_r2_main import validate_s3_config_value, validate_s3_path_component
+from ingest.lastfm_r2_main import (
+    validate_s3_config_value,
+    validate_s3_path_component,
+    _build_candidates_query,
+)
 
 class TestValidateS3ConfigValue:
     def test_valid_alphanumeric(self):
@@ -28,6 +31,7 @@ class TestValidateS3PathComponent:
 
     def test_invalid_characters(self):
         invalid_paths = [
+            "",  # Empty string
             "path with spaces",
             "path; drop table",
             "path'with'quotes",
@@ -37,3 +41,12 @@ class TestValidateS3PathComponent:
         for path in invalid_paths:
             with pytest.raises(ValueError, match="Invalid S3 path component"):
                 validate_s3_path_component(path)
+
+class TestQueryBuilding:
+    def test_build_candidates_query(self):
+        glob = "s3://bucket/events/spotify/plays/*/*/*.parquet"
+        query = _build_candidates_query(glob)
+        assert f"read_parquet('{glob}')" in query
+        assert "SELECT DISTINCT" in query
+        assert "track_name" in query
+        assert "artist_name" in query
