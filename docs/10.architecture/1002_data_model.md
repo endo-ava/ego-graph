@@ -7,7 +7,7 @@
 1.  **Cloudflare R2 (Object Storage)**: **正本 (Original)**
     - データの「原本」置き場。テキスト本文やログの実体はここに置く。
 2.  **DuckDB**: **台帳 (Ledger) & 運用 (Ops)**
-    - データの「所在」と「状態」を管理するカタログ。
+    - データの「所在」と「状態」を管理するカタログ。R2 上の Parquet を `VIEW` (Mart) として定義し、クエリを可能にする。
     - 「昨日の曲」のような決定論的なクエリ（集計・分析）を担当。
 3.  **Qdrant**: **索引 (Index)**
     - 意味検索（ベクトル検索）のためのディクショナリ。
@@ -19,21 +19,40 @@
 
 ソースデータから抽出・加工された実データ（Parquet形式推奨）の永続化場所。
 
-- **Raw Documents**:
-  - 収集したドキュメントの原文（Markdown, Text, HTMLなど）。
-  - Path: `s3://{bucket}/docs/raw/{source}/{doc_id}.{ext}`
-- **Document Chunks**:
-  - RAG用に分割されたテキストチャンク（Parquet）。
-  - Path: `s3://{bucket}/docs/chunks/{doc_id}.parquet`
+- **R2 Directory Structure**:
+  ```text
+  s3://{bucket}/
+  ├── events/          # 時系列データ (Analytics / Recall)
+  │   └── spotify/
+  │       └── plays/   # Spotify 再生ログ (year={yyyy}/month={mm}/...)
+  ├── master/          # 非時系列・マスタデータ (Enrichment)
+  │   └── lastfm/      # Last.fm メタデータ (tracks/, artists/)
+  ├── raw/             # 生データ (Audit / Reprocessing)
+  │   ├── spotify/     # API レスポンス (JSON)
+  │   └── lastfm/      # API レスポンス (JSON)
+  └── state/           # 進捗管理 (Cursors)
+      ├── spotify_ingest_state.json
+      └── lastfm_ingest_state.json
+  ```
+
 - **Spotify Archives**:
   - 再生履歴の事実データ（Parquet）。
-  - Path: `s3://{bucket}/spotify/events/year={yyyy}/month={mm}/{uuid}.parquet`
+  - Path: `s3://{bucket}/events/spotify/plays/year={yyyy}/month={mm}/{uuid}.parquet`
+- **Last.fm Enrichment**:
+  - 楽曲・アーティストのメタデータ補充（Parquet）。
+  - Path: `s3://{bucket}/master/lastfm/{tracks|artists}/year={yyyy}/month={mm}/{uuid}.parquet`
+  - ※マスタデータだが、管理・パフォーマンス（一覧取得の高速化）のため年月パーティションを導入。
+
+- **State Management**:
+  - インジェストの進捗管理ファイル。
+  - Path: `s3://{bucket}/state/{source}_ingest.json`
 
 ---
 
 ## 3. Layer 2: 台帳 (DuckDB) - "The Catalog"
 
 実データへの参照（パス）、メタデータ、運用状態を管理する。LLMやAPIはこの層を通じてデータにアクセスする。
+**この層の `mart` スキーマは R2 上のフォルダ構造ではなく、DuckDB 内の論理的なビュー構成である。**
 
 ### 3.1 Schema Layers
 
@@ -59,6 +78,9 @@ CREATE SCHEMA IF NOT EXISTS ops;   -- ingest状態・ログ
 - **Spotify History (`mart.spotify_plays`)**
   - **役割**: 履歴の検索・集計用ビュー。R2上のParquetを参照。
   - **主な項目**: `play_id`, `track_name`, `played_at`, `artist_names`.
+- **Last.fm Metadata (`mart.lastfm_tracks`, `mart.lastfm_artists`)**
+  - **役割**: 楽曲・アーティストの詳細属性（タグ・再生数等）。
+  - **主な項目**: `track_name`, `artist_name`, `playcount`, `tags`, `listeners`.
 - **Daily Summaries (`mart.daily_summaries`)**
   - **役割**: エージェントが生成した日次サマリーの正本（テキスト）。
   - **主な項目**: `summary_id`, `date`, `summary_text`, `stats_json`.
