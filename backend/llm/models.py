@@ -12,7 +12,7 @@ class Message(BaseModel):
     """チャットメッセージ。"""
 
     role: Literal["user", "assistant", "system"]
-    content: str
+    content: Optional[str] = None  # tool callsのみの場合はNoneを許可
 
 
 class ToolCall(BaseModel):

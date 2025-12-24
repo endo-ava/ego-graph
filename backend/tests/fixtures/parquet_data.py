@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 
-def generate_sample_spotify_plays(num_tracks: int = 100):
+def generate_sample_spotify_plays(num_tracks: int = 100) -> pd.DataFrame:
     """サンプルSpotify再生履歴データを生成。
 
     Args:

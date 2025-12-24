@@ -76,14 +76,16 @@ class ToolRegistry:
             ValueError: パラメータが不正な場合
         """
         tool = self.get_tool(tool_name)
-        logger.info(f"Executing tool: {tool_name} with params: {params}")
+        # 機密情報をログに含めないようにパラメータキーのみをログ出力
+        param_keys = list(params.keys())
+        logger.info(f"Executing tool: {tool_name} with params: {param_keys}")
 
         try:
             result = tool.execute(**params)
             logger.debug(f"Tool {tool_name} executed successfully")
             return result
         except Exception as e:
-            logger.exception(f"Tool {tool_name} execution failed")
+            logger.error(f"Tool {tool_name} execution failed: {type(e).__name__}")
             raise
 
     def list_tool_names(self) -> list[str]:

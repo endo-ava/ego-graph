@@ -51,13 +51,14 @@ class TestMessage:
         with pytest.raises(ValidationError):
             Message(role=invalid_role, content="Test")
 
-    def test_missing_content_raises_error(self):
-        """contentが必須であることを確認。"""
-        # Arrange: contentなしのメッセージ
+    def test_missing_content_is_allowed(self):
+        """contentがNoneでも許可されることを確認（tool callsのみの場合）。"""
+        # Arrange & Act: contentなしのメッセージを作成
+        message = Message(role="assistant", content=None)
 
-        # Act & Assert: ValidationErrorが発生することを検証
-        with pytest.raises(ValidationError):
-            Message(role="user")
+        # Assert: contentがNoneであることを確認
+        assert message.role == "assistant"
+        assert message.content is None
 
 
 class TestToolCall:

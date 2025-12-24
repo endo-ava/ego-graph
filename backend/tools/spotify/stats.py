@@ -79,6 +79,12 @@ class GetTopTracksTool(ToolBase):
         except ValueError as e:
             raise ValueError(f"Invalid date format: {e}") from e
 
+        # パラメータ検証
+        if start > end:
+            raise ValueError("start_date must be on or before end_date")
+        if not isinstance(limit, int) or limit <= 0:
+            raise ValueError("limit must be a positive integer")
+
         logger.info(f"Executing get_top_tracks: {start} to {end}, limit={limit}")
 
         with self.db_connection as conn:
@@ -154,6 +160,12 @@ class GetListeningStatsTool(ToolBase):
             end = date.fromisoformat(end_date)
         except ValueError as e:
             raise ValueError(f"Invalid date format: {e}") from e
+
+        # パラメータ検証
+        if start > end:
+            raise ValueError("start_date must be on or before end_date")
+        if granularity not in ["day", "week", "month"]:
+            raise ValueError("granularity must be one of: day, week, month")
 
         logger.info(
             f"Executing get_listening_stats: {start} to {end}, granularity={granularity}"

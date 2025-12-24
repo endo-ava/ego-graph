@@ -5,7 +5,7 @@ Model Context Protocol (MCP)のツール設計を参考にしつつ、
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 

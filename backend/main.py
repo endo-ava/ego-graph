@@ -14,12 +14,18 @@ from backend.config import BackendConfig
 logger = logging.getLogger(__name__)
 
 
-def create_app() -> FastAPI:
+def create_app(config: BackendConfig | None = None) -> FastAPI:
     """FastAPIアプリケーションを作成します。
+
+    Args:
+        config: Backend設定（テスト用にオーバーライド可能）
 
     Returns:
         FastAPI: 設定済みのFastAPIアプリ
     """
+    if config is None:
+        config = BackendConfig.from_env()
+
     app = FastAPI(
         title="EgoGraph Backend API",
         description="Hybrid Backend: LLM Agent + Direct Data Access REST API",
@@ -28,10 +34,12 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
-    # CORS設定（クライアントアプリ対応）
+    # CORS設定（環境変数から読み取り）
+    # CORS_ORIGINS="https://example.com,https://app.example.com" のように設定
+    origins = [origin.strip() for origin in config.cors_origins.split(",")]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # TODO: 本番環境では特定のオリジンのみ許可
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -47,7 +55,13 @@ def create_app() -> FastAPI:
     return app
 
 
-app = create_app()
+# モジュールレベルでのアプリインスタンス（プロダクション用）
+# インポート時に環境変数が必要（テスト時はcreate_app(config)を使う）
+try:
+    app = create_app()
+except (ValueError, Exception):
+    # テスト環境など、環境変数がない場合は後で設定する
+    app = None  # type: ignore
 
 
 if __name__ == "__main__":

@@ -64,6 +64,14 @@ async def get_top_tracks_endpoint(
     Example:
         GET /v1/data/spotify/stats/top-tracks?start_date=2024-01-01&end_date=2024-01-31&limit=5
     """
+    # 日付範囲の検証
+    if start_date > end_date:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=400,
+            detail="start_date must be on or before end_date"
+        )
+
     logger.info(f"Getting top tracks: {start_date} to {end_date}, limit={limit}")
 
     parquet_path = get_parquet_path(config.r2.bucket_name, config.r2.events_path)
@@ -78,7 +86,7 @@ async def get_top_tracks_endpoint(
 async def get_listening_stats_endpoint(
     start_date: date = Query(..., description="開始日（YYYY-MM-DD）"),
     end_date: date = Query(..., description="終了日（YYYY-MM-DD）"),
-    granularity: str = Query("day", regex="^(day|week|month)$", description="集計単位"),
+    granularity: str = Query("day", pattern="^(day|week|month)$", description="集計単位"),
     db_connection: DuckDBConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
     _: None = Depends(verify_api_key),
@@ -96,6 +104,14 @@ async def get_listening_stats_endpoint(
     Example:
         GET /v1/data/spotify/stats/listening?start_date=2024-01-01&end_date=2024-01-31&granularity=week
     """
+    # 日付範囲の検証
+    if start_date > end_date:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=400,
+            detail="start_date must be on or before end_date"
+        )
+
     logger.info(
         f"Getting listening stats: {start_date} to {end_date}, granularity={granularity}"
     )

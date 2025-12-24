@@ -41,6 +41,9 @@ class BackendConfig(BaseSettings):
     # オプショナル認証
     api_key: Optional[SecretStr] = Field(None, alias="BACKEND_API_KEY")
 
+    # CORS設定
+    cors_origins: str = Field("*", alias="CORS_ORIGINS")  # カンマ区切り
+
     # ロギング
     log_level: str = Field("INFO", alias="LOG_LEVEL")
 

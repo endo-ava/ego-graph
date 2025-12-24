@@ -4,6 +4,7 @@
 """
 
 import logging
+import secrets
 from typing import Generator, Optional
 
 from fastapi import Depends, Header, HTTPException
@@ -58,7 +59,7 @@ def get_db_connection(
     try:
         yield connection
     finally:
-        # Cleanup handled by context manager
+        # DuckDBConnectionはcontext managerとしてcleanupを実装
         pass
 
 
@@ -81,6 +82,8 @@ async def verify_api_key(
     if config.api_key is None:
         return
 
-    # API Keyが設定されている場合は検証
-    if x_api_key != config.api_key.get_secret_value():
+    # API Keyが設定されている場合は検証（timing attack対策）
+    if not x_api_key or not secrets.compare_digest(
+        str(x_api_key), str(config.api_key.get_secret_value())
+    ):
         raise HTTPException(status_code=401, detail="Invalid API key")

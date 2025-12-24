@@ -215,7 +215,8 @@ def test_client(mock_backend_config):
     from backend.main import create_app
     from backend.api import deps
 
-    app = create_app()
+    # テスト用の設定でアプリを作成
+    app = create_app(config=mock_backend_config)
 
     # 依存性オーバーライド用
     app.dependency_overrides[deps.get_config] = lambda: mock_backend_config
