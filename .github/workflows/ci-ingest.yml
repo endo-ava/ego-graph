@@ -4,18 +4,13 @@ on:
   push:
     branches: [main, features/**]
     paths:
-      - 'ingest/spotify/**'
-      - 'ingest/tests/**'
-      - 'ingest/spotify_r2_main.py'
+      - 'ingest/**'
       - 'shared/**'
-      - 'ingest/pyproject.toml'
   pull_request:
+    branches: [main]
     paths:
-      - 'ingest/spotify/**'
-      - 'ingest/tests/**'
-      - 'ingest/spotify_r2_main.py'
+      - 'ingest/**'
       - 'shared/**'
-      - 'ingest/pyproject.toml'
 
 jobs:
   test:

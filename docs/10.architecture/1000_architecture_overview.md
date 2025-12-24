@@ -41,6 +41,7 @@ flowchart TB
 
     subgraph DataSources ["🌐 External Data Sources"]
         Spotify["Spotify API"]:::external
+        LastFm["Last.fm API"]:::external
         Docs["Google Drive / Notion"]:::external
     end
 
@@ -52,7 +53,9 @@ flowchart TB
     
     DuckDB -.->|"Read Parquet (httpfs)"| R2
     
-    GHA -->|"Fetch Data"| DataSources
+    GHA -->|"Fetch Data"| Spotify
+    GHA -->|"Fetch Data"| LastFm
+    GHA -->|"Fetch Data"| Docs
     GHA -->|"Write Parquet/Raw"| R2
     GHA -->|"Upsert Vectors"| Qdrant
     

@@ -24,13 +24,13 @@ class TestSpotifyStorage(unittest.TestCase):
         patch.stopall()
 
     def test_save_raw_json(self):
-        # Arrange
+        # Arrange: 保存するデータの準備
         data = [{"id": "1", "name": "test"}]
 
-        # Act
+        # Act: RAW JSON として保存を実行
         key = self.storage.save_raw_json(data, prefix="test_prefix")
 
-        # Assert
+        # Assert: 保存結果を検証
         self.mock_s3.put_object.assert_called_once()
         call_args = self.mock_s3.put_object.call_args[1]
         self.assertEqual(call_args["Bucket"], "test-bucket")
@@ -40,21 +40,16 @@ class TestSpotifyStorage(unittest.TestCase):
         self.assertIsNotNone(key)
 
     def test_save_parquet(self):
-        # Arrange
+        # Arrange: 保存するデータの準備
         data = [{"col1": 1, "col2": "a"}, {"col1": 2, "col2": "b"}]
 
-        # Act
+        # Act: Parquet 形式での保存を実行
         with patch("ingest.spotify.storage.pd.DataFrame.to_parquet") as _:
-            # We mock to_parquet to avoid needing pyarrow installed in test env
-            # assuming pyarrow is installed (we added it), let's let it run naturally,
-            # or mock the bytes writing.
-
-            # Let's mock the internal BytesIO write to verify it calls put_object
             key = self.storage.save_parquet(
                 data, year=2023, month=10, prefix="test_events"
             )
 
-            # Assert
+            # Assert: 保存結果を検証
             self.mock_s3.put_object.assert_called_once()
             call_args = self.mock_s3.put_object.call_args[1]
             self.assertEqual(call_args["Bucket"], "test-bucket")
@@ -66,29 +61,29 @@ class TestSpotifyStorage(unittest.TestCase):
             self.assertIsNotNone(key)
 
     def test_get_ingest_state_exists(self):
-        # Arrange
+        # Arrange: 保存されている状態がある場合をモック
         mock_body = MagicMock()
         mock_body.read.return_value = json.dumps({"cursor": 123}).encode("utf-8")
         self.mock_s3.get_object.return_value = {"Body": mock_body}
 
-        # Act
+        # Act: 保存されている状態を取得
         state = self.storage.get_ingest_state()
 
-        # Assert
+        # Assert: 取得された状態を検証
         self.assertEqual(state, {"cursor": 123})
         self.mock_s3.get_object.assert_called_with(
-            Bucket="test-bucket", Key="state/ingest_state.json"
+            Bucket="test-bucket", Key="state/spotify_ingest_state.json"
         )
 
     def test_save_ingest_state(self):
-        # Arrange
+        # Arrange: 保存する状態の準備
         state = {"cursor": 456}
 
-        # Act
+        # Act: 状態の保存を実行
         self.storage.save_ingest_state(state)
 
-        # Assert
+        # Assert: put_object が正しい引数で呼ばれたことを検証
         self.mock_s3.put_object.assert_called()
         call_args = self.mock_s3.put_object.call_args[1]
-        self.assertEqual(call_args["Key"], "state/ingest_state.json")
+        self.assertEqual(call_args["Key"], "state/spotify_ingest_state.json")
         self.assertEqual(json.loads(call_args["Body"]), state)

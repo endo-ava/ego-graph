@@ -14,18 +14,19 @@
 | No. | データソース | ドキュメント | データタイプ | 優先度 |
 |---|---|---|---|---|
 | 01 | Spotify | [01_spotify.md](./01_spotify.md) | 構造化ログ | MVP |
+| 02 | Last.fm | [02_lastfm.md](./02_lastfm.md) | 外部メタデータ | MVP |
 
 ### 実装予定
 
 | No. | データソース | ドキュメント | データタイプ | 優先度 |
 |---|---|---|---|---|
-| 02 | Bank（銀行取引） | [02_bank.md](./02_bank.md) | 構造化ログ | Phase 1 |
-| 03 | Amazon（購買履歴） | [03_amazon.md](./03_amazon.md) | 構造化ログ | Phase 1 |
-| 04 | Calendar（カレンダー） | [04_calendar.md](./04_calendar.md) | 構造化ログ | Phase 1 |
-| 05 | Note（メモ） | [05_note.md](./05_note.md) | 非構造化データ | Phase 2 |
-| 06 | Email | [06_email.md](./06_email.md) | 非構造化データ | Phase 2 |
-| 07 | Browser History | [07_browser.md](./07_browser.md) | 時系列・行動履歴 | Phase 3 |
-| 08 | Location | [08_location.md](./08_location.md) | 時系列・行動履歴 | Phase 3 |
+| 03 | Bank（銀行取引） | [03_bank.md](./03_bank.md) | 構造化ログ | Phase 1 |
+| 04 | Amazon（購買履歴） | [04_amazon.md](./04_amazon.md) | 構造化ログ | Phase 1 |
+| 05 | Calendar（カレンダー） | [05_calendar.md](./05_calendar.md) | 構造化ログ | Phase 1 |
+| 06 | Note（メモ） | [06_note.md](./06_note.md) | 非構造化データ | Phase 2 |
+| 07 | Email | [07_email.md](./07_email.md) | 非構造化データ | Phase 2 |
+| 08 | Browser History | [08_browser.md](./08_browser.md) | 時系列・行動履歴 | Phase 3 |
+| 09 | Location | [09_location.md](./09_location.md) | 時系列・行動履歴 | Phase 3 |
 
 ---
 

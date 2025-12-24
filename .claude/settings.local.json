@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__serena__list_dir",
+      "mcp__serena__get_symbols_overview",
+      "mcp__serena__activate_project",
+      "mcp__serena__initial_instructions",
+      "mcp__serena__find_symbol",
+      "mcp__serena__check_onboarding_performed",
+      "mcp__serena__onboarding",
+      "Bash(find:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(uv sync:*)",
+      "Bash(uv run python:*)",
+      "Bash(uv pip:*)",
+      "Bash(cat:*)",
+      "Bash(timeout 5 uv run:*)",
+      "mcp__serena__think_about_collected_information",
+      "Bash(uv run pytest:*)",
+      "Bash(coderabbit --prompt-only -t committed --base main:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "serena",
+    "context7",
+    "sequential-thinking"
+  ]
+}

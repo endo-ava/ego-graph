@@ -1,0 +1,109 @@
+name: Last.fm Enrichment to R2 Data Lake
+
+on:
+  schedule:
+    # 1日1回実行
+    - cron: '0 2 * * *'   # 02:00 UTC = 11:00 JST
+  workflow_dispatch: # 手動トリガーを許可
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-packages
+
+      - name: Run Last.fm enrichment pipeline
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          LOG_LEVEL: INFO
+        run: |
+          uv run python -m ingest.lastfm_r2_main
+
+      - name: Verify Enrichment Data (R2)
+        if: success()
+        env:
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          uv run python - << 'PY'
+          import duckdb
+          import os
+          import re
+          from urllib.parse import urlparse
+
+          endpoint_url = os.environ["R2_ENDPOINT_URL"]
+          access_key_id = os.environ["R2_ACCESS_KEY_ID"]
+          secret_access_key = os.environ["R2_SECRET_ACCESS_KEY"]
+          bucket_name = os.environ["R2_BUCKET_NAME"]
+          events_path = os.environ.get("R2_EVENTS_PATH", "events/")
+
+          # URLパースでホスト名を抽出
+          parsed_url = urlparse(endpoint_url)
+          endpoint_host = parsed_url.netloc if parsed_url.netloc else parsed_url.path
+
+          conn = duckdb.connect(":memory:")
+          conn.execute("INSTALL httpfs; LOAD httpfs;")
+          conn.execute(f"""
+              CREATE SECRET (
+                  TYPE S3,
+                  KEY_ID '{access_key_id}',
+                  SECRET '{secret_access_key}',
+                  REGION 'auto',
+                  ENDPOINT '{endpoint_host}',
+                  URL_STYLE 'path'
+              );
+          """)
+
+          tracks_url = f"s3://{bucket_name}/{events_path}lastfm/tracks/**/*.parquet"
+          artists_url = f"s3://{bucket_name}/{events_path}lastfm/artists/**/*.parquet"
+
+          try:
+              # パスの検証を追加
+              if not re.match(r'^s3://[a-zA-Z0-9\-]+/[\w/]+\*\*\/\*\.parquet$', tracks_url):
+                  raise ValueError(f"Invalid S3 path: {tracks_url}")
+              track_count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{tracks_url}')").fetchone()[0]
+              print(f"✅ Total enriched tracks in R2: {track_count}")
+
+              if not re.match(r'^s3://[a-zA-Z0-9\-]+/[\w/]+\*\*\/\*\.parquet$', artists_url):
+                  raise ValueError(f"Invalid S3 path: {artists_url}")
+              artist_count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{artists_url}')").fetchone()[0]
+              print(f"✅ Total enriched artists in R2: {artist_count}")
+          except Exception as e:
+              print(f"⚠️ Verification failed or no data: {e}")
+          finally:
+              conn.close()
+          PY
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enrichment-logs-${{ github.run_number }}
+          path: |
+            *.log
+            logs/
+          retention-days: 7
+          if-no-files-found: ignore

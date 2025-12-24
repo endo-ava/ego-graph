@@ -93,6 +93,20 @@ GitHub Actionsのワークフローファイル (`.github/workflows/`) は、役
   - **日本語**: コードコメント、PR/Issue、レビュー
   - **英語**: コミットメッセージ
 
+## CodeRabbitを使用したコードレビュー
+- 各ステップに応じて、以下の方法でコードレビューを実施する
+
+- Commit前:
+  - `coderabbit --prompt-only -t uncommitted`
+
+- PR作成前:
+  - `coderabbit --prompt-only -t committed --base main`
+
+- PR作成後
+  - 自動でコードレビューが実行される
+  - ghコマンドでレビューを受け取る:
+  - `gh pr view <PR_NUMBER> --json reviews,comments > pr_data.json`
+
 ## その他
 
 ユーザーの要望が曖昧で作業内容が確実に判断できない場合は、必ずまとめて質問すること。
