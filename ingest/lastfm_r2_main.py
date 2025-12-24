@@ -20,14 +20,32 @@ from shared import Config, log_execution_time
 logger = logging.getLogger(__name__)
 
 
+import re
+
+def validate_s3_config_value(value: str) -> str:
+    """S3設定値を検証し、SQLインジェクション対策としてシングルクォートをエスケープします。"""
+    return value.replace("'", "''")
+
+
+def validate_s3_path_component(value: str) -> str:
+    """S3パスコンポーネントを検証します（英数字、ハイフン、アンダースコア、スラッシュ、ドットのみ許可）。"""
+    if not re.match(r'^[a-zA-Z0-9\-_/.]+$', value):
+        raise ValueError(f"Invalid S3 path component: {value}")
+    return value
+
+
 def setup_duckdb_r2(conn: duckdb.DuckDBPyConnection, config: Config):
     """DuckDB で R2 (S3) を読み書きするための設定を行います。"""
     r2 = config.duckdb.r2
-    conn.execute(f"SET s3_endpoint='{r2.endpoint_url.replace('https://', '')}';")
-    conn.execute(f"SET s3_access_key_id='{r2.access_key_id}';")
-    conn.execute(
-        f"SET s3_secret_access_key='{r2.secret_access_key.get_secret_value()}';"
-    )
+    
+    # 設定値をサニタイズ
+    endpoint = validate_s3_config_value(r2.endpoint_url.replace('https://', ''))
+    access_key = validate_s3_config_value(r2.access_key_id)
+    secret_key = validate_s3_config_value(r2.secret_access_key.get_secret_value())
+    
+    conn.execute(f"SET s3_endpoint='{endpoint}';")
+    conn.execute(f"SET s3_access_key_id='{access_key}';")
+    conn.execute(f"SET s3_secret_access_key='{secret_key}';")
     conn.execute("SET s3_region='auto';")
     conn.execute("SET s3_url_style='path';")
 
@@ -68,9 +86,14 @@ def main():
         setup_duckdb_r2(conn, config)
 
         # 1. 既に取得済みのトラック/アーティストを取得 (重複排除用)
-        tracks_glob = f"s3://{r2_conf.bucket_name}/{r2_conf.master_path}lastfm/tracks/*/*/*.parquet"
-        artists_glob = f"s3://{r2_conf.bucket_name}/{r2_conf.master_path}lastfm/artists/*/*/*.parquet"
-        spotify_plays_glob = f"s3://{r2_conf.bucket_name}/{r2_conf.events_path}spotify/plays/*/*/*.parquet"
+        # パスコンポーネントのバリデーション
+        safe_bucket = validate_s3_path_component(r2_conf.bucket_name)
+        safe_master_path = validate_s3_path_component(r2_conf.master_path)
+        safe_events_path = validate_s3_path_component(r2_conf.events_path)
+
+        tracks_glob = f"s3://{safe_bucket}/{safe_master_path}lastfm/tracks/*/*/*.parquet"
+        artists_glob = f"s3://{safe_bucket}/{safe_master_path}lastfm/artists/*/*/*.parquet"
+        spotify_plays_glob = f"s3://{safe_bucket}/{safe_events_path}spotify/plays/*/*/*.parquet"
 
         # Mart ビューの初期化
         LastFmSchema.initialize_mart(conn, tracks_glob, artists_glob)
