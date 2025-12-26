@@ -1,10 +1,10 @@
-"""R2(Parquet Data Lake)のデータ状態を検証・確認するスクリプト。
+"""R2上のSpotify再生履歴データを検証・確認するスクリプト。
 
 総レコード数の確認と、最新50件の再生履歴を表示します。
 DuckDBの httpfs 拡張を使用して、R2上のファイルを直接クエリします。
 
 Usage:
-    uv run python backend/scripts/verify_parquet_read.py
+    uv run python backend/scripts/verify_spotify_parquet.py
 """
 
 import logging
