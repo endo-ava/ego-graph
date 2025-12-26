@@ -58,7 +58,7 @@ jobs:
           access_key_id = os.environ["R2_ACCESS_KEY_ID"]
           secret_access_key = os.environ["R2_SECRET_ACCESS_KEY"]
           bucket_name = os.environ["R2_BUCKET_NAME"]
-          events_path = os.environ.get("R2_EVENTS_PATH", "events/")
+          master_path = os.environ.get("R2_MASTER_PATH", "master/")
 
           # URLパースでホスト名を抽出
           parsed_url = urlparse(endpoint_url)
@@ -77,8 +77,8 @@ jobs:
               );
           """)
 
-          tracks_url = f"s3://{bucket_name}/{events_path}lastfm/tracks/**/*.parquet"
-          artists_url = f"s3://{bucket_name}/{events_path}lastfm/artists/**/*.parquet"
+          tracks_url = f"s3://{bucket_name}/{master_path}lastfm/tracks/**/*.parquet"
+          artists_url = f"s3://{bucket_name}/{master_path}lastfm/artists/**/*.parquet"
 
           try:
               # パスの検証を追加

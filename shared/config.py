@@ -139,12 +139,12 @@ class Config(BaseSettings):
         try:
             config.spotify = SpotifyConfig()
         except (ValidationError, ValueError):
-            logging.exception("Failed to load Spotify config")
+            logging.info("Spotify config not available")
 
         try:
             config.embedding = EmbeddingConfig()
         except (ValidationError, ValueError):
-            logging.exception("Failed to load Embedding config")
+            logging.info("Embedding config not available")
 
         try:
             config.lastfm = LastFmConfig()
@@ -168,7 +168,7 @@ class Config(BaseSettings):
                 )
             config.duckdb = DuckDBConfig(r2=r2_config)
         except (ValidationError, ValueError):
-            logging.exception("Failed to load DuckDB config")
+            logging.info("DuckDB config not available")
 
         # ロギングの設定
         logging.basicConfig(
