@@ -22,9 +22,35 @@ class BaseLLMProvider(ABC):
             model_name: モデル名（例: "gpt-4o-mini", "claude-3-5-sonnet-20241022"）
             **kwargs: プロバイダー固有の追加パラメータ
         """
-        self.api_key = api_key
+        self._api_key = api_key
         self.model_name = model_name
         self.kwargs = kwargs
+
+    @property
+    def api_key(self) -> str:
+        """API認証キーを取得します。
+
+        Returns:
+            API認証キー
+        """
+        return self._api_key
+
+    def __repr__(self) -> str:
+        """安全な文字列表現を返します（APIキーをマスキング）。
+
+        Returns:
+            マスキング済みの文字列表現
+        """
+        masked_key = f"{self._api_key[:4]}...{self._api_key[-4:]}" if len(self._api_key) > 8 else "***"
+        return f"{self.__class__.__name__}(api_key='{masked_key}', model_name='{self.model_name}')"
+
+    def __str__(self) -> str:
+        """安全な文字列表現を返します（APIキーをマスキング）。
+
+        Returns:
+            マスキング済みの文字列表現
+        """
+        return self.__repr__()
 
     @abstractmethod
     async def chat_completion(

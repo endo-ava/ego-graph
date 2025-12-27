@@ -128,6 +128,7 @@ class TestAnthropicProvider:
             ],
             "model": "claude-3-5-sonnet-20241022",
             "stop_reason": "end_turn",
+            "usage": {"input_tokens": 15, "output_tokens": 10},
         }
 
         # Act: レスポンスをパース
@@ -152,7 +153,7 @@ class TestAnthropicProvider:
             mock_client_class.return_value.__aenter__.return_value = mock_client_instance
 
             # レスポンスモック
-            mock_response = MagicMock()
+            mock_response = AsyncMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {
                 "id": "msg_test",
@@ -163,7 +164,7 @@ class TestAnthropicProvider:
                 "stop_reason": "end_turn",
                 "usage": {"input_tokens": 10, "output_tokens": 5},
             }
-            mock_client_instance.post.return_value = mock_response
+            mock_client_instance.post = AsyncMock(return_value=mock_response)
 
             # Act: チャット補完を実行
             response = await provider.chat_completion(messages)
@@ -195,7 +196,7 @@ class TestAnthropicProvider:
             mock_client_class.return_value.__aenter__.return_value = mock_client_instance
 
             # レスポンスモック
-            mock_response = MagicMock()
+            mock_response = AsyncMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {
                 "id": "msg_test",
@@ -206,7 +207,7 @@ class TestAnthropicProvider:
                 "stop_reason": "end_turn",
                 "usage": {"input_tokens": 10, "output_tokens": 20},
             }
-            mock_client_instance.post.return_value = mock_response
+            mock_client_instance.post = AsyncMock(return_value=mock_response)
 
             # Act: チャット補完を実行
             response = await provider.chat_completion(messages)

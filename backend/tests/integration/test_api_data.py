@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock
 class TestTopTracksEndpoint:
     """Top Tracksエンドポイントのテスト。"""
 
-    def test_get_top_tracks_success(self, test_client):
+    def test_get_top_tracks_success(self, test_client, mock_db_and_parquet):
         """トップトラックを取得できる。"""
         mock_result = [
             {
@@ -18,16 +18,7 @@ class TestTopTracksEndpoint:
             }
         ]
 
-        with patch("backend.api.data.get_db_connection") as mock_get_db, patch(
-            "backend.api.data.get_parquet_path",
-            return_value="s3://test-bucket/events/spotify/plays/**/*.parquet",
-        ), patch(
-            "backend.api.data.get_top_tracks", return_value=mock_result
-        ):
-            mock_conn = MagicMock()
-            mock_get_db.return_value.__enter__.return_value = mock_conn
-            mock_get_db.return_value.__exit__.return_value = False
-
+        with patch("backend.api.data.get_top_tracks", return_value=mock_result):
             response = test_client.get(
                 "/v1/data/spotify/stats/top-tracks?start_date=2024-01-01&end_date=2024-01-03&limit=5",
                 headers={"X-API-Key": "test-backend-key"},
@@ -80,7 +71,7 @@ class TestTopTracksEndpoint:
 class TestListeningStatsEndpoint:
     """Listening Statsエンドポイントのテスト。"""
 
-    def test_get_listening_stats_success(self, test_client):
+    def test_get_listening_stats_success(self, test_client, mock_db_and_parquet):
         """視聴統計を取得できる。"""
         mock_result = [
             {
@@ -91,16 +82,7 @@ class TestListeningStatsEndpoint:
             }
         ]
 
-        with patch("backend.api.data.get_db_connection") as mock_get_db, patch(
-            "backend.api.data.get_parquet_path",
-            return_value="s3://test-bucket/events/spotify/plays/**/*.parquet",
-        ), patch(
-            "backend.api.data.get_listening_stats", return_value=mock_result
-        ):
-            mock_conn = MagicMock()
-            mock_get_db.return_value.__enter__.return_value = mock_conn
-            mock_get_db.return_value.__exit__.return_value = False
-
+        with patch("backend.api.data.get_listening_stats", return_value=mock_result):
             response = test_client.get(
                 "/v1/data/spotify/stats/listening?start_date=2024-01-01&end_date=2024-01-03&granularity=day",
                 headers={"X-API-Key": "test-backend-key"},
@@ -133,20 +115,11 @@ class TestListeningStatsEndpoint:
 
         assert response.status_code == 422
 
-    def test_get_listening_stats_default_granularity(self, test_client):
+    def test_get_listening_stats_default_granularity(self, test_client, mock_db_and_parquet):
         """granularityのデフォルト値は"day"。"""
         mock_result = [{"period": "2024-01-01", "total_ms": 1000, "track_count": 5, "unique_tracks": 3}]
 
-        with patch("backend.api.data.get_db_connection") as mock_get_db, patch(
-            "backend.api.data.get_parquet_path",
-            return_value="s3://test-bucket/events/spotify/plays/**/*.parquet",
-        ), patch(
-            "backend.api.data.get_listening_stats", return_value=mock_result
-        ):
-            mock_conn = MagicMock()
-            mock_get_db.return_value.__enter__.return_value = mock_conn
-            mock_get_db.return_value.__exit__.return_value = False
-
+        with patch("backend.api.data.get_listening_stats", return_value=mock_result):
             # granularity省略
             response = test_client.get(
                 "/v1/data/spotify/stats/listening?start_date=2024-01-01&end_date=2024-01-03",

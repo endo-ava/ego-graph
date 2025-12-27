@@ -92,6 +92,7 @@ def mock_backend_config(mock_r2_config, mock_llm_config):
         port=8000,
         reload=False,
         api_key=SecretStr("test-backend-key"),  # SecretStrでラップ
+        cors_origins="http://localhost:3000",  # ワイルドカードを避ける
         log_level="DEBUG",
     )
     config.r2 = mock_r2_config
@@ -112,8 +113,20 @@ def duckdb_conn():
     conn.close()
 
 
+class DuckDBConnectionWrapper:
+    """DuckDB接続のラッパー（テスト用の属性を保持）。"""
+
+    def __init__(self, conn, parquet_path):
+        self._conn = conn
+        self.test_parquet_path = parquet_path
+
+    def __getattr__(self, name):
+        """属性アクセスを内部の接続オブジェクトに委譲。"""
+        return getattr(self._conn, name)
+
+
 @pytest.fixture
-def duckdb_with_sample_data(duckdb_conn):
+def duckdb_with_sample_data(duckdb_conn, tmp_path):
     """サンプルParquetデータを持つDuckDB。"""
     # サンプルデータ作成
     sample_data = pd.DataFrame(
@@ -141,12 +154,19 @@ def duckdb_with_sample_data(duckdb_conn):
         }
     )
 
-    # DuckDBにDataFrameを直接登録する正しい方法
+    # Parquetファイルとして保存
+    parquet_path = tmp_path / "test_data.parquet"
+    sample_data.to_parquet(parquet_path)
+
+    # DuckDBにDataFrameを直接登録（下位互換性のため）
     duckdb_conn.register("sample_data_df", sample_data)
     duckdb_conn.execute("CREATE TABLE spotify_plays AS SELECT * FROM sample_data_df")
     duckdb_conn.unregister("sample_data_df")
 
-    yield duckdb_conn
+    # ラッパーオブジェクトを作成
+    wrapper = DuckDBConnectionWrapper(duckdb_conn, str(parquet_path))
+
+    yield wrapper
 
 
 # ========================================
@@ -225,3 +245,22 @@ def test_client(mock_backend_config):
         yield client
 
     app.dependency_overrides.clear()
+
+
+# ========================================
+# API Data テスト用の共通モック
+# ========================================
+
+
+@pytest.fixture
+def mock_db_and_parquet():
+    """データAPIテスト用のDB接続とParquetパスのモック。"""
+    with patch("backend.api.data.get_db_connection") as mock_get_db, patch(
+        "backend.api.data.get_parquet_path",
+        return_value="s3://test-bucket/events/spotify/plays/**/*.parquet",
+    ):
+        mock_conn = MagicMock()
+        mock_get_db.return_value.__enter__.return_value = mock_conn
+        mock_get_db.return_value.__exit__.return_value = False
+
+        yield {"mock_get_db": mock_get_db, "mock_conn": mock_conn}

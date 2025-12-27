@@ -35,8 +35,7 @@ class TestChatEndpoint:
             assert response.status_code == 501
             assert "LLM configuration is missing" in response.json()["detail"]
 
-    @pytest.mark.asyncio
-    async def test_chat_success(self, test_client, mock_backend_config):
+    def test_chat_success(self, test_client, mock_backend_config):
         """チャットが成功する。"""
         # LLMクライアントのモック
         mock_response = ChatResponse(
@@ -74,8 +73,7 @@ class TestChatEndpoint:
             assert data["message"]["content"] == "Here are your top tracks."
             assert data["usage"] is not None
 
-    @pytest.mark.asyncio
-    async def test_chat_with_tool_calls(self, test_client, mock_backend_config):
+    def test_chat_with_tool_calls(self, test_client, mock_backend_config):
         """ツール呼び出しを含むレスポンス。"""
         from backend.llm.models import ToolCall
 
@@ -144,11 +142,20 @@ class TestChatEndpoint:
 
     def test_chat_validates_request_schema(self, test_client):
         """リクエストスキーマのバリデーション。"""
-        # messagesが必須
-        response = test_client.post(
-            "/v1/chat",
-            json={},
-            headers={"X-API-Key": "test-backend-key"},
-        )
+        # LLM/DBをモックして、バリデーションエラーのみをテスト
+        with patch("backend.api.chat.LLMClient") as mock_llm_class, patch(
+            "backend.api.chat.get_db_connection"
+        ) as mock_get_db:
+            mock_llm_instance = MagicMock()
+            mock_llm_class.return_value = mock_llm_instance
+            mock_conn = MagicMock()
+            mock_get_db.return_value = mock_conn
 
-        assert response.status_code == 422
+            # messagesが必須
+            response = test_client.post(
+                "/v1/chat",
+                json={},
+                headers={"X-API-Key": "test-backend-key"},
+            )
+
+            assert response.status_code == 422

@@ -131,14 +131,13 @@ class TestOpenAIProvider:
         assert response.finish_reason == "tool_calls"
 
     @pytest.mark.asyncio
-    async def test_chat_completion_success(self, mock_httpx_client):
+    async def test_chat_completion_success(self):
         """チャット補完が成功する。"""
         # Arrange: プロバイダー、メッセージ、HTTPクライアントのモックを準備
         provider = OpenAIProvider("test-key", "gpt-4o-mini")
 
         messages = [Message(role="user", content="Hello")]
 
-        # mock_httpx_clientはconftest.pyで定義されている
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client_instance

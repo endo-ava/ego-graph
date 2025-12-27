@@ -15,6 +15,9 @@ def get_mock_openai_response(
     Returns:
         OpenAI API形式のレスポンス辞書
     """
+    # tool_callsがある場合はfinish_reasonを"tool_calls"にする
+    finish_reason = "tool_calls" if tool_calls else "stop"
+
     return {
         "id": "chatcmpl-test-123",
         "object": "chat.completion",
@@ -28,7 +31,7 @@ def get_mock_openai_response(
                     "content": content,
                     "tool_calls": tool_calls,
                 },
-                "finish_reason": "stop",
+                "finish_reason": finish_reason,
             }
         ],
         "usage": {

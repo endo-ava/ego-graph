@@ -95,27 +95,16 @@ class TestGetTopTracks:
 
     def test_returns_top_tracks(self, duckdb_with_sample_data):
         """トップトラックを取得。"""
-        # Arrange: トップトラック取得クエリとパラメータを準備
-        # read_parquet()の代わりにテーブル名を使用するため、
-        # クエリを直接実行して動作を確認
-        query = """
-            SELECT
-                track_name,
-                artist_names[1] as artist,
-                COUNT(*) as play_count,
-                SUM(ms_played) / 60000.0 as total_minutes
-            FROM spotify_plays
-            WHERE played_at_utc::DATE BETWEEN ? AND ?
-            GROUP BY track_name, artist_names[1]
-            ORDER BY play_count DESC
-            LIMIT ?
-        """
+        # Arrange: get_top_tracksを使用してトップトラックを取得
+        parquet_path = duckdb_with_sample_data.test_parquet_path
 
-        # Act: トップトラックを取得
-        result = execute_query(
+        # Act: get_top_tracks関数を直接呼び出す
+        result = get_top_tracks(
             duckdb_with_sample_data,
-            query,
-            [date(2024, 1, 1), date(2024, 1, 3), 5],
+            parquet_path,
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 3),
+            limit=5,
         )
 
         # Assert: トップトラックが正しく取得されることを検証
@@ -127,25 +116,16 @@ class TestGetTopTracks:
 
     def test_respects_limit_parameter(self, duckdb_with_sample_data):
         """limitパラメータを尊重。"""
-        # Arrange: limit=2でクエリを準備
-        query = """
-            SELECT
-                track_name,
-                artist_names[1] as artist,
-                COUNT(*) as play_count,
-                SUM(ms_played) / 60000.0 as total_minutes
-            FROM spotify_plays
-            WHERE played_at_utc::DATE BETWEEN ? AND ?
-            GROUP BY track_name, artist_names[1]
-            ORDER BY play_count DESC
-            LIMIT ?
-        """
+        # Arrange: get_top_tracksを使用
+        parquet_path = duckdb_with_sample_data.test_parquet_path
 
         # Act: limit=2でトップトラックを取得
-        result = execute_query(
+        result = get_top_tracks(
             duckdb_with_sample_data,
-            query,
-            [date(2024, 1, 1), date(2024, 1, 3), 2],
+            parquet_path,
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 3),
+            limit=2,
         )
 
         # Assert: 最大2件までしか返されないことを検証
@@ -153,25 +133,16 @@ class TestGetTopTracks:
 
     def test_filters_by_date_range(self, duckdb_with_sample_data):
         """日付範囲でフィルタリング。"""
-        # Arrange: 2024-01-01のみに絞り込むクエリを準備
-        query = """
-            SELECT
-                track_name,
-                artist_names[1] as artist,
-                COUNT(*) as play_count,
-                SUM(ms_played) / 60000.0 as total_minutes
-            FROM spotify_plays
-            WHERE played_at_utc::DATE BETWEEN ? AND ?
-            GROUP BY track_name, artist_names[1]
-            ORDER BY play_count DESC
-            LIMIT ?
-        """
+        # Arrange: get_top_tracksを使用
+        parquet_path = duckdb_with_sample_data.test_parquet_path
 
         # Act: 2024-01-01のデータのみ取得
-        result = execute_query(
+        result = get_top_tracks(
             duckdb_with_sample_data,
-            query,
-            [date(2024, 1, 1), date(2024, 1, 1), 10],
+            parquet_path,
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 1),
+            limit=10,
         )
 
         # Assert: 2024-01-01には2件のレコードがあることを検証
@@ -183,22 +154,16 @@ class TestGetListeningStats:
 
     def test_aggregates_by_day(self, duckdb_with_sample_data):
         """日単位で集計。"""
-        # Arrange: 日単位集計クエリを準備
-        query = """
-            SELECT
-                strftime(played_at_utc::DATE, '%Y-%m-%d') as period,
-                SUM(ms_played) as total_ms,
-                COUNT(*) as track_count,
-                COUNT(DISTINCT track_id) as unique_tracks
-            FROM spotify_plays
-            WHERE played_at_utc::DATE BETWEEN ? AND ?
-            GROUP BY period
-            ORDER BY period ASC
-        """
+        # Arrange: get_listening_statsを使用
+        parquet_path = duckdb_with_sample_data.test_parquet_path
 
         # Act: 日単位で統計情報を取得
-        result = execute_query(
-            duckdb_with_sample_data, query, [date(2024, 1, 1), date(2024, 1, 3)]
+        result = get_listening_stats(
+            duckdb_with_sample_data,
+            parquet_path,
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 3),
+            granularity="day",
         )
 
         # Assert: 3日分のデータが正しく集計されることを検証
@@ -208,22 +173,16 @@ class TestGetListeningStats:
 
     def test_aggregates_by_month(self, duckdb_with_sample_data):
         """月単位で集計。"""
-        # Arrange: 月単位集計クエリを準備
-        query = """
-            SELECT
-                strftime(played_at_utc::DATE, '%Y-%m') as period,
-                SUM(ms_played) as total_ms,
-                COUNT(*) as track_count,
-                COUNT(DISTINCT track_id) as unique_tracks
-            FROM spotify_plays
-            WHERE played_at_utc::DATE BETWEEN ? AND ?
-            GROUP BY period
-            ORDER BY period ASC
-        """
+        # Arrange: get_listening_statsを使用
+        parquet_path = duckdb_with_sample_data.test_parquet_path
 
         # Act: 月単位で統計情報を取得
-        result = execute_query(
-            duckdb_with_sample_data, query, [date(2024, 1, 1), date(2024, 1, 3)]
+        result = get_listening_stats(
+            duckdb_with_sample_data,
+            parquet_path,
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 3),
+            granularity="month",
         )
 
         # Assert: 1ヶ月分のデータが正しく集計されることを検証
@@ -231,14 +190,20 @@ class TestGetListeningStats:
         assert result[0]["period"] == "2024-01"
         assert result[0]["track_count"] == 5  # 全5件
 
-    def test_invalid_granularity_raises_error(self):
+    def test_invalid_granularity_raises_error(self, duckdb_with_sample_data):
         """無効な粒度でエラー発生。"""
-        # Arrange: この関数はテスト不要（get_listening_stats関数内でチェックされる）
+        # Arrange: get_listening_statsを使用
+        parquet_path = duckdb_with_sample_data.test_parquet_path
 
-        # Act: なし
-
-        # Assert: 実装側の検証ロジックを信頼
-        pass
+        # Act & Assert: 無効なgranularityでValueErrorが発生することを検証
+        with pytest.raises(ValueError, match="Invalid granularity"):
+            get_listening_stats(
+                duckdb_with_sample_data,
+                parquet_path,
+                start_date=date(2024, 1, 1),
+                end_date=date(2024, 1, 3),
+                granularity="invalid",
+            )
 
 
 class TestSearchTracksByName:
@@ -246,25 +211,12 @@ class TestSearchTracksByName:
 
     def test_searches_by_track_name(self, duckdb_with_sample_data):
         """トラック名で検索。"""
-        # Arrange: トラック名検索クエリと検索パターンを準備
-        search_pattern = "%Song A%"
-        query = """
-            SELECT
-                track_name,
-                artist_names[1] as artist,
-                COUNT(*) as play_count,
-                MAX(played_at_utc)::VARCHAR as last_played
-            FROM spotify_plays
-            WHERE LOWER(track_name) LIKE LOWER(?)
-               OR LOWER(artist_names[1]) LIKE LOWER(?)
-            GROUP BY track_name, artist_names[1]
-            ORDER BY play_count DESC
-            LIMIT ?
-        """
+        # Arrange: search_tracks_by_nameを使用
+        parquet_path = duckdb_with_sample_data.test_parquet_path
 
         # Act: トラック名で検索
-        result = execute_query(
-            duckdb_with_sample_data, query, [search_pattern, search_pattern, 20]
+        result = search_tracks_by_name(
+            duckdb_with_sample_data, parquet_path, query="Song A", limit=20
         )
 
         # Assert: "Song A"が見つかることを検証
@@ -273,25 +225,12 @@ class TestSearchTracksByName:
 
     def test_searches_by_artist_name(self, duckdb_with_sample_data):
         """アーティスト名で検索。"""
-        # Arrange: アーティスト名検索クエリと検索パターンを準備
-        search_pattern = "%Artist X%"
-        query = """
-            SELECT
-                track_name,
-                artist_names[1] as artist,
-                COUNT(*) as play_count,
-                MAX(played_at_utc)::VARCHAR as last_played
-            FROM spotify_plays
-            WHERE LOWER(track_name) LIKE LOWER(?)
-               OR LOWER(artist_names[1]) LIKE LOWER(?)
-            GROUP BY track_name, artist_names[1]
-            ORDER BY play_count DESC
-            LIMIT ?
-        """
+        # Arrange: search_tracks_by_nameを使用
+        parquet_path = duckdb_with_sample_data.test_parquet_path
 
         # Act: アーティスト名で検索
-        result = execute_query(
-            duckdb_with_sample_data, query, [search_pattern, search_pattern, 20]
+        result = search_tracks_by_name(
+            duckdb_with_sample_data, parquet_path, query="Artist X", limit=20
         )
 
         # Assert: Artist XはSong Aなので見つかることを検証
@@ -300,34 +239,15 @@ class TestSearchTracksByName:
 
     def test_case_insensitive_search(self, duckdb_with_sample_data):
         """大文字小文字を区別しない検索。"""
-        # Arrange: 大文字と小文字の検索パターンを準備
-        search_pattern_lower = "%song a%"
-        search_pattern_upper = "%SONG A%"
-
-        query = """
-            SELECT
-                track_name,
-                artist_names[1] as artist,
-                COUNT(*) as play_count,
-                MAX(played_at_utc)::VARCHAR as last_played
-            FROM spotify_plays
-            WHERE LOWER(track_name) LIKE LOWER(?)
-               OR LOWER(artist_names[1]) LIKE LOWER(?)
-            GROUP BY track_name, artist_names[1]
-            ORDER BY play_count DESC
-            LIMIT ?
-        """
+        # Arrange: search_tracks_by_nameを使用
+        parquet_path = duckdb_with_sample_data.test_parquet_path
 
         # Act: 小文字と大文字の両方で検索
-        result_lower = execute_query(
-            duckdb_with_sample_data,
-            query,
-            [search_pattern_lower, search_pattern_lower, 20],
+        result_lower = search_tracks_by_name(
+            duckdb_with_sample_data, parquet_path, query="song a", limit=20
         )
-        result_upper = execute_query(
-            duckdb_with_sample_data,
-            query,
-            [search_pattern_upper, search_pattern_upper, 20],
+        result_upper = search_tracks_by_name(
+            duckdb_with_sample_data, parquet_path, query="SONG A", limit=20
         )
 
         # Assert: 大文字小文字に関わらず同じ結果が返されることを検証
