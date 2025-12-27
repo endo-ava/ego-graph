@@ -73,7 +73,7 @@ def verify_r2_lastfm_data():
 
         try:
             track_count = conn.execute(
-                "SELECT COUNT(*) FROM read_parquet(?)", [tracks_url]
+                "SELECT COUNT(*) FROM read_parquet(?, union_by_name=true)", [tracks_url]
             ).fetchone()[0]
             logger.info(f"✅ Total track records in R2: {track_count}")
 
@@ -82,7 +82,7 @@ def verify_r2_lastfm_data():
                 logger.info("\n📊 Latest 20 Tracks:")
                 query_tracks = """
                     SELECT track_name, artist_name, listeners, playcount
-                    FROM read_parquet(?)
+                    FROM read_parquet(?, union_by_name=true)
                     ORDER BY playcount DESC
                     LIMIT 20
                 """
@@ -100,7 +100,7 @@ def verify_r2_lastfm_data():
                 logger.info("\n🔍 Detailed View (Top 5 by Playcount):")
                 query_detail = """
                     SELECT track_name, artist_name, listeners, playcount, tags
-                    FROM read_parquet(?)
+                    FROM read_parquet(?, union_by_name=true)
                     ORDER BY playcount DESC
                     LIMIT 5
                 """
@@ -122,7 +122,7 @@ def verify_r2_lastfm_data():
 
         try:
             artist_count = conn.execute(
-                "SELECT COUNT(*) FROM read_parquet(?)", [artists_url]
+                "SELECT COUNT(*) FROM read_parquet(?, union_by_name=true)", [artists_url]
             ).fetchone()[0]
             logger.info(f"✅ Total artist records in R2: {artist_count}")
 
@@ -131,7 +131,7 @@ def verify_r2_lastfm_data():
                 logger.info("\n📊 Top 20 Artists by Listeners:")
                 query_artists = """
                     SELECT artist_name, listeners, playcount
-                    FROM read_parquet(?)
+                    FROM read_parquet(?, union_by_name=true)
                     ORDER BY listeners DESC
                     LIMIT 20
                 """
@@ -149,7 +149,7 @@ def verify_r2_lastfm_data():
                 logger.info("\n🔍 Detailed View (Top 5 by Listeners):")
                 query_detail = """
                     SELECT artist_name, listeners, playcount, tags, bio_summary
-                    FROM read_parquet(?)
+                    FROM read_parquet(?, union_by_name=true)
                     ORDER BY listeners DESC
                     LIMIT 5
                 """
