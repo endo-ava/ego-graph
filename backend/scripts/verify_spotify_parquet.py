@@ -64,47 +64,112 @@ def verify_r2_data():
 
         # Parquetファイルのパスパターン
         parquet_url = f"s3://{r2_conf.bucket_name}/{r2_conf.events_path}spotify/plays/**/*.parquet"
+        tracks_url = f"s3://{r2_conf.bucket_name}/{r2_conf.master_path}spotify/tracks/**/*.parquet"
+        artists_url = f"s3://{r2_conf.bucket_name}/{r2_conf.master_path}spotify/artists/**/*.parquet"
 
         # 1. 総件数の確認
-        count = conn.execute(
-            "SELECT COUNT(*) FROM read_parquet(?)", [parquet_url]
-        ).fetchone()[0]
-        logger.info(f"✅ Connection successful. Total records in R2: {count}")
+        try:
+            count = conn.execute(
+                "SELECT COUNT(*) FROM read_parquet(?)", [parquet_url]
+            ).fetchone()[0]
+            logger.info(f"✅ Connection successful. Total records in R2: {count}")
 
-        if count == 0:
-            logger.info("ℹ️ R2 is empty. Run ingestion first.")
-            return
+            if count == 0:
+                logger.info("ℹ️ R2 plays is empty. Run ingestion first.")
+            else:
+                # 2. 最新50件の曲名リスト表示 (シンプル表示)
+                logger.info("\n📊 Latest 50 Tracks:")
+                query_simple = """
+                    SELECT track_name, artist_names[1] as artist, played_at_utc
+                    FROM read_parquet(?)
+                    ORDER BY played_at_utc DESC
+                    LIMIT 50
+                """
+                df_simple = conn.execute(query_simple, [parquet_url]).df()
 
-        # 2. 最新50件の曲名リスト表示 (シンプル表示)
-        logger.info("\n📊 Latest 50 Tracks:")
-        query_simple = """
-            SELECT track_name, artist_names[1] as artist, played_at_utc
-            FROM read_parquet(?)
-            ORDER BY played_at_utc DESC
-            LIMIT 50
-        """
-        df_simple = conn.execute(query_simple, [parquet_url]).df()
+                # インデックスを1から振る
+                df_simple.index = df_simple.index + 1
+                print(
+                    tabulate(
+                        df_simple[["track_name", "artist"]],
+                        headers=["#", "Track Name", "Artist"],
+                        tablefmt="simple",
+                    )
+                )
 
-        # インデックスを1から振る
-        df_simple.index = df_simple.index + 1
-        print(
-            tabulate(
-                df_simple[["track_name", "artist"]],
-                headers=["#", "Track Name", "Artist"],
-                tablefmt="simple",
-            )
-        )
+                # 3. 直近5件の詳細表示 (デバッグ用)
+                logger.info("\n🔍 Detailed View (Latest 5):")
+                query_detail = """
+                    SELECT played_at_utc, track_name, artist_names, album_name
+                    FROM read_parquet(?)
+                    ORDER BY played_at_utc DESC
+                    LIMIT 5
+                """
+                df_detail = conn.execute(query_detail, [parquet_url]).df()
+                print(tabulate(df_detail, headers="keys", tablefmt="simple_grid"))
+        except duckdb.IOException as e:
+            if "No files found" in str(e):
+                logger.warning("⚠️ No Parquet files found for Spotify plays.")
+            else:
+                logger.error(f"❌ DuckDB IO Error: {e}")
 
-        # 3. 直近5件の詳細表示 (デバッグ用)
-        logger.info("\n🔍 Detailed View (Latest 5):")
-        query_detail = """
-            SELECT played_at_utc, track_name, artist_names, album_name
-            FROM read_parquet(?)
-            ORDER BY played_at_utc DESC
-            LIMIT 5
-        """
-        df_detail = conn.execute(query_detail, [parquet_url]).df()
-        print(tabulate(df_detail, headers="keys", tablefmt="simple_grid"))
+        # 4. トラックマスターの確認
+        logger.info("\n" + "=" * 60)
+        logger.info("🎧 Spotify Track Master (R2)")
+        logger.info("=" * 60)
+
+        try:
+            track_count = conn.execute(
+                "SELECT COUNT(*) FROM read_parquet(?, union_by_name=true)",
+                [tracks_url],
+            ).fetchone()[0]
+            logger.info(f"✅ Total track master records in R2: {track_count}")
+
+            if track_count > 0:
+                query_tracks = """
+                    SELECT track_id, name, artist_names, preview_url, popularity
+                    FROM read_parquet(?, union_by_name=true)
+                    ORDER BY popularity DESC
+                    LIMIT 10
+                """
+                df_tracks = conn.execute(query_tracks, [tracks_url]).df()
+                print(tabulate(df_tracks, headers="keys", tablefmt="simple_grid"))
+            else:
+                logger.info("ℹ️ No track master data found.")
+        except duckdb.IOException as e:
+            if "No files found" in str(e):
+                logger.warning("⚠️ No track master Parquet files found in R2.")
+            else:
+                logger.error(f"❌ DuckDB IO Error (tracks): {e}")
+
+        # 5. アーティストマスターの確認
+        logger.info("\n" + "=" * 60)
+        logger.info("🎤 Spotify Artist Master (R2)")
+        logger.info("=" * 60)
+
+        try:
+            artist_count = conn.execute(
+                "SELECT COUNT(*) FROM read_parquet(?, union_by_name=true)",
+                [artists_url],
+            ).fetchone()[0]
+            logger.info(f"✅ Total artist master records in R2: {artist_count}")
+
+            if artist_count > 0:
+                query_artists = """
+                    SELECT artist_id, name, genres, popularity, followers_total
+                    FROM read_parquet(?, union_by_name=true)
+                    ORDER BY followers_total DESC
+                    LIMIT 10
+                """
+                df_artists = conn.execute(query_artists, [artists_url]).df()
+                print(tabulate(df_artists, headers="keys", tablefmt="simple_grid"))
+            else:
+                logger.info("ℹ️ No artist master data found.")
+        except duckdb.IOException as e:
+            if "No files found" in str(e):
+                logger.warning("⚠️ No artist master Parquet files found in R2.")
+            else:
+                logger.error(f"❌ DuckDB IO Error (artists): {e}")
 
     except duckdb.IOException as e:
         if "No files found" in str(e):

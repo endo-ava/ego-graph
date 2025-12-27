@@ -325,3 +325,59 @@ class SpotifyCollector:
 
             logger.exception("Failed to fetch audio features")
             raise
+
+    @retry(
+        retry=retry_if_exception_type((spotipy.SpotifyException,)),
+        stop=stop_after_attempt(MAX_RETRIES),
+        wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
+    )
+    def get_tracks(self, track_ids: list[str]) -> list[dict[str, Any]]:
+        """複数のトラック情報を取得します。"""
+        if not track_ids:
+            return []
+
+        logger.debug(f"Fetching track details for {len(track_ids)} tracks")
+
+        chunk_size = 50
+        all_tracks = []
+
+        try:
+            for i in range(0, len(track_ids), chunk_size):
+                chunk = track_ids[i : i + chunk_size]
+                response = self.sp.tracks(chunk)
+                tracks = response.get("tracks", []) if response else []
+                all_tracks.extend([t for t in tracks if t])
+
+            logger.info(f"Successfully fetched {len(all_tracks)} track details")
+            return all_tracks
+        except spotipy.SpotifyException:
+            logger.exception("Failed to fetch tracks")
+            raise
+
+    @retry(
+        retry=retry_if_exception_type((spotipy.SpotifyException,)),
+        stop=stop_after_attempt(MAX_RETRIES),
+        wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
+    )
+    def get_artists(self, artist_ids: list[str]) -> list[dict[str, Any]]:
+        """複数のアーティスト情報を取得します。"""
+        if not artist_ids:
+            return []
+
+        logger.debug(f"Fetching artist details for {len(artist_ids)} artists")
+
+        chunk_size = 50
+        all_artists = []
+
+        try:
+            for i in range(0, len(artist_ids), chunk_size):
+                chunk = artist_ids[i : i + chunk_size]
+                response = self.sp.artists(chunk)
+                artists = response.get("artists", []) if response else []
+                all_artists.extend([a for a in artists if a])
+
+            logger.info(f"Successfully fetched {len(all_artists)} artist details")
+            return all_artists
+        except spotipy.SpotifyException:
+            logger.exception("Failed to fetch artists")
+            raise

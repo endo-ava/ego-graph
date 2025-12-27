@@ -221,3 +221,71 @@ def test_get_audio_features_success():
     assert result[0]["danceability"] == 0.5
     assert result[1]["id"] == "track2"
     assert result[1]["valence"] == 0.9
+
+
+@responses.activate
+def test_get_tracks_success():
+    """トラック情報の取得成功をテストする。"""
+    responses.add(
+        responses.POST,
+        "https://accounts.spotify.com/api/token",
+        json={"access_token": "mock_token", "expires_in": 3600, "token_type": "Bearer"},
+        status=200,
+    )
+    responses.add(
+        responses.GET,
+        re.compile(r"https://api.spotify.com/v1/tracks.*"),
+        json={
+            "tracks": [
+                {"id": "track1", "name": "Song A"},
+                {"id": "track2", "name": "Song B"},
+            ]
+        },
+        status=200,
+    )
+
+    collector = SpotifyCollector(
+        client_id="test_client_id",
+        client_secret="test_client_secret",
+        refresh_token="test_refresh_token",
+    )
+
+    result = collector.get_tracks(track_ids=["track1", "track2"])
+
+    assert len(result) == 2
+    assert result[0]["id"] == "track1"
+    assert result[1]["name"] == "Song B"
+
+
+@responses.activate
+def test_get_artists_success():
+    """アーティスト情報の取得成功をテストする。"""
+    responses.add(
+        responses.POST,
+        "https://accounts.spotify.com/api/token",
+        json={"access_token": "mock_token", "expires_in": 3600, "token_type": "Bearer"},
+        status=200,
+    )
+    responses.add(
+        responses.GET,
+        re.compile(r"https://api.spotify.com/v1/artists.*"),
+        json={
+            "artists": [
+                {"id": "artist1", "name": "Artist A"},
+                {"id": "artist2", "name": "Artist B"},
+            ]
+        },
+        status=200,
+    )
+
+    collector = SpotifyCollector(
+        client_id="test_client_id",
+        client_secret="test_client_secret",
+        refresh_token="test_refresh_token",
+    )
+
+    result = collector.get_artists(artist_ids=["artist1", "artist2"])
+
+    assert len(result) == 2
+    assert result[0]["id"] == "artist1"
+    assert result[1]["name"] == "Artist B"

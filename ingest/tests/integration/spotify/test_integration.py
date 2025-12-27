@@ -1,11 +1,16 @@
 """Spotify パイプラインのインテグレーションテスト。"""
 
+from types import SimpleNamespace
+from unittest.mock import ANY, MagicMock
+
 import pytest
+from pydantic import SecretStr
 import responses
 
 from ingest.spotify.collector import SpotifyCollector
 from ingest.spotify.schema import SpotifySchema
 from ingest.spotify.writer import SpotifyDuckDBWriter
+from ingest import spotify_r2_main
 
 from ingest.tests.fixtures.spotify_responses import get_mock_recently_played
 
@@ -194,3 +199,79 @@ def test_incremental_pipeline_run(tmp_path):
     latest_play_str_2 = stats_2["latest_play"].isoformat()
     assert latest_play_str_2.startswith("2025-12-14T03:00:00")
     conn.close()
+
+
+@pytest.mark.integration
+def test_master_enrichment_flow():
+    """再生履歴から新規IDのみマスター取得されることをテストする。"""
+    # Arrange: 再生履歴とマスターのモックを準備
+    items = [
+        {
+            "played_at": "2025-01-01T00:00:00Z",
+            "track": {
+                "id": "t1",
+                "name": "Song A",
+                "artists": [{"id": "a1", "name": "Artist A"}],
+                "album": {"id": "alb1", "name": "Album A"},
+                "duration_ms": 1000,
+                "popularity": 10,
+                "explicit": False,
+            },
+        },
+        {
+            "played_at": "2025-01-02T00:00:00Z",
+            "track": {
+                "id": "t2",
+                "name": "Song B",
+                "artists": [{"id": "a2", "name": "Artist B"}],
+                "album": {"id": "alb2", "name": "Album B"},
+                "duration_ms": 2000,
+                "popularity": 20,
+                "explicit": True,
+            },
+        },
+    ]
+
+    mock_collector = MagicMock()
+    mock_collector.get_tracks.return_value = [
+        {"id": "t2", "name": "Song B", "artists": [{"id": "a2", "name": "Artist B"}]}
+    ]
+    mock_collector.get_artists.return_value = [
+        {"id": "a2", "name": "Artist B", "genres": ["j-pop"]}
+    ]
+
+    mock_storage = MagicMock()
+
+    r2_conf = SimpleNamespace(
+        endpoint_url="https://example.invalid",
+        access_key_id="test_access_key",
+        secret_access_key=SecretStr("test_secret"),
+        bucket_name="test-bucket",
+        raw_path="raw/",
+        events_path="events/",
+        master_path="master/",
+    )
+
+    # Act: マスター補完処理のみを実行
+    spotify_r2_main.enrich_master_data(
+        items,
+        collector=mock_collector,
+        storage=mock_storage,
+        r2_conf=r2_conf,
+        existing_track_ids={"t1"},
+        existing_artist_ids={"a1"},
+    )
+
+    # Assert: 新規IDのみ取得されることを検証
+    mock_collector.get_tracks.assert_called_once_with(["t2"])
+    mock_collector.get_artists.assert_called_once_with(["a2"])
+
+    # 生レスポンスの保存が行われることを確認
+    mock_storage.save_raw_json.assert_any_call(ANY, prefix="spotify/tracks")
+    mock_storage.save_raw_json.assert_any_call(ANY, prefix="spotify/artists")
+
+    # マスター保存が行われることを確認
+    mock_storage.save_master_parquet.assert_any_call(
+        ANY, prefix="spotify/tracks", year=ANY, month=ANY
+    )
+    mock_storage.save_master_parquet.assert_any_call(ANY, prefix="spotify/artists")
