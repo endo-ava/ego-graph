@@ -30,12 +30,12 @@ Spotify API から以下を取得：
 
 ---
 
-## 4. Semantification & Vectorization (Daily Summary)
+## 3. Semantification & Vectorization (Daily Summary)
 
 **個別の再生ログはベクトル化しない**。
 代わりに「1日のリスニング傾向」を文章化してベクトル化する。
 
-### 4.1 要約プロセス (Daily Batch)
+### 3.1 要約プロセス (Daily Batch)
 
 1. **集計**: その日の再生ログをSupabaseから取得。
    - 総再生時間
@@ -55,7 +55,7 @@ Spotify API から以下を取得：
 
 ---
 
-## 5. Agent Query Strategy
+## 4. Agent Query Strategy
 
 ユーザーの質問に応じて、Agentがツールを選択する。
 
@@ -68,7 +68,7 @@ Spotify API から以下を取得：
 
 ---
 
-## 6. 実装ステップ
+## 5. 実装ステップ
 
 1. **Collector**: Spotify API -> Supabase `events` へのInsert
 2. **Summarizer**: Supabase -> LLM -> Qdrant への日次バッチ
@@ -76,7 +76,7 @@ Spotify API から以下を取得：
 
 ---
 
-## 5. 考慮事項
+## 6. 考慮事項
 
 - **Audio Features**: Spotify API で提供終了しているため取得しない。
 - **Genres**: アーティストに依存するため空配列が多い。集計時は "unknown" として扱う。
