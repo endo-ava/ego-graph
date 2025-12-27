@@ -4,6 +4,7 @@ LLMとの会話を通じてデータを分析・取得できるエンドポイ�
 LLMが必要に応じてツールを呼び出し、データにアクセスします。
 """
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -93,13 +94,22 @@ async def chat(
 
         tools = tool_registry.get_all_schemas()
 
-        # LLMリクエスト送信
-        response = await llm.chat(
-            messages=request.messages,
-            tools=tools,
-            temperature=config.llm.temperature,
-            max_tokens=config.llm.max_tokens,
-        )
+        # LLMリクエスト送信（タイムアウト設定: 30秒）
+        try:
+            response = await asyncio.wait_for(
+                llm.chat(
+                    messages=request.messages,
+                    tools=tools,
+                    temperature=config.llm.temperature,
+                    max_tokens=config.llm.max_tokens,
+                ),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            logger.error("LLM request timed out after 30 seconds")
+            raise HTTPException(
+                status_code=504, detail="LLM request timed out"
+            ) from None
 
         # TODO: ツール呼び出しがあれば実行して再度LLMに渡す
         # 現在はシンプルに1回の応答のみ返す（MVPでは十分）

@@ -59,8 +59,11 @@ def get_db_connection(
     try:
         yield connection
     finally:
-        # DuckDBConnectionはcontext managerとしてcleanupを実装
-        pass
+        # 接続が開いている場合は明示的にクローズ
+        if connection.conn is not None:
+            connection.conn.close()
+            connection.conn = None
+            logger.debug("Explicitly closed DuckDB connection in dependency cleanup")
 
 
 async def verify_api_key(

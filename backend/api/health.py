@@ -36,19 +36,22 @@ async def health_check(
         }
     """
     try:
-        # DuckDB + R2接続のテスト
+        # DuckDB + R2接続のテスト（軽量なクエリで確認）
         parquet_path = get_parquet_path(config.r2.bucket_name, config.r2.events_path)
 
         with db_connection as conn:
-            count = conn.execute(
-                "SELECT COUNT(*) FROM read_parquet(?)", [parquet_path]
-            ).fetchone()[0]
+            # COUNT(*)の代わりにLIMIT 1で存在確認のみ実施（高速）
+            result = conn.execute(
+                "SELECT 1 FROM read_parquet(?) LIMIT 1", [parquet_path]
+            ).fetchone()
+            # データが存在するか確認
+            data_exists = result is not None
 
         return {
             "status": "ok",
             "duckdb": "connected",
             "r2": "accessible",
-            "total_plays": count,
+            "data_available": data_exists,
         }
 
     except Exception as e:

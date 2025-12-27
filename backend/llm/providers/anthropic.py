@@ -25,6 +25,24 @@ class AnthropicProvider(BaseLLMProvider):
         super().__init__(api_key, model_name)
         self.base_url = "https://api.anthropic.com/v1"
         self.api_version = "2023-06-01"
+        # コネクションプーリングのためクライアントを再利用
+        self._client: Optional[httpx.AsyncClient] = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """共有AsyncClientを取得（遅延初期化）。
+
+        Returns:
+            httpx.AsyncClient
+        """
+        if self._client is None:
+            self._client = httpx.AsyncClient(timeout=60.0)
+        return self._client
+
+    async def aclose(self) -> None:
+        """AsyncClientをクローズします。"""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     async def chat_completion(
         self,
@@ -47,14 +65,17 @@ class AnthropicProvider(BaseLLMProvider):
         Raises:
             httpx.HTTPError: API呼び出しに失敗した場合
         """
-        # systemメッセージを分離
-        system_message = None
+        # systemメッセージを分離（複数ある場合は結合）
+        system_messages = []
         user_messages = []
         for msg in messages:
             if msg.role == "system":
-                system_message = msg.content
+                system_messages.append(msg.content)
             else:
                 user_messages.append({"role": msg.role, "content": msg.content})
+
+        # 複数のsystemメッセージがある場合は改行で結合
+        system_message = "\n\n".join(system_messages) if system_messages else None
 
         payload: dict[str, Any] = {
             "model": self.model_name,
@@ -71,20 +92,20 @@ class AnthropicProvider(BaseLLMProvider):
 
         logger.debug(f"Sending request to {self.base_url}/messages")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.base_url}/messages",
-                headers={
-                    "x-api-key": self.api_key,
-                    "anthropic-version": self.api_version,
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-                timeout=60.0,
-            )
-            response.raise_for_status()
+        # 共有クライアントを使用（コネクションプーリング）
+        client = await self._get_client()
+        response = await client.post(
+            f"{self.base_url}/messages",
+            headers={
+                "x-api-key": self.api_key,
+                "anthropic-version": self.api_version,
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+        response.raise_for_status()
 
-            return self._parse_response(response.json())
+        return self._parse_response(response.json())
 
     def _convert_tools_to_provider_format(self, tools: list[Tool]) -> list[dict]:
         """MCPツールをAnthropic tool_use形式に変換します。

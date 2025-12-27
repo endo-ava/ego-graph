@@ -36,7 +36,26 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
 
     # CORS設定（環境変数から読み取り）
     # CORS_ORIGINS="https://example.com,https://app.example.com" のように設定
-    origins = [origin.strip() for origin in config.cors_origins.split(",")]
+    origins = [
+        origin.strip()
+        for origin in config.cors_origins.split(",")
+        if origin.strip()  # 空文字・空白のみのエントリを除外
+    ]
+
+    # セキュリティ検証: ワイルドカード '*' と allow_credentials=True の同時使用を禁止
+    if "*" in origins and len(origins) > 0:
+        raise ValueError(
+            "CORS設定エラー: ワイルドカード '*' と allow_credentials=True の"
+            "同時使用はセキュリティリスクがあるため禁止されています。"
+            "特定のオリジンを明示的に指定してください。"
+        )
+
+    # origins が空の場合は警告を出力
+    if not origins:
+        logger.warning(
+            "CORS origins が設定されていません。CORSミドルウェアは空のオリジンリストで動作します。"
+        )
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
