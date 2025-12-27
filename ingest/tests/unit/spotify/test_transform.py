@@ -1,4 +1,8 @@
-from ingest.spotify.transform import transform_plays_to_events
+from ingest.spotify.transform import (
+    transform_artist_info,
+    transform_plays_to_events,
+    transform_track_info,
+)
 
 
 def test_transform_plays_to_events_basic():
@@ -63,3 +67,51 @@ def test_transform_plays_uuids_for_missing_ids():
     assert len(events) == 1
     assert events[0]["play_id"]
     assert len(events[0]["play_id"]) > 0
+
+
+def test_transform_track_info():
+    """トラック情報の変換をテストする。"""
+    track = {
+        "id": "track1",
+        "name": "Song A",
+        "artists": [{"id": "art1", "name": "Artist A"}],
+        "album": {"id": "alb1", "name": "Album A"},
+        "duration_ms": 180000,
+        "popularity": 42,
+        "explicit": True,
+        "preview_url": "http://preview",
+    }
+
+    transformed = transform_track_info(track)
+
+    assert transformed["track_id"] == "track1"
+    assert transformed["name"] == "Song A"
+    assert transformed["artist_ids"] == ["art1"]
+    assert transformed["artist_names"] == ["Artist A"]
+    assert transformed["album_id"] == "alb1"
+    assert transformed["album_name"] == "Album A"
+    assert transformed["duration_ms"] == 180000
+    assert transformed["popularity"] == 42
+    assert transformed["explicit"] is True
+    assert transformed["preview_url"] == "http://preview"
+    assert transformed["updated_at"] is not None
+
+
+def test_transform_artist_info():
+    """アーティスト情報の変換をテストする。"""
+    artist = {
+        "id": "artist1",
+        "name": "Artist A",
+        "genres": ["j-pop"],
+        "popularity": 80,
+        "followers": {"total": 12345},
+    }
+
+    transformed = transform_artist_info(artist)
+
+    assert transformed["artist_id"] == "artist1"
+    assert transformed["name"] == "Artist A"
+    assert transformed["genres"] == ["j-pop"]
+    assert transformed["popularity"] == 80
+    assert transformed["followers_total"] == 12345
+    assert transformed["updated_at"] is not None

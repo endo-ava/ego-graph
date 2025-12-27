@@ -41,7 +41,6 @@ flowchart TB
 
     subgraph DataSources ["🌐 External Data Sources"]
         Spotify["Spotify API"]:::external
-        LastFm["Last.fm API"]:::external
         Docs["Google Drive / Notion"]:::external
     end
 
@@ -54,7 +53,6 @@ flowchart TB
     DuckDB -.->|"Read Parquet (httpfs)"| R2
     
     GHA -->|"Fetch Data"| Spotify
-    GHA -->|"Fetch Data"| LastFm
     GHA -->|"Fetch Data"| Docs
     GHA -->|"Write Parquet/Raw"| R2
     GHA -->|"Upsert Vectors"| Qdrant
@@ -64,6 +62,8 @@ flowchart TB
     AgentAPI ~~~ Qdrant
     GHA ~~~ R2
 ```
+
+Deprecated: Last.fm 連携は一時停止中。
 
 ## Image Generation Prompt
 

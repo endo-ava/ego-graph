@@ -12,7 +12,7 @@ EgoGraph開発におけるガイドライン。
 uv sync
 
 # データ収集の実行 (例)
-uv run python ingest/main.py
+uv run python -m ingest.spotify_r2_main
 
 # テスト実行
 uv run pytest
@@ -34,6 +34,7 @@ uv run ruff check --fix .
 - **データ配置 (Data Lake)**:
   - **Cloudflare R2**: 正本。Parquetファイル、Raw JSON、State管理をすべてR2に保存。
     - `events/**/*.parquet`: 分析用の構造化データ（年月パーティショニング）
+    - `master/spotify/{tracks|artists}/**/*.parquet`: Spotifyマスターデータ
     - `raw/**/*.json`: APIレスポンスの正本（監査用）
     - `state/*.json`: 増分取り込み用のカーソル管理
   - **DuckDB**: Viewレイヤー。Backendで`:memory:`初期化し、R2のParquetを直接クエリ。

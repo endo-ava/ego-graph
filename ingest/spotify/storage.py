@@ -25,6 +25,7 @@ class SpotifyStorage:
         bucket_name: str,
         raw_path: str = "raw/",
         events_path: str = "events/",
+        master_path: str = "master/",
     ):
         """Storageを初期化する。
 
@@ -35,10 +36,12 @@ class SpotifyStorage:
             bucket_name: バケット名
             raw_path: 生データの保存先プレフィックス
             events_path: イベントデータの保存先プレフィックス
+            master_path: マスターデータの保存先プレフィックス
         """
         self.bucket_name = bucket_name
         self.raw_path = raw_path.rstrip("/") + "/"
         self.events_path = events_path.rstrip("/") + "/"
+        self.master_path = master_path.rstrip("/") + "/"
 
         # S3クライアントの初期化
         self.s3 = boto3.client(
@@ -139,6 +142,63 @@ class SpotifyStorage:
             return None
         except Exception:
             logger.exception("Failed to save Parquet")
+            return None
+
+    def save_master_parquet(
+        self,
+        data: list[dict[str, Any]],
+        prefix: str,
+        year: int | None = None,
+        month: int | None = None,
+    ) -> str | None:
+        """マスターデータをParquet形式で保存する。
+
+        Path format:
+        - master/{prefix}/year={YYYY}/month={MM}/{uuid}.parquet
+        - master/{prefix}/{uuid}.parquet (パーティションなし)
+
+        Args:
+            data: 保存するデータ(辞書のリスト)
+            prefix: マスターデータカテゴリー
+            year: パーティション年
+            month: パーティション月
+
+        Returns:
+            保存されたオブジェクトのキー (失敗時はNone)
+        """
+        if not data:
+            logger.warning("No data provided for master Parquet save.")
+            return None
+
+        unique_id = str(uuid.uuid4())
+        if year is not None and month is not None:
+            key = (
+                f"{self.master_path}{prefix}/"
+                f"year={year}/month={month:02d}/{unique_id}.parquet"
+            )
+        else:
+            key = f"{self.master_path}{prefix}/{unique_id}.parquet"
+
+        try:
+            df = pd.DataFrame(data)
+
+            buffer = BytesIO()
+            df.to_parquet(buffer, index=False, engine="pyarrow")
+            buffer.seek(0)
+
+            self.s3.put_object(
+                Bucket=self.bucket_name,
+                Key=key,
+                Body=buffer.getvalue(),
+                ContentType="application/octet-stream",
+            )
+            logger.info(f"Saved master Parquet to {key}")
+            return key
+        except ImportError:
+            logger.exception("Pandas or PyArrow is required for Parquet saving")
+            return None
+        except Exception:
+            logger.exception("Failed to save master Parquet")
             return None
 
     def get_ingest_state(
