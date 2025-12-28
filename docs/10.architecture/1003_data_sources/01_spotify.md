@@ -11,42 +11,31 @@ Spotifyの再生履歴を取り込み、**分析（Analytics）** と **想起�
 
 ## 2. データ構造 (Input)
 
-### 2.1 取得する情報
-Spotify API (`Get Recently Played Tracks`, `Get Track`) から以下を取得：
+Spotify API から以下を取得：
 
-- `track_id`, `track_name`, `artist_name`, `album_name`
+### 2.1 Recently Played
 - `played_at` (ISO8601)
-- `duration_ms`
-- `features` (tempo, valence, energy, etc.)
+- `track` (id, name, album, artists, duration_ms, popularity, explicit)
+
+### 2.2 Track Master
+- `track_id`, `name`
+- `artist_ids`, `artist_names`
+- `album_id`, `album_name`
+- `duration_ms`, `popularity`, `explicit`, `preview_url`
+
+### 2.3 Artist Master
+- `artist_id`, `name`
+- `genres`
+- `popularity`, `followers_total`
 
 ---
 
-## 3. SQL Schema (Supabase)
-
-### 3.1 `events` テーブルへのマッピング
-
-再生ログはすべて `events` テーブルに格納する。
-
-| Column | Value | 備考 |
-|---|---|---|
-| `source` | `'spotify'` | |
-| `category` | `'music'` | |
-| `occurred_at_utc` | `played_at` | |
-| `data` | `{ "track_name": "...", "artist": "...", "features": {...} }` | |
-| `metadata` | `{ "context_uri": "...", "device": "..." }` | |
-
-**検索・分析用クエリ例**:
-- 「昨日何曲聴いた？」 → `SELECT COUNT(*) FROM events ...`
-- 「一番聴いているアーティストは？」 → `SELECT data->>'artist', COUNT(*) ... GROUP BY 1 ...`
-
----
-
-## 4. Semantification & Vectorization (Daily Summary)
+## 3. Semantification & Vectorization (Daily Summary)
 
 **個別の再生ログはベクトル化しない**。
 代わりに「1日のリスニング傾向」を文章化してベクトル化する。
 
-### 4.1 要約プロセス (Daily Batch)
+### 3.1 要約プロセス (Daily Batch)
 
 1. **集計**: その日の再生ログをSupabaseから取得。
    - 総再生時間
@@ -66,7 +55,7 @@ Spotify API (`Get Recently Played Tracks`, `Get Track`) から以下を取得：
 
 ---
 
-## 5. Agent Query Strategy
+## 4. Agent Query Strategy
 
 ユーザーの質問に応じて、Agentがツールを選択する。
 
@@ -79,7 +68,7 @@ Spotify API (`Get Recently Played Tracks`, `Get Track`) から以下を取得：
 
 ---
 
-## 6. 実装ステップ
+## 5. 実装ステップ
 
 1. **Collector**: Spotify API -> Supabase `events` へのInsert
 2. **Summarizer**: Supabase -> LLM -> Qdrant への日次バッチ
@@ -87,7 +76,8 @@ Spotify API (`Get Recently Played Tracks`, `Get Track`) から以下を取得：
 
 ---
 
-## 7. 考慮事項
+## 6. 考慮事項
 
-- **Audio Features**: `valence` (ポジティブ度) や `energy` は、ムード判定に非常に有用なため、必ず取得して `data` カラムに入れる。
-- **Explicit Content**: フィルタリングが必要な場合、SQLの `WHERE data->>'explicit' = 'false'` で対応可能。
+- **Audio Features**: Spotify API で提供終了しているため取得しない。
+- **Genres**: アーティストに依存するため空配列が多い。集計時は "unknown" として扱う。
+- **Preview URL**: 権利都合で null が多い。UI 側で存在チェックが必須。

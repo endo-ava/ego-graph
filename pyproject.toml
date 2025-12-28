@@ -29,6 +29,9 @@ testpaths = ["ingest/tests", "backend/tests", "shared/tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = [
+    "integration: Integration tests (deselect with '-m \"not integration\"')",
+]
 
 [dependency-groups]
 dev = [

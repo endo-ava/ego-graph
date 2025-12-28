@@ -26,22 +26,23 @@
   │   └── spotify/
   │       └── plays/   # Spotify 再生ログ (year={yyyy}/month={mm}/...)
   ├── master/          # 非時系列・マスタデータ (Enrichment)
-  │   └── lastfm/      # Last.fm メタデータ (tracks/, artists/)
+  │   └── spotify/     # Spotify マスター (tracks/, artists/)
   ├── raw/             # 生データ (Audit / Reprocessing)
-  │   ├── spotify/     # API レスポンス (JSON)
-  │   └── lastfm/      # API レスポンス (JSON)
+  │   └── spotify/     # API レスポンス (JSON)
   └── state/           # 進捗管理 (Cursors)
       ├── spotify_ingest_state.json
-      └── lastfm_ingest_state.json
+      └── lastfm_ingest_state.json  # Deprecated
   ```
 
 - **Spotify Archives**:
   - 再生履歴の事実データ（Parquet）。
   - Path: `s3://{bucket}/events/spotify/plays/year={yyyy}/month={mm}/{uuid}.parquet`
-- **Last.fm Enrichment**:
-  - 楽曲・アーティストのメタデータ補充（Parquet）。
-  - Path: `s3://{bucket}/master/lastfm/{tracks|artists}/year={yyyy}/month={mm}/{uuid}.parquet`
-  - ※マスタデータだが、管理・パフォーマンス（一覧取得の高速化）のため年月パーティションを導入。
+- **Spotify Master**:
+  - 楽曲・アーティストのマスターデータ（Parquet）。
+  - Track Path: `s3://{bucket}/master/spotify/tracks/year={yyyy}/month={mm}/{uuid}.parquet`
+  - Artist Path: `s3://{bucket}/master/spotify/artists/{uuid}.parquet`
+- **Last.fm**:
+  - Deprecated。ジョブ停止中のため新規データは投入しない。
 
 - **State Management**:
   - インジェストの進捗管理ファイル。
@@ -78,9 +79,12 @@ CREATE SCHEMA IF NOT EXISTS ops;   -- ingest状態・ログ
 - **Spotify History (`mart.spotify_plays`)**
   - **役割**: 履歴の検索・集計用ビュー。R2上のParquetを参照。
   - **主な項目**: `play_id`, `track_name`, `played_at`, `artist_names`.
-- **Last.fm Metadata (`mart.lastfm_tracks`, `mart.lastfm_artists`)**
-  - **役割**: 楽曲・アーティストの詳細属性（タグ・再生数等）。
-  - **主な項目**: `track_name`, `artist_name`, `playcount`, `tags`, `listeners`.
+- **Spotify Master (`mart.spotify_tracks`, `mart.spotify_artists`)**
+  - **役割**: 楽曲・アーティストの詳細属性（genres, popularity 等）。
+  - **主な項目**: `track_id`, `name`, `genres`, `popularity`, `followers_total`.
+- **Spotify Enriched (`mart.spotify_plays_enriched`)**
+  - **役割**: 再生履歴にマスターデータを付与した分析用ビュー。
+  - **主な項目**: `play_id`, `played_at_utc`, `track_id`, `genres`, `preview_url`.
 - **Daily Summaries (`mart.daily_summaries`)**
   - **役割**: エージェントが生成した日次サマリーの正本（テキスト）。
   - **主な項目**: `summary_id`, `date`, `summary_text`, `stats_json`.

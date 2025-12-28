@@ -18,6 +18,7 @@ class TestSpotifyStorage(unittest.TestCase):
             bucket_name="test-bucket",
             raw_path="raw/",
             events_path="events/",
+            master_path="master/",
         )
 
     def tearDown(self):
@@ -87,3 +88,43 @@ class TestSpotifyStorage(unittest.TestCase):
         call_args = self.mock_s3.put_object.call_args[1]
         self.assertEqual(call_args["Key"], "state/spotify_ingest_state.json")
         self.assertEqual(json.loads(call_args["Body"]), state)
+
+    def test_save_master_parquet_with_partition(self):
+        # Arrange: 保存するデータの準備
+        data = [{"track_id": "t1", "name": "Song A"}]
+
+        # Act: パーティション付きで保存を実行
+        with patch("ingest.spotify.storage.pd.DataFrame.to_parquet") as _:
+            key = self.storage.save_master_parquet(
+                data, prefix="spotify/tracks", year=2024, month=1
+            )
+
+            # Assert: 保存結果を検証
+            self.mock_s3.put_object.assert_called_once()
+            call_args = self.mock_s3.put_object.call_args[1]
+            self.assertEqual(call_args["Bucket"], "test-bucket")
+            self.assertTrue(
+                call_args["Key"].startswith(
+                    "master/spotify/tracks/year=2024/month=01/"
+                )
+            )
+            self.assertTrue(call_args["Key"].endswith(".parquet"))
+            self.assertEqual(call_args["ContentType"], "application/octet-stream")
+            self.assertIsNotNone(key)
+
+    def test_save_master_parquet_without_partition(self):
+        # Arrange: 保存するデータの準備
+        data = [{"artist_id": "a1", "name": "Artist A"}]
+
+        # Act: パーティションなしで保存を実行
+        with patch("ingest.spotify.storage.pd.DataFrame.to_parquet") as _:
+            key = self.storage.save_master_parquet(data, prefix="spotify/artists")
+
+            # Assert: 保存結果を検証
+            self.mock_s3.put_object.assert_called_once()
+            call_args = self.mock_s3.put_object.call_args[1]
+            self.assertEqual(call_args["Bucket"], "test-bucket")
+            self.assertTrue(call_args["Key"].startswith("master/spotify/artists/"))
+            self.assertTrue(call_args["Key"].endswith(".parquet"))
+            self.assertEqual(call_args["ContentType"], "application/octet-stream")
+            self.assertIsNotNone(key)

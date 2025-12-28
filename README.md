@@ -35,10 +35,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 
 # Run Ingestion (Spotify example)
-uv run python ingest/spotify_r2_main.py
-
-# Enrich Data (Last.fm example)
-uv run python ingest/lastfm_r2_main.py
+uv run python -m ingest.spotify_r2_main
 
 # Query Data (CLI)
 uv run duckdb
