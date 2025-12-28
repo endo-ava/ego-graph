@@ -52,7 +52,7 @@ class TestMessage:
             Message(role=invalid_role, content="Test")
 
     def test_missing_content_is_allowed(self):
-        """contentがNoneでも許可されることを確認（tool callsのみの場合）。"""
+        """contentがNoneでも許可されることを確認(tool callsのみの場合)。"""
         # Arrange & Act: contentなしのメッセージを作成
         message = Message(role="assistant", content=None)
 

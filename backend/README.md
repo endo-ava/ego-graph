@@ -167,6 +167,54 @@ backend/
 
 ---
 
+## MVP Status & Roadmap
+
+現在のバックエンドは **MVP (Minimum Viable Product)** フェーズです。
+基本的なデータアクセスとLLM連携の基盤は整っていますが、自律的なエージェントループは未実装です。
+
+### ✅ Implemented (MVP)
+- **Core**: FastAPI + DuckDB (`:memory:`) サーバー
+- **Data Access**: R2上のParquetに対するステートレスSQLクエリ
+- **Direct API**: 統計情報（トップトラック、視聴推移）を取得するREST API
+- **LLM Integration**: OpenAI/Anthropic への統一インターフェース
+- **Tool Definitions**: LLMが利用可能なツールの定義とスキーマ生成
+- **Chat API (Phase 1)**: ユーザーの意図を理解し、**「どのツールを呼ぶべきか」**を判断して返すところまで
+
+### 🚧 TODO / Future Work
+- **Server-side ReAct Loop**: サーバー側でツールを実行し、結果を再入力して最終回答を生成するループ
+- **Streaming Response**: LLMの生成テキストを逐次ストリーミング
+- **More Tools**: 詳細な検索、フィルタリング、プレイリスト作成などのツール追加
+- **Caching**: 頻繁なクエリ結果のキャッシュ（Redis or In-memory）
+
+---
+
+## Chat Processing Flow (Detailed)
+
+チャットAPI (`POST /v1/chat`) における処理の流れは以下の通りです。
+現在は **Step 5** まで実装されています。
+
+### Current Flow (Decision Making)
+
+1.  **User Request**: クライアントがメッセージを送信
+    `POST /v1/chat {"messages": [{"role": "user", "content": "昨日のトップトラックは？"}]}`
+2.  **Tool Registration**: サーバーが利用可能なツール（`get_top_tracks`等）を準備
+3.  **LLM Inference**: ユーザーのメッセージとツール定義をLLMに送信
+4.  **Decision Making**: LLMが「ツール呼び出しが必要」と判断
+5.  **API Response**: LLMの判断（`tool_calls`）を**そのままクライアントに返却**
+    - サーバーはまだツールを実行しません。
+    - クライアントは「ツールを実行すべき」というJSONを受け取ります。
+
+### Future Flow (ReAct Loop)
+
+将来的（またはクライアント実装次第）には、以下のループが構築されます：
+
+6.  **Tool Execution**: サーバー（またはクライアント）が `tool_calls` に従って関数を実行
+    - ここでDuckDBがR2にアクセスし、実データを取得
+7.  **Follow-up Inference**: ツール実行結果をメッセージ履歴に追加し、再度LLMに問い合わせ
+8.  **Final Response**: LLMがデータに基づいて自然言語の回答を生成
+
+---
+
 ## トラブルシューティング
 
 ### サーバーが起動しない

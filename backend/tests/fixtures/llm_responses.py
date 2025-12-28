@@ -1,7 +1,7 @@
 """モックLLMレスポンス。"""
 
 from typing import Any, Dict, List, Optional
-
+import json
 
 def get_mock_openai_response(
     content: str = "Test response", tool_calls: Optional[List[Dict[str, Any]]] = None
@@ -52,7 +52,6 @@ def get_mock_openai_tool_call_response(tool_name: str, tool_arguments: Dict[str,
     Returns:
         ツール呼び出しを含むOpenAI API形式のレスポンス辞書
     """
-    import json
 
     tool_calls = [
         {

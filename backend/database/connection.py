@@ -61,6 +61,11 @@ class DuckDBConnection:
             # R2認証情報の設定（CREATE SECRET）
             parsed = urlparse(self.r2_config.endpoint_url)
             endpoint = parsed.netloc or parsed.path
+            if not endpoint:
+                raise ValueError(
+                    f"Invalid R2 endpoint URL: '{self.r2_config.endpoint_url}'. "
+                    "Could not extract hostname or path."
+                )
             self.conn.execute(
                 """
                 CREATE SECRET (
