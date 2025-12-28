@@ -7,7 +7,7 @@ LLMを介さず、直接データを取得するための汎用REST APIエンド
 import logging
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.api.deps import get_config, get_db_connection, verify_api_key
@@ -66,7 +66,6 @@ async def get_top_tracks_endpoint(
     """
     # 日付範囲の検証
     if start_date > end_date:
-        from fastapi import HTTPException
         raise HTTPException(
             status_code=400,
             detail="start_date must be on or before end_date"
@@ -106,7 +105,6 @@ async def get_listening_stats_endpoint(
     """
     # 日付範囲の検証
     if start_date > end_date:
-        from fastapi import HTTPException
         raise HTTPException(
             status_code=400,
             detail="start_date must be on or before end_date"

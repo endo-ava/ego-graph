@@ -77,7 +77,7 @@ def get_top_tracks(
     query = """
         SELECT
             track_name,
-            artist_names[1] as artist,
+            CASE WHEN len(artist_names) >= 1 THEN artist_names[1] ELSE NULL END as artist,
             COUNT(*) as play_count,
             SUM(ms_played) / 60000.0 as total_minutes
         FROM read_parquet(?)

@@ -36,24 +36,16 @@ class LastFmSchema:
         # スキーマの存在を確認
         conn.execute("CREATE SCHEMA IF NOT EXISTS mart")
 
-        # トラックビューの作成（プレースホルダーではなく直接埋め込み）
+        # トラックビューの作成（パラメータ化クエリを使用）
         try:
-            tracks_view_sql = f"""
-                CREATE OR REPLACE VIEW mart.lastfm_tracks AS
-                SELECT * FROM read_parquet('{tracks_glob}', hive_partitioning = 1)
-            """
-            conn.execute(tracks_view_sql)
+            conn.execute(LastFmSchema.MART_TRACKS_VIEW, [tracks_glob])
             logger.info(f"Created view mart.lastfm_tracks using {tracks_glob}")
         except Exception as e:
             logger.warning(f"Could not create mart.lastfm_tracks: {e}")
 
-        # アーティストビューの作成（プレースホルダーではなく直接埋め込み）
+        # アーティストビューの作成（パラメータ化クエリを使用）
         try:
-            artists_view_sql = f"""
-                CREATE OR REPLACE VIEW mart.lastfm_artists AS
-                SELECT * FROM read_parquet('{artists_glob}', hive_partitioning = 1)
-            """
-            conn.execute(artists_view_sql)
+            conn.execute(LastFmSchema.MART_ARTISTS_VIEW, [artists_glob])
             logger.info(f"Created view mart.lastfm_artists using {artists_glob}")
         except Exception as e:
             logger.warning(f"Could not create mart.lastfm_artists: {e}")

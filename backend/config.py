@@ -74,9 +74,9 @@ class BackendConfig(BaseSettings):
         # R2設定のロード
         try:
             config.r2 = R2Config()
-        except (ValidationError, ValueError):
+        except (ValidationError, ValueError) as e:
             logging.error("R2 config is required for backend operation")
-            raise ValueError("R2 configuration is missing. Please set R2_* env vars.")
+            raise ValueError("R2 configuration is missing. Please set R2_* env vars.") from e
 
         # ロギング設定
         logging.basicConfig(

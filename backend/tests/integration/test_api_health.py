@@ -15,7 +15,7 @@ class TestHealthEndpoint:
         # モックDB接続を作成
         mock_conn = MagicMock()
         mock_result = MagicMock()
-        mock_result.fetchone.return_value = [100]  # カウント結果
+        mock_result.fetchone.return_value = [1]  # SELECT 1の結果
         mock_conn.execute.return_value = mock_result
 
         mock_db_connection = MagicMock()
@@ -34,7 +34,7 @@ class TestHealthEndpoint:
             assert data["status"] == "ok"
             assert "duckdb" in data
             assert "r2" in data
-            assert data["total_plays"] == 100
+            assert data["data_available"] is True
         finally:
             # クリーンアップ
             app.dependency_overrides.clear()
@@ -46,7 +46,7 @@ class TestHealthEndpoint:
 
         mock_conn = MagicMock()
         mock_result = MagicMock()
-        mock_result.fetchone.return_value = [100]
+        mock_result.fetchone.return_value = [1]  # SELECT 1の結果
         mock_conn.execute.return_value = mock_result
 
         mock_db_connection = MagicMock()

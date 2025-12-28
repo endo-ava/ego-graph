@@ -89,7 +89,7 @@ class TestBackendConfig:
         assert config.api_key.get_secret_value() == "custom-key"
         assert config.log_level == "DEBUG"
 
-    def test_from_env_missing_r2_raises_error(self, monkeypatch):
+    def test_from_env_missing_r2_raises_error(self):
         """R2設定が不足している場合のエラー。"""
         # Arrange: R2Config()の初期化をモックしてValidationErrorを発生させる
         from unittest.mock import patch

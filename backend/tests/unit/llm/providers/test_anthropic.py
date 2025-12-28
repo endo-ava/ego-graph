@@ -148,14 +148,15 @@ class TestAnthropicProvider:
             Message(role="user", content="Hello"),
         ]
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        # _get_client()をモックして共有クライアントを返す
+        with patch.object(provider, "_get_client") as mock_get_client:
             mock_client_instance = AsyncMock()
-            mock_client_class.return_value.__aenter__.return_value = mock_client_instance
+            mock_get_client.return_value = mock_client_instance
 
             # レスポンスモック
-            mock_response = AsyncMock()
+            mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = {
+            mock_response.json = MagicMock(return_value={
                 "id": "msg_test",
                 "type": "message",
                 "role": "assistant",
@@ -163,7 +164,8 @@ class TestAnthropicProvider:
                 "model": "claude-3-5-sonnet-20241022",
                 "stop_reason": "end_turn",
                 "usage": {"input_tokens": 10, "output_tokens": 5},
-            }
+            })
+            mock_response.raise_for_status = MagicMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
 
             # Act: チャット補完を実行
@@ -191,14 +193,15 @@ class TestAnthropicProvider:
 
         messages = [Message(role="user", content="Hello")]
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        # _get_client()をモックして共有クライアントを返す
+        with patch.object(provider, "_get_client") as mock_get_client:
             mock_client_instance = AsyncMock()
-            mock_client_class.return_value.__aenter__.return_value = mock_client_instance
+            mock_get_client.return_value = mock_client_instance
 
             # レスポンスモック
-            mock_response = AsyncMock()
+            mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = {
+            mock_response.json = MagicMock(return_value={
                 "id": "msg_test",
                 "type": "message",
                 "role": "assistant",
@@ -206,7 +209,8 @@ class TestAnthropicProvider:
                 "model": "claude-3-5-sonnet-20241022",
                 "stop_reason": "end_turn",
                 "usage": {"input_tokens": 10, "output_tokens": 20},
-            }
+            })
+            mock_response.raise_for_status = MagicMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
 
             # Act: チャット補完を実行

@@ -32,7 +32,7 @@ async def health_check(
             "status": "ok",
             "duckdb": "connected",
             "r2": "accessible",
-            "total_plays": 12345
+            "data_available": true
         }
     """
     try:

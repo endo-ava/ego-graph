@@ -140,32 +140,37 @@ class AnthropicProvider(BaseLLMProvider):
         # テキストコンテンツを抽出
         text_content = ""
         for block in content_blocks:
-            if block["type"] == "text":
-                text_content += block["text"]
+            if block.get("type") == "text":
+                text_content += block.get("text", "")
 
         # ツール呼び出しを抽出
         tool_calls = None
-        tool_use_blocks = [b for b in content_blocks if b["type"] == "tool_use"]
+        tool_use_blocks = [b for b in content_blocks if b.get("type") == "tool_use"]
         if tool_use_blocks:
             tool_calls = [
-                ToolCall(id=block["id"], name=block["name"], parameters=block["input"])
+                ToolCall(
+                    id=block.get("id", ""),
+                    name=block.get("name", ""),
+                    parameters=block.get("input", {}),
+                )
                 for block in tool_use_blocks
             ]
 
         # Usage情報の変換
         usage = None
         if "usage" in raw:
+            usage_data = raw.get("usage", {})
             usage = {
-                "prompt_tokens": raw["usage"]["input_tokens"],
-                "completion_tokens": raw["usage"]["output_tokens"],
-                "total_tokens": raw["usage"]["input_tokens"]
-                + raw["usage"]["output_tokens"],
+                "prompt_tokens": usage_data.get("input_tokens", 0),
+                "completion_tokens": usage_data.get("output_tokens", 0),
+                "total_tokens": usage_data.get("input_tokens", 0)
+                + usage_data.get("output_tokens", 0),
             }
 
         return ChatResponse(
-            id=raw["id"],
+            id=raw.get("id", ""),
             message=Message(role="assistant", content=text_content),
             tool_calls=tool_calls,
             usage=usage,
-            finish_reason=raw["stop_reason"],
+            finish_reason=raw.get("stop_reason"),
         )
