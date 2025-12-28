@@ -1,8 +1,8 @@
 """Tests for Last.fm data transformation."""
 
 from datetime import datetime, timezone
-import pytest
-from ingest.lastfm.transform import transform_track_info, transform_artist_info
+
+from ingest.lastfm.transform import transform_artist_info, transform_track_info
 
 
 def test_transform_track_info():

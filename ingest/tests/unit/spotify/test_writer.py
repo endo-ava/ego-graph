@@ -1,7 +1,6 @@
 """DuckDB ライターのテスト。"""
 
 from ingest.spotify.writer import SpotifyDuckDBWriter
-
 from ingest.tests.fixtures.spotify_responses import get_mock_recently_played
 
 
@@ -99,6 +98,7 @@ def test_play_id_generation(temp_db):
     result = temp_db.execute("SELECT play_id FROM raw.spotify_plays").fetchone()
     play_id = result[0]
 
-    # Assert: play_id に期待される情報（タイムスタンプと track_id）が含まれていることを検証
+    # Assert: play_id に期待される情報
+    # （タイムスタンプと track_id）が含まれていることを検証
     assert "2025-12-14T02:30:00.000Z" in play_id
     assert "3n3Ppam7vgaVa1iaRUc9Lp" in play_id

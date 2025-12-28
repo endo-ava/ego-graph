@@ -1,0 +1,92 @@
+"""FastAPI dependency functions.
+
+設定の取得、DB接続ファクトリ、認証などの依存関数を提供します。
+"""
+
+import logging
+import secrets
+from typing import Generator, Optional
+
+from fastapi import Depends, Header, HTTPException
+
+from backend.config import BackendConfig
+from backend.database.connection import DuckDBConnection
+
+logger = logging.getLogger(__name__)
+
+# グローバル設定（1回だけロード）
+_config: Optional[BackendConfig] = None
+
+
+def get_config() -> BackendConfig:
+    """Backend設定を取得します。
+
+    初回呼び出し時に環境変数から設定をロードし、キャッシュします。
+
+    Returns:
+        BackendConfig
+
+    Raises:
+        ValueError: 必須設定が不足している場合
+    """
+    global _config
+    if _config is None:
+        logger.info("Loading backend configuration")
+        _config = BackendConfig.from_env()
+    return _config
+
+
+def get_db_connection(
+    config: BackendConfig = Depends(get_config),
+) -> Generator[DuckDBConnection, None, None]:
+    """DuckDB接続ファクトリを取得します。
+
+    コンテキストマネージャーとして使用するDuckDBConnectionを返します。
+
+    Args:
+        config: Backend設定
+
+    Yields:
+        DuckDBConnection
+
+    Raises:
+        ValueError: R2設定が不足している場合
+    """
+    if not config.r2:
+        raise ValueError("R2 configuration is required")
+
+    connection = DuckDBConnection(config.r2)
+    try:
+        yield connection
+    finally:
+        # 接続が開いている場合は明示的にクローズ
+        if connection.conn is not None:
+            connection.conn.close()
+            connection.conn = None
+            logger.debug("Explicitly closed DuckDB connection in dependency cleanup")
+
+
+async def verify_api_key(
+    x_api_key: Optional[str] = Header(None),
+    config: BackendConfig = Depends(get_config),
+) -> None:
+    """API Key認証（オプショナル）。
+
+    設定でBACKEND_API_KEYが指定されている場合のみ認証を行います。
+
+    Args:
+        x_api_key: X-API-Keyヘッダーの値
+        config: Backend設定
+
+    Raises:
+        HTTPException: 認証に失敗した場合（401）
+    """
+    # API Keyが設定されていない場合は認証不要
+    if config.api_key is None:
+        return
+
+    # API Keyが設定されている場合は検証（timing attack対策）
+    if not x_api_key or not secrets.compare_digest(
+        str(x_api_key), str(config.api_key.get_secret_value())
+    ):
+        raise HTTPException(status_code=401, detail="Invalid API key")

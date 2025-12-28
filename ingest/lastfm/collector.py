@@ -4,7 +4,6 @@ Deprecated: Last.fm 連携は一時停止中。
 """
 
 import logging
-import time
 from typing import Any
 
 import pylast

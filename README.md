@@ -10,6 +10,7 @@ EgoGraphは、個人のデジタルライフログ（Spotify, Web, Bank, etc.）
 ## 特徴
 
 - **Hybrid Architecture**: **DuckDB** (分析) と **Qdrant** (検索) のベストミックス構成。
+- **Data Enrichment**: Last.fm 等の外部 API と連携し、個人のログに豊かなコンテキストを付与。
 - **Cost Effective**: 安価なVPSと無料のマネージドサービスで動作する、個人に最適な設計。
 - **Mobile First**: スマホからいつでも自分のデータにアクセス・対話可能。
 

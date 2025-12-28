@@ -1,3 +1,234 @@
-# Backend Service
+# EgoGraph Backend
 
-This is a placeholder for the backend service (FastAPI).
+ハイブリッドBackend: **LLMエージェント機能** + **汎用データアクセスREST API**
+
+## 概要
+
+EgoGraphのBackendは、以下の2つの使い方に対応しています：
+
+1. **LLMエージェント**: チャットでデータを分析・取得
+2. **汎用データアクセスAPI**: LLMを介さず直接データを取得
+
+## アーキテクチャ
+
+- **ステートレスDuckDB**: `:memory:`モードでR2のParquetを直接クエリ
+- **マルチLLM対応**: OpenAI, Anthropic, OpenRouter に対応
+- **MCP風ツール**: LLMがデータにアクセスするためのツール設計
+
+## セットアップ
+
+### 1. 依存関係のインストール
+
+```bash
+# プロジェクトルートで
+uv sync
+```
+
+### 2. 環境変数の設定
+
+`.env` ファイルに以下を追加：
+
+```bash
+# Backend Server
+BACKEND_HOST=127.0.0.1
+BACKEND_PORT=8000
+BACKEND_RELOAD=true
+BACKEND_API_KEY=  # オプション（空=認証なし）
+
+# LLM Configuration（チャット機能を使う場合のみ）
+LLM_PROVIDER=openai  # openai | anthropic | openrouter
+LLM_API_KEY=sk-...
+LLM_MODEL_NAME=gpt-4o-mini
+LLM_TEMPERATURE=0.7
+LLM_MAX_TOKENS=2048
+
+# R2 Configuration（必須）
+R2_ENDPOINT_URL=https://...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET_NAME=egograph
+R2_EVENTS_PATH=events/
+```
+
+## 起動方法
+
+```bash
+# 開発モード（自動リロード）
+uv run python backend/main.py
+
+# または
+uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+サーバー起動後、以下にアクセス：
+- API Docs: http://localhost:8000/docs
+- Health Check: http://localhost:8000/health
+
+## APIエンドポイント
+
+### システム
+
+#### `GET /health`
+
+ヘルスチェック。DuckDB + R2接続を確認。
+
+```bash
+curl http://localhost:8000/health
+```
+
+**レスポンス例:**
+```json
+{
+  "status": "ok",
+  "duckdb": "connected",
+  "r2": "accessible",
+  "total_plays": 91
+}
+```
+
+---
+
+### 汎用データアクセスAPI
+
+#### `GET /v1/data/spotify/stats/top-tracks`
+
+指定期間で最も再生された曲を取得。
+
+**パラメータ:**
+- `start_date` (required): 開始日（YYYY-MM-DD）
+- `end_date` (required): 終了日（YYYY-MM-DD）
+- `limit` (optional): 取得数（デフォルト: 10, 最大: 100）
+
+```bash
+curl "http://localhost:8000/v1/data/spotify/stats/top-tracks?start_date=2025-12-01&end_date=2025-12-31&limit=5"
+```
+
+**レスポンス例:**
+```json
+[
+  {
+    "track_name": "Clean.Clean up",
+    "artist": "コメティック",
+    "play_count": 2,
+    "total_minutes": 7.04
+  }
+]
+```
+
+#### `GET /v1/data/spotify/stats/listening`
+
+期間別の視聴統計を取得。
+
+**パラメータ:**
+- `start_date` (required): 開始日（YYYY-MM-DD）
+- `end_date` (required): 終了日（YYYY-MM-DD）
+- `granularity` (optional): 集計単位（"day", "week", "month"、デフォルト: "day"）
+
+---
+
+### チャット（LLMエージェント用）
+
+#### `POST /v1/chat`
+
+LLMエージェントとのチャット。ツールを使ってデータにアクセス。
+
+```bash
+curl -X POST http://localhost:8000/v1/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"role": "user", "content": "2025年12月に最も聴いた曲は？"}
+    ]
+  }'
+```
+
+---
+
+## 実装詳細
+
+### レイヤー構成
+
+```
+backend/
+├── config.py          # 設定管理（LLM + Backend設定）
+├── database/          # DuckDB接続とクエリ
+├── tools/             # MCP風ツール（get_top_tracks等）
+├── llm/               # LLM統合（OpenAI, Anthropic）
+├── api/               # FastAPIエンドポイント
+└── main.py            # FastAPIアプリ
+```
+
+### 主要な設計判断
+
+1. **ステートレスDuckDB**: `:memory:`で毎回新規接続、R2から直接Parquetを読む
+2. **MCP風ツール**: フルMCPサーバーではなく、シンプルなPython関数として実装
+3. **プロバイダー非依存**: 手動実装で完全制御（litellm等を使わない）
+4. **ハイブリッドAPI**: 会話的なLLMエージェント機能と、直接データアクセス用REST APIの両方を提供
+
+---
+
+## MVP Status & Roadmap
+
+現在のバックエンドは **MVP (Minimum Viable Product)** フェーズです。
+基本的なデータアクセスとLLM連携の基盤は整っていますが、自律的なエージェントループは未実装です。
+
+### ✅ Implemented (MVP)
+- **Core**: FastAPI + DuckDB (`:memory:`) サーバー
+- **Data Access**: R2上のParquetに対するステートレスSQLクエリ
+- **Direct API**: 統計情報（トップトラック、視聴推移）を取得するREST API
+- **LLM Integration**: OpenAI/Anthropic への統一インターフェース
+- **Tool Definitions**: LLMが利用可能なツールの定義とスキーマ生成
+- **Chat API (Phase 1)**: ユーザーの意図を理解し、**「どのツールを呼ぶべきか」**を判断して返すところまで
+
+### 🚧 TODO / Future Work
+- **Server-side ReAct Loop**: サーバー側でツールを実行し、結果を再入力して最終回答を生成するループ
+- **Streaming Response**: LLMの生成テキストを逐次ストリーミング
+- **More Tools**: 詳細な検索、フィルタリング、プレイリスト作成などのツール追加
+- **Caching**: 頻繁なクエリ結果のキャッシュ（Redis or In-memory）
+
+---
+
+## Chat Processing Flow (Detailed)
+
+チャットAPI (`POST /v1/chat`) における処理の流れは以下の通りです。
+現在は **Step 5** まで実装されています。
+
+### Current Flow (Decision Making)
+
+1.  **User Request**: クライアントがメッセージを送信
+    `POST /v1/chat {"messages": [{"role": "user", "content": "昨日のトップトラックは？"}]}`
+2.  **Tool Registration**: サーバーが利用可能なツール（`get_top_tracks`等）を準備
+3.  **LLM Inference**: ユーザーのメッセージとツール定義をLLMに送信
+4.  **Decision Making**: LLMが「ツール呼び出しが必要」と判断
+5.  **API Response**: LLMの判断（`tool_calls`）を**そのままクライアントに返却**
+    - サーバーはまだツールを実行しません。
+    - クライアントは「ツールを実行すべき」というJSONを受け取ります。
+
+### Future Flow (ReAct Loop)
+
+将来的（またはクライアント実装次第）には、以下のループが構築されます：
+
+6.  **Tool Execution**: サーバー（またはクライアント）が `tool_calls` に従って関数を実行
+    - ここでDuckDBがR2にアクセスし、実データを取得
+7.  **Follow-up Inference**: ツール実行結果をメッセージ履歴に追加し、再度LLMに問い合わせ
+8.  **Final Response**: LLMがデータに基づいて自然言語の回答を生成
+
+---
+
+## トラブルシューティング
+
+### サーバーが起動しない
+
+1. 依存関係を確認: `uv sync --package egograph-backend`
+2. 環境変数を確認: `R2_*` が設定されているか
+
+### データが取得できない
+
+1. ヘルスチェックを確認: `curl http://localhost:8000/health`
+2. R2のデータを確認: `uv run python backend/scripts/verify_parquet_read.py`
+3. 日付範囲を確認: データが存在する期間でクエリしているか
+
+### LLMチャットが動かない
+
+1. LLM環境変数を確認: `LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL_NAME`
+2. APIキーが有効か確認

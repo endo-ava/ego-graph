@@ -5,11 +5,10 @@ from unittest.mock import MagicMock, patch
 
 import duckdb
 import pytest
-import responses
 
 from ingest.lastfm.collector import LastFmCollector
 from ingest.lastfm.storage import LastFmStorage
-from ingest.lastfm_r2_main import enrich_tracks, enrich_artists
+from ingest.lastfm_r2_main import enrich_artists, enrich_tracks
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 """EgoGraphのためのユーティリティ関数。"""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -86,7 +86,6 @@ def log_execution_time(func):
     Returns:
         ラップされた関数
     """
-    from datetime import timezone
 
     def wrapper(*args, **kwargs):
         start_time = datetime.now(timezone.utc)
