@@ -75,8 +75,10 @@ class BackendConfig(BaseSettings):
         try:
             config.r2 = R2Config()
         except (ValidationError, ValueError) as e:
-            logging.error("R2 config is required for backend operation")
-            raise ValueError("R2 configuration is missing. Please set R2_* env vars.") from e
+            logging.exception("R2 config is required for backend operation")
+            raise ValueError(
+                "R2 configuration is missing. Please set R2_* env vars."
+            ) from e
 
         # ロギング設定
         logging.basicConfig(
@@ -96,3 +98,7 @@ class BackendConfig(BaseSettings):
             raise ValueError("BACKEND_API_KEY is required for production")
         if not self.llm:
             raise ValueError("LLM configuration is required for production")
+        if self.cors_origins == "*":
+            raise ValueError(
+                "CORS_ORIGINS must be explicitly configured for production (not '*')"
+            )

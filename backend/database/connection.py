@@ -6,6 +6,7 @@ R2のParquetファイルを直接クエリします。
 
 import logging
 from typing import Optional
+from urllib.parse import urlparse
 
 import duckdb
 
@@ -23,7 +24,8 @@ class DuckDBConnection:
     Example:
         >>> r2_config = R2Config.from_env()
         >>> with DuckDBConnection(r2_config) as conn:
-        ...     result = conn.execute("SELECT COUNT(*) FROM read_parquet(?)", [parquet_url])
+        ...     sql = "SELECT COUNT(*) FROM read_parquet(?)"
+        ...     result = conn.execute(sql, [parquet_url])
         ...     count = result.fetchone()[0]
     """
 
@@ -57,7 +59,8 @@ class DuckDBConnection:
             logger.debug("Loaded httpfs extension")
 
             # R2認証情報の設定（CREATE SECRET）
-            endpoint = self.r2_config.endpoint_url.replace("https://", "")
+            parsed = urlparse(self.r2_config.endpoint_url)
+            endpoint = parsed.netloc or parsed.path
             self.conn.execute(
                 """
                 CREATE SECRET (
@@ -77,7 +80,7 @@ class DuckDBConnection:
             )
             logger.debug(f"Configured R2 secret for endpoint: {endpoint}")
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to configure DuckDB connection")
             if self.conn:
                 self.conn.close()

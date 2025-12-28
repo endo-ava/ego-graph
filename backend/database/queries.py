@@ -77,12 +77,14 @@ def get_top_tracks(
     query = """
         SELECT
             track_name,
-            CASE WHEN len(artist_names) >= 1 THEN artist_names[1] ELSE NULL END as artist,
+            CASE
+                WHEN len(artist_names) >= 1 THEN artist_names[1] ELSE NULL
+            END as artist,
             COUNT(*) as play_count,
             SUM(ms_played) / 60000.0 as total_minutes
         FROM read_parquet(?)
         WHERE played_at_utc::DATE BETWEEN ? AND ?
-        GROUP BY track_name, artist_names[1]
+        GROUP BY track_name, artist
         ORDER BY play_count DESC
         LIMIT ?
     """
@@ -129,8 +131,9 @@ def get_listening_stats(
     }
 
     if granularity not in date_format_map:
+        allowed = list(date_format_map.keys())
         raise ValueError(
-            f"Invalid granularity: {granularity}. Must be one of {list(date_format_map.keys())}"
+            f"Invalid granularity: {granularity}. Must be one of {allowed}"
         )
 
     date_format = date_format_map[granularity]
@@ -148,7 +151,10 @@ def get_listening_stats(
     """
 
     logger.debug(
-        f"Executing get_listening_stats: {start_date} to {end_date}, granularity={granularity}"
+        "Executing get_listening_stats: %s to %s, granularity=%s",
+        start_date,
+        end_date,
+        granularity,
     )
     return execute_query(conn, query, [parquet_path, start_date, end_date])
 
@@ -183,13 +189,15 @@ def search_tracks_by_name(
     sql = """
         SELECT
             track_name,
-            artist_names[1] as artist,
+            CASE
+                WHEN len(artist_names) >= 1 THEN artist_names[1] ELSE NULL
+            END as artist,
             COUNT(*) as play_count,
             MAX(played_at_utc)::VARCHAR as last_played
         FROM read_parquet(?)
         WHERE LOWER(track_name) LIKE LOWER(?)
-           OR LOWER(artist_names[1]) LIKE LOWER(?)
-        GROUP BY track_name, artist_names[1]
+           OR (len(artist_names) >= 1 AND LOWER(artist_names[1]) LIKE LOWER(?))
+        GROUP BY track_name, artist
         ORDER BY play_count DESC
         LIMIT ?
     """
