@@ -1,9 +1,11 @@
 import pytest
+
 from ingest.lastfm_r2_main import (
+    _build_candidates_query,
     validate_s3_config_value,
     validate_s3_path_component,
-    _build_candidates_query,
 )
+
 
 class TestValidateS3ConfigValue:
     def test_valid_alphanumeric(self):

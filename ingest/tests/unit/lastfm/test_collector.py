@@ -2,8 +2,9 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 import pylast
+import pytest
+
 from ingest.lastfm.collector import LastFmCollector
 
 
@@ -18,7 +19,8 @@ def test_collector_initialization(mock_pylast_network):
     # Act: コレクターを初期化
     collector = LastFmCollector("key", "secret")
 
-    # Assert: ネットワークが正しい引数で初期化され、レート制限が有効化されていることを検証
+    # Assert: ネットワークが正しい引数で初期化され、
+    # レート制限が有効化されていることを検証
     mock_pylast_network.assert_called_with(api_key="key", api_secret="secret")
     collector.network.enable_rate_limit.assert_called_once()
 

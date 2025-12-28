@@ -1,8 +1,11 @@
 """Config層のテスト。"""
 
+from unittest.mock import patch
+
 import pytest
-from pydantic import ValidationError, SecretStr
-from backend.config import LLMConfig, BackendConfig
+from pydantic import SecretStr, ValidationError
+
+from backend.config import BackendConfig, LLMConfig
 
 
 class TestLLMConfig:
@@ -92,11 +95,18 @@ class TestBackendConfig:
     def test_from_env_missing_r2_raises_error(self):
         """R2設定が不足している場合のエラー。"""
         # Arrange: R2Config()の初期化をモックしてValidationErrorを発生させる
-        from unittest.mock import patch
 
         with patch("backend.config.R2Config") as mock_r2_config:
             mock_r2_config.side_effect = ValidationError.from_exception_data(
-                "R2Config", [{"type": "missing", "loc": ("R2_ENDPOINT_URL",), "msg": "Field required", "input": {}}]
+                "R2Config",
+                [
+                    {
+                        "type": "missing",
+                        "loc": ("R2_ENDPOINT_URL",),
+                        "msg": "Field required",
+                        "input": {},
+                    }
+                ],
             )
 
             # Act & Assert: R2設定不足時にValueErrorが発生することを検証

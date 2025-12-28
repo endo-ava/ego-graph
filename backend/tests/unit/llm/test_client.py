@@ -1,11 +1,12 @@
 """LLM/Client層のテスト。"""
 
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from backend.llm.client import LLMClient
-from backend.llm.models import Message, ChatResponse
-from backend.llm.providers import OpenAIProvider, AnthropicProvider
+from backend.llm.models import ChatResponse, Message
+from backend.llm.providers import AnthropicProvider, OpenAIProvider
 
 
 class TestLLMClient:

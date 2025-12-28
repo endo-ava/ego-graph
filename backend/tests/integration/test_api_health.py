@@ -1,7 +1,6 @@
-"""API/Health統合テスト。"""
-
-import pytest
 from unittest.mock import MagicMock
+
+from backend.api import deps
 
 
 class TestHealthEndpoint:
@@ -9,8 +8,6 @@ class TestHealthEndpoint:
 
     def test_health_check_success(self, test_client, mock_backend_config):
         """ヘルスチェックが成功する。"""
-        from backend.api import deps
-        from backend.main import create_app
 
         # モックDB接続を作成
         mock_conn = MagicMock()
@@ -42,7 +39,6 @@ class TestHealthEndpoint:
 
     def test_health_check_with_v1_prefix(self, test_client, mock_backend_config):
         """/v1/healthエンドポイントでもアクセス可能。"""
-        from backend.api import deps
 
         mock_conn = MagicMock()
         mock_result = MagicMock()
@@ -68,7 +64,6 @@ class TestHealthEndpoint:
 
     def test_health_check_handles_db_error(self, test_client, mock_backend_config):
         """DB接続エラーをハンドリング。"""
-        from backend.api import deps
 
         # DB接続でエラーを発生させる
         mock_db_connection = MagicMock()

@@ -7,17 +7,16 @@ Last.fm API からメタデータを取得して R2 に保存します。
 """
 
 import logging
+import re
 import sys
 from datetime import datetime, timezone
 
 import duckdb
-import re
-from pydantic import ValidationError
 
 from ingest.lastfm.collector import LastFmCollector
+from ingest.lastfm.schema import LastFmSchema
 from ingest.lastfm.storage import LastFmStorage
 from ingest.lastfm.transform import transform_artist_info, transform_track_info
-from ingest.lastfm.schema import LastFmSchema
 from shared import Config, log_execution_time
 
 logger = logging.getLogger(__name__)

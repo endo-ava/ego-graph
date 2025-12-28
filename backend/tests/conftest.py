@@ -1,15 +1,18 @@
 """Backend テスト用の共有 pytest フィクスチャ。"""
 
-import pytest
-import duckdb
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from io import BytesIO
+from unittest.mock import MagicMock, patch
+
+import duckdb
 import pandas as pd
-from datetime import datetime
+import pytest
+from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
+from backend.api import deps
 from backend.config import BackendConfig, LLMConfig
+from backend.main import create_app
 from shared.config import R2Config
-
 
 # ========================================
 # 環境変数クリア（テスト用）
@@ -53,7 +56,6 @@ def clear_env_vars(monkeypatch):
 @pytest.fixture
 def mock_r2_config():
     """モックR2設定。"""
-    from pydantic import SecretStr
 
     # model_construct()を使って検証をスキップして直接構築
     return R2Config.model_construct(
@@ -69,7 +71,6 @@ def mock_r2_config():
 @pytest.fixture
 def mock_llm_config():
     """モックLLM設定。"""
-    from pydantic import SecretStr
 
     # model_construct()を使って検証をスキップして直接構築
     return LLMConfig.model_construct(
@@ -84,7 +85,6 @@ def mock_llm_config():
 @pytest.fixture
 def mock_backend_config(mock_r2_config, mock_llm_config):
     """モックBackend設定。"""
-    from pydantic import SecretStr
 
     # model_construct()を使って検証をスキップして直接構築
     config = BackendConfig.model_construct(
@@ -231,9 +231,6 @@ def mock_httpx_client():
 @pytest.fixture
 def test_client(mock_backend_config):
     """FastAPI TestClient。"""
-    from fastapi.testclient import TestClient
-    from backend.main import create_app
-    from backend.api import deps
 
     # テスト用の設定でアプリを作成
     app = create_app(config=mock_backend_config)

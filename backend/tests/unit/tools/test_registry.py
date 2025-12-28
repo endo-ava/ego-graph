@@ -2,8 +2,8 @@
 
 import pytest
 
+from backend.tools.base import Tool, ToolBase
 from backend.tools.registry import ToolRegistry
-from backend.tools.base import ToolBase, Tool
 
 
 class MockToolA(ToolBase):

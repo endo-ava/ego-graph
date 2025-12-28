@@ -1,7 +1,6 @@
 """API/Data統合テスト。"""
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 class TestTopTracksEndpoint:

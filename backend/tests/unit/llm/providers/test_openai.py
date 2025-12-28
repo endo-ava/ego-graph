@@ -1,10 +1,11 @@
 """LLM/Providers/OpenAI層のテスト。"""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from backend.llm.models import Message
 from backend.llm.providers.openai import OpenAIProvider
-from backend.llm.models import Message, ToolCall
 from backend.tools.base import Tool
 
 

@@ -1,6 +1,6 @@
 """モックLLMレスポンス。"""
 
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 
 def get_mock_openai_response(

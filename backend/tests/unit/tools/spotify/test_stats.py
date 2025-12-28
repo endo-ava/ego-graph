@@ -1,10 +1,11 @@
 """Tools/Spotify/Stats層のテスト。"""
 
-import pytest
-from unittest.mock import MagicMock, patch
 from datetime import date
+from unittest.mock import MagicMock, patch
 
-from backend.tools.spotify.stats import GetTopTracksTool, GetListeningStatsTool
+import pytest
+
+from backend.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
 
 
 class TestGetTopTracksTool:

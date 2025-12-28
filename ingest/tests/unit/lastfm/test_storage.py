@@ -2,9 +2,10 @@
 
 import json
 from unittest.mock import MagicMock, patch
+
 import pytest
-import pandas as pd
 from botocore.exceptions import ClientError
+
 from ingest.lastfm.storage import LastFmStorage
 
 

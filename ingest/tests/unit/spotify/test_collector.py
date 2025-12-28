@@ -1,15 +1,16 @@
 """Spotify コレクタのテスト。"""
 
-import pytest
-import responses
 import re
 
+import responses
+
 from ingest.spotify.collector import SpotifyCollector
-
-from ingest.tests.fixtures.spotify_responses import get_mock_recently_played
-
-
-
+from ingest.tests.fixtures.spotify_responses import (
+    INCREMENTAL_TEST_TIMESTAMPS,
+    get_mock_recently_played,
+    get_mock_recently_played_with_timestamps,
+)
+from shared import iso8601_to_unix_ms
 
 
 @responses.activate
@@ -78,11 +79,6 @@ def test_get_recently_played_empty():
 def test_get_recently_played_with_after_parameter():
     """afterパラメータを使用した増分取得をテストする。"""
     # Arrange: 増分取得用のテスト時刻とモックデータを準備
-    from shared import iso8601_to_unix_ms
-    from ingest.tests.fixtures.spotify_responses import (
-        INCREMENTAL_TEST_TIMESTAMPS,
-        get_mock_recently_played_with_timestamps,
-    )
 
     responses.add(
         responses.POST,
@@ -122,7 +118,6 @@ def test_get_recently_played_with_after_parameter():
 def test_get_recently_played_incremental_no_new_data():
     """増分取得で新しいデータがない場合をテストする。"""
     # Arrange: 新しいデータがない状態をモック
-    from shared import iso8601_to_unix_ms
 
     responses.add(
         responses.POST,

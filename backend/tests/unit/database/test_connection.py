@@ -1,8 +1,9 @@
 """Database/Connection層のテスト。"""
 
-import pytest
+from unittest.mock import patch
+
 import duckdb
-from unittest.mock import patch, MagicMock
+import pytest
 
 from backend.database.connection import DuckDBConnection
 

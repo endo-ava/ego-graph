@@ -1,7 +1,8 @@
 """サンプルParquetデータ生成ユーティリティ。"""
 
-import pandas as pd
 from io import BytesIO
+
+import pandas as pd
 
 
 def save_parquet_to_bytes(df: pd.DataFrame) -> bytes:

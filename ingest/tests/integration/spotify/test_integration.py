@@ -4,15 +4,19 @@ from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock
 
 import pytest
-from pydantic import SecretStr
 import responses
+from pydantic import SecretStr
 
+from ingest import spotify_r2_main
 from ingest.spotify.collector import SpotifyCollector
 from ingest.spotify.schema import SpotifySchema
 from ingest.spotify.writer import SpotifyDuckDBWriter
-from ingest import spotify_r2_main
-
-from ingest.tests.fixtures.spotify_responses import get_mock_recently_played
+from ingest.tests.fixtures.spotify_responses import (
+    INCREMENTAL_TEST_TIMESTAMPS,
+    get_mock_recently_played,
+    get_mock_recently_played_with_timestamps,
+)
+from shared import iso8601_to_unix_ms
 
 
 @pytest.mark.integration
@@ -121,11 +125,6 @@ def test_idempotent_pipeline(tmp_path):
 def test_incremental_pipeline_run(tmp_path):
     """増分取得モードでのパイプライン実行をテストする。"""
     # Arrange: DB と増分テスト用時刻の準備
-    from shared import iso8601_to_unix_ms
-    from ingest.tests.fixtures.spotify_responses import (
-        INCREMENTAL_TEST_TIMESTAMPS,
-        get_mock_recently_played_with_timestamps,
-    )
     db_path = tmp_path / "analytics.duckdb"
 
     # --- 1回目の実行のセットアップ ---
