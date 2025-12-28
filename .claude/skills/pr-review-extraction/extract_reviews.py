@@ -6,6 +6,7 @@ Usage:
     python3 extract-reviews.py <PR_NUMBER>
 
 トークン効率を重視し、レビューコメントを抽出します。
+Resolved状態のコメントは除外されます。
 """
 
 import json
@@ -31,19 +32,77 @@ def run_gh_command(args: list[str]) -> dict | list | None:
         return None
 
 
-def truncate_text(text: str, max_length: int = 100) -> str:
-    """テキストを指定長で切り詰める"""
-    if len(text) <= max_length:
+def truncate_text(text: str, max_length: int | None = 300) -> str:
+    """テキストを指定長で切り詰める（デフォルト300文字、Noneで切り詰めなし）"""
+    if max_length is None or len(text) <= max_length:
         return text
     return text[:max_length] + "..."
 
 
+def run_graphql_query(query: str) -> dict | None:
+    """GitHub GraphQL APIクエリを実行"""
+    try:
+        result = subprocess.run(
+            ["gh", "api", "graphql", "-f", f"query={query}"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return json.loads(result.stdout)
+    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+        print(f"GraphQL query failed: {e}", file=sys.stderr)
+        return None
+
+
+def get_resolved_comment_ids(owner: str, repo: str, pr_number: str) -> set[int]:
+    """GraphQL APIを使ってResolvedなコメントのIDセットを取得"""
+    query = f"""
+    {{
+      repository(owner: "{owner}", name: "{repo}") {{
+        pullRequest(number: {pr_number}) {{
+          reviewThreads(first: 100) {{
+            nodes {{
+              isResolved
+              comments(first: 100) {{
+                nodes {{
+                  databaseId
+                }}
+              }}
+            }}
+          }}
+        }}
+      }}
+    }}
+    """
+
+    result = run_graphql_query(query)
+    if not result:
+        return set()
+
+    resolved_ids = set()
+    try:
+        threads = result['data']['repository']['pullRequest']['reviewThreads']['nodes']
+        for thread in threads:
+            if thread['isResolved']:
+                for comment in thread['comments']['nodes']:
+                    if comment.get('databaseId'):
+                        resolved_ids.add(comment['databaseId'])
+    except (KeyError, TypeError) as e:
+        print(f"Failed to parse GraphQL response: {e}", file=sys.stderr)
+
+    return resolved_ids
+
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python3 extract-reviews.py <PR_NUMBER>")
+        print("Usage: python3 extract-reviews.py <PR_NUMBER> [--full]")
+        print("  --full: Show full comment text without truncation")
         sys.exit(1)
 
     pr_number = sys.argv[1]
+    show_full = "--full" in sys.argv
+    max_length = None if show_full else 300  # Noneは切り詰めなし
+
     print(f"Fetching data for PR #{pr_number}...", file=sys.stderr)
 
     # リポジトリ情報の取得
@@ -53,6 +112,12 @@ def main():
 
     owner = repo_info['owner']['login']
     repo = repo_info['name']
+
+    # Resolved状態のコメントIDを取得
+    print("  Fetching resolved comment IDs...", file=sys.stderr)
+    resolved_ids = get_resolved_comment_ids(owner, repo, pr_number)
+    if resolved_ids:
+        print(f"  Found {len(resolved_ids)} resolved comments (will be excluded)", file=sys.stderr)
 
     # 1. Inline Comments (コード行への指摘)
     print("  Fetching review comments...", file=sys.stderr)
@@ -72,6 +137,7 @@ def main():
     coderabbit_inline = [
         c for c in review_comments
         if 'coderabbitai' in c['user']['login'].lower()
+        and c.get('id') not in resolved_ids  # Resolvedを除外
     ]
 
     if coderabbit_inline:
@@ -82,14 +148,14 @@ def main():
             body = c.get('body', '').replace('\n', ' ')
             url = c.get('html_url', '')
 
-            # 重要な指摘だけを短く表示
-            summary = truncate_text(body, 100)
+            # コメント全体を表示（max_lengthまで）
+            summary = truncate_text(body, max_length)
 
             print(f"- [ ] **{path}:{line}**")
             print(f"  - 指摘: {summary}")
             print(f"  - [View on GitHub]({url})\n")
     else:
-        print("## 🚨 Code Suggestions (Inline)\n\nNo inline comments found.\n")
+        print("## 🚨 Code Suggestions (Inline)\n\nNo unresolved inline comments found.\n")
 
     # --- Summary / Walkthrough ---
     coderabbit_general = [
@@ -113,6 +179,11 @@ def main():
 
     print("\n---")
     print("Generated checklist above. Review and check off items as you address them.")
+
+    # 統計情報
+    total_inline = len([c for c in review_comments if 'coderabbitai' in c.get('user', {}).get('login', '').lower()])
+    unresolved_inline = len(coderabbit_inline)
+    print(f"\n📊 Stats: {unresolved_inline} unresolved / {total_inline} total inline comments", file=sys.stderr)
 
 
 if __name__ == "__main__":

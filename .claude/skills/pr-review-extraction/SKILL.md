@@ -8,34 +8,43 @@ allowed-tools: Bash, Read, Write
 
 レビューコメントを効率的に抽出し、対応すべき項目をチェックリスト化します。
 
+## 主な機能
+
+- **Resolved除外**: Resolved状態のコメントを自動除外（未解決のみ表示）
+- **統計表示**: 未解決/全体のコメント数を表示
+- **GitHub連携**: 各コメントへの直接リンク付き
+- **チェックリスト**: 対応状況を追跡可能
+
 ## 使用方法
 
-1. **レビューの取得**
-   ```bash
-   python3 .claude/skills/pr-review-extraction/extract_reviews.py <PR_NUMBER>
-   ```
+### 基本的な使い方
 
-2. **出力形式**
-   - インラインコメント（コード行への指摘）
-   - サマリーコメント（全体的なレビュー）
-   - チェックリスト形式で未対応項目を管理
+```bash
+# 未解決のレビューコメントを取得（デフォルト: 300文字まで表示）
+python3 .claude/skills/pr-review-extraction/extract_reviews.py <PR_NUMBER>
+```
 
-3. **効率化のポイント**
-   - トークン効率を重視し、重要な指摘のみを抽出
-   - GitHub URLを含めて詳細確認が容易
-   - チェックリストで対応状況を追跡
+### オプション
+
+```bash
+# 完全なコメント表示（切り詰めなし）
+python3 .claude/skills/pr-review-extraction/extract_reviews.py <PR_NUMBER> --full
+```
 
 ## 実行例
 
 ```bash
-# PR #123のレビューを取得
-python3 .claude/skills/pr-review-extraction/extract_reviews.py 123
+# PR #7のレビューを取得（未解決のみ、300文字まで）
+python3 .claude/skills/pr-review-extraction/extract_reviews.py 7
+
+# PR #7のレビューを取得（完全表示）
+python3 .claude/skills/pr-review-extraction/extract_reviews.py 7 --full
 ```
 
 ## 出力例
 
 ```markdown
-# Review Report (PR #123)
+# Review Report (PR #7)
 
 ## 🚨 Code Suggestions (Inline)
 
