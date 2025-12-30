@@ -32,5 +32,5 @@ class ChatResponse(BaseModel):
     id: str
     message: Message
     tool_calls: Optional[list[ToolCall]] = None
-    usage: Optional[dict[str, int]] = None  # tokens情報
+    usage: Optional[dict[str, Any]] = None  # tokens情報（プロバイダーによって構造が異なる）
     finish_reason: str

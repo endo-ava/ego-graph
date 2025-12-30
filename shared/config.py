@@ -15,7 +15,9 @@ class LastFmConfig(BaseSettings):
     """Last.fm API設定。"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=["ingest/.env", ".env"],  # ingest専用
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     api_key: str = Field(..., alias="LASTFM_API_KEY")
@@ -26,7 +28,9 @@ class SpotifyConfig(BaseSettings):
     """Spotify API設定。"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=["ingest/.env", ".env"],  # ingest専用
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     client_id: str = Field(..., alias="SPOTIFY_CLIENT_ID")
@@ -45,7 +49,9 @@ class EmbeddingConfig(BaseSettings):
     """埋め込みモデル設定(ローカル実行)。"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=["ingest/.env", ".env"],  # ingest専用
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     model_name: str = Field("cl-nagoya/ruri-v3-310m", alias="EMBEDDING_MODEL_NAME")
@@ -58,7 +64,9 @@ class QdrantConfig(BaseSettings):
     """Qdrant Cloud設定。"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=["ingest/.env", ".env"],  # ingest専用
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     url: str = Field(..., alias="QDRANT_URL")
@@ -80,7 +88,9 @@ class R2Config(BaseSettings):
     """Cloudflare R2設定 (S3互換)。"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=["backend/.env", "ingest/.env", ".env"],  # 各モジュールの.envを探す
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     endpoint_url: str = Field(..., alias="R2_ENDPOINT_URL")
@@ -96,7 +106,9 @@ class DuckDBConfig(BaseSettings):
     """DuckDB設定。"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=["backend/.env", "ingest/.env", ".env"],  # 複数モジュールで使用
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     db_path: str = Field("data/analytics.duckdb", alias="DUCKDB_PATH")
@@ -110,7 +122,9 @@ class Config(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=["ingest/.env", ".env"],  # 主にingestで使用
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     # ロギング
