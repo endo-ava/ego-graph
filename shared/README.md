@@ -17,9 +17,9 @@ pip install -e ".[dev]"
 ## Usage
 
 ```python
-from egograph.models import UnifiedDataModel, DataSource, DataType
-from egograph.config import Config
-from egograph.utils import batch_items
+from shared.models import UnifiedDataModel, DataSource, DataType
+from shared.config import Config
+from shared.utils import batch_items
 
 # Load configuration
 config = Config.from_env()

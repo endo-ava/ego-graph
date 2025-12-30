@@ -48,6 +48,24 @@ def clear_env_vars(monkeypatch):
     monkeypatch.delenv("LOG_LEVEL", raising=False)
 
 
+@pytest.fixture(autouse=True)
+def disable_env_files():
+    """Pydantic Settingsの.env読み込みを無効化する。"""
+    original_llm_env_file = LLMConfig.model_config.get("env_file")
+    original_backend_env_file = BackendConfig.model_config.get("env_file")
+    original_r2_env_file = R2Config.model_config.get("env_file")
+
+    LLMConfig.model_config["env_file"] = []
+    BackendConfig.model_config["env_file"] = []
+    R2Config.model_config["env_file"] = []
+
+    yield
+
+    LLMConfig.model_config["env_file"] = original_llm_env_file
+    BackendConfig.model_config["env_file"] = original_backend_env_file
+    R2Config.model_config["env_file"] = original_r2_env_file
+
+
 # ========================================
 # 設定フィクスチャ
 # ========================================

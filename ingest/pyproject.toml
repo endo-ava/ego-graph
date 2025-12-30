@@ -30,7 +30,8 @@ packages = ["."]
 allow-direct-references = true
 
 [project.scripts]
-egograph-ingest = "src.main:main"
+egograph-ingest-spotify = "ingest.spotify_r2_main:main"
+egograph-ingest-lastfm = "ingest.lastfm_r2_main:main"
 
 [tool.uv.sources]
 egograph = { workspace = true }
@@ -49,4 +50,4 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "-v --cov=src"
+addopts = "-v --cov=ingest"
