@@ -66,8 +66,12 @@ class LLMClient:
             return OpenAIProvider(api_key, model_name)
 
         elif provider_name_lower == "openrouter":
+            enable_web_search = kwargs.get("enable_web_search", False)
             return OpenAIProvider(
-                api_key, model_name, base_url="https://openrouter.ai/api/v1"
+                api_key,
+                model_name,
+                base_url="https://openrouter.ai/api/v1",
+                enable_web_search=enable_web_search,
             )
 
         elif provider_name_lower == "anthropic":

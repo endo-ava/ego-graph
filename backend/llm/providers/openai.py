@@ -28,6 +28,7 @@ class OpenAIProvider(BaseLLMProvider):
         api_key: str,
         model_name: str,
         base_url: str = "https://api.openai.com/v1",
+        enable_web_search: bool = False,
     ):
         """OpenAIProviderを初期化します。
 
@@ -35,9 +36,12 @@ class OpenAIProvider(BaseLLMProvider):
             api_key: API認証キー
             model_name: モデル名（例: "gpt-4o-mini"）
             base_url: APIエンドポイントURL（OpenRouterの場合は変更）
+            enable_web_search: Web検索を有効にするか（OpenRouterのみ）
         """
         super().__init__(api_key, model_name)
         self.base_url = base_url.rstrip("/")
+        self.enable_web_search = enable_web_search
+        self.is_openrouter = "openrouter" in base_url.lower()
 
     async def chat_completion(
         self,
@@ -69,6 +73,12 @@ class OpenAIProvider(BaseLLMProvider):
 
         if tools:
             payload["tools"] = self._convert_tools_to_provider_format(tools)
+
+        # OpenRouter固有の設定
+        if self.is_openrouter and not self.enable_web_search:
+            # Web検索を無効化 (pluginsでwebを無効化)
+            payload["plugins"] = [{"id": "web", "enabled": False}]
+            logger.debug("OpenRouter: Web search disabled (plugins: web=false)")
 
         logger.debug(f"Sending request to {self.base_url}/chat/completions")
 

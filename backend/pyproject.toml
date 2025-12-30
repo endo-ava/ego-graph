@@ -44,4 +44,6 @@ dev = [
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.12.0",  # Mockingヘルパー
     "httpx>=0.28.0",  # For TestClient
+    "rich>=13.7.0",  # CLIツール用のリッチな表示
+    "prompt-toolkit>=3.0.0",  # 高度な入力機能（矢印キー、履歴など）
 ]

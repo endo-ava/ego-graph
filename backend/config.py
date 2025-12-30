@@ -4,6 +4,7 @@ shared.configを拡張し、LLM APIとバックエンドサーバー固有の設
 """
 
 import logging
+import os
 from typing import Optional
 
 from pydantic import Field, SecretStr, ValidationError
@@ -11,12 +12,18 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from shared.config import R2Config
 
+# 環境変数で .env ファイルの使用を制御（デフォルトは使用）
+USE_ENV_FILE = os.getenv("USE_ENV_FILE", "true").lower() in ("true", "1", "yes")
+ENV_FILES = ["backend/.env", ".env"] if USE_ENV_FILE else []
+
 
 class LLMConfig(BaseSettings):
     """LLM API設定。"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=ENV_FILES,
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     provider: str = Field("openai", alias="LLM_PROVIDER")
@@ -25,12 +32,17 @@ class LLMConfig(BaseSettings):
     temperature: float = Field(0.7, alias="LLM_TEMPERATURE")
     max_tokens: int = Field(2048, alias="LLM_MAX_TOKENS")
 
+    # OpenRouter固有の設定
+    enable_web_search: bool = Field(False, alias="LLM_ENABLE_WEB_SEARCH")  # デフォルトはオフ
+
 
 class BackendConfig(BaseSettings):
     """Backend APIサーバー設定。"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=ENV_FILES,
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     # サーバー設定

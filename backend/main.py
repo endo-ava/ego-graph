@@ -42,27 +42,34 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
         if origin.strip()  # 空文字・空白のみのエントリを除外
     ]
 
-    # セキュリティ検証: ワイルドカード '*' と allow_credentials=True の同時使用を禁止
-    if "*" in origins and len(origins) > 0:
-        raise ValueError(
-            "CORS設定エラー: ワイルドカード '*' と allow_credentials=True の"
-            "同時使用はセキュリティリスクがあるため禁止されています。"
-            "特定のオリジンを明示的に指定してください。"
-        )
-
-    # origins が空の場合は警告を出力
-    if not origins:
+    # ワイルドカード使用時の処理
+    if "*" in origins:
+        # 開発環境ではワイルドカードを許可、ただし allow_credentials は無効化
         logger.warning(
-            "CORS origins が設定されていません。CORSミドルウェアは空のオリジンリストで動作します。"
+            "CORS: ワイルドカード '*' が設定されています。開発環境用です。"
+            "本番環境では具体的なオリジンを指定してください。"
         )
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=False,  # ワイルドカード使用時は False
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    else:
+        # origins が空の場合は警告を出力
+        if not origins:
+            logger.warning(
+                "CORS origins が設定されていません。CORSミドルウェアは空のオリジンリストで動作します。"
+            )
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     # ルーターの登録
     app.include_router(health.router)
@@ -78,21 +85,59 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
 # インポート時に環境変数が必要（テスト時はcreate_app(config)を使う）
 try:
     app = create_app()
-except (ValueError, Exception):
+except (ValueError, Exception) as e:
     # テスト環境など、環境変数がない場合は後で設定する
+    logger.error(f"Failed to create app at module level: {e}")
     app = None  # type: ignore
 
 
 if __name__ == "__main__":
+    import sys
+
     import uvicorn
 
-    config = BackendConfig.from_env()
+    try:
+        config = BackendConfig.from_env()
+    except ValueError as e:
+        logger.error(f"Configuration error: {e}")
+        logger.error(
+            "Please check your .env file. Required settings:\n"
+            "  - R2_ENDPOINT_URL\n"
+            "  - R2_ACCESS_KEY_ID\n"
+            "  - R2_SECRET_ACCESS_KEY\n"
+            "  - R2_BUCKET_NAME\n"
+            "Optional settings:\n"
+            "  - LLM_PROVIDER\n"
+            "  - LLM_API_KEY\n"
+            "  - LLM_MODEL_NAME"
+        )
+        sys.exit(1)
 
     logger.info(f"Starting EgoGraph Backend on {config.host}:{config.port}")
 
-    uvicorn.run(
-        "backend.main:app",
-        host=config.host,
-        port=config.port,
-        reload=config.reload,
-    )
+    # reloadモードではimport stringを使う必要がある
+    if config.reload:
+        # reloadモードでは"backend.main:app"を使うため、
+        # モジュールレベルのappが有効なインスタンスである必要がある
+        if app is None:
+            app = create_app(config)  # type: ignore
+
+        uvicorn.run(
+            "backend.main:app",  # import string（モジュールレベルのappを使用）
+            host=config.host,
+            port=config.port,
+            reload=True,
+        )
+    else:
+        # 本番環境ではappインスタンスを直接渡す
+        if app is None:
+            production_app = create_app(config)
+        else:
+            production_app = app
+
+        uvicorn.run(
+            production_app,
+            host=config.host,
+            port=config.port,
+            reload=False,
+        )

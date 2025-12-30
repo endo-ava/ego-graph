@@ -84,6 +84,7 @@ async def chat(
             provider_name=config.llm.provider,
             api_key=config.llm.api_key.get_secret_value(),
             model_name=config.llm.model_name,
+            enable_web_search=config.llm.enable_web_search,
         )
 
         # ツールレジストリの準備
