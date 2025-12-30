@@ -41,7 +41,7 @@ jobs:
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           LOG_LEVEL: INFO
         run: |
-          uv run python -m ingest.spotify_r2_main
+          uv run python -m ingest.spotify.main
 
       - name: Verify Parquet Data Integrity (R2)
         if: success()

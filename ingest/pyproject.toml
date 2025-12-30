@@ -29,7 +29,7 @@ packages = ["."]
 allow-direct-references = true
 
 [project.scripts]
-egograph-ingest-spotify = "ingest.spotify_r2_main:main"
+egograph-ingest-spotify = "ingest.spotify.main:main"
 
 [tool.uv.sources]
 shared = { workspace = true }

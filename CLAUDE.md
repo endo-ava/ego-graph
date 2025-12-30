@@ -12,7 +12,7 @@ EgoGraph開発におけるガイドライン。
 uv sync
 
 # データ収集の実行 (例)
-uv run python -m ingest.spotify_r2_main
+uv run python -m ingest.spotify.main
 
 # テスト実行
 uv run pytest
