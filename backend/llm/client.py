@@ -104,9 +104,9 @@ class LLMClient:
         Raises:
             httpx.HTTPError: API呼び出しに失敗した場合
         """
-        logger.debug(f"Sending chat request with {len(messages)} messages")
+        logger.debug("Sending chat request with %s messages", len(messages))
         if tools:
-            logger.debug(f"Available tools: {[t.name for t in tools]}")
+            logger.debug("Available tools: %s", [t.name for t in tools])
 
         return await self.provider.chat_completion(
             messages=messages,

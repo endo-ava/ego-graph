@@ -88,7 +88,9 @@ def get_top_tracks(
         ORDER BY play_count DESC
         LIMIT ?
     """
-    logger.debug(f"Executing get_top_tracks: {start_date} to {end_date}, limit={limit}")
+    logger.debug(
+        "Executing get_top_tracks: %s to %s, limit=%s", start_date, end_date, limit
+    )
     return execute_query(conn, query, [parquet_path, start_date, end_date, limit])
 
 
@@ -138,6 +140,7 @@ def get_listening_stats(
 
     date_format = date_format_map[granularity]
 
+    # DuckDBのstrftimeフォーマット文字列は動的に埋める必要があるため例外的にf-stringを使用
     query = f"""
         SELECT
             strftime(played_at_utc::DATE, '{date_format}') as period,
@@ -202,7 +205,7 @@ def search_tracks_by_name(
         LIMIT ?
     """
 
-    logger.debug(f"Searching tracks with query: {query}, limit={limit}")
+    logger.debug("Searching tracks with query: %s, limit=%s", query, limit)
     return execute_query(
         conn, sql, [parquet_path, search_pattern, search_pattern, limit]
     )

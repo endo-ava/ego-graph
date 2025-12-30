@@ -90,7 +90,7 @@ class AnthropicProvider(BaseLLMProvider):
         if tools:
             payload["tools"] = self._convert_tools_to_provider_format(tools)
 
-        logger.debug(f"Sending request to {self.base_url}/messages")
+        logger.debug("Sending request to %s/messages", self.base_url)
 
         # 共有クライアントを使用（コネクションプーリング）
         client = await self._get_client()

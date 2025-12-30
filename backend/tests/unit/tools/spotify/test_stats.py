@@ -123,7 +123,7 @@ class TestGetTopTracksTool:
         tool = GetTopTracksTool(mock_db, r2_config)
 
         # Act & Assert: 不正な日付形式でValueErrorが発生することを検証
-        with pytest.raises(ValueError, match="Invalid date format"):
+        with pytest.raises(ValueError, match="invalid_start_date"):
             tool.execute(start_date="invalid-date", end_date="2024-01-31")
 
     def test_execute_with_default_limit(self):
@@ -262,7 +262,7 @@ class TestGetListeningStatsTool:
         tool = GetListeningStatsTool(mock_db, r2_config)
 
         # Act & Assert: 不正な日付形式でValueErrorが発生することを検証
-        with pytest.raises(ValueError, match="Invalid date format"):
+        with pytest.raises(ValueError, match="invalid_start_date"):
             tool.execute(
                 start_date="invalid-date", end_date="2024-01-31", granularity="day"
             )

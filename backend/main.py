@@ -93,7 +93,7 @@ if __name__ == "__main__":
     try:
         config = BackendConfig.from_env()
     except ValueError as e:
-        logger.error(f"Configuration error: {e}")
+        logger.error("Configuration error: %s", e)
         logger.error(
             "Please check your .env file. Required settings:\n"
             "  - R2_ENDPOINT_URL\n"
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    logger.info(f"Starting EgoGraph Backend on {config.host}:{config.port}")
+    logger.info("Starting EgoGraph Backend on %s:%s", config.host, config.port)
 
     # reloadモードではimport stringを使う必要がある
     if config.reload:

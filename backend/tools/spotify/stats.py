@@ -84,7 +84,9 @@ class GetTopTracksTool(ToolBase):
         start, end = validate_date_range(start_date, end_date)
         validated_limit = validate_limit(limit, max_value=100)
 
-        logger.info(f"Executing get_top_tracks: {start} to {end}, limit={limit}")
+        logger.info(
+            "Executing get_top_tracks: %s to %s, limit=%s", start, end, limit
+        )
         return fetch_top_tracks(
             self.db_connection, self.r2_config, start, end, validated_limit
         )
@@ -158,7 +160,10 @@ class GetListeningStatsTool(ToolBase):
         validated_granularity = validate_granularity(granularity)
 
         logger.info(
-            f"Executing get_listening_stats: {start} to {end}, granularity={granularity}"
+            "Executing get_listening_stats: %s to %s, granularity=%s",
+            start,
+            end,
+            granularity,
         )
         return fetch_listening_stats(
             self.db_connection,

@@ -1,4 +1,4 @@
-"""Spotify stats usecases."""
+"""Spotify統計取得のユースケース。"""
 
 from datetime import date
 
@@ -18,7 +18,7 @@ def fetch_top_tracks(
     end_date: date,
     limit: int,
 ) -> list[dict[str, object]]:
-    """トップトラックを取得するユースケース。"""
+    """トップトラックを取得する。"""
     parquet_path = get_parquet_path(r2_config.bucket_name, r2_config.events_path)
     with db_connection as conn:
         return get_top_tracks(conn, parquet_path, start_date, end_date, limit)
@@ -31,7 +31,7 @@ def fetch_listening_stats(
     end_date: date,
     granularity: str,
 ) -> list[dict[str, object]]:
-    """視聴統計を取得するユースケース。"""
+    """視聴統計を取得する。"""
     parquet_path = get_parquet_path(r2_config.bucket_name, r2_config.events_path)
     with db_connection as conn:
         return get_listening_stats(

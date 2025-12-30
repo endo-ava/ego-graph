@@ -1,4 +1,4 @@
-"""Backend input validation helpers."""
+"""Backend入力バリデーションヘルパー。"""
 
 from datetime import date
 from typing import Any
@@ -11,7 +11,7 @@ def parse_date(value: date | str, field_name: str) -> date:
     try:
         return date.fromisoformat(value)
     except ValueError as e:
-        raise ValueError(f"Invalid date format for {field_name}: {e}") from e
+        raise ValueError(f"invalid_{field_name}: {e}") from e
 
 
 def validate_date_range(
@@ -21,17 +21,19 @@ def validate_date_range(
     start = parse_date(start_date, "start_date")
     end = parse_date(end_date, "end_date")
     if start > end:
-        raise ValueError("start_date must be on or before end_date")
+        raise ValueError(
+            "invalid_date_range: start_date must be on or before end_date"
+        )
     return start, end
 
 
 def validate_limit(limit: Any, *, min_value: int = 1, max_value: int = 100) -> int:
     """limitの範囲を検証する。"""
     if not isinstance(limit, int):
-        raise ValueError("limit must be a positive integer")
+        raise ValueError("invalid_limit: must be a positive integer")
     if limit < min_value or limit > max_value:
         raise ValueError(
-            f"limit must be between {min_value} and {max_value}"
+            f"invalid_limit: must be between {min_value} and {max_value}"
         )
     return limit
 
@@ -40,5 +42,6 @@ def validate_granularity(granularity: str) -> str:
     """集計粒度を検証する。"""
     allowed = {"day", "week", "month"}
     if granularity not in allowed:
-        raise ValueError("granularity must be one of: day, week, month")
+        allowed_list = ", ".join(sorted(allowed))
+        raise ValueError(f"invalid_granularity: must be one of: {allowed_list}")
     return granularity

@@ -75,7 +75,7 @@ async def chat(
             detail="LLM configuration is missing. Chat endpoint is unavailable.",
         )
 
-    logger.info(f"Received chat request with {len(request.messages)} messages")
+    logger.info("Received chat request with %s messages", len(request.messages))
 
     try:
         # LLMクライアントの初期化

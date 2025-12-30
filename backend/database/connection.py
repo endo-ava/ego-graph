@@ -87,7 +87,7 @@ class DuckDBConnection:
                     endpoint,
                 ],
             )
-            logger.debug(f"Configured R2 secret for endpoint: {endpoint}")
+            logger.debug("Configured R2 secret for endpoint: %s", endpoint)
 
         except Exception:
             logger.exception("Failed to configure DuckDB connection")

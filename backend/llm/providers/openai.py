@@ -80,7 +80,7 @@ class OpenAIProvider(BaseLLMProvider):
             payload["plugins"] = [{"id": "web", "enabled": False}]
             logger.debug("OpenRouter: Web search disabled (plugins: web=false)")
 
-        logger.debug(f"Sending request to {self.base_url}/chat/completions")
+        logger.debug("Sending request to %s/chat/completions", self.base_url)
 
         async with httpx.AsyncClient() as client:
             response = await client.post(

@@ -74,7 +74,7 @@ async def get_top_tracks_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    logger.info(f"Getting top tracks: {start_date} to {end_date}, limit={limit}")
+    logger.info("Getting top tracks: %s to %s, limit=%s", start_date, end_date, limit)
     return fetch_top_tracks(
         db_connection, config.r2, start, end, validated_limit
     )
@@ -109,7 +109,10 @@ async def get_listening_stats_endpoint(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     logger.info(
-        f"Getting listening stats: {start_date} to {end_date}, granularity={granularity}"
+        "Getting listening stats: %s to %s, granularity=%s",
+        start_date,
+        end_date,
+        granularity,
     )
     return fetch_listening_stats(
         db_connection, config.r2, start, end, validated_granularity
