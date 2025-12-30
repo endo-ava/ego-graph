@@ -108,7 +108,6 @@ PEP 8 はPythonコードのスタイルガイドです。コードの「一貫�
 ### 2.4 ドキュメンテーション
 *   **Docstrings**: すべての公開モジュール、関数、クラス、メソッドに記述する。
 *   形式は **Google Style** または **NumPy Style** を推奨（チームで統一）。
-*   **言語**: Docstring/コメントは **日本語で統一**する。
 
 ```python
 def fetch_user(user_id: int) -> dict[str, Any]:
@@ -121,24 +120,4 @@ def fetch_user(user_id: int) -> dict[str, Any]:
       ユーザー情報を含む辞書。見つからない場合は空辞書。
     """
     ...
-
----
-
-## 3. SQL & Logging ルール
-
-### 3.1 SQL
-*   **プレースホルダ必須**: 文字列結合でSQLを組み立てず、パラメータを渡す。
-*   **例外**: DuckDB `strftime` のようなフォーマット文字列が必要な場合のみ f-string を許可し、コメントで理由を明記する。
-
-### 3.2 Logging
-*   **遅延評価**: `logger.info("key=%s", value)` を使う（f-string禁止）。
-*   **機密情報**: APIキー/トークン/個人情報はログに出さない。
-*   **エラー**: 例外型とメッセージのみ出力し、DEBUGで詳細スタックを許可する。
-
----
-
-## 4. API エラーメッセージ
-
-*   **統一フォーマット**: `invalid_<field>: <reason>` を使用する。
-*   **範囲エラー**: `invalid_date_range: ...` のように意味が分かるキーを先頭に付ける。
 ```
