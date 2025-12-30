@@ -76,9 +76,9 @@ class OpenAIProvider(BaseLLMProvider):
 
         # OpenRouter固有の設定
         if self.is_openrouter and not self.enable_web_search:
-            # Web検索を無効化（transformsを空にする）
-            payload["transforms"] = []
-            logger.debug("OpenRouter: Web search disabled (transforms=[])")
+            # Web検索を無効化 (pluginsでwebを無効化)
+            payload["plugins"] = [{"id": "web", "enabled": False}]
+            logger.debug("OpenRouter: Web search disabled (plugins: web=false)")
 
         logger.debug(f"Sending request to {self.base_url}/chat/completions")
 
