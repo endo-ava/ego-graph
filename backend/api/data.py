@@ -13,10 +13,14 @@ from pydantic import BaseModel
 from backend.api.deps import get_config, get_db_connection, verify_api_key
 from backend.config import BackendConfig
 from backend.database.connection import DuckDBConnection
-from backend.database.queries import (
-    get_listening_stats,
-    get_parquet_path,
-    get_top_tracks,
+from backend.usecases.spotify_stats import (
+    fetch_listening_stats,
+    fetch_top_tracks,
+)
+from backend.validators import (
+    validate_date_range,
+    validate_granularity,
+    validate_limit,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,21 +68,16 @@ async def get_top_tracks_endpoint(
     Example:
         GET /v1/data/spotify/stats/top-tracks?start_date=2024-01-01&end_date=2024-01-31&limit=5
     """
-    # 日付範囲の検証
-    if start_date > end_date:
-        raise HTTPException(
-            status_code=400,
-            detail="start_date must be on or before end_date"
-        )
+    try:
+        start, end = validate_date_range(start_date, end_date)
+        validated_limit = validate_limit(limit, max_value=100)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     logger.info(f"Getting top tracks: {start_date} to {end_date}, limit={limit}")
-
-    parquet_path = get_parquet_path(config.r2.bucket_name, config.r2.events_path)
-
-    with db_connection as conn:
-        results = get_top_tracks(conn, parquet_path, start_date, end_date, limit)
-
-    return results
+    return fetch_top_tracks(
+        db_connection, config.r2, start, end, validated_limit
+    )
 
 
 @router.get("/stats/listening", response_model=list[ListeningStatsResponse])
@@ -103,22 +102,15 @@ async def get_listening_stats_endpoint(
     Example:
         GET /v1/data/spotify/stats/listening?start_date=2024-01-01&end_date=2024-01-31&granularity=week
     """
-    # 日付範囲の検証
-    if start_date > end_date:
-        raise HTTPException(
-            status_code=400,
-            detail="start_date must be on or before end_date"
-        )
+    try:
+        start, end = validate_date_range(start_date, end_date)
+        validated_granularity = validate_granularity(granularity)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     logger.info(
         f"Getting listening stats: {start_date} to {end_date}, granularity={granularity}"
     )
-
-    parquet_path = get_parquet_path(config.r2.bucket_name, config.r2.events_path)
-
-    with db_connection as conn:
-        results = get_listening_stats(
-            conn, parquet_path, start_date, end_date, granularity
-        )
-
-    return results
+    return fetch_listening_stats(
+        db_connection, config.r2, start, end, validated_granularity
+    )

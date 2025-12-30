@@ -82,13 +82,7 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
 
 
 # モジュールレベルでのアプリインスタンス（プロダクション用）
-# インポート時に環境変数が必要（テスト時はcreate_app(config)を使う）
-try:
-    app = create_app()
-except (ValueError, Exception) as e:
-    # テスト環境など、環境変数がない場合は後で設定する
-    logger.error(f"Failed to create app at module level: {e}")
-    app = None  # type: ignore
+app = create_app()
 
 
 if __name__ == "__main__":
@@ -117,11 +111,6 @@ if __name__ == "__main__":
 
     # reloadモードではimport stringを使う必要がある
     if config.reload:
-        # reloadモードでは"backend.main:app"を使うため、
-        # モジュールレベルのappが有効なインスタンスである必要がある
-        if app is None:
-            app = create_app(config)  # type: ignore
-
         uvicorn.run(
             "backend.main:app",  # import string（モジュールレベルのappを使用）
             host=config.host,
@@ -130,13 +119,8 @@ if __name__ == "__main__":
         )
     else:
         # 本番環境ではappインスタンスを直接渡す
-        if app is None:
-            production_app = create_app(config)
-        else:
-            production_app = app
-
         uvicorn.run(
-            production_app,
+            create_app(config),
             host=config.host,
             port=config.port,
             reload=False,

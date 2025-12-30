@@ -14,12 +14,8 @@ ingest/tests/
 │   │   ├── test_collector.py
 │   │   ├── test_storage.py
 │   │   └── ...
-│   └── lastfm/           # Last.fm モジュール用（Deprecated）
-│       ├── test_collector.py
-│       └── ...
 └── integration/          # 統合テスト (実際のワークフロー / 外部APIはモック可)
     ├── spotify/
-    └── lastfm/           # Deprecated
 ```
 
 - **Unit Test**: クラスや関数単体のロジックを検証する。外部 IO (R2, API) は原則モックする。

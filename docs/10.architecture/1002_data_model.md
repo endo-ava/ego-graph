@@ -31,7 +31,7 @@
   │   └── spotify/     # API レスポンス (JSON)
   └── state/           # 進捗管理 (Cursors)
       ├── spotify_ingest_state.json
-      └── lastfm_ingest_state.json  # Deprecated
+      └── lastfm_ingest_state.json  # Archived
   ```
 
 - **Spotify Archives**:

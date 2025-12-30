@@ -17,7 +17,7 @@ from tabulate import tabulate
 # プロジェクトルートをパスに追加
 sys.path.append(os.getcwd())
 
-from shared.config import Config
+from backend.config import BackendConfig
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -29,16 +29,16 @@ def verify_r2_data():
     logger.info("🦆 Verifying EgoGraph R2 Data Lake...")
 
     try:
-        config = Config.from_env()
+        config = BackendConfig.from_env()
     except Exception:
         logger.exception("Failed to load config")
         return
 
-    if not config.duckdb or not config.duckdb.r2:
+    if not config.r2:
         logger.error("R2 configuration is missing.")
         return
 
-    r2_conf = config.duckdb.r2
+    r2_conf = config.r2
     conn = duckdb.connect(":memory:")
 
     try:

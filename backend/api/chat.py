@@ -14,7 +14,6 @@ from pydantic import BaseModel
 from backend.api.deps import get_config, get_db_connection, verify_api_key
 from backend.config import BackendConfig
 from backend.database.connection import DuckDBConnection
-from backend.database.queries import get_parquet_path
 from backend.llm import LLMClient, Message
 from backend.tools import GetListeningStatsTool, GetTopTracksTool, ToolRegistry
 
@@ -88,10 +87,9 @@ async def chat(
         )
 
         # ツールレジストリの準備
-        parquet_path = get_parquet_path(config.r2.bucket_name, config.r2.events_path)
         tool_registry = ToolRegistry()
-        tool_registry.register(GetTopTracksTool(db_connection, parquet_path))
-        tool_registry.register(GetListeningStatsTool(db_connection, parquet_path))
+        tool_registry.register(GetTopTracksTool(db_connection, config.r2))
+        tool_registry.register(GetListeningStatsTool(db_connection, config.r2))
 
         tools = tool_registry.get_all_schemas()
 

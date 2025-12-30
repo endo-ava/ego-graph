@@ -28,14 +28,14 @@ dependencies = [
     "pydantic-settings>=2.12.0",
 
     # Workspace dependency
-    "egograph",
+    "shared",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
 
 [tool.uv.sources]
-egograph = { workspace = true }
+shared = { workspace = true }
 
 [dependency-groups]
 dev = [

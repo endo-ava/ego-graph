@@ -52,10 +52,6 @@ class TestChatEndpoint:
         with (
             patch("backend.api.chat.LLMClient") as mock_llm_class,
             patch("backend.api.chat.get_db_connection") as mock_get_db,
-            patch(
-                "backend.api.chat.get_parquet_path",
-                return_value="s3://test-bucket/events/spotify/plays/**/*.parquet",
-            ),
         ):
             # LLMクライアントのモック
             mock_llm_instance = MagicMock()
@@ -101,10 +97,6 @@ class TestChatEndpoint:
         with (
             patch("backend.api.chat.LLMClient") as mock_llm_class,
             patch("backend.api.chat.get_db_connection") as mock_get_db,
-            patch(
-                "backend.api.chat.get_parquet_path",
-                return_value="s3://test-bucket/events/spotify/plays/**/*.parquet",
-            ),
         ):
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
@@ -130,10 +122,6 @@ class TestChatEndpoint:
         with (
             patch("backend.api.chat.LLMClient") as mock_llm_class,
             patch("backend.api.chat.get_db_connection") as mock_get_db,
-            patch(
-                "backend.api.chat.get_parquet_path",
-                return_value="s3://test-bucket/events/spotify/plays/**/*.parquet",
-            ),
         ):
             # LLMクライアントでエラーを発生させる
             mock_llm_instance = MagicMock()

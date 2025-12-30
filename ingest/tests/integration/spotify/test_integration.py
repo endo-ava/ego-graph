@@ -7,7 +7,7 @@ import pytest
 import responses
 from pydantic import SecretStr
 
-from ingest import spotify_r2_main
+from ingest.spotify import pipeline as spotify_pipeline
 from ingest.spotify.collector import SpotifyCollector
 from ingest.spotify.schema import SpotifySchema
 from ingest.spotify.writer import SpotifyDuckDBWriter
@@ -252,7 +252,7 @@ def test_master_enrichment_flow():
     )
 
     # Act: マスター補完処理のみを実行
-    spotify_r2_main.enrich_master_data(
+    spotify_pipeline.enrich_master_data(
         items,
         collector=mock_collector,
         storage=mock_storage,

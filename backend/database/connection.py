@@ -22,7 +22,11 @@ class DuckDBConnection:
     R2のParquetデータに直接アクセスします。
 
     Example:
-        >>> r2_config = R2Config.from_env()
+        >>> r2_config = R2Config(
+        ...     endpoint_url="https://example.r2.cloudflarestorage.com",
+        ...     access_key_id="test",
+        ...     secret_access_key=SecretStr("secret"),
+        ... )
         >>> with DuckDBConnection(r2_config) as conn:
         ...     sql = "SELECT COUNT(*) FROM read_parquet(?)"
         ...     result = conn.execute(sql, [parquet_url])

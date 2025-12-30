@@ -18,11 +18,17 @@ pip install -e ".[dev]"
 
 ```python
 from shared.models import UnifiedDataModel, DataSource, DataType
-from shared.config import Config
+from shared.config import Config, SpotifyConfig
 from shared.utils import batch_items
 
-# Load configuration
-config = Config.from_env()
+# Load configuration (service側で設定を組み立てる)
+config = Config(
+    spotify=SpotifyConfig(
+        client_id="client-id",
+        client_secret="secret",
+        refresh_token="refresh",
+    )
+)
 
 # Create unified data model
 model = UnifiedDataModel(

@@ -1,12 +1,20 @@
 """Spotify再生統計ツール。"""
 
 import logging
-from datetime import date
 from typing import Any
 
 from backend.database.connection import DuckDBConnection
-from backend.database.queries import get_listening_stats, get_top_tracks
 from backend.tools.base import ToolBase
+from backend.usecases.spotify_stats import (
+    fetch_listening_stats,
+    fetch_top_tracks,
+)
+from backend.validators import (
+    validate_date_range,
+    validate_granularity,
+    validate_limit,
+)
+from shared.config import R2Config
 
 logger = logging.getLogger(__name__)
 
@@ -14,15 +22,15 @@ logger = logging.getLogger(__name__)
 class GetTopTracksTool(ToolBase):
     """指定期間で最も再生された曲を取得するツール。"""
 
-    def __init__(self, db_connection: DuckDBConnection, parquet_path: str):
+    def __init__(self, db_connection: DuckDBConnection, r2_config: R2Config):
         """GetTopTracksToolを初期化します。
 
         Args:
             db_connection: DuckDB接続ファクトリ
-            parquet_path: ParquetファイルのS3パス
+            r2_config: R2設定
         """
         self.db_connection = db_connection
-        self.parquet_path = parquet_path
+        self.r2_config = r2_config
 
     @property
     def name(self) -> str:
@@ -73,36 +81,27 @@ class GetTopTracksTool(ToolBase):
         Raises:
             ValueError: 日付形式が不正な場合
         """
-        try:
-            start = date.fromisoformat(start_date)
-            end = date.fromisoformat(end_date)
-        except ValueError as e:
-            raise ValueError(f"Invalid date format: {e}") from e
-
-        # パラメータ検証
-        if start > end:
-            raise ValueError("start_date must be on or before end_date")
-        if not isinstance(limit, int) or limit <= 0:
-            raise ValueError("limit must be a positive integer")
+        start, end = validate_date_range(start_date, end_date)
+        validated_limit = validate_limit(limit, max_value=100)
 
         logger.info(f"Executing get_top_tracks: {start} to {end}, limit={limit}")
-
-        with self.db_connection as conn:
-            return get_top_tracks(conn, self.parquet_path, start, end, limit)
+        return fetch_top_tracks(
+            self.db_connection, self.r2_config, start, end, validated_limit
+        )
 
 
 class GetListeningStatsTool(ToolBase):
     """期間別の視聴統計を取得するツール。"""
 
-    def __init__(self, db_connection: DuckDBConnection, parquet_path: str):
+    def __init__(self, db_connection: DuckDBConnection, r2_config: R2Config):
         """GetListeningStatsToolを初期化します。
 
         Args:
             db_connection: DuckDB接続ファクトリ
-            parquet_path: ParquetファイルのS3パス
+            r2_config: R2設定
         """
         self.db_connection = db_connection
-        self.parquet_path = parquet_path
+        self.r2_config = r2_config
 
     @property
     def name(self) -> str:
@@ -155,21 +154,16 @@ class GetListeningStatsTool(ToolBase):
         Raises:
             ValueError: 日付形式またはgranularityが不正な場合
         """
-        try:
-            start = date.fromisoformat(start_date)
-            end = date.fromisoformat(end_date)
-        except ValueError as e:
-            raise ValueError(f"Invalid date format: {e}") from e
-
-        # パラメータ検証
-        if start > end:
-            raise ValueError("start_date must be on or before end_date")
-        if granularity not in ["day", "week", "month"]:
-            raise ValueError("granularity must be one of: day, week, month")
+        start, end = validate_date_range(start_date, end_date)
+        validated_granularity = validate_granularity(granularity)
 
         logger.info(
             f"Executing get_listening_stats: {start} to {end}, granularity={granularity}"
         )
-
-        with self.db_connection as conn:
-            return get_listening_stats(conn, self.parquet_path, start, end, granularity)
+        return fetch_listening_stats(
+            self.db_connection,
+            self.r2_config,
+            start,
+            end,
+            validated_granularity,
+        )

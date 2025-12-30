@@ -14,7 +14,7 @@
 | No. | データソース | ドキュメント | データタイプ | 優先度 |
 |---|---|---|---|---|
 | 01 | Spotify | [01_spotify.md](./01_spotify.md) | 構造化ログ | MVP |
-| 02 | Last.fm | [02_lastfm.md](./02_lastfm.md) | 外部メタデータ | Deprecated |
+| 02 | Last.fm | [Archived](../../99.archive/lastfm/02_lastfm.md) | 外部メタデータ | Archived |
 
 ### 実装予定
 

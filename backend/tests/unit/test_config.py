@@ -94,11 +94,11 @@ class TestBackendConfig:
 
     def test_from_env_missing_r2_raises_error(self):
         """R2設定が不足している場合のエラー。"""
-        # Arrange: R2Config()の初期化をモックしてValidationErrorを発生させる
+        # Arrange: R2Settings()の初期化をモックしてValidationErrorを発生させる
 
-        with patch("backend.config.R2Config") as mock_r2_config:
-            mock_r2_config.side_effect = ValidationError.from_exception_data(
-                "R2Config",
+        with patch("backend.config.R2Settings") as mock_r2_settings:
+            mock_r2_settings.side_effect = ValidationError.from_exception_data(
+                "R2Settings",
                 [
                     {
                         "type": "missing",
