@@ -48,6 +48,21 @@ def clear_env_vars(monkeypatch):
     monkeypatch.delenv("LOG_LEVEL", raising=False)
 
 
+@pytest.fixture(autouse=True)
+def disable_env_files():
+    """Pydantic Settingsの.env読み込みを無効化する。"""
+    original_llm_env_file = LLMConfig.model_config.get("env_file")
+    original_backend_env_file = BackendConfig.model_config.get("env_file")
+
+    LLMConfig.model_config["env_file"] = []
+    BackendConfig.model_config["env_file"] = []
+
+    yield
+
+    LLMConfig.model_config["env_file"] = original_llm_env_file
+    BackendConfig.model_config["env_file"] = original_backend_env_file
+
+
 # ========================================
 # 設定フィクスチャ
 # ========================================
@@ -252,10 +267,7 @@ def test_client(mock_backend_config):
 @pytest.fixture
 def mock_db_and_parquet():
     """データAPIテスト用のDB接続とParquetパスのモック。"""
-    with patch("backend.api.data.get_db_connection") as mock_get_db, patch(
-        "backend.api.data.get_parquet_path",
-        return_value="s3://test-bucket/events/spotify/plays/**/*.parquet",
-    ):
+    with patch("backend.api.data.get_db_connection") as mock_get_db:
         mock_conn = MagicMock()
         mock_get_db.return_value.__enter__.return_value = mock_conn
         mock_get_db.return_value.__exit__.return_value = False

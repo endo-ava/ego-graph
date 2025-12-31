@@ -1,0 +1,184 @@
+"""Ingest用の環境変数ローダー。"""
+
+import logging
+from typing import Optional
+
+from pydantic import Field, SecretStr, ValidationError
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from shared.config import (
+    Config,
+    DuckDBConfig,
+    EmbeddingConfig,
+    QdrantConfig,
+    R2Config,
+    SpotifyConfig,
+)
+
+ENV_FILES = ["ingest/.env", ".env"]
+
+
+class SpotifySettings(BaseSettings):
+    """Spotify API設定。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    client_id: str = Field(..., alias="SPOTIFY_CLIENT_ID")
+    client_secret: SecretStr = Field(..., alias="SPOTIFY_CLIENT_SECRET")
+    refresh_token: SecretStr = Field(..., alias="SPOTIFY_REFRESH_TOKEN")
+    redirect_uri: str = Field(
+        "http://127.0.0.1:8888/callback", alias="SPOTIFY_REDIRECT_URI"
+    )
+    scope: str = Field(
+        "user-read-recently-played playlist-read-private playlist-read-collaborative",
+        alias="SPOTIFY_SCOPE",
+    )
+
+    def to_config(self) -> SpotifyConfig:
+        return SpotifyConfig(
+            client_id=self.client_id,
+            client_secret=self.client_secret,
+            refresh_token=self.refresh_token,
+            redirect_uri=self.redirect_uri,
+            scope=self.scope,
+        )
+
+
+class EmbeddingSettings(BaseSettings):
+    """埋め込みモデル設定(ローカル実行)。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    model_name: str = Field("cl-nagoya/ruri-v3-310m", alias="EMBEDDING_MODEL_NAME")
+    batch_size: int = Field(32, alias="EMBEDDING_BATCH_SIZE")
+    device: Optional[str] = Field(None, alias="EMBEDDING_DEVICE")
+    expected_dimension: int = Field(768, alias="EMBEDDING_DIMENSION")
+
+    def to_config(self) -> EmbeddingConfig:
+        return EmbeddingConfig(
+            model_name=self.model_name,
+            batch_size=self.batch_size,
+            device=self.device,
+            expected_dimension=self.expected_dimension,
+        )
+
+
+class QdrantSettings(BaseSettings):
+    """Qdrant Cloud設定。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    url: str = Field(..., alias="QDRANT_URL")
+    api_key: SecretStr = Field(..., alias="QDRANT_API_KEY")
+    collection_name: str = Field(
+        "egograph_spotify_ruri", alias="QDRANT_COLLECTION_NAME"
+    )
+    vector_size: int = Field(768, alias="QDRANT_VECTOR_SIZE")
+    batch_size: int = Field(1000, alias="QDRANT_BATCH_SIZE")
+
+    def to_config(self) -> QdrantConfig:
+        return QdrantConfig(
+            url=self.url,
+            api_key=self.api_key,
+            collection_name=self.collection_name,
+            vector_size=self.vector_size,
+            batch_size=self.batch_size,
+        )
+
+
+class R2Settings(BaseSettings):
+    """Cloudflare R2設定 (S3互換)。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    endpoint_url: str = Field(..., alias="R2_ENDPOINT_URL")
+    access_key_id: str = Field(..., alias="R2_ACCESS_KEY_ID")
+    secret_access_key: SecretStr = Field(..., alias="R2_SECRET_ACCESS_KEY")
+    bucket_name: str = Field("egograph", alias="R2_BUCKET_NAME")
+    raw_path: str = Field("raw/", alias="R2_RAW_PATH")
+    events_path: str = Field("events/", alias="R2_EVENTS_PATH")
+    master_path: str = Field("master/", alias="R2_MASTER_PATH")
+
+    def to_config(self) -> R2Config:
+        return R2Config(
+            endpoint_url=self.endpoint_url,
+            access_key_id=self.access_key_id,
+            secret_access_key=self.secret_access_key,
+            bucket_name=self.bucket_name,
+            raw_path=self.raw_path,
+            events_path=self.events_path,
+            master_path=self.master_path,
+        )
+
+
+class DuckDBSettings(BaseSettings):
+    """DuckDB設定。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    db_path: str = Field("data/analytics.duckdb", alias="DUCKDB_PATH")
+
+    def to_config(self, r2_config: Optional[R2Config]) -> DuckDBConfig:
+        return DuckDBConfig(db_path=self.db_path, r2=r2_config)
+
+
+class IngestSettings(BaseSettings):
+    """Ingest設定。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    log_level: str = Field("INFO", alias="LOG_LEVEL")
+
+    @classmethod
+    def load(cls) -> Config:
+        """環境変数から共有Configを構築する。"""
+        settings = cls()
+        config = Config(log_level=settings.log_level)
+
+        try:
+            config.spotify = SpotifySettings().to_config()
+        except (ValidationError, ValueError):
+            logging.info("Spotify config not available")
+
+        try:
+            config.embedding = EmbeddingSettings().to_config()
+        except (ValidationError, ValueError):
+            logging.info("Embedding config not available")
+
+        try:
+            config.qdrant = QdrantSettings().to_config()
+        except (ValidationError, ValueError):
+            logging.info(
+                "Qdrant config not available, vector search features will be disabled"
+            )
+
+        try:
+            r2_config = None
+            try:
+                r2_config = R2Settings().to_config()
+            except (ValidationError, ValueError):
+                logging.info(
+                    "R2 config not available, DuckDB will run in local-only mode"
+                )
+            config.duckdb = DuckDBSettings().to_config(r2_config)
+        except (ValidationError, ValueError):
+            logging.info("DuckDB config not available")
+
+        logging.basicConfig(
+            level=getattr(logging, config.log_level.upper()),
+            format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        )
+
+        return config

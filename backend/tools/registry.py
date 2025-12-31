@@ -18,7 +18,7 @@ class ToolRegistry:
 
     Example:
         >>> registry = ToolRegistry()
-        >>> registry.register(GetTopTracksTool(db_conn, parquet_path))
+        >>> registry.register(GetTopTracksTool(db_conn, r2_config))
         >>> result = registry.execute("get_top_tracks", start_date="2024-01-01", end_date="2024-01-31")
     """
 
@@ -33,7 +33,7 @@ class ToolRegistry:
             tool: 登録するツール
         """
         self._tools[tool.name] = tool
-        logger.debug(f"Registered tool: {tool.name}")
+        logger.debug("Registered tool: %s", tool.name)
 
     def get_tool(self, name: str) -> ToolBase:
         """名前でツールを取得します。
@@ -78,14 +78,16 @@ class ToolRegistry:
         tool = self.get_tool(tool_name)
         # 機密情報をログに含めないようにパラメータキーのみをログ出力
         param_keys = list(params.keys())
-        logger.info(f"Executing tool: {tool_name} with params: {param_keys}")
+        logger.info("Executing tool: %s with params: %s", tool_name, param_keys)
 
         try:
             result = tool.execute(**params)
-            logger.debug(f"Tool {tool_name} executed successfully")
+            logger.debug("Tool %s executed successfully", tool_name)
             return result
         except Exception as e:
-            logger.error(f"Tool {tool_name} execution failed: {type(e).__name__}")
+            logger.error(
+                "Tool %s execution failed: %s", tool_name, f"{type(e).__name__}: {e}"
+            )
             raise
 
     def list_tool_names(self) -> list[str]:

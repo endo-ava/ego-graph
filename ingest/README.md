@@ -60,7 +60,7 @@ R2_EVENTS_PATH=events/  # オプション（デフォルト: events/）
 ### 3. ローカル実行
 ```bash
 # リポジトリルートから
-uv run python ingest/spotify_r2_main.py
+uv run python -m ingest.spotify.main
 ```
 
 ## 自動実行
@@ -135,7 +135,7 @@ play_id = f"{played_at_utc}_{track_id}"
 3. ログレベルをDEBUGに設定して詳細を確認:
 
    ```bash
-   LOG_LEVEL=DEBUG uv run python ingest/spotify_r2_main.py
+   LOG_LEVEL=DEBUG uv run python -m ingest.spotify.main
    ```
 
 ### テストが失敗する場合

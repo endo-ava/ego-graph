@@ -35,7 +35,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 
 # Run Ingestion (Spotify example)
-uv run python -m ingest.spotify_r2_main
+uv run python -m ingest.spotify.main
 
 # Query Data (CLI)
 uv run duckdb

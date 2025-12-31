@@ -51,6 +51,7 @@ match command.split():
 
 ### 1.4 最近の構文機能
 *   **f-strings**: 文字列フォーマットは `.format()` や `%` ではなく常に f-strings を使用する。デバッグには `f"{var=}"` が便利。
+    * 例外: **ログ出力** は `logger.info("value=%s", value)` のように遅延評価できる形式を使用する。
 *   **Walrus Operator (`:=`)**: 条件式内で値を計算・再利用する場合に使用し、スコープ汚染を防ぐ。
 *   **Pathlib**: ファイルパス操作には `os.path` ではなく `pathlib.Path` を使用する。
 

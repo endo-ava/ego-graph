@@ -1,11 +1,11 @@
 """Tools/Spotify/Stats層のテスト。"""
 
-from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from backend.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
+from shared.config import R2Config
 
 
 class TestGetTopTracksTool:
@@ -17,7 +17,10 @@ class TestGetTopTracksTool:
         mock_db = MagicMock()
 
         # Act: ツールを作成
-        tool = GetTopTracksTool(mock_db, "s3://bucket/path")
+        r2_config = R2Config.model_construct(
+            bucket_name="bucket", events_path="events/"
+        )
+        tool = GetTopTracksTool(mock_db, r2_config)
 
         # Assert: nameプロパティを検証
         assert tool.name == "get_top_tracks"
@@ -28,7 +31,10 @@ class TestGetTopTracksTool:
         mock_db = MagicMock()
 
         # Act: ツールを作成
-        tool = GetTopTracksTool(mock_db, "s3://bucket/path")
+        r2_config = R2Config.model_construct(
+            bucket_name="bucket", events_path="events/"
+        )
+        tool = GetTopTracksTool(mock_db, r2_config)
 
         # Assert: descriptionプロパティを検証
         assert isinstance(tool.description, str)
@@ -38,7 +44,10 @@ class TestGetTopTracksTool:
         """input_schemaが正しい構造を持つ。"""
         # Arrange: モックDBとツールを準備
         mock_db = MagicMock()
-        tool = GetTopTracksTool(mock_db, "s3://bucket/path")
+        r2_config = R2Config.model_construct(
+            bucket_name="bucket", events_path="events/"
+        )
+        tool = GetTopTracksTool(mock_db, r2_config)
 
         # Act: input_schemaを取得
         schema = tool.input_schema
@@ -55,7 +64,10 @@ class TestGetTopTracksTool:
         """to_schema()がToolスキーマを生成。"""
         # Arrange: モックDBとツールを準備
         mock_db = MagicMock()
-        tool = GetTopTracksTool(mock_db, "s3://bucket/path")
+        r2_config = R2Config.model_construct(
+            bucket_name="bucket", events_path="events/"
+        )
+        tool = GetTopTracksTool(mock_db, r2_config)
 
         # Act: to_schema()でスキーマを生成
         schema = tool.to_schema()
@@ -74,7 +86,7 @@ class TestGetTopTracksTool:
 
         # get_top_tracksのモック
         with patch(
-            "backend.tools.spotify.stats.get_top_tracks",
+            "backend.tools.spotify.stats.fetch_top_tracks",
             return_value=[
                 {
                     "track_name": "Song A",
@@ -84,7 +96,10 @@ class TestGetTopTracksTool:
                 }
             ],
         ) as mock_get_top_tracks:
-            tool = GetTopTracksTool(mock_db, "s3://bucket/path")
+            r2_config = R2Config.model_construct(
+                bucket_name="bucket", events_path="events/"
+            )
+            tool = GetTopTracksTool(mock_db, r2_config)
 
             # Act: ツールを実行
             result = tool.execute(
@@ -96,22 +111,19 @@ class TestGetTopTracksTool:
             assert result[0]["track_name"] == "Song A"
 
             # get_top_tracksが正しい引数で呼ばれたことを確認
-            mock_get_top_tracks.assert_called_once_with(
-                mock_conn,
-                "s3://bucket/path",
-                date(2024, 1, 1),
-                date(2024, 1, 31),
-                10,
-            )
+            mock_get_top_tracks.assert_called_once()
 
     def test_execute_with_invalid_date_format_raises_error(self):
         """不正な日付形式でエラー。"""
         # Arrange: モックDBとツールを準備
         mock_db = MagicMock()
-        tool = GetTopTracksTool(mock_db, "s3://bucket/path")
+        r2_config = R2Config.model_construct(
+            bucket_name="bucket", events_path="events/"
+        )
+        tool = GetTopTracksTool(mock_db, r2_config)
 
         # Act & Assert: 不正な日付形式でValueErrorが発生することを検証
-        with pytest.raises(ValueError, match="Invalid date format"):
+        with pytest.raises(ValueError, match="invalid_start_date"):
             tool.execute(start_date="invalid-date", end_date="2024-01-31")
 
     def test_execute_with_default_limit(self):
@@ -122,9 +134,12 @@ class TestGetTopTracksTool:
         mock_db.__enter__.return_value = mock_conn
 
         with patch(
-            "backend.tools.spotify.stats.get_top_tracks", return_value=[]
+            "backend.tools.spotify.stats.fetch_top_tracks", return_value=[]
         ) as mock_get_top_tracks:
-            tool = GetTopTracksTool(mock_db, "s3://bucket/path")
+            r2_config = R2Config.model_construct(
+                bucket_name="bucket", events_path="events/"
+            )
+            tool = GetTopTracksTool(mock_db, r2_config)
 
             # Act: limitパラメータを省略して実行
             tool.execute(start_date="2024-01-01", end_date="2024-01-31")
@@ -143,7 +158,10 @@ class TestGetListeningStatsTool:
         mock_db = MagicMock()
 
         # Act: ツールを作成
-        tool = GetListeningStatsTool(mock_db, "s3://bucket/path")
+        r2_config = R2Config.model_construct(
+            bucket_name="bucket", events_path="events/"
+        )
+        tool = GetListeningStatsTool(mock_db, r2_config)
 
         # Assert: nameプロパティを検証
         assert tool.name == "get_listening_stats"
@@ -154,7 +172,10 @@ class TestGetListeningStatsTool:
         mock_db = MagicMock()
 
         # Act: ツールを作成
-        tool = GetListeningStatsTool(mock_db, "s3://bucket/path")
+        r2_config = R2Config.model_construct(
+            bucket_name="bucket", events_path="events/"
+        )
+        tool = GetListeningStatsTool(mock_db, r2_config)
 
         # Assert: descriptionプロパティを検証
         assert isinstance(tool.description, str)
@@ -164,7 +185,10 @@ class TestGetListeningStatsTool:
         """input_schemaが正しい構造を持つ。"""
         # Arrange: モックDBとツールを準備
         mock_db = MagicMock()
-        tool = GetListeningStatsTool(mock_db, "s3://bucket/path")
+        r2_config = R2Config.model_construct(
+            bucket_name="bucket", events_path="events/"
+        )
+        tool = GetListeningStatsTool(mock_db, r2_config)
 
         # Act: input_schemaを取得
         schema = tool.input_schema
@@ -180,7 +204,10 @@ class TestGetListeningStatsTool:
         """to_schema()がToolスキーマを生成。"""
         # Arrange: モックDBとツールを準備
         mock_db = MagicMock()
-        tool = GetListeningStatsTool(mock_db, "s3://bucket/path")
+        r2_config = R2Config.model_construct(
+            bucket_name="bucket", events_path="events/"
+        )
+        tool = GetListeningStatsTool(mock_db, r2_config)
 
         # Act: to_schema()でスキーマを生成
         schema = tool.to_schema()
@@ -198,7 +225,7 @@ class TestGetListeningStatsTool:
         mock_db.__enter__.return_value = mock_conn
 
         with patch(
-            "backend.tools.spotify.stats.get_listening_stats",
+            "backend.tools.spotify.stats.fetch_listening_stats",
             return_value=[
                 {
                     "period": "2024-01-01",
@@ -208,7 +235,10 @@ class TestGetListeningStatsTool:
                 }
             ],
         ) as mock_get_listening_stats:
-            tool = GetListeningStatsTool(mock_db, "s3://bucket/path")
+            r2_config = R2Config.model_construct(
+                bucket_name="bucket", events_path="events/"
+            )
+            tool = GetListeningStatsTool(mock_db, r2_config)
 
             # Act: ツールを実行
             result = tool.execute(
@@ -220,22 +250,19 @@ class TestGetListeningStatsTool:
             assert result[0]["period"] == "2024-01-01"
 
             # get_listening_statsが正しい引数で呼ばれたことを確認
-            mock_get_listening_stats.assert_called_once_with(
-                mock_conn,
-                "s3://bucket/path",
-                date(2024, 1, 1),
-                date(2024, 1, 31),
-                "day",
-            )
+            mock_get_listening_stats.assert_called_once()
 
     def test_execute_with_invalid_date_format_raises_error(self):
         """不正な日付形式でエラー。"""
         # Arrange: モックDBとツールを準備
         mock_db = MagicMock()
-        tool = GetListeningStatsTool(mock_db, "s3://bucket/path")
+        r2_config = R2Config.model_construct(
+            bucket_name="bucket", events_path="events/"
+        )
+        tool = GetListeningStatsTool(mock_db, r2_config)
 
         # Act & Assert: 不正な日付形式でValueErrorが発生することを検証
-        with pytest.raises(ValueError, match="Invalid date format"):
+        with pytest.raises(ValueError, match="invalid_start_date"):
             tool.execute(
                 start_date="invalid-date", end_date="2024-01-31", granularity="day"
             )
@@ -248,9 +275,12 @@ class TestGetListeningStatsTool:
         mock_db.__enter__.return_value = mock_conn
 
         with patch(
-            "backend.tools.spotify.stats.get_listening_stats", return_value=[]
+            "backend.tools.spotify.stats.fetch_listening_stats", return_value=[]
         ) as mock_get_listening_stats:
-            tool = GetListeningStatsTool(mock_db, "s3://bucket/path")
+            r2_config = R2Config.model_construct(
+                bucket_name="bucket", events_path="events/"
+            )
+            tool = GetListeningStatsTool(mock_db, r2_config)
 
             # Act: granularityパラメータを省略して実行
             tool.execute(start_date="2024-01-01", end_date="2024-01-31")

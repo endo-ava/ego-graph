@@ -85,7 +85,7 @@ class BackendConfig(BaseSettings):
 
         # R2設定のロード
         try:
-            config.r2 = R2Config()
+            config.r2 = R2Settings().to_config()
         except (ValidationError, ValueError) as e:
             logging.exception("R2 config is required for backend operation")
             raise ValueError(
@@ -114,3 +114,32 @@ class BackendConfig(BaseSettings):
             raise ValueError(
                 "CORS_ORIGINS must be explicitly configured for production (not '*')"
             )
+
+
+class R2Settings(BaseSettings):
+    """Cloudflare R2設定 (S3互換)。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES,
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    endpoint_url: str = Field(..., alias="R2_ENDPOINT_URL")
+    access_key_id: str = Field(..., alias="R2_ACCESS_KEY_ID")
+    secret_access_key: SecretStr = Field(..., alias="R2_SECRET_ACCESS_KEY")
+    bucket_name: str = Field("egograph", alias="R2_BUCKET_NAME")
+    raw_path: str = Field("raw/", alias="R2_RAW_PATH")
+    events_path: str = Field("events/", alias="R2_EVENTS_PATH")
+    master_path: str = Field("master/", alias="R2_MASTER_PATH")
+
+    def to_config(self) -> R2Config:
+        return R2Config(
+            endpoint_url=self.endpoint_url,
+            access_key_id=self.access_key_id,
+            secret_access_key=self.secret_access_key,
+            bucket_name=self.bucket_name,
+            raw_path=self.raw_path,
+            events_path=self.events_path,
+            master_path=self.master_path,
+        )

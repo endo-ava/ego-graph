@@ -12,7 +12,7 @@ from .utils import (
 )
 
 try:
-    __version__ = version("egograph")
+    __version__ = version("shared")
 except PackageNotFoundError:
     __version__ = "0.0.0.dev"
 

@@ -17,7 +17,7 @@ from tabulate import tabulate
 # プロジェクトルートをパスに追加
 sys.path.append(os.getcwd())
 
-from shared.config import Config
+from backend.config import BackendConfig
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -29,16 +29,16 @@ def verify_r2_data():
     logger.info("🦆 Verifying EgoGraph R2 Data Lake...")
 
     try:
-        config = Config.from_env()
+        config = BackendConfig.from_env()
     except Exception:
         logger.exception("Failed to load config")
         return
 
-    if not config.duckdb or not config.duckdb.r2:
+    if not config.r2:
         logger.error("R2 configuration is missing.")
         return
 
-    r2_conf = config.duckdb.r2
+    r2_conf = config.r2
     conn = duckdb.connect(":memory:")
 
     try:
@@ -72,7 +72,7 @@ def verify_r2_data():
             count = conn.execute(
                 "SELECT COUNT(*) FROM read_parquet(?)", [parquet_url]
             ).fetchone()[0]
-            logger.info(f"✅ Connection successful. Total records in R2: {count}")
+            logger.info("✅ Connection successful. Total records in R2: %s", count)
 
             if count == 0:
                 logger.info("ℹ️ R2 plays is empty. Run ingestion first.")
@@ -111,7 +111,7 @@ def verify_r2_data():
             if "No files found" in str(e):
                 logger.warning("⚠️ No Parquet files found for Spotify plays.")
             else:
-                logger.error(f"❌ DuckDB IO Error: {e}")
+                logger.error("❌ DuckDB IO Error: %s", e)
 
         # 4. トラックマスターの確認
         logger.info("\n" + "=" * 60)
@@ -123,7 +123,7 @@ def verify_r2_data():
                 "SELECT COUNT(*) FROM read_parquet(?, union_by_name=true)",
                 [tracks_url],
             ).fetchone()[0]
-            logger.info(f"✅ Total track master records in R2: {track_count}")
+            logger.info("✅ Total track master records in R2: %s", track_count)
 
             if track_count > 0:
                 query_tracks = """
@@ -140,7 +140,7 @@ def verify_r2_data():
             if "No files found" in str(e):
                 logger.warning("⚠️ No track master Parquet files found in R2.")
             else:
-                logger.error(f"❌ DuckDB IO Error (tracks): {e}")
+                logger.error("❌ DuckDB IO Error (tracks): %s", e)
 
         # 5. アーティストマスターの確認
         logger.info("\n" + "=" * 60)
@@ -152,7 +152,7 @@ def verify_r2_data():
                 "SELECT COUNT(*) FROM read_parquet(?, union_by_name=true)",
                 [artists_url],
             ).fetchone()[0]
-            logger.info(f"✅ Total artist master records in R2: {artist_count}")
+            logger.info("✅ Total artist master records in R2: %s", artist_count)
 
             if artist_count > 0:
                 query_artists = """
@@ -169,15 +169,15 @@ def verify_r2_data():
             if "No files found" in str(e):
                 logger.warning("⚠️ No artist master Parquet files found in R2.")
             else:
-                logger.error(f"❌ DuckDB IO Error (artists): {e}")
+                logger.error("❌ DuckDB IO Error (artists): %s", e)
 
     except duckdb.IOException as e:
         if "No files found" in str(e):
             logger.warning("⚠️ No Parquet files found in the specified path.")
         else:
-            logger.error(f"❌ DuckDB IO Error: {e}")
+            logger.error("❌ DuckDB IO Error: %s", e)
     except Exception as e:
-        logger.error(f"❌ Unexpected Error: {e}")
+        logger.error("❌ Unexpected Error: %s", e)
     finally:
         conn.close()
 

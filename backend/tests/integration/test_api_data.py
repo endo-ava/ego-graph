@@ -17,7 +17,7 @@ class TestTopTracksEndpoint:
             }
         ]
 
-        with patch("backend.api.data.get_top_tracks", return_value=mock_result):
+        with patch("backend.api.data.fetch_top_tracks", return_value=mock_result):
             response = test_client.get(
                 "/v1/data/spotify/stats/top-tracks?start_date=2024-01-01&end_date=2024-01-03&limit=5",
                 headers={"X-API-Key": "test-backend-key"},
@@ -81,7 +81,7 @@ class TestListeningStatsEndpoint:
             }
         ]
 
-        with patch("backend.api.data.get_listening_stats", return_value=mock_result):
+        with patch("backend.api.data.fetch_listening_stats", return_value=mock_result):
             response = test_client.get(
                 "/v1/data/spotify/stats/listening?start_date=2024-01-01&end_date=2024-01-03&granularity=day",
                 headers={"X-API-Key": "test-backend-key"},
@@ -118,7 +118,7 @@ class TestListeningStatsEndpoint:
         """granularityのデフォルト値は"day"。"""
         mock_result = [{"period": "2024-01-01", "total_ms": 1000, "track_count": 5, "unique_tracks": 3}]
 
-        with patch("backend.api.data.get_listening_stats", return_value=mock_result):
+        with patch("backend.api.data.fetch_listening_stats", return_value=mock_result):
             # granularity省略
             response = test_client.get(
                 "/v1/data/spotify/stats/listening?start_date=2024-01-01&end_date=2024-01-03",

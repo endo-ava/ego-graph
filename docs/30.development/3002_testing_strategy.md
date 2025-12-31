@@ -14,12 +14,8 @@ ingest/tests/
 │   │   ├── test_collector.py
 │   │   ├── test_storage.py
 │   │   └── ...
-│   └── lastfm/           # Last.fm モジュール用（Deprecated）
-│       ├── test_collector.py
-│       └── ...
 └── integration/          # 統合テスト (実際のワークフロー / 外部APIはモック可)
     ├── spotify/
-    └── lastfm/           # Deprecated
 ```
 
 - **Unit Test**: クラスや関数単体のロジックを検証する。外部 IO (R2, API) は原則モックする。
@@ -83,3 +79,9 @@ PR 作成前に以下を確認すること：
 - [ ] AAA パターンで記述されているか
 - [ ] テストの目的が日本語 Docstring で説明されているか
 - [ ] モックが適切に使われ、意図しない外部アクセスが発生していないか
+
+## 6. モックの粒度ルール
+
+- **API統合テスト**: ルーティングと入力バリデーションを検証し、内部は **usecase層をモック** する。
+- **usecaseテスト**: DB/外部IOをモックし、クエリ呼び出しの引数と戻り値を検証する。
+- **DB/クエリテスト**: DuckDBを使った最小のSQL検証に留め、API層は含めない。
