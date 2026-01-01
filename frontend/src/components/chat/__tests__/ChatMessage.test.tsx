@@ -130,8 +130,6 @@ describe('ChatMessage', () => {
 
     render(<ChatMessage message={message} />);
 
-    // ローディングドット（3つ）を確認
-    const dots = screen.getAllByRole('presentation', { hidden: true });
     // animateクラスを持つドット要素を確認
     const animatedDots = document.querySelectorAll('.animate-bounce');
     expect(animatedDots).toHaveLength(3);

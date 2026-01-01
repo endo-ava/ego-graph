@@ -4,6 +4,7 @@
  */
 
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { format } from 'date-fns';
@@ -60,6 +61,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           >
             {message.content ? (
               <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
                 components={{
                   code(props) {
                     const { children, className, node, ...rest } = props;
@@ -100,7 +102,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
  */
 function LoadingDots() {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" aria-hidden="true">
       <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
       <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
       <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
