@@ -42,7 +42,7 @@ VITE_DEBUG=false
 npm run dev
 ```
 
-`http://localhost:5173` でアクセスできます。
+`http://localhost:5174` でアクセスできます。
 
 ### TypeScriptチェック
 
@@ -143,7 +143,7 @@ cd ../backend
 uv run uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
 # CORS設定（環境変数）
-CORS_ORIGINS="http://localhost:5173,capacitor://localhost"
+CORS_ORIGINS="http://localhost:5174,capacitor://localhost"
 ```
 
 ## トラブルシューティング
@@ -153,7 +153,7 @@ CORS_ORIGINS="http://localhost:5173,capacitor://localhost"
 バックエンドの`.env`に以下を追加してください：
 
 ```bash
-CORS_ORIGINS=http://localhost:5173,capacitor://localhost
+CORS_ORIGINS=http://localhost:5174,capacitor://localhost
 ```
 
 ### Android実機デバッグ
