@@ -111,11 +111,14 @@ describe('ChatMessage', () => {
       timestamp: new Date('2025-12-31T10:00:00Z'),
     };
 
-    render(<ChatMessage message={message} />);
+    const { container } = render(<ChatMessage message={message} />);
 
-    // コードブロックの内容を確認
-    expect(screen.getByText(/def hello/)).toBeInTheDocument();
-    expect(screen.getByText(/print\("Hello"\)/)).toBeInTheDocument();
+    // コードブロックの内容を確認（シンタックスハイライトで要素が分割されるため、テキストコンテンツ全体をチェック）
+    const codeBlock = container.querySelector('code');
+    expect(codeBlock).toBeInTheDocument();
+    expect(codeBlock?.textContent).toContain('def');
+    expect(codeBlock?.textContent).toContain('hello');
+    expect(codeBlock?.textContent).toContain('print("Hello")');
   });
 
   // ローディング状態

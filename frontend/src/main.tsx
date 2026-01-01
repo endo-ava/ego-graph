@@ -26,7 +26,10 @@ async function initializeApp() {
     // ステータスバーの設定
     try {
       await StatusBar.setStyle({ style: Style.Light });
-      await StatusBar.setBackgroundColor({ color: '#ffffff' });
+      // setBackgroundColorはAndroidのみサポート
+      if (Capacitor.getPlatform() === 'android') {
+        await StatusBar.setBackgroundColor({ color: '#ffffff' });
+      }
     } catch (error) {
       console.warn('StatusBar initialization failed:', error);
     }

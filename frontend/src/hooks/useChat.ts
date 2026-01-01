@@ -46,6 +46,18 @@ export function useChat() {
   });
 
   const sendMessage = (content: string) => {
+    // APIリクエスト送信用のメッセージ配列を先に準備（楽観的更新前のmessagesを使用）
+    const apiMessages: Message[] = [
+      ...messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+      {
+        role: 'user' as const,
+        content,
+      },
+    ];
+
     // ユーザーメッセージを即座に追加（楽観的更新）
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -65,18 +77,7 @@ export function useChat() {
     };
     addMessage(assistantMessage);
 
-    // APIリクエスト送信（会話履歴全体を送る）
-    const apiMessages: Message[] = [
-      ...messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-      {
-        role: 'user' as const,
-        content,
-      },
-    ];
-
+    // APIリクエスト送信
     mutation.mutate({
       messages: apiMessages,
       stream: false,

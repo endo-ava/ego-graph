@@ -278,7 +278,7 @@ import { motion } from 'framer-motion';
 
 ## 5. アーキテクチャ推奨構成
 
-```
+```plaintext
 frontend/
 ├── src/
 │   ├── components/

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useChat } from '../useChat';
 import { useChatStore } from '@/lib/store';
@@ -45,7 +45,7 @@ describe('useChat', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useChat(), { wrapper });
 
-    // APIモック
+    // APIモック（遅延を追加してローディング状態をテスト可能にする）
     const mockResponse: ChatResponse = {
       id: 'response-1',
       message: {
@@ -53,10 +53,14 @@ describe('useChat', () => {
         content: 'Hello! How can I help you?',
       },
     };
-    vi.spyOn(api, 'sendChatMessage').mockResolvedValue(mockResponse);
+    vi.spyOn(api, 'sendChatMessage').mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve(mockResponse), 100)),
+    );
 
     // メッセージ送信
-    result.current.sendMessage('Hello');
+    act(() => {
+      result.current.sendMessage('Hello');
+    });
 
     // 楽観的更新：ユーザーメッセージとローディング中のアシスタントメッセージが即座に追加される
     await waitFor(() => {
@@ -255,9 +259,13 @@ describe('useChat', () => {
     });
 
     // メッセージクリア
-    result.current.clearMessages();
+    act(() => {
+      result.current.clearMessages();
+    });
 
-    expect(result.current.messages).toEqual([]);
+    await waitFor(() => {
+      expect(result.current.messages).toEqual([]);
+    });
   });
 
   it('sends conversation history with new message', async () => {
@@ -282,18 +290,17 @@ describe('useChat', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    // APIが正しいリクエストで呼ばれたことを確認
-    expect(sendChatMessageSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: [
-          {
-            role: 'user',
-            content: 'First message',
-          },
-        ],
-        stream: false,
-      }),
-    );
+    // APIが正しいリクエストで呼ばれたことを確認（第1引数のみをチェック）
+    const firstCall = sendChatMessageSpy.mock.calls[0]?.[0];
+    expect(firstCall).toMatchObject({
+      messages: [
+        {
+          role: 'user',
+          content: 'First message',
+        },
+      ],
+      stream: false,
+    });
 
     // 2つ目のメッセージ送信（会話履歴含む）
     sendChatMessageSpy.mockResolvedValue({

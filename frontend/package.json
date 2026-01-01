@@ -15,12 +15,12 @@
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@capacitor/core": "^6.1.2",
-    "@capacitor/android": "^6.1.2",
-    "@capacitor/preferences": "^6.0.2",
-    "@capacitor/network": "^6.0.2",
-    "@capacitor/status-bar": "^6.0.1",
-    "@capacitor/splash-screen": "^6.0.2",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/preferences": "^8.0.0",
+    "@capacitor/network": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
     "@tanstack/react-query": "^5.62.8",
     "@tanstack/react-query-devtools": "^5.62.8",
     "zustand": "^5.0.2",
@@ -38,7 +38,7 @@
     "date-fns": "^4.1.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.1.2",
+    "@capacitor/cli": "^8.0.0",
     "@types/react": "^19.0.6",
     "@types/react-dom": "^19.0.2",
     "@types/react-syntax-highlighter": "^15.5.13",
