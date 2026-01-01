@@ -28,6 +28,7 @@
 - **Mobile/Web App**: **Capacitor** (Cross-platform).
   - ユーザーインターフェースの主役。
   - チャット、ダッシュボード
+  - **詳細**: [フロントエンド技術選定](../20.technical_selections/02_frontend.md)
 
 ## 5. Deployment Infrastructure
 - **Server**: **VPS (Hetzner / Sakura)** or **Cloud VM (AWS EC2 / GCP Compute)**.
