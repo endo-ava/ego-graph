@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+/* Tailwind v4: @theme でデザイントークンを定義 */
+@theme {
+  /* カラーパレット（OKLCH形式推奨） */
+  --color-border: oklch(0.92 0 0);
+  --color-input: oklch(0.92 0 0);
+  --color-ring: oklch(0.22 0 0);
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.15 0 0);
+
+  --color-primary: oklch(0.25 0 0);
+  --color-primary-foreground: oklch(0.98 0 0);
+
+  --color-secondary: oklch(0.96 0 0);
+  --color-secondary-foreground: oklch(0.25 0 0);
+
+  --color-destructive: oklch(0.62 0.22 27);
+  --color-destructive-foreground: oklch(0.98 0 0);
+
+  --color-muted: oklch(0.96 0 0);
+  --color-muted-foreground: oklch(0.51 0 0);
+
+  --color-accent: oklch(0.96 0 0);
+  --color-accent-foreground: oklch(0.25 0 0);
+
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.15 0 0);
+
+  /* Border Radius */
+  --radius-lg: 0.5rem;
+  --radius-md: calc(0.5rem - 2px);
+  --radius-sm: calc(0.5rem - 4px);
+
+  /* アニメーション（tw-animate-css使用） */
+  --animate-bounce: bounce 1s infinite;
+}
+
+/* ダークモード */
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-background: oklch(0.15 0 0);
+    --color-foreground: oklch(0.98 0 0);
+    --color-card: oklch(0.15 0 0);
+    --color-card-foreground: oklch(0.98 0 0);
+    --color-primary: oklch(0.98 0 0);
+    --color-primary-foreground: oklch(0.25 0 0);
+    --color-secondary: oklch(0.22 0 0);
+    --color-secondary-foreground: oklch(0.98 0 0);
+    --color-muted: oklch(0.22 0 0);
+    --color-muted-foreground: oklch(0.68 0 0);
+    --color-accent: oklch(0.22 0 0);
+    --color-accent-foreground: oklch(0.98 0 0);
+    --color-destructive: oklch(0.38 0.16 27);
+    --color-destructive-foreground: oklch(0.98 0 0);
+    --color-border: oklch(0.22 0 0);
+    --color-input: oklch(0.22 0 0);
+    --color-ring: oklch(0.85 0 0);
+  }
+}
+
+/* Base styles */
+* {
+  border-color: var(--color-border);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+#root {
+  height: 100dvh;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  overscroll-behavior-y: auto;
+}
