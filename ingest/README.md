@@ -1,155 +1,75 @@
-# EgoGraph Ingest Service
+# Ingest Service
 
-データ収集、変換、Parquetデータレイク構築サービス
+データ収集、変換、および Parquet データレイク構築サービス。
 
-## 機能
+## Overview
 
-- **Spotify データ収集**: 視聴履歴の取得（get_recently_played API使用）
-- **Parquet Data Lake**: 再生履歴をParquet形式でCloudflare R2に保存
-- **Idempotent 設計**: 再実行してもデータが重複しない
-- **State Management**: 増分取り込みによる効率的なデータ収集
+Ingest サービスは、外部プロバイダー（例：Spotify）からデータを取得し、構造化されたフォーマットに変換して、Data Lake（Cloudflare R2）に保存する役割を担います。
 
-## Parquet スキーマ
+- **Idempotent**: 同じデータに対して何度再実行しても重複が発生しません。
+- **Stateful**: R2 内のカーソル位置（例：`processed_at`）を追跡し、増分取り込みをサポートします。
 
-### events/spotify/plays/year=YYYY/month=MM/*.parquet
-再生履歴を年月でパーティショニングして保存
+## Architecture
 
-| カラム名 | 型 | 説明 |
-|---------|---|------|
-| play_id | VARCHAR | 決定的ID (played_at_track_id) |
-| played_at_utc | TIMESTAMP | 再生日時（UTC） |
-| track_id | VARCHAR | SpotifyトラックID |
-| track_name | VARCHAR | 曲名 |
-| artist_ids | VARCHAR[] | アーティストIDの配列 |
-| artist_names | VARCHAR[] | アーティスト名の配列 |
-| album_id | VARCHAR | アルバムID |
-| album_name | VARCHAR | アルバム名 |
-| ms_played | INTEGER | 再生時間（ミリ秒） |
-| context_type | VARCHAR | 再生コンテキスト（playlist等） |
-| device_name | VARCHAR | デバイス名 |
-
-### raw/spotify/recently_played/YYYY/MM/DD/*.json
-Spotify APIの生レスポンスを日付でパーティショニングして保存（監査用）
-
-## セットアップ
-
-### 1. 依存関係のインストール
-```bash
-cd /path/to/ego-graph
-uv sync --all-packages
+```text
+Providers (API) -> Collector -> Transform -> Storage -> Data Lake (R2)
 ```
 
-### 2. 環境変数の設定
-`.env`ファイルにSpotify APIとCloudflare R2の認証情報を設定:
+- **Collector**: API から生データを取得します。
+- **Transform**: データをクレンジングし、スキーマにマッピングします。
+- **Storage**: Parquet（分析用）および JSON（監査用 Raw データ）ファイルを R2 に書き込みます。
+
+### Data Lake Schema (R2)
+
+- **Events**: `s3://egograph/events/spotify/plays/year=YYYY/month=MM/*.parquet`
+  - 年月でパーティショニングされています。
+  - DuckDB での分析に最適化されています。
+- **Raw**: `s3://egograph/raw/spotify/recently_played/YYYY/MM/DD/*.json`
+  - 監査/再生用のオリジナルの API レスポンス。
+- **State**: `s3://egograph/state/*.json`
+  - 取り込み用のカーソルを保存します。
+
+## Setup & Usage
+
+### Prerequisites
+
+- Python 3.12+
+- `uv` パッケージマネージャー
+
+### Environment Setup
+
+1.  依存関係の同期:
+    ```bash
+    uv sync
+    ```
+2.  `.env` の設定:
+    - `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`
+    - `R2_*` クレデンシャル
+
+### Running Ingestion
 
 ```bash
-# Spotify API
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_secret
-SPOTIFY_REFRESH_TOKEN=your_refresh_token
-
-# Cloudflare R2 (S3互換)
-R2_ENDPOINT_URL=https://<account-id>.r2.cloudflarestorage.com
-R2_ACCESS_KEY_ID=your_access_key_id
-R2_SECRET_ACCESS_KEY=your_secret_access_key
-R2_BUCKET_NAME=egograph
-R2_RAW_PATH=raw/        # オプション（デフォルト: raw/）
-R2_EVENTS_PATH=events/  # オプション（デフォルト: events/）
-```
-
-### 3. ローカル実行
-```bash
-# リポジトリルートから
+# 手動での取り込み実行 (Spotify)
 uv run python -m ingest.spotify.main
 ```
 
-## 自動実行
+利用可能なモジュール:
 
-GitHub Actionsで毎日02:00 UTC（11:00 JST）と14:00 UTC（23:00 JST）に自動実行されます。
+- `ingest.spotify.main`: Spotify から最近の再生履歴を取得します。
 
-ワークフロー: `.github/workflows/job-ingest-spotify.yml`
+## Automation
 
-## テスト
+取り込みジョブは GitHub Actions で自動化されています:
 
-```bash
-# すべてのテスト実行
-cd ingest
-uv run pytest tests/ -v
+- `.github/workflows/job-ingest-spotify.yml`
+- スケジュール: 1 日 2 回 (02:00 UTC, 14:00 UTC)。
 
-# カバレッジ付き
-uv run pytest tests/ --cov=ingest --cov-report=html
-
-# 統合テストをスキップ
-uv run pytest tests/ -m "not integration"
-```
-
-## アーキテクチャ
-
-```text
-Spotify API (最新50件)
-  ↓
-collector.py (データ収集)
-  ↓
-transform.py (クレンジング・変換)
-  ↓
-storage.py (R2保存)
-  ↓------------------↓------------------↓
-Raw JSON           Events Parquet    State JSON
-(監査用正本)         (分析用構造化)      (増分管理)
-  ↓                  ↓
-Cloudflare R2 Data Lake
-  ↓
-DuckDB (Backend: read_parquet で直接クエリ)
-```
-
-### データレイク構成 (R2)
-
-```
-s3://egograph/
-├── raw/spotify/recently_played/YYYY/MM/DD/*.json
-│   └── APIレスポンスの正本（監査用）
-├── events/spotify/plays/year=YYYY/month=MM/*.parquet
-│   └── 分析用の構造化データ（パーティショニング済み）
-└── state/spotify_ingest_state.json
-    └── 増分取り込み用のカーソル管理
-```
-
-DuckDB (Backend) は R2 上の Parquet ファイルを `read_parquet()` で直接読み込むステートレス設計。
-
-### Idempotent設計の詳細
-
-再生履歴の`play_id`は以下のように決定的に生成:
-
-```python
-play_id = f"{played_at_utc}_{track_id}"
-```
-
-これにより、同じデータを何度取り込んでも Parquet ファイル上でユニークキー制約として機能します。
-
-## トラブルシューティング
-
-### データが取得されない場合
-
-1. Spotify APIの認証情報を確認
-2. R2の認証情報と接続を確認
-3. ログレベルをDEBUGに設定して詳細を確認:
-
-   ```bash
-   LOG_LEVEL=DEBUG uv run python -m ingest.spotify.main
-   ```
-
-### テストが失敗する場合
-
-依存関係を再インストール:
+## Testing
 
 ```bash
-uv sync --all-packages
-```
+# 全ての取り込みテストを実行
+uv run pytest ingest/tests
 
-### R2上のデータを確認したい場合
-
-Backend検証スクリプトを使用:
-
-```bash
-uv run python backend/scripts/verify_parquet_read.py
+# カバレッジ付きで実行
+uv run pytest ingest/tests --cov=ingest
 ```
