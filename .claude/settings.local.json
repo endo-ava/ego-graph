@@ -17,7 +17,19 @@
       "Bash(timeout 5 uv run:*)",
       "mcp__serena__think_about_collected_information",
       "Bash(uv run pytest:*)",
-      "Bash(coderabbit --prompt-only -t committed --base main:*)"
+      "Bash(coderabbit --prompt-only -t committed --base main:*)",
+      "Bash(codex review:*)",
+      "Bash(coderabbit --prompt-only:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(tree:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm test)",
+      "mcp__serena__find_file",
+      "Bash(pkill:*)",
+      "Skill(pr-review-extraction)",
+      "WebSearch",
+      "Bash(npm test:*)",
+      "Bash(npm view:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
