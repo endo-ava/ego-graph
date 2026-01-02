@@ -60,6 +60,7 @@ pip-delete-this-directory.txt
 htmlcov/
 .tox/
 .hypothesis/
+backend/coverage.xml
 
 # Jupyter
 .ipynb_checkpoints

@@ -31,6 +31,11 @@ jobs:
         run: uv sync --all-packages
 
       - name: Run tests
+        env:
+          R2_ENDPOINT_URL: "https://test.r2.cloudflarestorage.com"
+          R2_ACCESS_KEY_ID: "test-access-key"
+          R2_SECRET_ACCESS_KEY: "test-secret-key"
+          R2_BUCKET_NAME: "test-bucket"
         run: |
           cd backend
           uv run pytest tests/ -v --cov=backend --cov-report=xml --cov-report=term
