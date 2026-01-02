@@ -26,7 +26,7 @@ EgoGraph は、個人のデジタルライフログ（Spotify, Web, Bank, etc.�
 
 このプロジェクトは、Python (uv workspace) + Node.js (npm) のモノレポです。
 
-```
+```text
 ego-graph/
 ├── shared/                # 共有Pythonライブラリ（uv workspace メンバー）
 ├── ingest/                # データ収集ワーカー（uv workspace メンバー）

@@ -40,9 +40,11 @@ jobs:
           cd backend
           uv run pytest tests/ -v --cov=backend --cov-report=xml --cov-report=term
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        if: always()
-        with:
-          file: ./backend/coverage.xml
-          fail_ci_if_error: false
+      # Future: Enable Codecov when needed (requires CODECOV_TOKEN in GitHub Secrets)
+      # - name: Upload coverage
+      #   uses: codecov/codecov-action@v4
+      #   if: always()
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     file: ./backend/coverage.xml
+      #     fail_ci_if_error: false

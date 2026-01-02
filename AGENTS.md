@@ -60,7 +60,7 @@ External APIs → GitHub Actions (Ingest) → R2 (Parquet) → Backend (DuckDB) 
 - **Qdrant**: 意味検索インデックス
 
 ### コンポーネント依存
-```
+```text
 shared/ ← 基盤ライブラリ
   ↑
   ├─ ingest/   (workspace依存)
