@@ -64,14 +64,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 remarkPlugins={[remarkGfm]}
                 components={{
                   code(props) {
-                    const { children, className, node, ...rest } = props;
+                    const { children, className, ...rest } = props;
                     const match = /language-(\w+)/.exec(className || '');
                     const language = match?.[1];
                     const isInline = !className && !match;
 
                     return !isInline && language ? (
                       <SyntaxHighlighter
-                        style={vscDarkPlus as any}
+                        style={vscDarkPlus}
                         language={language}
                         PreTag="div"
                       >
