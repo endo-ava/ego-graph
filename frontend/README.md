@@ -5,7 +5,7 @@ ChatGPT/Perplexity風のチャットUIを持つCapacitorアプリ（Android優�
 ## 技術スタック
 
 - **Core**: Capacitor 8 + Vite 6 + React 19 + TypeScript 5
-- **UI**: Tailwind CSS 4 + shadcn/ui (手動実装)
+- **UI**: Tailwind CSS 4 + shadcn/ui
 - **状態管理**: TanStack Query v5 (サーバー状態) + Zustand (UI状態)
 - **チャット**: react-markdown + react-syntax-highlighter + react-virtuoso
 - **API**: FastAPI Backend `/v1/chat`
@@ -43,6 +43,18 @@ npm run dev
 ```
 
 `http://localhost:5174` でアクセスできます。
+
+### バックエンドAPIの起動
+
+バックエンドAPIはプロジェクトルートから起動します。
+
+```bash
+# プロジェクトルートに移動
+cd ..
+
+# バックエンドサーバー起動
+uv run python backend/main.py
+```
 
 ### TypeScriptチェック
 
@@ -91,12 +103,8 @@ Android Studioで実機を選択して実行してください。
 frontend/
 ├── src/
 │   ├── components/
-│   │   ├── ui/              # shadcn/uiコンポーネント
-│   │   │   └── button.tsx
-│   │   └── chat/            # チャット機能
-│   │       ├── ChatMessage.tsx
-│   │       ├── ChatInput.tsx
-│   │       └── MessageList.tsx
+│   │   ├── ui/              # shadcn/uiコンポーネント (button.tsx等)
+│   │   └── chat/            # チャット機能 (ChatMessage.tsx, ChatInput.tsx等)
 │   ├── lib/
 │   │   ├── api.ts           # TanStack Query + API Client
 │   │   ├── store.ts         # Zustand Store
@@ -113,44 +121,30 @@ frontend/
 ├── capacitor.config.ts
 ├── vite.config.ts
 ├── tsconfig.json
-├── tsconfig.node.json
 ├── components.json          # shadcn/ui設定
-├── package.json
-└── .env.example
+└── package.json
 ```
 
 ## 特記事項
 
 ### Tailwind CSS v4
 
-このプロジェクトはTailwind CSS v4を使用しています。v4では以下の変更点があります：
+このプロジェクトはTailwind CSS v4を使用しています。
 
-- `tailwind.config.js`は不要（削除済み）
-- `postcss.config.js`も不要（削除済み）
-- CSS内で`@import "tailwindcss"`と`@theme`を使用
-- カラーはOKLCH形式推奨
-- `@tailwindcss/vite`プラグインを使用
-
-詳細: [Tailwind CSS v4.0 Blog](https://tailwindcss.com/blog/tailwindcss-v4)
+- `tailwind.config.js` / `postcss.config.js` は不要
+- CSS内で `@import "tailwindcss"` を使用
+- `@tailwindcss/vite` プラグインを使用
 
 ### バックエンドAPI
 
-バックエンドAPIは`backend/`ディレクトリで実装されています。
-
-```bash
-# バックエンド起動
-cd ../backend
-uv run uvicorn backend.main:app --host 0.0.0.0 --port 8000
-
-# CORS設定（環境変数）
-CORS_ORIGINS="http://localhost:5174,capacitor://localhost"
-```
+バックエンドAPIは `backend/` ディレクトリで実装されています。
+詳細は [backend/README.md](../backend/README.md) を参照してください。
 
 ## トラブルシューティング
 
 ### CORS エラー
 
-バックエンドの`.env`に以下を追加してください：
+バックエンドの `.env` に以下を追加してください：
 
 ```bash
 CORS_ORIGINS=http://localhost:5174,capacitor://localhost
@@ -158,7 +152,7 @@ CORS_ORIGINS=http://localhost:5174,capacitor://localhost
 
 ### Android実機デバッグ
 
-Chrome DevToolsで`chrome://inspect`からデバッグできます。
+Chrome DevToolsで `chrome://inspect` からデバッグできます。
 
 ## ライセンス
 
