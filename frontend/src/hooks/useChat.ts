@@ -1,0 +1,93 @@
+/**
+ * チャット機能のカスタムフック
+ * TanStack Query と Zustand を組み合わせて使用します
+ */
+
+import { useMutation } from '@tanstack/react-query';
+import { useChatStore } from '@/lib/store';
+import { sendChatMessage, ApiRequestError } from '@/lib/api';
+import type { ChatMessage, Message } from '@/types/chat';
+
+export function useChat() {
+  const { messages, addMessage, updateLastMessage, setLastMessageError, clearMessages } =
+    useChatStore();
+
+  const mutation = useMutation({
+    mutationFn: sendChatMessage,
+    onSuccess: (data) => {
+      // アシスタントのメッセージを更新
+      if (data.message.content) {
+        updateLastMessage(data.message.content);
+      }
+    },
+    onError: (error) => {
+      // エラーメッセージを設定
+      let errorMessage = 'エラーが発生しました';
+      if (error instanceof ApiRequestError) {
+        if (error.status === 501) {
+          errorMessage = 'LLM設定が不足しています。バックエンドの設定を確認してください。';
+        } else if (error.status === 504) {
+          errorMessage = 'リクエストがタイムアウトしました。しばらく待ってから再試行してください。';
+        } else if (error.status === 502) {
+          errorMessage = `LLM APIエラー: ${error.detail}`;
+        } else if (error.status === 401) {
+          errorMessage = '認証に失敗しました。API Keyを確認してください。';
+        } else {
+          errorMessage = error.detail;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      // エラーメッセージを最後のメッセージとして設定
+      updateLastMessage(errorMessage);
+      setLastMessageError(true);
+    },
+  });
+
+  const sendMessage = (content: string) => {
+    // APIリクエスト送信用のメッセージ配列を先に準備（楽観的更新前のmessagesを使用）
+    const apiMessages: Message[] = [
+      ...messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+      {
+        role: 'user' as const,
+        content,
+      },
+    ];
+
+    // ユーザーメッセージを即座に追加（楽観的更新）
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content,
+      timestamp: new Date(),
+    };
+    addMessage(userMessage);
+
+    // アシスタントメッセージのプレースホルダーを追加
+    const assistantMessage: ChatMessage = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      isLoading: true,
+    };
+    addMessage(assistantMessage);
+
+    // APIリクエスト送信
+    mutation.mutate({
+      messages: apiMessages,
+      stream: false,
+    });
+  };
+
+  return {
+    messages,
+    sendMessage,
+    clearMessages,
+    isLoading: mutation.isPending,
+  };
+}

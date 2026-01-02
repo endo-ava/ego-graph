@@ -11,6 +11,7 @@ EgoGraphの各コンポーネントにおける技術選定の詳細と比較検
 | ドキュメント | 内容 |
 |---|---|
 | [01_embedding.md](./01_embedding.md) | Embedding戦略の詳細（Nomic Embed選定理由、比較） |
+| [02_frontend.md](./02_frontend.md) | フロントエンド技術選定（Capacitor + React + Vite + shadcn/ui） |
 
 ---
 
@@ -18,7 +19,6 @@ EgoGraphの各コンポーネントにおける技術選定の詳細と比較検
 
 - Vector Database選定（Qdrantを選んだ理由）
 - LLM選定（DeepSeek vs その他）
-- Frontend Framework選定
 - Backend Framework選定
 
 ---

@@ -63,10 +63,11 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
                 "CORS origins が設定されていません。CORSミドルウェアは空のオリジンリストで動作します。"
             )
 
+        # 開発環境では allow_credentials=False（本番では True に変更可能）
         app.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
-            allow_credentials=True,
+            allow_credentials=False,  # 開発環境ではシンプルにfalse
             allow_methods=["*"],
             allow_headers=["*"],
         )
