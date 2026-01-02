@@ -4,7 +4,7 @@ ChatGPT/Perplexity風のチャットUIを持つCapacitorアプリ（Android優�
 
 ## 技術スタック
 
-- **Core**: Capacitor 6 + Vite 6 + React 19 + TypeScript 5
+- **Core**: Capacitor 8 + Vite 6 + React 19 + TypeScript 5
 - **UI**: Tailwind CSS 4 + shadcn/ui (手動実装)
 - **状態管理**: TanStack Query v5 (サーバー状態) + Zustand (UI状態)
 - **チャット**: react-markdown + react-syntax-highlighter + react-virtuoso

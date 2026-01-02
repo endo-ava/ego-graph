@@ -39,14 +39,14 @@ EgoGraphのフロントエンドは、**モバイルファースト**で設計�
 ### Capacitor（ネイティブブリッジ）
 | パッケージ | 役割 | バージョン |
 |---|---|---|
-| `@capacitor/core` | Capacitorコアランタイム | `^6.0.0` |
-| `@capacitor/cli` | ビルドツール | `^6.0.0` |
-| `@capacitor/ios` | iOSプラットフォーム | `^6.0.0` |
-| `@capacitor/android` | Androidプラットフォーム | `^6.0.0` |
-| `@capacitor/preferences` | ローカルストレージ（認証トークン、設定など） | `^6.0.0` |
-| `@capacitor/network` | ネットワーク状態監視（オフライン対応） | `^6.0.0` |
-| `@capacitor/status-bar` | ステータスバーのカスタマイズ | `^6.0.0` |
-| `@capacitor/splash-screen` | スプラッシュスクリーン制御 | `^6.0.0` |
+| `@capacitor/core` | Capacitorコアランタイム | `^8.0.0` |
+| `@capacitor/cli` | ビルドツール | `^8.0.0` |
+| `@capacitor/ios` | iOSプラットフォーム | `^8.0.0` |
+| `@capacitor/android` | Androidプラットフォーム | `^8.0.0` |
+| `@capacitor/preferences` | ローカルストレージ（認証トークン、設定など） | `^8.0.0` |
+| `@capacitor/network` | ネットワーク状態監視（オフライン対応） | `^8.0.0` |
+| `@capacitor/status-bar` | ステータスバーのカスタマイズ | `^8.0.0` |
+| `@capacitor/splash-screen` | スプラッシュスクリーン制御 | `^8.0.0` |
 
 ---
 
@@ -226,13 +226,13 @@ import { motion } from 'framer-motion';
     "react-router-dom": "^7.0.0",
 
     // Capacitor
-    "@capacitor/core": "^6.0.0",
-    "@capacitor/ios": "^6.0.0",
-    "@capacitor/android": "^6.0.0",
-    "@capacitor/preferences": "^6.0.0",
-    "@capacitor/network": "^6.0.0",
-    "@capacitor/status-bar": "^6.0.0",
-    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/preferences": "^8.0.0",
+    "@capacitor/network": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
 
     // State Management
     "@tanstack/react-query": "^5.0.0",
@@ -260,7 +260,7 @@ import { motion } from 'framer-motion';
     "date-fns": "^4.0.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.0.0",
+    "@capacitor/cli": "^8.0.0",
     "@vitejs/plugin-react": "^4.0.0",
     "vite": "^6.0.0",
     "typescript": "^5.0.0",
