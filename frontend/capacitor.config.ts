@@ -9,7 +9,7 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      // launchShowDurationを削除し、main.tsxで明示的にhide()を呼び出して制御
       backgroundColor: '#ffffff',
       showSpinner: false,
     },

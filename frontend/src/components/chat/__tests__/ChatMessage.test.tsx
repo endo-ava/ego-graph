@@ -191,6 +191,10 @@ describe('ChatMessage', () => {
 
   // タイムスタンプフォーマット
   it('formats timestamp correctly (HH:mm)', () => {
+    // タイムゾーンをUTCに固定してテストの安定性を確保
+    const originalTZ = process.env.TZ;
+    process.env.TZ = 'UTC';
+
     const message: ChatMessageType = {
       id: 'user-2',
       role: 'user',
@@ -200,10 +204,11 @@ describe('ChatMessage', () => {
 
     render(<ChatMessage message={message} />);
 
-    // 時刻が正しくフォーマットされることを確認（14:30形式）
-    // 注意: タイムゾーンの影響を受ける可能性があるため、正規表現で検証
-    const timeText = screen.getByText(/\d{2}:\d{2}/);
-    expect(timeText).toBeInTheDocument();
+    // UTCで14:30と表示されることを確認
+    expect(screen.getByText('14:30')).toBeInTheDocument();
+
+    // タイムゾーンを元に戻す
+    process.env.TZ = originalTZ;
   });
 
   // 複数の段落を持つMarkdown
