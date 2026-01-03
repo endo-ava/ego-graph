@@ -128,10 +128,9 @@ After=network.target
 Type=simple
 WorkingDirectory=/opt/egograph/repo
 EnvironmentFile=/opt/egograph/repo/.env
-Environment=PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/usr/bin/env uv run uvicorn backend.main:app --host 127.0.0.1 --port 8000
+ExecStart=/root/.local/bin/uv run uvicorn backend.main:app --host 127.0.0.1 --port 8000
 Restart=always
-RestartSec=3
+RestartSec=10
 User=root
 Group=root
 

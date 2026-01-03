@@ -60,7 +60,7 @@ External APIs → GitHub Actions (Ingest) → R2 (Parquet) → Backend (DuckDB) 
 - **Qdrant**: 意味検索インデックス
 
 ### コンポーネント依存
-```
+```text
 shared/ ← 基盤ライブラリ
   ↑
   ├─ ingest/   (workspace依存)
@@ -135,28 +135,16 @@ frontend/  (独立、Backend API のみ利用)
 
 ### SQL
 - **プレースホルダ必須**: `execute(query, (param,))`
-- **例外**: DuckDB の `strftime` のみ f-string 許可（コメント明記）
 
 ```python
-# 良い例
+# 例
 cursor.execute("SELECT * FROM events WHERE user_id = ?", (user_id,))
-
-# 悪い例
-cursor.execute(f"SELECT * FROM events WHERE user_id = {user_id}")  # ❌
 ```
 
 ### Logging
 - **遅延評価**: `logger.info("key=%s", value)`（f-string 禁止）
 - **機密情報**: API キー/トークン/個人情報を出力しない
 - **エラー**: 例外型とメッセージのみ（DEBUG で詳細スタック許可）
-
-```python
-# 良い例
-logger.info("Processing user_id=%s", user_id)
-
-# 悪い例
-logger.info(f"API Key: {api_key}")  # ❌ 機密情報漏洩
-```
 
 ### API エラーメッセージ
 - **統一フォーマット**: `invalid_<field>: <reason>`
