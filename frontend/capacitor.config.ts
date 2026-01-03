@@ -14,7 +14,7 @@ const plugins: CapacitorConfig['plugins'] = {
 };
 
 if (updaterUrl) {
-  (plugins as any).CapacitorUpdater = {
+  plugins.CapacitorUpdater = {
     autoUpdate: true,
     updateUrl: updaterUrl,
   };
