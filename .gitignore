@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -44,6 +44,7 @@ env/
 .env
 .env.local
 .env.*.local
+.env.production
 
 # Spotify credentials cache (contains access_token and refresh_token)
 .cache
@@ -58,8 +59,10 @@ pip-delete-this-directory.txt
 .pytest_cache/
 .coverage
 htmlcov/
+coverage/
 .tox/
 .hypothesis/
+backend/coverage.xml
 
 # Jupyter
 .ipynb_checkpoints

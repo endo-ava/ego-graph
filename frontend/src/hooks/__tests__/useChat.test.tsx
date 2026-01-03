@@ -3,6 +3,7 @@
  * 楽観的更新, エラーハンドリング, メッセージ履歴管理を検証
  */
 
+import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

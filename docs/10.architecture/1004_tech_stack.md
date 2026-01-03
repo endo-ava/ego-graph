@@ -1,46 +1,158 @@
-# 技術スタック (DuckDB + Qdrant)
+# 技術スタック
 
-## 1. Core Database Engine
-- **DuckDB**: **OLAP (分析) 専用エンジン**。
-  - **Extension: `parquet`**: ローカルのParquetファイル群に対してSQLを実行する。
-  - **Extension: `httpfs`**: Cloudflare R2 (S3互換) 上のデータを参照するために使用。
-- **Qdrant Cloud**: **ベクトル検索専用エンジン**。
-  - **Free Tier**: 1GBメモリまで無料（約10万ベクトル※次元数に依存）。
-  - **役割**: 日次要約やチャンクの意味検索を担当し、BEサーバーのメモリ負荷を下げる。
-
-## 2. Ingestion Pipeline
-- **Language**: **Python 3.13+**
-- **Libraries**:
-  - `pandas` / `polars`: データ加工用。DuckDBとのZero-Copy連携が強力。
-  - `spotipy`: Spotify APIクライアント。
-  - `playwright`: Webスクレイピング。
-
-## 3. Application / Agent Layer
-- **Framework**: **FastAPI** (Python)
-  - 軽量なREST APIサーバーとして、Agentのインターフェースを提供。
-- **Agent Framework**: **LangChain** or **LlamaIndex**
-  - Toolとして `DuckDBQueryTool` を定義し、LLMにSQLを書かせる。
-- **LLM**:
-  - **Agent Reasoning**: OpenAI GPT-4o / DeepSeek v3.
-  - **Embedding**: `cl-nagoya/ruri-v3-310m` (Local execution via `sentence-transformers`).
-
-## 4. Frontend / Client
-- **Mobile/Web App**: **Capacitor** (Cross-platform).
-  - ユーザーインターフェースの主役。
-  - チャット、ダッシュボード
-  - **詳細**: [フロントエンド技術選定](../20.technical_selections/02_frontend.md)
-
-## 5. Deployment Infrastructure
-- **Server**: **VPS (Hetzner / Sakura)** or **Cloud VM (AWS EC2 / GCP Compute)**.
-  - Docker Compose で Agent + Ingestion Worker を同居させる。
-- **Storage**:
-  - **Object Storage (Cloudflare R2)**: **正本 (Original)**。生データとParquetファイルの主格納場所。
-  - **Local SSD (Volume)**: **Cache & Ledger**。DuckDBファイルと、頻繁にアクセスするParquetのキャッシュ。
+モノレポ構成における各コンポーネントの技術選定とその理由。
 
 ---
 
-## 理由: なぜ DuckDB + Qdrant か？
+## モノレポ構成
 
-1.  **Separation of Concerns**: 分析（集計）と探索（意味検索）のワークロードを分離。重いベクトル検索をマネージドサービス（Qdrant）に逃がすことで、Agentサーバーを軽量に保てる。
-2.  **Performance**: DuckDBは列指向処理により、大規模データの集計が非常に高速。QdrantはRust製の専用エンジンでベクトル検索が高速。
-3.  **Simplicity**: 大掛かりなDWHを構築せずとも、ファイルベースでお手軽に本格的なOLAP環境が手に入る。個人運用に最適。
+| コンポーネント | 言語/FW | パッケージマネージャー | 主要ライブラリ |
+|--------------|---------|---------------------|--------------|
+| **shared/** | Python 3.13 | uv | Pydantic, python-dotenv |
+| **ingest/** | Python 3.13 | uv | Spotipy, DuckDB, boto3, pyarrow |
+| **backend/** | Python 3.13 | uv | FastAPI, Uvicorn, DuckDB |
+| **frontend/** | TypeScript 5 | npm | React 19, Capacitor 8, Vite 6 |
+
+- **Python Workspace**: uv で shared, ingest, backend を一元管理
+- **Node.js**: frontend のみ独立した npm パッケージ
+
+---
+
+## 1. Data Storage
+
+### DuckDB (OLAP 分析エンジン)
+- **用途**: SQL 分析、集計、台帳管理
+- **Extension**:
+  - `parquet`: Parquet ファイルに対する高速クエリ
+  - `httpfs`: Cloudflare R2 (S3互換) からの直接読取
+- **実行モード**: `:memory:` (Backend でステートレス実行)
+- **理由**: 列指向処理による高速集計、ファイルベースで運用が簡単
+
+### Qdrant Cloud (ベクトル検索)
+- **用途**: 意味検索、RAG のインデックス
+- **Free Tier**: 1GB メモリ（約10万ベクトル）
+- **理由**: マネージドサービスで運用不要、Backend のメモリ負荷を削減
+
+### Cloudflare R2 (Object Storage)
+- **用途**: 正本（Parquet/Raw JSON）の永続化
+- **特徴**: S3 互換、egress 無料
+- **構造**:
+  - `events/`: 時系列データ（年月パーティショニング）
+  - `master/`: マスターデータ
+  - `raw/`: API レスポンス（監査用）
+  - `state/`: 増分取り込みカーソル
+
+---
+
+## 2. Shared Library（共有ライブラリ）
+
+- **Language**: Python 3.13
+- **主要ライブラリ**:
+  - `pydantic`: データモデル定義
+  - `python-dotenv`: 環境変数管理
+- **パッケージング**: Hatchling でビルド、`__init__.py` で公開 API を再エクスポート
+- **用途**: ingest, backend で共通利用するモデル・設定・ユーティリティ
+
+---
+
+## 3. Ingest Pipeline（データ収集）
+
+- **Language**: Python 3.13
+- **実行環境**: GitHub Actions（定期実行: 1日2回）
+- **主要ライブラリ**:
+  - `spotipy`: Spotify API クライアント
+  - `pyarrow`: Parquet ファイル作成
+  - `boto3`: R2 アップロード
+  - `duckdb`: データ変換・検証
+- **特性**: Idempotent（冪等性）、Stateful（カーソル管理）
+
+---
+
+## 4. Backend（Agent API Server）
+
+- **Framework**: FastAPI (Python 3.13)
+- **Web Server**: Uvicorn (ASGI)
+- **主要ライブラリ**:
+  - `duckdb`: データアクセス
+  - `httpx`: 外部 API 呼び出し
+  - LLM プロバイダー SDK（OpenAI, Anthropic, OpenRouter）
+- **Agent Framework**: LangChain / LlamaIndex（検討中）
+- **LLM**:
+  - Agent Reasoning: OpenAI GPT-4o / DeepSeek v3
+  - Embedding: `cl-nagoya/ruri-v3-310m`（ローカル実行）
+- **実行環境**: VPS/GCP VM（常駐サーバー）
+- **特性**: ステートレス（DuckDB `:memory:` で初期化）
+
+---
+
+## 5. Frontend（モバイル/Web アプリ）
+
+- **Framework**: React 19 + Vite 6
+- **Language**: TypeScript 5
+- **Mobile Runtime**: Capacitor 8（Android 対応）
+- **UI System**: Tailwind CSS 4 + shadcn/ui
+- **State Management**:
+  - Server State: TanStack Query (React Query)
+  - Client State: Zustand
+- **テスト**: Vitest
+- **実行環境**: モバイル（Android）/Web ブラウザ
+
+詳細: [フロントエンド技術選定](../20.technical_selections/02_frontend.md)
+
+---
+
+## 6. CI/CD
+
+### GitHub Actions
+
+| ワークフロー | トリガー | 用途 |
+|-------------|---------|------|
+| `ci-backend.yml` | `backend/**`, `shared/**` | Backend テスト・Lint |
+| `ci-ingest.yml` | `ingest/**`, `shared/**` | Ingest テスト・Lint |
+| `ci-frontend.yml` | `frontend/**` | Frontend テスト・Lint |
+| `job-ingest-spotify.yml` | Cron (1日2回) | Spotify データ収集 |
+
+### テストツール
+
+- **Python**: pytest, pytest-cov, Ruff (Lint/Format)
+- **Frontend**: Vitest, ESLint, TypeScript
+
+---
+
+## 7. Deployment Infrastructure
+
+### 開発環境
+- **Python**: uv で依存関係管理（`uv sync`）
+- **Node.js**: npm で依存関係管理（`npm install`）
+
+### 本番環境（想定）
+- **Server**: VPS (Hetzner / Sakura) or GCP VM
+- **Storage**:
+  - Cloudflare R2: 正本（Parquet/Raw JSON）
+  - Local SSD: DuckDB キャッシュ
+- **Monitoring**: (未実装)
+- **Deployment**: (未実装、将来的に Docker Compose 等)
+
+---
+
+## なぜこの技術スタックか？
+
+### DuckDB + Qdrant のハイブリッド構成
+
+1. **Separation of Concerns**: 分析（集計）と探索（意味検索）を分離
+2. **Performance**: DuckDB の列指向処理 + Qdrant の高速ベクトル検索
+3. **Simplicity**: ファイルベースで大規模 DWH 不要、個人運用に最適
+4. **Cost Effective**: VPS + マネージドサービス（Qdrant Free Tier）で低コスト
+
+### モノレポ + uv workspace
+
+1. **コード共有**: shared/ で型安全なモデル・設定を一元管理
+2. **依存関係の透明性**: workspace 依存で ingest/backend の共通基盤を明示
+3. **開発効率**: `uv sync` 一発で全 Python パッケージをセットアップ
+4. **CI/CD の最適化**: コンポーネント別テストで高速フィードバック
+
+### Mobile First (Capacitor)
+
+1. **クロスプラットフォーム**: Web 技術で Android/iOS 対応
+2. **開発速度**: React エコシステムの恩恵（shadcn/ui, TanStack Query）
+3. **将来性**: Web でも動作するため、デスクトップ対応も容易
