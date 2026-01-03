@@ -93,7 +93,7 @@ frontend/  (独立、Backend API のみ利用)
 
 ### 2. Mobile First API
 
-- FastAPI で REST API 提供（Basic Auth/API Key）
+- FastAPI で REST API 提供（API Key）
 - ステートレス設計
 
 ### 3. Python パッケージング
