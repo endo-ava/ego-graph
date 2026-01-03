@@ -1,29 +1,31 @@
 # Frontend Deploy (Android)
 
-本番フロントエンドをAndroidアプリとしてビルド・デプロイする手順。
-Capacitor 8 + React 19 を使用し、Androidネイティブアプリとして配布する。
+本番フロントエンドを Android アプリとしてビルド・デプロイする手順。
+Capacitor 8 + React 19 を使用し、Android ネイティブアプリとして配布する。
 開発ビルド（デバッグ）と本番ビルド（リリース）の両方に対応。
 
 **関連ドキュメント**:
-- [Capacitor アーキテクチャとプラグイン](./capacitor.md) - OS非依存のCapacitor共通情報
+
+- [Capacitor アーキテクチャとプラグイン](./capacitor.md) - OS 非依存の Capacitor 共通情報
 
 ## 1. 前提条件
 
-Android開発に必要な環境を整える。
+Android 開発に必要な環境を整える。
 初回のみセットアップが必要。
 
 ### 1.1 必須ツール
 
-| ツール | 用途 | 備考 |
-|--------|------|------|
-| **Node.js** | フロントエンドビルド | v20以上推奨 |
-| **Android Studio** | ネイティブビルド・実行 | 最新安定版 |
-| **JDK** | Javaコンパイル | Android Studio付属で可 |
+| ツール             | 用途                   | 備考                    |
+| ------------------ | ---------------------- | ----------------------- |
+| **Node.js**        | フロントエンドビルド   | v20 以上推奨            |
+| **Android Studio** | ネイティブビルド・実行 | 最新安定版              |
+| **JDK**            | Java コンパイル        | Android Studio 付属で可 |
 
 ### 1.2 Android Studio インストール
 
 1. [Android Studio](https://developer.android.com/studio) をダウンロード
 2. インストール時に以下を含める:
+
    - Android SDK
    - Android SDK Platform
    - Android Virtual Device (エミュレータ使用時)
@@ -38,6 +40,7 @@ Android Studio が自動検出するため、通常は不要。
 CLI でビルドする場合のみ設定する。
 
 **Linux/macOS**:
+
 ```bash
 export ANDROID_HOME=$HOME/Android/Sdk
 export PATH=$PATH:$ANDROID_HOME/platform-tools
@@ -45,6 +48,7 @@ export PATH=$PATH:$ANDROID_HOME/tools
 ```
 
 **Windows** (PowerShell):
+
 ```powershell
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 $env:PATH += ";$env:ANDROID_HOME\platform-tools"
@@ -54,10 +58,9 @@ $env:PATH += ";$env:ANDROID_HOME\platform-tools"
 
 ### 2.1 環境変数設定
 
-本番バックエンドのURLとAPI Keyを設定する。
+本番バックエンドの URL と API Key を設定する。
 
 `.env` ファイルを作成:
-
 
 必須設定項目:
 
@@ -69,13 +72,13 @@ VITE_DEBUG=false
 
 **重要**: 本番環境では必ず `VITE_DEBUG=false` に設定する。
 
-**Capacitor Updaterを使う場合**:
-`VITE_CAPACITOR_UPDATER_URL` を環境変数として設定する（例: `https://<r2-public-domain>/capacitor_updates/latest.json`）。
+**Capacitor Updater を使う場合**:
+`VITE_CAPACITOR_UPDATER_URL` を環境変数として設定する（例: `https://<r2-public-domain>/<bucket>/capacitor_updates/latest.json`）。
 
-### 2.2 Androidプロジェクト初期化
+### 2.2 Android プロジェクト初期化
 
 初回のみ実行。
-Capacitorが `android/` ディレクトリを生成する。
+Capacitor が `android/` ディレクトリを生成する。
 
 ```bash
 npm run android:init
@@ -88,7 +91,7 @@ npm run android:init
 開発中の動作確認やデバッグ用のビルド。
 実機またはエミュレータで即座に実行できる。
 
-### 3.1 Webアセットビルド
+### 3.1 Web アセットビルド
 
 React アプリをビルドし、`dist/` に出力:
 
@@ -98,20 +101,21 @@ npm run build
 
 ### 3.2 Capacitor 同期
 
-Webアセット (`dist/`) をAndroidプロジェクトに同期:
+Web アセット (`dist/`) を Android プロジェクトに同期:
 
 ```bash
 npm run android:sync
 ```
 
 これにより、以下が実行される:
+
 - `dist/` の内容を `android/app/src/main/assets/public/` にコピー
 - `capacitor.config.ts` の設定を反映
 - ネイティブプラグインを同期
 
 ### 3.3 Android Studio で実行
 
-Android StudioはWindowsで実行する。そのため`frontend/android`をWindowsのディレクトリにコピーする:
+Android Studio は Windows で実行する。そのため`frontend/android`を Windows のディレクトリにコピーする:
 
 ```bash
 ## Windowsで実行
@@ -133,6 +137,7 @@ npm run android:open
 3. アプリが起動し、バックエンドと通信開始
 
 **初回実行時の注意**:
+
 - Gradle sync が自動実行される（数分かかる）
 - エミュレータがない場合は `AVD Manager` で作成
 
@@ -143,20 +148,20 @@ Android Studio の `Logcat` タブでログを確認:
 - フィルタ: `package:com.egograph.app`
 - タグ: `Capacitor`, `Console`
 
-JavaScriptのログは `console.log()` が `Logcat` に出力される。
+JavaScript のログは `console.log()` が `Logcat` に出力される。
 
 ## 4. 本番リリースビルド（任意）
 
-Google Play配布や署名付きRelease配布を行う場合のみ実施する。
+Google Play 配布や署名付き Release 配布を行う場合のみ実施する。
 デバッグビルドのみで運用する場合、このセクションは全てスキップ可能。
-**4をスキップした場合、署名付きRelease APK/AABは作れない**（debug APKのみ）。
+**4 をスキップした場合、署名付き Release APK/AAB は作れない**（debug APK のみ）。
 
 ### 4.1 キーストア作成（初回のみ）
 
 本番署名用のキーストアを生成。
 **紛失すると更新不可になるため、厳重に保管**。
 
-Google Play では、[Play App Signing](https://support.google.com/googleplay/android-developer/answer/9842756) を有効化することで、Google側でキーを管理できる（推奨）。
+Google Play では、[Play App Signing](https://support.google.com/googleplay/android-developer/answer/9842756) を有効化することで、Google 側でキーを管理できる（推奨）。
 
 ```bash
 keytool -genkey -v -keystore egograph-release.keystore \
@@ -164,7 +169,8 @@ keytool -genkey -v -keystore egograph-release.keystore \
 ```
 
 入力が求められる項目:
-- パスワード（2回）
+
+- パスワード（2 回）
 - 組織名、部署名など
 - 最後に `yes` で確定
 
@@ -186,9 +192,9 @@ Android Studio で署名設定を行う。
 4. `Next` → `release` ビルドタイプを選択
 5. `Finish`
 
-### 4.3 自動署名設定（CI用）
+### 4.3 自動署名設定（CI 用）
 
-GitHub Actions等でビルドする場合、`gradle.properties` に設定を記述。
+GitHub Actions 等でビルドする場合、`gradle.properties` に設定を記述。
 
 `android/gradle.properties` に追記:
 
@@ -224,16 +230,16 @@ android {
 }
 ```
 
-**重要**: `gradle.properties` は `.gitignore` に追加し、Secretsは GitHub Actions の環境変数で管理する。
+**重要**: `gradle.properties` は `.gitignore` に追加し、Secrets は GitHub Actions の環境変数で管理する。
 
-## 5. Android固有のビルド構成
+## 5. Android 固有のビルド構成
 
-CapacitorのOS非依存な仕組み（アーキテクチャ、プラグイン、通信等）は [capacitor.md](./capacitor.md) を参照。
-ここではAndroid固有のディレクトリ構造とビルドプロセスを説明する。
+Capacitor の OS 非依存な仕組み（アーキテクチャ、プラグイン、通信等）は [capacitor.md](./capacitor.md) を参照。
+ここでは Android 固有のディレクトリ構造とビルドプロセスを説明する。
 
 ### 5.1 ディレクトリ構造
 
-`npm run android:init` で生成される `android/` ディレクトリは、標準的なAndroidプロジェクト。
+`npm run android:init` で生成される `android/` ディレクトリは、標準的な Android プロジェクト。
 
 ```
 frontend/android/
@@ -254,18 +260,19 @@ frontend/android/
 ```
 
 **重要ポイント**:
+
 - `assets/public/` は `npm run android:sync` で上書きされる（手動編集禁止）
 - ネイティブコードのカスタマイズは `java/` または `res/` で行う
 - `capacitor.config.json` は `capacitor.config.ts` から自動生成（手動編集禁止）
 
 ### 5.2 ビルドプロセス
 
-Reactアプリ → Androidアプリへの変換は3ステップ。
-ステップ1-2はOS非依存（[capacitor.md](./capacitor.md) 参照）。
+React アプリ → Android アプリへの変換は 3 ステップ。
+ステップ 1-2 は OS 非依存（[capacitor.md](./capacitor.md) 参照）。
 
-#### ステップ3: Gradleビルド（Android固有）
+#### ステップ 3: Gradle ビルド（Android 固有）
 
-Android Studio または `./gradlew` がネイティブAPK/AABを生成。
+Android Studio または `./gradlew` がネイティブ APK/AAB を生成。
 
 ```bash
 ./gradlew assembleDebug    # デバッグAPK
@@ -273,51 +280,54 @@ Android Studio または `./gradlew` がネイティブAPK/AABを生成。
 ./gradlew bundleRelease    # AAB（App Bundle）
 ```
 
-Gradleの役割:
-- Javaコンパイル（`MainActivity.java` 等）
+Gradle の役割:
+
+- Java コンパイル（`MainActivity.java` 等）
 - リソース（アイコン、レイアウト）のパッケージング
-- `assets/public/` をAPKに含める
-- ProGuard/R8による難読化・最適化（リリースビルド時）
+- `assets/public/` を APK に含める
+- ProGuard/R8 による難読化・最適化（リリースビルド時）
 - 署名（リリースビルド時）
 
 出力先:
+
 - APK: `android/app/build/outputs/apk/release/app-release.apk`
 - AAB: `android/app/build/outputs/bundle/release/app-release.aab`
 
-## 6. 直接APK配布
+## 6. 直接 APK 配布
 
-Google Play を使わずAPKを直接配布する場合。
+Google Play を使わず APK を直接配布する場合。
 
-### 6.1 署名付きAPK生成
+### 6.1 署名付き APK 生成
 
 上記 5.2 の `./gradlew assembleRelease` で `app-release.apk` を生成。
 
 ### 6.2 配布方法
 
-- **Webサイト**: APKをホスティングし、ダウンロードリンクを提供
-- **メール/メッセンジャー**: APKファイルを直接送信
+- **Web サイト**: APK をホスティングし、ダウンロードリンクを提供
+- **メール/メッセンジャー**: APK ファイルを直接送信
 
 **ユーザー側の操作**:
+
 1. `設定` → `セキュリティ` → `提供元不明のアプリ` を許可
-2. APKをダウンロード・インストール
+2. APK をダウンロード・インストール
 
-## 6.3 自分のAndroid端末にインストール（デバッグ）
+## 6.3 自分の Android 端末にインストール（デバッグ）
 
-**前提**: 4をスキップしている場合は debug APK でインストールする。
+**前提**: 4 をスキップしている場合は debug APK でインストールする。
 
 1. `frontend/android` でビルド:
    ```bash
    ./gradlew assembleDebug
    ```
 2. APK を端末へコピー:
-   - USB接続で `android/app/build/outputs/apk/debug/app-debug.apk` を転送
-   - または、ファイル共有（Tailscale, Google Drive等）で端末へ送る
+   - USB 接続で `android/app/build/outputs/apk/debug/app-debug.apk` を転送
+   - または、ファイル共有（Tailscale, Google Drive 等）で端末へ送る
 3. 端末で APK を開き、インストール
 4. 初回のみ「提供元不明のアプリ」許可が必要
 
 ## 6.4 ADB でワイヤレスインストール（デバッグ）
 
-APK転送なしで、PCから直接インストールする方法。
+APK 転送なしで、PC から直接インストールする方法。
 
 ### 6.4.1 ADB（platform-tools）の準備
 
@@ -338,9 +348,9 @@ adb version
 
 ### 6.4.2 通常のワイヤレスデバッグ（同一ネットワーク）
 
-1. 端末で「開発者オプション」→「ワイヤレス デバッグ」をON
-2. 「ペア設定コードでデバイスをペア設定」を開き、IP:PORTとコードを控える
-3. PCからペアリング:
+1. 端末で「開発者オプション」→「ワイヤレス デバッグ」を ON
+2. 「ペア設定コードでデバイスをペア設定」を開き、IP:PORT とコードを控える
+3. PC からペアリング:
    ```powershell
    adb pair <PHONE_IP>:<PAIRING_PORT>
    ```
@@ -392,14 +402,14 @@ GitHub Actions で自動ビルドする場合の構成例。
 
 ### 8.1 Secrets 登録
 
-以下をGitHub Secretsに登録:
+以下を GitHub Secrets に登録:
 
-- `ANDROID_KEYSTORE_BASE64`: キーストアをBase64エンコードしたもの
+- `ANDROID_KEYSTORE_BASE64`: キーストアを Base64 エンコードしたもの
 - `ANDROID_KEYSTORE_PASSWORD`: キーストアパスワード
 - `ANDROID_KEY_ALIAS`: キーエイリアス
 - `ANDROID_KEY_PASSWORD`: キーパスワード
 
-キーストアをBase64エンコード:
+キーストアを Base64 エンコード:
 
 ```bash
 base64 -i egograph-release.keystore | pbcopy  # macOS
@@ -417,7 +427,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'frontend/**'
+      - "frontend/**"
 
 jobs:
   build:
@@ -428,7 +438,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install dependencies
         working-directory: frontend
@@ -445,8 +455,8 @@ jobs:
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Decode keystore
         run: |
@@ -468,35 +478,38 @@ jobs:
           path: frontend/android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-この例では、AABをArtifactとして保存。
-APKを生成する場合は `./gradlew assembleRelease` に変更し、出力パスを `apk/release/app-release.apk` に修正。
+この例では、AAB を Artifact として保存。
+APK を生成する場合は `./gradlew assembleRelease` に変更し、出力パスを `apk/release/app-release.apk` に修正。
 
-生成されたAPKは以下の方法で配布可能:
+生成された APK は以下の方法で配布可能:
+
 - GitHub Releases に添付
 - ファイル共有サービスでダウンロードリンク提供
 - 社内サーバーにホスティング
 
-## 8. 将来の更新自動化（個人利用向け）
+## 9. 将来の更新自動化（個人利用向け）
 
-個人使用では、毎回APKを手動でインストールする手間を省きたい。
-以下の2段階アプローチで更新を極限まで自動化できる。
+個人使用では、毎回 APK を手動でインストールする手間を省きたい。
+以下の 2 段階アプローチで更新を極限まで自動化できる。
 
-### 8.1 フェーズ1: Capacitor Updater（Webアセット自動更新）
+### 8.1 フェーズ 1: Capacitor Updater（Web アセット自動更新）
 
-**Webアセット（HTML/JS/CSS）の自動更新**により、APK再ビルドを不要にする。
-詳細は [capacitor.md セクション7](./capacitor.md#7-capacitor-updaterwebアセット自動更新) を参照。
+**Web アセット（HTML/JS/CSS）の自動更新**により、APK 再ビルドを不要にする。
+詳細は [capacitor.md セクション 7](./capacitor.md#7-capacitor-updaterwebアセット自動更新) を参照。
 
 **概要**:
+
 - アプリ起動時にバックエンドから更新チェック
-- 新しいWebアセットがあれば自動ダウンロード・適用
-- **ネイティブコード変更時は手動APK更新が必要**
+- 新しい Web アセットがあれば自動ダウンロード・適用
+- **ネイティブコード変更時は手動 APK 更新が必要**
 
 **メリット**:
-- UI/ロジック変更は `git push` のみで配信
-- APK再ビルド・再インストール不要
-- iOS/Android同時更新可能
 
-### 8.2 フェーズ2: アプリ内自動インストーラー（Android固有、完全自動化）
+- UI/ロジック変更は `git push` のみで配信
+- APK 再ビルド・再インストール不要
+- iOS/Android 同時更新可能
+
+### 8.2 フェーズ 2: アプリ内自動インストーラー（Android 固有、完全自動化）
 
 **目的**: ネイティブコード変更も含めた完全自動更新。
 
@@ -518,10 +531,10 @@ APKを生成する場合は `./gradlew assembleRelease` に変更し、出力パ
 
 アプリ内に「更新チェック」ボタンを配置し、以下を実装:
 
-1. **更新確認**: バックエンドAPI（`/api/app-version`）から最新バージョン取得
-2. **APKダウンロード**: 新バージョンがあれば `/api/download-apk` からダウンロード
+1. **更新確認**: バックエンド API（`/api/app-version`）から最新バージョン取得
+2. **APK ダウンロード**: 新バージョンがあれば `/api/download-apk` からダウンロード
 3. **ローカル保存**: `@capacitor/filesystem` でキャッシュディレクトリに保存
-4. **インストール起動**: `window.open(uri, '_system')` でAndroidインストール画面を開く
+4. **インストール起動**: `window.open(uri, '_system')` で Android インストール画面を開く
 
 #### 実装箇所
 
@@ -530,37 +543,38 @@ APKを生成する場合は `./gradlew assembleRelease` に変更し、出力パ
 - **利用プラグイン**: `@capacitor/filesystem`, `@capacitor/app`
 
 詳細実装は将来的に追加。基本的な流れ:
+
 - バックエンドが `/opt/egograph/releases/egograph-latest.apk` を配信
-- アプリがダウンロード後、ファイルURIを取得してAndroidシステムに渡す
-- ユーザーは「インストール」を1タップするだけ
+- アプリがダウンロード後、ファイル URI を取得して Android システムに渡す
+- ユーザーは「インストール」を 1 タップするだけ
 
 #### デプロイ自動化
 
-GitHub Actions でAPKビルド後、バックエンドサーバーに `scp` で自動アップロード。
-詳細はセクション10のCI/CD自動化を参照。
+GitHub Actions で APK ビルド後、バックエンドサーバーに `scp` で自動アップロード。
+詳細はセクション 8 の CI/CD 自動化を参照。
 
 #### メリット
 
 - ✅ **完全自動**: ネイティブ変更も含めて自動更新可能
-- ✅ **ワンタップ**: アプリ内ボタン → ダウンロード → インストール画面（1タップ）
+- ✅ **ワンタップ**: アプリ内ボタン → ダウンロード → インストール画面（1 タップ）
 - ✅ **個人利用最適**: 署名検証等の厳密な管理不要
-- ✅ **Tailnet内配信**: 安全かつ高速
+- ✅ **Tailnet 内配信**: 安全かつ高速
 
 #### 注意点
 
-- ⚠️ Android 8.0以降、提供元不明アプリのインストール許可が必要（初回のみ）
-- ⚠️ Google Playと併用する場合は不可（署名不一致）
+- ⚠️ Android 8.0 以降、提供元不明アプリのインストール許可が必要（初回のみ）
+- ⚠️ Google Play と併用する場合は不可（署名不一致）
 - ⚠️ セキュリティより利便性優先（個人利用前提）
 
 ### 8.3 実装優先順位
 
-| フェーズ | 対象 | 更新頻度 | 実装工数 |
-|---------|------|---------|---------|
-| **現状** | 手動APK更新 | 月1回程度 | - |
-| **フェーズ1** | Webアセット自動 | 週1回以上 | 1-2時間 |
-| **フェーズ2** | 完全自動（ワンタップ） | 随時 | 3-4時間 |
+| フェーズ       | 対象                   | 更新頻度    | 実装工数 |
+| -------------- | ---------------------- | ----------- | -------- |
+| **現状**       | 手動 APK 更新          | 月 1 回程度 | -        |
+| **フェーズ 1** | Web アセット自動       | 週 1 回以上 | 1-2 時間 |
+| **フェーズ 2** | 完全自動（ワンタップ） | 随時        | 3-4 時間 |
 
-**推奨**: フェーズ1から始め、ネイティブ機能追加が増えたらフェーズ2を検討。
+**推奨**: フェーズ 1 から始め、ネイティブ機能追加が増えたらフェーズ 2 を検討。
 
 ### 8.4 参考実装
 
@@ -568,7 +582,7 @@ GitHub Actions でAPKビルド後、バックエンドサーバーに `scp` で�
 - [Capacitor Filesystem Plugin](https://capacitorjs.com/docs/apis/filesystem)
 - [Android Package Installer](https://developer.android.com/reference/android/content/pm/PackageInstaller)
 
-## 9. 参考リンク
+## 10. 参考リンク
 
 - [Capacitor Android Documentation](https://capacitorjs.com/docs/android)
 - [Android Developer Guide](https://developer.android.com/guide)
