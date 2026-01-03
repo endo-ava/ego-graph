@@ -1,6 +1,7 @@
 name: Test Ingestion
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, features/**]
     paths:
