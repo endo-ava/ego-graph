@@ -1,6 +1,6 @@
 ---
 name: "requirements-definition"
-description: "Turn vague requests into a small, shippable requirement doc via strategic questions. Focus on WHY/WHAT (no HOW). Use this skill when requests like `I want to add a feature like XX` or `I want to fix XX` are made outside of Plan mode."
+description: "A skill to break down ambiguous requests into small, immediately implementable requirement definitions through strategic questioning. Focus on WHY and WHAT, excluding HOW. This is used when ambiguous requests such as 'I want to add a feature like XX,' 'I want to fix XX,' or 'I did XX' are made outside of Plan Mode."
 allowed-tools: "AskUserQuestion, Bash, Read, Write"
 ---
 

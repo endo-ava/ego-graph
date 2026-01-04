@@ -29,7 +29,8 @@
       "Skill(pr-review-extraction)",
       "WebSearch",
       "Bash(npm test:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(uv run mypy:*)"
     ],
     "deny": [
       "Read(.env)",
