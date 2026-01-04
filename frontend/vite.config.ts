@@ -3,6 +3,12 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
+const buildTime = new Intl.DateTimeFormat('ja-JP', {
+  dateStyle: 'medium',
+  timeStyle: 'medium',
+  timeZone: 'Asia/Tokyo',
+}).format(new Date());
+
 export default defineConfig({
   plugins: [
     react(),
@@ -24,5 +30,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+  },
+  define: {
+    'import.meta.env.VITE_BUILD_TIME': JSON.stringify(buildTime),
   },
 });
