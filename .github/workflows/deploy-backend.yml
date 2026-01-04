@@ -47,6 +47,7 @@ jobs:
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TS_AUTHKEY }}
+          args: --accept-dns=false
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -64,3 +65,7 @@ jobs:
             sudo systemctl restart egograph-backend
             sleep 2
             curl -fsS http://127.0.0.1:8000/health
+
+      - name: Cleanup Tailscale
+        if: always()
+        run: sudo tailscale logout
