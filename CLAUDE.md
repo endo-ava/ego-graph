@@ -37,12 +37,12 @@ uv run pytest ingest/tests --cov=ingest
 uv run uvicorn backend.main:app --reload
 uv run pytest backend/tests --cov=backend
 open http://localhost:8000/docs
+uv run python -m backend.dev_tools.chat_cli # デバッグ用LLM CLIツール
 ```
 
 ### Frontend（モバイル/Web）
 ```bash
-cd frontend
-npm install && npm run dev        # Web 開発
+cd frontend && npm run dev        # Web 開発
 npm run test:run                  # テスト
 npm run android:sync              # モバイル同期
 ```

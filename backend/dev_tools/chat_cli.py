@@ -72,6 +72,15 @@ class ChatSession:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["X-API-Key"] = self.api_key
+        # 送信するメッセージ配列を確認するためのデバッグ出力
+        self.console.print(
+            Panel(
+                f"{self.messages + [user_message]}",
+                title="[bold blue]🧪 Debug: Outgoing Messages",
+                border_style="blue",
+                padding=(1, 2),
+            )
+        )
 
         with Live(
             Spinner("dots", text="[cyan]LLMが考え中...[/cyan]"),
