@@ -1,5 +1,10 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
+interface CapacitorUpdaterConfig {
+  autoUpdate: boolean;
+  updateUrl: string;
+}
+
 const updaterUrl = process.env.CAPACITOR_UPDATER_URL;
 const plugins: CapacitorConfig['plugins'] = {
   SplashScreen: {
@@ -14,7 +19,7 @@ const plugins: CapacitorConfig['plugins'] = {
 };
 
 if (updaterUrl) {
-  plugins.CapacitorUpdater = {
+  (plugins as CapacitorConfig['plugins'] & { CapacitorUpdater?: CapacitorUpdaterConfig }).CapacitorUpdater = {
     autoUpdate: true,
     updateUrl: updaterUrl,
   };
