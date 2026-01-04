@@ -47,7 +47,6 @@ jobs:
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TS_AUTHKEY }}
-          args: --accept-dns=false
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
