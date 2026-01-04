@@ -42,12 +42,7 @@ jobs:
       - name: Create latest.json
         working-directory: frontend
         run: |
-          cat > latest.json << EOF
-{
-  "version": "${VERSION}",
-  "url": "${R2_PUBLIC_BASE_URL}/capacitor_updates/app-${VERSION}.zip"
-}
-EOF
+          echo "{\"version\":\"${VERSION}\",\"url\":\"${R2_PUBLIC_BASE_URL}/capacitor_updates/app-${VERSION}.zip\"}" > latest.json
 
       - name: Configure R2 credentials
         uses: aws-actions/configure-aws-credentials@v4
