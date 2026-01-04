@@ -287,30 +287,33 @@ cd dist && zip -r ../app.zip . # zip化
 
 GitHub Actions で自動化推奨。
 
-### 7.8 GitHub Actions（デバッグWebアセット自動配信）
+### 7.7 GitHub Actions（デバッグ Web アセット自動配信）
 
 `deploy-capacitor-updater.yml` を使用する。
-R2の公開URLに `capacitor_updates/` を配置し、`latest.json` を更新する。
+R2 の公開 URL に `capacitor_updates/` を配置し、`latest.json` を更新する。
 
 **必要な GitHub 設定**:
 
 Repository Variables:
-- なし（本プロジェクトではSecretsで統一）
+
+- なし（本プロジェクトでは Secrets で統一）
 
 Repository Secrets:
+
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
-- `R2_ENDPOINT_URL`: R2のS3互換エンドポイント（例: `https://<account-id>.r2.cloudflarestorage.com`）
-- `R2_BUCKET_NAME`: R2バケット名
-- `R2_PUBLIC_BASE_URL`: 公開URLのベース（例: `https://<r2-public-domain>`）
+- `R2_ENDPOINT_URL`: R2 の S3 互換エンドポイント（例: `https://<account-id>.r2.cloudflarestorage.com`）
+- `R2_BUCKET_NAME`: R2 バケット名
+- `R2_PUBLIC_BASE_URL`: 公開 URL のベース（例: `https://<r2-public-domain>`）
 
 **動作**:
+
 - `frontend` の `npm run build` を実行
-- `dist/` をzip化し `app-<version>-<sha>.zip` を生成
-- `latest.json` を更新してR2へアップロード
+- `dist/` を zip 化し `app-<version>-<sha>.zip` を生成
+- `latest.json` を更新して R2 へアップロード
 - 配信先は `s3://<bucket>/capacitor_updates/`
 
-### 7.9 メリット
+### 7.8 メリット
 
 - ✅ UI/ロジック変更は `git push` のみで配信
 - ✅ ネイティブアプリ再ビルド不要
