@@ -287,7 +287,7 @@ cd dist && zip -r ../app.zip . # zip化
 
 GitHub Actions で自動化推奨。
 
-### 7.7 GitHub Actions（デバッグWebアセット自動配信）
+### 7.8 GitHub Actions（デバッグWebアセット自動配信）
 
 `deploy-capacitor-updater.yml` を使用する。
 R2の公開URLに `capacitor_updates/` を配置し、`latest.json` を更新する。
@@ -310,7 +310,7 @@ Repository Secrets:
 - `latest.json` を更新してR2へアップロード
 - 配信先は `s3://<bucket>/capacitor_updates/`
 
-### 7.7 メリット
+### 7.9 メリット
 
 - ✅ UI/ロジック変更は `git push` のみで配信
 - ✅ ネイティブアプリ再ビルド不要

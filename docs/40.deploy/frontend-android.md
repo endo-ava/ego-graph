@@ -73,7 +73,7 @@ VITE_DEBUG=false
 **重要**: 本番環境では必ず `VITE_DEBUG=false` に設定する。
 
 **Capacitor Updater を使う場合**:
-`VITE_CAPACITOR_UPDATER_URL` を環境変数として設定する（例: `https://<r2-public-domain>/<bucket>/capacitor_updates/latest.json`）。
+`CAPACITOR_UPDATER_URL` を環境変数として設定する（例: `https://<r2-public-domain>/<bucket>/capacitor_updates/latest.json`）。
 
 ### 2.2 Android プロジェクト初期化
 
@@ -492,7 +492,7 @@ APK を生成する場合は `./gradlew assembleRelease` に変更し、出力�
 個人使用では、毎回 APK を手動でインストールする手間を省きたい。
 以下の 2 段階アプローチで更新を極限まで自動化できる。
 
-### 8.1 フェーズ 1: Capacitor Updater（Web アセット自動更新）
+### 9.1 フェーズ 1: Capacitor Updater（Web アセット自動更新）
 
 **Web アセット（HTML/JS/CSS）の自動更新**により、APK 再ビルドを不要にする。
 詳細は [capacitor.md セクション 7](./capacitor.md#7-capacitor-updaterwebアセット自動更新) を参照。
@@ -509,7 +509,7 @@ APK を生成する場合は `./gradlew assembleRelease` に変更し、出力�
 - APK 再ビルド・再インストール不要
 - iOS/Android 同時更新可能
 
-### 8.2 フェーズ 2: アプリ内自動インストーラー（Android 固有、完全自動化）
+### 9.2 フェーズ 2: アプリ内自動インストーラー（Android 固有、完全自動化）
 
 **目的**: ネイティブコード変更も含めた完全自動更新。
 
@@ -566,7 +566,7 @@ GitHub Actions で APK ビルド後、バックエンドサーバーに `scp` �
 - ⚠️ Google Play と併用する場合は不可（署名不一致）
 - ⚠️ セキュリティより利便性優先（個人利用前提）
 
-### 8.3 実装優先順位
+### 9.3 実装優先順位
 
 | フェーズ       | 対象                   | 更新頻度    | 実装工数 |
 | -------------- | ---------------------- | ----------- | -------- |
@@ -576,7 +576,7 @@ GitHub Actions で APK ビルド後、バックエンドサーバーに `scp` �
 
 **推奨**: フェーズ 1 から始め、ネイティブ機能追加が増えたらフェーズ 2 を検討。
 
-### 8.4 参考実装
+### 9.4 参考実装
 
 - [Capgo Capacitor Updater](https://github.com/Cap-go/capacitor-updater)
 - [Capacitor Filesystem Plugin](https://capacitorjs.com/docs/apis/filesystem)
