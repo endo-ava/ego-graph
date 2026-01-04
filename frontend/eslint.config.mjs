@@ -9,7 +9,14 @@ import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**"],
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "build/**",
+      "android/app/src/main/assets/**",
+      "ios/App/public/**",
+      "**/*.tsbuildinfo",
+    ],
   },
   js.configs.recommended,
   {

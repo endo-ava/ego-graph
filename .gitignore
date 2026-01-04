@@ -25,6 +25,7 @@ MANIFEST
 node_modules/
 dist/
 .next/
+*.tsbuildinfo
 
 # Virtual environments
 venv/
@@ -84,3 +85,5 @@ data/
 .serena/
 
 tmp/
+
+scripts/install-android.ps1

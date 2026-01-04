@@ -1,5 +1,30 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
+interface CapacitorUpdaterConfig {
+  autoUpdate: boolean;
+  updateUrl: string;
+}
+
+const updaterUrl = process.env.CAPACITOR_UPDATER_URL;
+const plugins: CapacitorConfig['plugins'] = {
+  SplashScreen: {
+    // launchShowDurationを削除し、main.tsxで明示的にhide()を呼び出して制御
+    backgroundColor: '#ffffff',
+    showSpinner: false,
+  },
+  StatusBar: {
+    style: 'LIGHT',
+    backgroundColor: '#ffffff',
+  },
+};
+
+if (updaterUrl) {
+  (plugins as CapacitorConfig['plugins'] & { CapacitorUpdater?: CapacitorUpdaterConfig }).CapacitorUpdater = {
+    autoUpdate: true,
+    updateUrl: updaterUrl,
+  };
+}
+
 const config: CapacitorConfig = {
   appId: 'com.egograph.app',
   appName: 'EgoGraph',
@@ -7,17 +32,7 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
   },
-  plugins: {
-    SplashScreen: {
-      // launchShowDurationを削除し、main.tsxで明示的にhide()を呼び出して制御
-      backgroundColor: '#ffffff',
-      showSpinner: false,
-    },
-    StatusBar: {
-      style: 'LIGHT',
-      backgroundColor: '#ffffff',
-    },
-  },
+  plugins,
 };
 
 export default config;

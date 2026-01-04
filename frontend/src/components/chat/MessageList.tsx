@@ -14,6 +14,7 @@ interface MessageListProps {
 
 export function MessageList({ messages }: MessageListProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const buildTime = import.meta.env.VITE_BUILD_TIME;
 
   // 新規メッセージ追加時に自動スクロール
   useEffect(() => {
@@ -32,6 +33,9 @@ export function MessageList({ messages }: MessageListProps) {
         <div className="text-center text-muted-foreground">
           <p className="text-lg font-semibold">Start a conversation</p>
           <p className="text-sm">Send a message to get started</p>
+          {buildTime ? (
+            <p className="mt-2 text-xs">Last updated: {buildTime}</p>
+          ) : null}
         </div>
       </div>
     );

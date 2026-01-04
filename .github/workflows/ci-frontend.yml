@@ -3,7 +3,7 @@ name: Test Frontend
 on:
   workflow_dispatch:
   push:
-    branches: [main, features/**]
+    branches: [main]
     paths:
       - "frontend/**"
   pull_request:

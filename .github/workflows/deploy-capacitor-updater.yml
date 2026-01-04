@@ -1,0 +1,69 @@
+name: Deploy Capacitor Updater Assets
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    env:
+      R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT_URL }}
+      R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: frontend
+        run: VITE_BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" npm run build
+
+      - name: Package updater assets
+        working-directory: frontend
+        run: |
+          SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          VERSION="$(node -p "require('./package.json').version")-${SHORT_SHA}"
+          echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
+          cd dist
+          zip -r "../app-${VERSION}.zip" .
+
+      - name: Create latest.json
+        working-directory: frontend
+        run: |
+          cat > latest.json << EOF
+{
+  "version": "${VERSION}",
+  "url": "${R2_PUBLIC_BASE_URL}/capacitor_updates/app-${VERSION}.zip"
+}
+EOF
+
+      - name: Configure R2 credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          aws-region: auto
+
+      - name: Upload to R2
+        working-directory: frontend
+        run: |
+          aws s3 cp "app-${VERSION}.zip" "s3://${R2_BUCKET}/capacitor_updates/app-${VERSION}.zip" \
+            --endpoint-url "${R2_ENDPOINT}" \
+            --content-type "application/zip" \
+            --cache-control "public, max-age=31536000, immutable"
+          aws s3 cp "latest.json" "s3://${R2_BUCKET}/capacitor_updates/latest.json" \
+            --endpoint-url "${R2_ENDPOINT}" \
+            --content-type "application/json" \
+            --cache-control "no-cache"

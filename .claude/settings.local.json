@@ -30,6 +30,20 @@
       "WebSearch",
       "Bash(npm test:*)",
       "Bash(npm view:*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(**/.env)",
+      "Read(.env.production)",
+      "Read(**/.env.production)",
+      "Edit(.env)",
+      "Edit(**/.env)",
+      "Edit(.env.production)",
+      "Edit(**/.env.production)",
+      "Write(.env)",
+      "Write(**/.env)",
+      "Write(.env.production)",
+      "Write(**/.env.production)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -9,6 +9,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { queryClient } from '@/lib/api';
 import App from './App';
 import './index.css';
@@ -39,6 +40,13 @@ async function initializeApp() {
       await SplashScreen.hide();
     } catch (error) {
       console.warn('SplashScreen hide failed:', error);
+    }
+
+    // Webアセット更新の適用完了を通知
+    try {
+      await CapacitorUpdater.notifyAppReady();
+    } catch (error) {
+      console.warn('CapacitorUpdater notifyAppReady failed:', error);
     }
   }
 }
