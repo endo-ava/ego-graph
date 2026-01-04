@@ -26,6 +26,9 @@ async function initializeApp() {
   if (Capacitor.isNativePlatform()) {
     // ステータスバーの設定
     try {
+      if (Capacitor.getPlatform() === 'android') {
+        await StatusBar.setOverlaysWebView({ overlay: false });
+      }
       await StatusBar.setStyle({ style: Style.Light });
       // setBackgroundColorはAndroidのみサポート
       if (Capacitor.getPlatform() === 'android') {

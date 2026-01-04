@@ -14,7 +14,7 @@ export default function App() {
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden">
       {/* ヘッダー */}
-      <header className="flex shrink-0 items-center justify-between border-b bg-background px-4 py-3">
+      <header className="flex shrink-0 items-center justify-between border-b bg-background px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <h1 className="text-lg font-semibold">EgoGraph Chat</h1>
         <Button
           variant="outline"
