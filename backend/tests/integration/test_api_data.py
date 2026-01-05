@@ -114,9 +114,18 @@ class TestListeningStatsEndpoint:
 
         assert response.status_code == 422
 
-    def test_get_listening_stats_default_granularity(self, test_client, mock_db_and_parquet):
+    def test_get_listening_stats_default_granularity(
+        self, test_client, mock_db_and_parquet
+    ):
         """granularityのデフォルト値は"day"。"""
-        mock_result = [{"period": "2024-01-01", "total_ms": 1000, "track_count": 5, "unique_tracks": 3}]
+        mock_result = [
+            {
+                "period": "2024-01-01",
+                "total_ms": 1000,
+                "track_count": 5,
+                "unique_tracks": 3,
+            }
+        ]
 
         with patch("backend.api.data.fetch_listening_stats", return_value=mock_result):
             # granularity省略

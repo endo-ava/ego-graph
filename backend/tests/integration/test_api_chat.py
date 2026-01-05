@@ -76,10 +76,25 @@ class TestChatEndpoint:
             assert data["usage"] is not None
 
     def test_chat_with_tool_calls(self, test_client, mock_backend_config):
-        """ツール呼び出しを含むレスポンス。"""
-        mock_response = ChatResponse(
-            id="chatcmpl-test",
-            message=Message(role="assistant", content=""),
+        """ツール呼び出しを実行して最終回答を返す。"""
+        # 1回目: ツール呼び出し
+        tool_call_response = ChatResponse(
+            id="chatcmpl-tool",
+            message=Message(
+                role="assistant",
+                content="",
+                tool_calls=[
+                    ToolCall(
+                        id="call_123",
+                        name="get_top_tracks",
+                        parameters={
+                            "start_date": "2024-01-01",
+                            "end_date": "2024-01-31",
+                            "limit": 5,
+                        },
+                    )
+                ],
+            ),
             tool_calls=[
                 ToolCall(
                     id="call_123",
@@ -94,12 +109,26 @@ class TestChatEndpoint:
             finish_reason="tool_calls",
         )
 
+        # 2回目: 最終回答
+        final_response = ChatResponse(
+            id="chatcmpl-final",
+            message=Message(
+                role="assistant",
+                content="Here are your top 5 tracks for January 2024.",
+            ),
+            finish_reason="stop",
+            usage={"prompt_tokens": 50, "completion_tokens": 15},
+        )
+
         with (
             patch("backend.api.chat.LLMClient") as mock_llm_class,
             patch("backend.api.chat.get_db_connection") as mock_get_db,
         ):
             mock_llm_instance = MagicMock()
-            mock_llm_instance.chat = AsyncMock(return_value=mock_response)
+            # 1回目はツール呼び出し、2回目は最終回答
+            mock_llm_instance.chat = AsyncMock(
+                side_effect=[tool_call_response, final_response]
+            )
             mock_llm_class.return_value = mock_llm_instance
 
             mock_conn = MagicMock()
@@ -113,9 +142,11 @@ class TestChatEndpoint:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["tool_calls"] is not None
-            assert len(data["tool_calls"]) == 1
-            assert data["tool_calls"][0]["name"] == "get_top_tracks"
+            # 最終回答が返される（tool_callsはNone）
+            assert data["tool_calls"] is None
+            assert "top 5 tracks" in data["message"]["content"]
+            # LLMが2回呼ばれた
+            assert mock_llm_instance.chat.call_count == 2
 
     def test_chat_handles_llm_error(self, test_client):
         """LLM APIエラーを502でハンドリング。"""

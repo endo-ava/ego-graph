@@ -5,8 +5,9 @@ LLMが必要に応じてツールを呼び出し、データにアクセスし�
 """
 
 import asyncio
+import json
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -14,12 +15,16 @@ from pydantic import BaseModel
 from backend.api.deps import get_config, get_db_connection, verify_api_key
 from backend.config import BackendConfig
 from backend.database.connection import DuckDBConnection
-from backend.llm import LLMClient, Message
+from backend.llm import LLMClient, Message, ToolCall
 from backend.tools import GetListeningStatsTool, GetTopTracksTool, ToolRegistry
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/chat", tags=["chat"])
+
+# 定数
+MAX_ITERATIONS = 5
+TOTAL_TIMEOUT = 30.0
 
 
 class ChatRequest(BaseModel):
@@ -41,7 +46,7 @@ class ChatResponseModel(BaseModel):
 @router.post("", response_model=ChatResponseModel)
 async def chat(
     request: ChatRequest,
-    db_connection: DuckDBConnection = Depends(get_db_connection),
+    _db_connection: DuckDBConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
     _: None = Depends(verify_api_key),
 ):
@@ -88,38 +93,103 @@ async def chat(
 
         # ツールレジストリの準備
         tool_registry = ToolRegistry()
-        tool_registry.register(GetTopTracksTool(db_connection, config.r2))
-        tool_registry.register(GetListeningStatsTool(db_connection, config.r2))
+        if config.r2:
+            tool_registry.register(GetTopTracksTool(config.r2))
+            tool_registry.register(GetListeningStatsTool(config.r2))
 
         tools = tool_registry.get_all_schemas()
 
-        # LLMリクエスト送信（タイムアウト設定: 30秒）
-        try:
-            response = await asyncio.wait_for(
-                llm.chat(
-                    messages=request.messages,
-                    tools=tools,
-                    temperature=config.llm.temperature,
-                    max_tokens=config.llm.max_tokens,
-                ),
-                timeout=30.0,
+        # ツール実行ループ
+        conversation_history = request.messages.copy()
+        iteration = 0
+        loop = asyncio.get_running_loop()
+        start_time = loop.time()
+
+        while iteration < MAX_ITERATIONS:
+            iteration += 1
+
+            # 残り時間計算
+            elapsed = loop.time() - start_time
+            remaining_timeout = TOTAL_TIMEOUT - elapsed
+
+            if remaining_timeout <= 0:
+                logger.error("Total timeout exceeded after %s seconds", TOTAL_TIMEOUT)
+                raise HTTPException(
+                    status_code=504,
+                    detail=f"Request timed out after {TOTAL_TIMEOUT} seconds",
+                )
+
+            # LLMリクエスト送信
+            try:
+                response = await asyncio.wait_for(
+                    llm.chat(
+                        messages=conversation_history,
+                        tools=tools,
+                        temperature=config.llm.temperature,
+                        max_tokens=config.llm.max_tokens,
+                    ),
+                    timeout=remaining_timeout,
+                )
+            except asyncio.TimeoutError:
+                logger.error("LLM request timed out")
+                raise HTTPException(
+                    status_code=504, detail="LLM request timed out"
+                ) from None
+
+            # ツール呼び出しがなければ終了
+            if not response.tool_calls:
+                logger.info("Chat completed after %s iteration(s)", iteration)
+                return ChatResponseModel(
+                    id=response.id,
+                    message=response.message,
+                    tool_calls=None,
+                    usage=response.usage,
+                )
+
+            # assistant メッセージを履歴に追加
+            conversation_history.append(response.message)
+            logger.debug(
+                "Iteration %s: LLM requested %s tool call(s)",
+                iteration,
+                len(response.tool_calls),
             )
-        except asyncio.TimeoutError:
-            logger.error("LLM request timed out after 30 seconds")
-            raise HTTPException(
-                status_code=504, detail="LLM request timed out"
-            ) from None
 
-        # TODO: ツール呼び出しがあれば実行して再度LLMに渡す
-        # 現在はシンプルに1回の応答のみ返す（MVPでは十分）
+            # 残り時間を再計算（ツール実行にもタイムアウトを適用）
+            elapsed = loop.time() - start_time
+            remaining_timeout = TOTAL_TIMEOUT - elapsed
 
-        return ChatResponseModel(
-            id=response.id,
-            message=response.message,
-            tool_calls=[tc.model_dump() for tc in response.tool_calls]
-            if response.tool_calls
-            else None,
-            usage=response.usage,
+            if remaining_timeout <= 0:
+                logger.error("Total timeout exceeded before tool execution")
+                raise HTTPException(
+                    status_code=504,
+                    detail=f"Request timed out after {TOTAL_TIMEOUT} seconds",
+                )
+
+            # ツールを並列実行（タイムアウト付き）
+            try:
+                tool_results = await asyncio.wait_for(
+                    _execute_tools_parallel(tool_registry, response.tool_calls),
+                    timeout=remaining_timeout,
+                )
+            except asyncio.TimeoutError:
+                logger.error("Tool execution timed out")
+                raise HTTPException(
+                    status_code=504, detail="Tool execution timed out"
+                ) from None
+
+            # ツール結果を履歴に追加
+            # 長さの不一致を検出するために strict=True を使用（Python 3.10+）
+            for tool_call, result in zip(response.tool_calls, tool_results, strict=True):
+                tool_message = _create_tool_result_message(tool_call, result)
+                conversation_history.append(tool_message)
+
+        # 最大イテレーション到達
+        logger.error("Reached maximum iterations: %s", MAX_ITERATIONS)
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Reached maximum iterations ({MAX_ITERATIONS}) without final answer"
+            ),
         )
 
     except HTTPException:
@@ -127,3 +197,94 @@ async def chat(
     except Exception as e:
         logger.exception("Chat request failed")
         raise HTTPException(status_code=502, detail=f"LLM API error: {str(e)}") from e
+
+
+async def _execute_tools_parallel(
+    tool_registry: ToolRegistry, tool_calls: list[ToolCall]
+) -> list[dict[str, Any]]:
+    """複数ツールを並列実行する。
+
+    Args:
+        tool_registry: ツールレジストリ
+        tool_calls: ツール呼び出しリスト
+
+    Returns:
+        実行結果のリスト。成功時は {"success": True, "result": ...}、
+        失敗時は {"success": False, "error": ..., "error_type": ...} を含む。
+    """
+    loop = asyncio.get_running_loop()
+
+    async def execute_single_tool(tool_call: ToolCall) -> dict[str, Any]:
+        """単一ツールを実行する。
+
+        Args:
+            tool_call: ツール呼び出し
+
+        Returns:
+            実行結果の辞書
+        """
+        try:
+            # ToolRegistry.execute は同期関数なので run_in_executor を使用
+            result = await loop.run_in_executor(
+                None,
+                lambda: tool_registry.execute(tool_call.name, **tool_call.parameters),
+            )
+            return {"success": True, "result": result}
+        except (KeyError, ValueError) as e:
+            # 想定内のエラー: LLMに詳細を返す
+            logger.error(
+                "Expected error in tool %s (%s): %s",
+                tool_call.name,
+                type(e).__name__,
+                str(e),
+            )
+            return {
+                "success": False,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            }
+        except Exception as e:
+            # 予期しないエラー: ログに記録し、汎用メッセージを返す（機密情報漏洩を防ぐ）
+            logger.exception(
+                "Unexpected error in tool %s: %s", tool_call.name, type(e).__name__
+            )
+            return {
+                "success": False,
+                "error": "Internal tool execution error. Check server logs for details.",
+                "error_type": "InternalError",
+            }
+
+    # 並列実行
+    results = await asyncio.gather(*[execute_single_tool(tc) for tc in tool_calls])
+    return results
+
+
+def _create_tool_result_message(tool_call: ToolCall, result: dict[str, Any]) -> Message:
+    """ツール実行結果からメッセージを生成する。
+
+    Args:
+        tool_call: ツール呼び出し
+        result: 実行結果（success, result/error を含む辞書）
+
+    Returns:
+        tool role のメッセージ
+    """
+    if result["success"]:
+        # 成功時: result を JSON シリアライズ
+        content = json.dumps(result["result"], ensure_ascii=False)
+    else:
+        # 失敗時: error と error_type を JSON シリアライズ
+        content = json.dumps(
+            {
+                "error": result["error"],
+                "error_type": result["error_type"],
+            },
+            ensure_ascii=False,
+        )
+
+    return Message(
+        role="tool",
+        content=content,
+        tool_call_id=tool_call.id,
+        name=tool_call.name,
+    )

@@ -7,6 +7,7 @@ import logging
 import secrets
 from typing import Generator, Optional
 
+import duckdb
 from fastapi import Depends, Header, HTTPException
 
 from backend.config import BackendConfig
@@ -38,16 +39,17 @@ def get_config() -> BackendConfig:
 
 def get_db_connection(
     config: BackendConfig = Depends(get_config),
-) -> Generator[DuckDBConnection, None, None]:
-    """DuckDB接続ファクトリを取得します。
+) -> Generator[duckdb.DuckDBPyConnection, None, None]:
+    """DuckDB接続を取得します。
 
-    コンテキストマネージャーとして使用するDuckDBConnectionを返します。
+    DuckDBConnectionをコンテキストマネージャーとして使用し、
+    開かれた接続をyieldします。接続は自動的にクローズされます。
 
     Args:
         config: Backend設定
 
     Yields:
-        DuckDBConnection
+        duckdb.DuckDBPyConnection: 開かれたDuckDB接続
 
     Raises:
         ValueError: R2設定が不足している場合
@@ -55,15 +57,8 @@ def get_db_connection(
     if not config.r2:
         raise ValueError("R2 configuration is required")
 
-    connection = DuckDBConnection(config.r2)
-    try:
-        yield connection
-    finally:
-        # 接続が開いている場合は明示的にクローズ
-        if connection.conn is not None:
-            connection.conn.close()
-            connection.conn = None
-            logger.debug("Explicitly closed DuckDB connection in dependency cleanup")
+    with DuckDBConnection(config.r2) as conn:
+        yield conn
 
 
 async def verify_api_key(

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from backend.llm.models import Message
+from backend.llm.models import Message, ToolCall
 from backend.llm.providers.anthropic import AnthropicProvider
 from backend.tools.base import Tool
 
@@ -157,15 +157,17 @@ class TestAnthropicProvider:
             # レスポンスモック
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json = MagicMock(return_value={
-                "id": "msg_test",
-                "type": "message",
-                "role": "assistant",
-                "content": [{"type": "text", "text": "Hi!"}],
-                "model": "claude-3-5-sonnet-20241022",
-                "stop_reason": "end_turn",
-                "usage": {"input_tokens": 10, "output_tokens": 5},
-            })
+            mock_response.json = MagicMock(
+                return_value={
+                    "id": "msg_test",
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": "Hi!"}],
+                    "model": "claude-3-5-sonnet-20241022",
+                    "stop_reason": "end_turn",
+                    "usage": {"input_tokens": 10, "output_tokens": 5},
+                }
+            )
             mock_response.raise_for_status = MagicMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
 
@@ -202,15 +204,17 @@ class TestAnthropicProvider:
             # レスポンスモック
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json = MagicMock(return_value={
-                "id": "msg_test",
-                "type": "message",
-                "role": "assistant",
-                "content": [{"type": "text", "text": "Hi there!"}],
-                "model": "claude-3-5-sonnet-20241022",
-                "stop_reason": "end_turn",
-                "usage": {"input_tokens": 10, "output_tokens": 20},
-            })
+            mock_response.json = MagicMock(
+                return_value={
+                    "id": "msg_test",
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": "Hi there!"}],
+                    "model": "claude-3-5-sonnet-20241022",
+                    "stop_reason": "end_turn",
+                    "usage": {"input_tokens": 10, "output_tokens": 20},
+                }
+            )
             mock_response.raise_for_status = MagicMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
 
@@ -226,3 +230,184 @@ class TestAnthropicProvider:
             headers = call_args.kwargs["headers"]
             assert "x-api-key" in headers
             assert "anthropic-version" in headers
+
+    def test_convert_message_to_anthropic_basic(self):
+        """基本メッセージの変換をテスト。"""
+        # Arrange: プロバイダーと基本メッセージを準備
+        provider = AnthropicProvider("test-key", "claude-3-5-sonnet-20241022")
+        msg = Message(role="user", content="Hello")
+
+        # Act: Anthropic形式に変換
+        result = provider._convert_message_to_anthropic(msg)
+
+        # Assert: 基本メッセージが正しく変換されることを検証
+        assert result == {"role": "user", "content": "Hello"}
+
+    def test_convert_message_with_tool_use(self):
+        """assistant + tool_calls の変換をテスト。"""
+        # Arrange: プロバイダーとツール呼び出しを含むassistantメッセージを準備
+        provider = AnthropicProvider("test-key", "claude-3-5-sonnet-20241022")
+        msg = Message(
+            role="assistant",
+            content="Let me check that for you.",
+            tool_calls=[
+                ToolCall(
+                    id="toolu_123",
+                    name="get_stats",
+                    parameters={"limit": 10},
+                )
+            ],
+        )
+
+        # Act: Anthropic形式に変換
+        result = provider._convert_message_to_anthropic(msg)
+
+        # Assert: tool_callsがtool_useブロックに変換されることを検証
+        assert result["role"] == "assistant"
+        assert isinstance(result["content"], list)
+        assert len(result["content"]) == 2
+
+        # テキストブロック
+        assert result["content"][0] == {
+            "type": "text",
+            "text": "Let me check that for you.",
+        }
+
+        # tool_useブロック
+        assert result["content"][1] == {
+            "type": "tool_use",
+            "id": "toolu_123",
+            "name": "get_stats",
+            "input": {"limit": 10},
+        }
+
+    def test_convert_message_with_tool_use_no_text(self):
+        """テキストなしでtool_callsのみのメッセージを変換。"""
+        # Arrange: プロバイダーとツール呼び出しのみのメッセージを準備
+        provider = AnthropicProvider("test-key", "claude-3-5-sonnet-20241022")
+        msg = Message(
+            role="assistant",
+            content=None,
+            tool_calls=[
+                ToolCall(
+                    id="toolu_456",
+                    name="search",
+                    parameters={"query": "test"},
+                )
+            ],
+        )
+
+        # Act: Anthropic形式に変換
+        result = provider._convert_message_to_anthropic(msg)
+
+        # Assert: tool_useブロックのみが含まれることを検証
+        assert result["role"] == "assistant"
+        assert len(result["content"]) == 1
+        assert result["content"][0]["type"] == "tool_use"
+
+    def test_convert_tool_result_to_anthropic(self):
+        """role="tool" メッセージの変換をテスト。"""
+        # Arrange: プロバイダーとツール結果メッセージを準備
+        provider = AnthropicProvider("test-key", "claude-3-5-sonnet-20241022")
+        msg = Message(
+            role="tool",
+            content="Result data",
+            tool_call_id="toolu_123",
+        )
+
+        # Act: Anthropic形式に変換
+        result = provider._convert_tool_result_to_anthropic(msg)
+
+        # Assert: role="user"でtool_resultブロックに変換されることを検証
+        assert result["role"] == "user"
+        assert isinstance(result["content"], list)
+        assert len(result["content"]) == 1
+        assert result["content"][0] == {
+            "type": "tool_result",
+            "tool_use_id": "toolu_123",
+            "content": "Result data",
+        }
+
+    def test_convert_tool_result_requires_tool_call_id(self):
+        """tool_call_id が必須であることをテスト。"""
+        # Arrange: プロバイダーとtool_call_idなしのツール結果メッセージを準備
+        provider = AnthropicProvider("test-key", "claude-3-5-sonnet-20241022")
+        msg = Message(
+            role="tool",
+            content="Result data",
+            # tool_call_id が None
+        )
+
+        # Act & Assert: tool_call_idなしでValueErrorが発生することを検証
+        with pytest.raises(ValueError) as exc_info:
+            provider._convert_tool_result_to_anthropic(msg)
+
+        assert "invalid_tool_result" in str(exc_info.value)
+        assert "tool_call_id is required" in str(exc_info.value)
+
+    def test_parse_response_preserves_tool_calls(self):
+        """_parse_response が tool_calls を保存することをテスト。"""
+        # Arrange: プロバイダーとツール使用を含むレスポンスデータを準備
+        provider = AnthropicProvider("test-key", "claude-3-5-sonnet-20241022")
+
+        raw_response = {
+            "id": "msg_test",
+            "type": "message",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "tool_use",
+                    "id": "toolu_abc",
+                    "name": "get_weather",
+                    "input": {"location": "Tokyo"},
+                }
+            ],
+            "model": "claude-3-5-sonnet-20241022",
+            "stop_reason": "tool_use",
+            "usage": {"input_tokens": 50, "output_tokens": 30},
+        }
+
+        # Act: レスポンスをパース
+        response = provider._parse_response(raw_response)
+
+        # Assert: messageにtool_callsが保存されることを検証（ToolCallオブジェクト）
+        assert response.message.tool_calls is not None
+        assert len(response.message.tool_calls) == 1
+        assert response.message.tool_calls[0].id == "toolu_abc"
+        assert response.message.tool_calls[0].name == "get_weather"
+        assert response.message.tool_calls[0].parameters == {"location": "Tokyo"}
+
+        # ChatResponse.tool_callsにも保存されることを確認
+        assert response.tool_calls is not None
+        assert len(response.tool_calls) == 1
+        assert response.tool_calls[0].id == "toolu_abc"
+
+    def test_parse_response_empty_content_with_tool_calls(self):
+        """contentが空でtool_callsのみのレスポンスをパース。"""
+        # Arrange: プロバイダーとテキストなしツール使用レスポンスを準備
+        provider = AnthropicProvider("test-key", "claude-3-5-sonnet-20241022")
+
+        raw_response = {
+            "id": "msg_test2",
+            "type": "message",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "tool_use",
+                    "id": "toolu_xyz",
+                    "name": "calculator",
+                    "input": {"expression": "2+2"},
+                }
+            ],
+            "model": "claude-3-5-sonnet-20241022",
+            "stop_reason": "tool_use",
+            "usage": {"input_tokens": 20, "output_tokens": 15},
+        }
+
+        # Act: レスポンスをパース
+        response = provider._parse_response(raw_response)
+
+        # Assert: contentがNoneでtool_callsが保存されることを検証
+        assert response.message.content is None
+        assert response.message.tool_calls is not None
+        assert len(response.message.tool_calls) == 1

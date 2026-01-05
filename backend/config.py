@@ -33,7 +33,9 @@ class LLMConfig(BaseSettings):
     max_tokens: int = Field(2048, alias="LLM_MAX_TOKENS")
 
     # OpenRouter固有の設定
-    enable_web_search: bool = Field(False, alias="LLM_ENABLE_WEB_SEARCH")  # デフォルトはオフ
+    enable_web_search: bool = Field(
+        False, alias="LLM_ENABLE_WEB_SEARCH"
+    )  # デフォルトはオフ
 
 
 class BackendConfig(BaseSettings):

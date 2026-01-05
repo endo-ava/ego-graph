@@ -18,10 +18,7 @@ def run_gh_command(args: list[str]) -> dict | list | None:
     """gh コマンドを実行してJSON結果を返す"""
     try:
         result = subprocess.run(
-            ["gh"] + args,
-            capture_output=True,
-            text=True,
-            check=True
+            ["gh"] + args, capture_output=True, text=True, check=True
         )
         return json.loads(result.stdout)
     except subprocess.CalledProcessError as e:
@@ -46,7 +43,7 @@ def run_graphql_query(query: str) -> dict | None:
             ["gh", "api", "graphql", "-f", f"query={query}"],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         return json.loads(result.stdout)
     except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
@@ -81,12 +78,12 @@ def get_resolved_comment_ids(owner: str, repo: str, pr_number: str) -> set[int]:
 
     resolved_ids = set()
     try:
-        threads = result['data']['repository']['pullRequest']['reviewThreads']['nodes']
+        threads = result["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
         for thread in threads:
-            if thread['isResolved']:
-                for comment in thread['comments']['nodes']:
-                    if comment.get('databaseId'):
-                        resolved_ids.add(comment['databaseId'])
+            if thread["isResolved"]:
+                for comment in thread["comments"]["nodes"]:
+                    if comment.get("databaseId"):
+                        resolved_ids.add(comment["databaseId"])
     except (KeyError, TypeError) as e:
         print(f"Failed to parse GraphQL response: {e}", file=sys.stderr)
 
@@ -110,43 +107,49 @@ def main():
     if not repo_info:
         sys.exit(1)
 
-    owner = repo_info['owner']['login']
-    repo = repo_info['name']
+    owner = repo_info["owner"]["login"]
+    repo = repo_info["name"]
 
     # Resolved状態のコメントIDを取得
     print("  Fetching resolved comment IDs...", file=sys.stderr)
     resolved_ids = get_resolved_comment_ids(owner, repo, pr_number)
     if resolved_ids:
-        print(f"  Found {len(resolved_ids)} resolved comments (will be excluded)", file=sys.stderr)
+        print(
+            f"  Found {len(resolved_ids)} resolved comments (will be excluded)",
+            file=sys.stderr,
+        )
 
     # 1. Inline Comments (コード行への指摘)
     print("  Fetching review comments...", file=sys.stderr)
-    review_comments = run_gh_command([
-        "api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments"
-    ]) or []
+    review_comments = (
+        run_gh_command(["api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments"])
+        or []
+    )
 
     # 2. Issue Comments (全体コメント、要約など)
     print("  Fetching issue comments...", file=sys.stderr)
-    issue_comments = run_gh_command([
-        "api", f"repos/{owner}/{repo}/issues/{pr_number}/comments"
-    ]) or []
+    issue_comments = (
+        run_gh_command(["api", f"repos/{owner}/{repo}/issues/{pr_number}/comments"])
+        or []
+    )
 
     print(f"\n# Review Report (PR #{pr_number})\n")
 
     # --- Inline Comments ---
     coderabbit_inline = [
-        c for c in review_comments
-        if 'coderabbitai' in c['user']['login'].lower()
-        and c.get('id') not in resolved_ids  # Resolvedを除外
+        c
+        for c in review_comments
+        if "coderabbitai" in c["user"]["login"].lower()
+        and c.get("id") not in resolved_ids  # Resolvedを除外
     ]
 
     if coderabbit_inline:
         print("## 🚨 Code Suggestions (Inline)\n")
         for c in coderabbit_inline:
-            path = c.get('path', 'unknown')
-            line = c.get('line') or c.get('original_line') or '?'
-            body = c.get('body', '').replace('\n', ' ')
-            url = c.get('html_url', '')
+            path = c.get("path", "unknown")
+            line = c.get("line") or c.get("original_line") or "?"
+            body = c.get("body", "").replace("\n", " ")
+            url = c.get("html_url", "")
 
             # コメント全体を表示（max_lengthまで）
             summary = truncate_text(body, max_length)
@@ -155,19 +158,20 @@ def main():
             print(f"  - 指摘: {summary}")
             print(f"  - [View on GitHub]({url})\n")
     else:
-        print("## 🚨 Code Suggestions (Inline)\n\nNo unresolved inline comments found.\n")
+        print(
+            "## 🚨 Code Suggestions (Inline)\n\nNo unresolved inline comments found.\n"
+        )
 
     # --- Summary / Walkthrough ---
     coderabbit_general = [
-        c for c in issue_comments
-        if 'coderabbitai' in c['user']['login'].lower()
+        c for c in issue_comments if "coderabbitai" in c["user"]["login"].lower()
     ]
 
     if coderabbit_general:
         print("## 📝 Summary & Walkthrough\n")
         for c in coderabbit_general:
-            body = c.get('body', '')
-            url = c.get('html_url', '')
+            body = c.get("body", "")
+            url = c.get("html_url", "")
 
             # Walkthroughなどの長文コメントはリンクのみ
             if "Walkthrough" in body or "Summary" in body:
@@ -181,9 +185,18 @@ def main():
     print("Generated checklist above. Review and check off items as you address them.")
 
     # 統計情報
-    total_inline = len([c for c in review_comments if 'coderabbitai' in c.get('user', {}).get('login', '').lower()])
+    total_inline = len(
+        [
+            c
+            for c in review_comments
+            if "coderabbitai" in c.get("user", {}).get("login", "").lower()
+        ]
+    )
     unresolved_inline = len(coderabbit_inline)
-    print(f"\n📊 Stats: {unresolved_inline} unresolved / {total_inline} total inline comments", file=sys.stderr)
+    print(
+        f"\n📊 Stats: {unresolved_inline} unresolved / {total_inline} total inline comments",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":

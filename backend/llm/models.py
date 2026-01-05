@@ -9,10 +9,23 @@ from pydantic import BaseModel
 
 
 class Message(BaseModel):
-    """チャットメッセージ。"""
+    """チャットメッセージ。
 
-    role: Literal["user", "assistant", "system"]
-    content: Optional[str] = None  # tool callsのみの場合はNoneを許可
+    Attributes:
+        role: メッセージの送信者（user, assistant, system, tool）
+        content: メッセージ本文（文字列またはAnthropicのtool_result形式のリスト）
+        tool_call_id: ツール結果メッセージ用のID（OpenAI形式）
+        name: ツール名（OpenAI形式のtool結果メッセージ用）
+        tool_calls: assistantメッセージに含まれるツール呼び出し（ToolCallオブジェクトのリスト）
+    """
+
+    role: Literal["user", "assistant", "system", "tool"]
+    # tool callsのみの場合はNoneを許可
+    content: Optional[str | list[dict[str, Any]]] = None
+    tool_call_id: Optional[str] = None  # OpenAI tool result用
+    name: Optional[str] = None  # OpenAI tool result用のツール名
+    # assistant messageのtool_calls（ToolCallオブジェクトのリスト）
+    tool_calls: Optional[list["ToolCall"]] = None
 
 
 class ToolCall(BaseModel):
@@ -32,5 +45,6 @@ class ChatResponse(BaseModel):
     id: str
     message: Message
     tool_calls: Optional[list[ToolCall]] = None
-    usage: Optional[dict[str, Any]] = None  # tokens情報（プロバイダーによって構造が異なる）
+    # tokens情報（プロバイダーによって構造が異なる）
+    usage: Optional[dict[str, Any]] = None
     finish_reason: str

@@ -18,7 +18,7 @@ class ToolRegistry:
 
     Example:
         >>> registry = ToolRegistry()
-        >>> registry.register(GetTopTracksTool(db_conn, r2_config))
+        >>> registry.register(GetTopTracksTool(r2_config))
         >>> result = registry.execute("get_top_tracks", start_date="2024-01-01", end_date="2024-01-31")
     """
 

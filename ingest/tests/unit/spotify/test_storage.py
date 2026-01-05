@@ -104,9 +104,7 @@ class TestSpotifyStorage(unittest.TestCase):
             call_args = self.mock_s3.put_object.call_args[1]
             self.assertEqual(call_args["Bucket"], "test-bucket")
             self.assertTrue(
-                call_args["Key"].startswith(
-                    "master/spotify/tracks/year=2024/month=01/"
-                )
+                call_args["Key"].startswith("master/spotify/tracks/year=2024/month=01/")
             )
             self.assertTrue(call_args["Key"].endswith(".parquet"))
             self.assertEqual(call_args["ContentType"], "application/octet-stream")
