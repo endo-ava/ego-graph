@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from backend.llm.models import Message
+from backend.llm.models import Message, ToolCall
 from backend.llm.providers.openai import OpenAIProvider
 from backend.tools.base import Tool
 
@@ -51,7 +51,10 @@ class TestOpenAIProvider:
             Tool(
                 name="get_stats",
                 description="Get listening stats",
-                inputSchema={"type": "object", "properties": {"limit": {"type": "integer"}}},
+                inputSchema={
+                    "type": "object",
+                    "properties": {"limit": {"type": "integer"}},
+                },
             )
         ]
 
@@ -141,7 +144,9 @@ class TestOpenAIProvider:
 
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client_instance = AsyncMock()
-            mock_client_class.return_value.__aenter__.return_value = mock_client_instance
+            mock_client_class.return_value.__aenter__.return_value = (
+                mock_client_instance
+            )
 
             # レスポンスモック
             mock_response = MagicMock()
@@ -164,3 +169,102 @@ class TestOpenAIProvider:
             # Assert: レスポンスとAPI呼び出しが正しいことを検証
             assert response.message.content == "Hi there!"
             mock_client_instance.post.assert_called_once()
+
+    def test_convert_messages_to_provider_format_basic(self):
+        """基本的なメッセージ変換のテスト。"""
+        # Arrange: プロバイダーと基本的なメッセージを準備
+        provider = OpenAIProvider("test-key", "gpt-4o-mini")
+        messages = [
+            Message(role="system", content="You are a helpful assistant"),
+            Message(role="user", content="Hello"),
+            Message(role="assistant", content="Hi there!"),
+        ]
+
+        # Act: OpenAI形式に変換
+        result = provider._convert_messages_to_provider_format(messages)
+
+        # Assert: 基本的なメッセージが正しく変換されることを検証
+        assert len(result) == 3
+        assert result[0] == {"role": "system", "content": "You are a helpful assistant"}
+        assert result[1] == {"role": "user", "content": "Hello"}
+        assert result[2] == {"role": "assistant", "content": "Hi there!"}
+
+    def test_convert_messages_with_tool_results(self):
+        """role="tool"メッセージの変換テスト。"""
+        # Arrange: プロバイダーとtool resultメッセージを準備
+        provider = OpenAIProvider("test-key", "gpt-4o-mini")
+        messages = [
+            Message(role="user", content="Get my stats"),
+            Message(
+                role="tool",
+                content='{"plays": 100}',
+                tool_call_id="call_123",
+                name="get_stats",
+            ),
+        ]
+
+        # Act: OpenAI形式に変換
+        result = provider._convert_messages_to_provider_format(messages)
+
+        # Assert: tool resultメッセージが正しく変換されることを検証
+        assert len(result) == 2
+        assert result[0] == {"role": "user", "content": "Get my stats"}
+        assert result[1] == {
+            "role": "tool",
+            "content": '{"plays": 100}',
+            "tool_call_id": "call_123",
+            "name": "get_stats",
+        }
+
+    def test_convert_messages_with_assistant_tool_calls(self):
+        """assistant + tool_calls の変換テスト。"""
+        # Arrange: プロバイダーとtool callsを含むassistantメッセージを準備
+        provider = OpenAIProvider("test-key", "gpt-4o-mini")
+        tool_calls_data = [
+            ToolCall(
+                id="call_456",
+                name="get_stats",
+                parameters={"limit": 10},
+            )
+        ]
+        messages = [
+            Message(role="user", content="Get my top 10 stats"),
+            Message(role="assistant", content="", tool_calls=tool_calls_data),
+        ]
+
+        # Act: OpenAI形式に変換
+        result = provider._convert_messages_to_provider_format(messages)
+
+        # Assert: tool_callsを含むassistantメッセージが正しく変換されることを検証
+        assert len(result) == 2
+        assert result[0] == {"role": "user", "content": "Get my top 10 stats"}
+        # ToolCallオブジェクトがOpenAI形式に変換されている
+        assert result[1]["role"] == "assistant"
+        assert result[1]["content"] == ""
+        assert len(result[1]["tool_calls"]) == 1
+        assert result[1]["tool_calls"][0]["id"] == "call_456"
+        assert result[1]["tool_calls"][0]["type"] == "function"
+        assert result[1]["tool_calls"][0]["function"]["name"] == "get_stats"
+        assert result[1]["tool_calls"][0]["function"]["arguments"] == '{"limit": 10}'
+
+    def test_convert_tool_message_requires_tool_call_id(self):
+        """tool_call_id必須チェックのテスト。"""
+        # Arrange: プロバイダーとtool_call_idのないtoolメッセージを準備
+        provider = OpenAIProvider("test-key", "gpt-4o-mini")
+        messages = [Message(role="tool", content='{"result": "ok"}', name="get_stats")]
+
+        # Act & Assert: tool_call_idが必須であることを検証
+        with pytest.raises(ValueError, match="invalid_tool_message.*tool_call_id"):
+            provider._convert_messages_to_provider_format(messages)
+
+    def test_convert_tool_message_requires_name(self):
+        """name必須チェックのテスト。"""
+        # Arrange: プロバイダーとnameのないtoolメッセージを準備
+        provider = OpenAIProvider("test-key", "gpt-4o-mini")
+        messages = [
+            Message(role="tool", content='{"result": "ok"}', tool_call_id="call_789")
+        ]
+
+        # Act & Assert: nameが必須であることを検証
+        with pytest.raises(ValueError, match="invalid_tool_message.*name"):
+            provider._convert_messages_to_provider_format(messages)

@@ -7,12 +7,12 @@ LLMを介さず、直接データを取得するための汎用REST APIエンド
 import logging
 from datetime import date
 
+import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.api.deps import get_config, get_db_connection, verify_api_key
 from backend.config import BackendConfig
-from backend.database.connection import DuckDBConnection
 from backend.usecases.spotify_stats import (
     fetch_listening_stats,
     fetch_top_tracks,
@@ -51,7 +51,7 @@ async def get_top_tracks_endpoint(
     start_date: date = Query(..., description="開始日（YYYY-MM-DD）"),
     end_date: date = Query(..., description="終了日（YYYY-MM-DD）"),
     limit: int = Query(10, ge=1, le=100, description="取得する曲数"),
-    db_connection: DuckDBConnection = Depends(get_db_connection),
+    db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
     _: None = Depends(verify_api_key),
 ):
@@ -75,17 +75,17 @@ async def get_top_tracks_endpoint(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     logger.info("Getting top tracks: %s to %s, limit=%s", start_date, end_date, limit)
-    return fetch_top_tracks(
-        db_connection, config.r2, start, end, validated_limit
-    )
+    return fetch_top_tracks(db_connection, config.r2, start, end, validated_limit)
 
 
 @router.get("/stats/listening", response_model=list[ListeningStatsResponse])
 async def get_listening_stats_endpoint(
     start_date: date = Query(..., description="開始日（YYYY-MM-DD）"),
     end_date: date = Query(..., description="終了日（YYYY-MM-DD）"),
-    granularity: str = Query("day", pattern="^(day|week|month)$", description="集計単位"),
-    db_connection: DuckDBConnection = Depends(get_db_connection),
+    granularity: str = Query(
+        "day", pattern="^(day|week|month)$", description="集計単位"
+    ),
+    db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
     _: None = Depends(verify_api_key),
 ):

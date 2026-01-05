@@ -1,6 +1,7 @@
 """Spotify再生統計ツール。"""
 
 import logging
+from collections.abc import Callable
 from typing import Any
 
 from backend.database.connection import DuckDBConnection
@@ -22,15 +23,19 @@ logger = logging.getLogger(__name__)
 class GetTopTracksTool(ToolBase):
     """指定期間で最も再生された曲を取得するツール。"""
 
-    def __init__(self, db_connection: DuckDBConnection, r2_config: R2Config):
+    def __init__(
+        self,
+        r2_config: R2Config,
+        db_connection_factory: Callable[[], DuckDBConnection] | None = None,
+    ):
         """GetTopTracksToolを初期化します。
 
         Args:
-            db_connection: DuckDB接続ファクトリ
             r2_config: R2設定
+            db_connection_factory: DuckDB接続ファクトリ（未指定なら都度生成）
         """
-        self.db_connection = db_connection
         self.r2_config = r2_config
+        self._db_connection_factory = db_connection_factory
 
     @property
     def name(self) -> str:
@@ -84,26 +89,36 @@ class GetTopTracksTool(ToolBase):
         start, end = validate_date_range(start_date, end_date)
         validated_limit = validate_limit(limit, max_value=100)
 
-        logger.info(
-            "Executing get_top_tracks: %s to %s, limit=%s", start, end, limit
-        )
-        return fetch_top_tracks(
-            self.db_connection, self.r2_config, start, end, validated_limit
-        )
+        logger.info("Executing get_top_tracks: %s to %s, limit=%s", start, end, limit)
+
+        # テスト用のファクトリがある場合はそれを使用（モック注入用）
+        if self._db_connection_factory:
+            db_connection = self._db_connection_factory()
+            # ファクトリから返されたオブジェクトをコンテキストマネージャーとして使用
+            with db_connection as conn:
+                return fetch_top_tracks(conn, self.r2_config, start, end, validated_limit)
+
+        # 通常の場合はDuckDBConnectionをコンテキストマネージャーとして使用
+        with DuckDBConnection(self.r2_config) as conn:
+            return fetch_top_tracks(conn, self.r2_config, start, end, validated_limit)
 
 
 class GetListeningStatsTool(ToolBase):
     """期間別の視聴統計を取得するツール。"""
 
-    def __init__(self, db_connection: DuckDBConnection, r2_config: R2Config):
+    def __init__(
+        self,
+        r2_config: R2Config,
+        db_connection_factory: Callable[[], DuckDBConnection] | None = None,
+    ):
         """GetListeningStatsToolを初期化します。
 
         Args:
-            db_connection: DuckDB接続ファクトリ
             r2_config: R2設定
+            db_connection_factory: DuckDB接続ファクトリ（未指定なら都度生成）
         """
-        self.db_connection = db_connection
         self.r2_config = r2_config
+        self._db_connection_factory = db_connection_factory
 
     @property
     def name(self) -> str:
@@ -165,10 +180,18 @@ class GetListeningStatsTool(ToolBase):
             end,
             granularity,
         )
-        return fetch_listening_stats(
-            self.db_connection,
-            self.r2_config,
-            start,
-            end,
-            validated_granularity,
-        )
+
+        # テスト用のファクトリがある場合はそれを使用（モック注入用）
+        if self._db_connection_factory:
+            db_connection = self._db_connection_factory()
+            # ファクトリから返されたオブジェクトをコンテキストマネージャーとして使用
+            with db_connection as conn:
+                return fetch_listening_stats(
+                    conn, self.r2_config, start, end, validated_granularity
+                )
+
+        # 通常の場合はDuckDBConnectionをコンテキストマネージャーとして使用
+        with DuckDBConnection(self.r2_config) as conn:
+            return fetch_listening_stats(
+                conn, self.r2_config, start, end, validated_granularity
+            )

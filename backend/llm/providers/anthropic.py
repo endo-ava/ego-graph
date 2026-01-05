@@ -44,6 +44,72 @@ class AnthropicProvider(BaseLLMProvider):
             await self._client.aclose()
             self._client = None
 
+    def _convert_message_to_anthropic(self, msg: Message) -> dict:
+        """通常メッセージをAnthropic形式に変換します。
+
+        Args:
+            msg: 変換するメッセージ
+
+        Returns:
+            Anthropic形式のメッセージ
+        """
+        # assistantメッセージでtool_callsがある場合は、contentとtool_useブロックに変換
+        if msg.role == "assistant" and msg.tool_calls:
+            content_blocks: list[dict] = []
+
+            # テキストコンテンツがあれば追加
+            if msg.content:
+                content_blocks.append({"type": "text", "text": msg.content})
+
+            # tool_callsをtool_useブロックに変換
+            for tc in msg.tool_calls:
+                # ToolCallオブジェクトから値を取得
+                tc_id = tc.id
+                tc_name = tc.name
+                if not tc_id or not tc_name:
+                    raise ValueError(f"Tool call missing id or name: {tc}")
+                content_blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": tc_id,
+                        "name": tc_name,
+                        "input": tc.parameters,
+                    }
+                )
+
+            return {"role": msg.role, "content": content_blocks}
+
+        # 通常のメッセージはそのまま
+        return {"role": msg.role, "content": msg.content}
+
+    def _convert_tool_result_to_anthropic(self, msg: Message) -> dict:
+        """ツール結果メッセージをAnthropic形式に変換します。
+
+        Args:
+            msg: ツール結果メッセージ（role="tool"）
+
+        Returns:
+            Anthropic形式のメッセージ（role="user" with tool_result blocks）
+
+        Raises:
+            ValueError: tool_call_idが設定されていない場合
+        """
+        if not msg.tool_call_id:
+            raise ValueError(
+                "invalid_tool_result: tool_call_id is required for role='tool' messages"
+            )
+
+        return {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": msg.tool_call_id,
+                    "content": msg.content if isinstance(msg.content, str) else "",
+                }
+            ],
+        }
+
     async def chat_completion(
         self,
         messages: list[Message],
@@ -66,13 +132,24 @@ class AnthropicProvider(BaseLLMProvider):
             httpx.HTTPError: API呼び出しに失敗した場合
         """
         # systemメッセージを分離（複数ある場合は結合）
-        system_messages = []
+        system_messages: list[str] = []
         user_messages = []
         for msg in messages:
             if msg.role == "system":
-                system_messages.append(msg.content)
+                # systemメッセージのcontentは文字列のみを想定
+                if isinstance(msg.content, str):
+                    system_messages.append(msg.content)
+                elif msg.content is not None:
+                    # list形式の場合は警告してスキップ
+                    logger.warning(
+                        "System message with list content not supported, skipping"
+                    )
+            elif msg.role == "tool":
+                # ツール結果メッセージを変換
+                user_messages.append(self._convert_tool_result_to_anthropic(msg))
             else:
-                user_messages.append({"role": msg.role, "content": msg.content})
+                # 通常メッセージを変換
+                user_messages.append(self._convert_message_to_anthropic(msg))
 
         # 複数のsystemメッセージがある場合は改行で結合
         system_message = "\n\n".join(system_messages) if system_messages else None
@@ -169,8 +246,12 @@ class AnthropicProvider(BaseLLMProvider):
 
         return ChatResponse(
             id=raw.get("id", ""),
-            message=Message(role="assistant", content=text_content),
+            message=Message(
+                role="assistant",
+                content=text_content or None,
+                tool_calls=tool_calls,
+            ),
             tool_calls=tool_calls,
             usage=usage,
-            finish_reason=raw.get("stop_reason"),
+            finish_reason=raw.get("stop_reason", "unknown"),
         )

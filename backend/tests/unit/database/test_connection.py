@@ -45,7 +45,9 @@ class TestDuckDBConnection:
         with DuckDBConnection(mock_r2_config) as conn:
             # Assert: httpfsがロードされていることを確認（エラーが出なければOK）
             # 実際にはINSTALLとLOADが実行されている
-            result = conn.execute("SELECT current_setting('allow_unsigned_extensions')").fetchone()
+            result = conn.execute(
+                "SELECT current_setting('allow_unsigned_extensions')"
+            ).fetchone()
             # httpfsがロードされていればクエリが成功する
             assert result is not None
 
@@ -66,7 +68,7 @@ class TestDuckDBConnection:
         db_conn = DuckDBConnection(mock_r2_config)
 
         # Act: __enter__中にエラーが発生した場合をシミュレーション
-        with patch.object(duckdb.DuckDBPyConnection, 'execute') as mock_execute:
+        with patch.object(duckdb.DuckDBPyConnection, "execute") as mock_execute:
             # 最初の呼び出し（INSTALL httpfs）は成功、2回目で失敗
             mock_execute.side_effect = [None, Exception("Test error")]
 

@@ -13,28 +13,22 @@ class TestGetTopTracksTool:
 
     def test_name_property(self):
         """nameプロパティが正しい。"""
-        # Arrange: モックDBとツールを準備
-        mock_db = MagicMock()
-
-        # Act: ツールを作成
+        # Arrange: ツールを準備
         r2_config = R2Config.model_construct(
             bucket_name="bucket", events_path="events/"
         )
-        tool = GetTopTracksTool(mock_db, r2_config)
+        tool = GetTopTracksTool(r2_config)
 
         # Assert: nameプロパティを検証
         assert tool.name == "get_top_tracks"
 
     def test_description_property(self):
         """descriptionプロパティが正しい。"""
-        # Arrange: モックDBとツールを準備
-        mock_db = MagicMock()
-
-        # Act: ツールを作成
+        # Arrange: ツールを準備
         r2_config = R2Config.model_construct(
             bucket_name="bucket", events_path="events/"
         )
-        tool = GetTopTracksTool(mock_db, r2_config)
+        tool = GetTopTracksTool(r2_config)
 
         # Assert: descriptionプロパティを検証
         assert isinstance(tool.description, str)
@@ -42,12 +36,11 @@ class TestGetTopTracksTool:
 
     def test_input_schema_structure(self):
         """input_schemaが正しい構造を持つ。"""
-        # Arrange: モックDBとツールを準備
-        mock_db = MagicMock()
+        # Arrange: ツールを準備
         r2_config = R2Config.model_construct(
             bucket_name="bucket", events_path="events/"
         )
-        tool = GetTopTracksTool(mock_db, r2_config)
+        tool = GetTopTracksTool(r2_config)
 
         # Act: input_schemaを取得
         schema = tool.input_schema
@@ -62,12 +55,11 @@ class TestGetTopTracksTool:
 
     def test_to_schema_generates_tool(self):
         """to_schema()がToolスキーマを生成。"""
-        # Arrange: モックDBとツールを準備
-        mock_db = MagicMock()
+        # Arrange: ツールを準備
         r2_config = R2Config.model_construct(
             bucket_name="bucket", events_path="events/"
         )
-        tool = GetTopTracksTool(mock_db, r2_config)
+        tool = GetTopTracksTool(r2_config)
 
         # Act: to_schema()でスキーマを生成
         schema = tool.to_schema()
@@ -99,7 +91,7 @@ class TestGetTopTracksTool:
             r2_config = R2Config.model_construct(
                 bucket_name="bucket", events_path="events/"
             )
-            tool = GetTopTracksTool(mock_db, r2_config)
+            tool = GetTopTracksTool(r2_config, db_connection_factory=lambda: mock_db)
 
             # Act: ツールを実行
             result = tool.execute(
@@ -115,12 +107,11 @@ class TestGetTopTracksTool:
 
     def test_execute_with_invalid_date_format_raises_error(self):
         """不正な日付形式でエラー。"""
-        # Arrange: モックDBとツールを準備
-        mock_db = MagicMock()
+        # Arrange: ツールを準備
         r2_config = R2Config.model_construct(
             bucket_name="bucket", events_path="events/"
         )
-        tool = GetTopTracksTool(mock_db, r2_config)
+        tool = GetTopTracksTool(r2_config)
 
         # Act & Assert: 不正な日付形式でValueErrorが発生することを検証
         with pytest.raises(ValueError, match="invalid_start_date"):
@@ -139,7 +130,7 @@ class TestGetTopTracksTool:
             r2_config = R2Config.model_construct(
                 bucket_name="bucket", events_path="events/"
             )
-            tool = GetTopTracksTool(mock_db, r2_config)
+            tool = GetTopTracksTool(r2_config, db_connection_factory=lambda: mock_db)
 
             # Act: limitパラメータを省略して実行
             tool.execute(start_date="2024-01-01", end_date="2024-01-31")
@@ -154,28 +145,22 @@ class TestGetListeningStatsTool:
 
     def test_name_property(self):
         """nameプロパティが正しい。"""
-        # Arrange: モックDBとツールを準備
-        mock_db = MagicMock()
-
-        # Act: ツールを作成
+        # Arrange: ツールを準備
         r2_config = R2Config.model_construct(
             bucket_name="bucket", events_path="events/"
         )
-        tool = GetListeningStatsTool(mock_db, r2_config)
+        tool = GetListeningStatsTool(r2_config)
 
         # Assert: nameプロパティを検証
         assert tool.name == "get_listening_stats"
 
     def test_description_property(self):
         """descriptionプロパティが正しい。"""
-        # Arrange: モックDBとツールを準備
-        mock_db = MagicMock()
-
-        # Act: ツールを作成
+        # Arrange: ツールを準備
         r2_config = R2Config.model_construct(
             bucket_name="bucket", events_path="events/"
         )
-        tool = GetListeningStatsTool(mock_db, r2_config)
+        tool = GetListeningStatsTool(r2_config)
 
         # Assert: descriptionプロパティを検証
         assert isinstance(tool.description, str)
@@ -183,12 +168,11 @@ class TestGetListeningStatsTool:
 
     def test_input_schema_structure(self):
         """input_schemaが正しい構造を持つ。"""
-        # Arrange: モックDBとツールを準備
-        mock_db = MagicMock()
+        # Arrange: ツールを準備
         r2_config = R2Config.model_construct(
             bucket_name="bucket", events_path="events/"
         )
-        tool = GetListeningStatsTool(mock_db, r2_config)
+        tool = GetListeningStatsTool(r2_config)
 
         # Act: input_schemaを取得
         schema = tool.input_schema
@@ -202,12 +186,11 @@ class TestGetListeningStatsTool:
 
     def test_to_schema_generates_tool(self):
         """to_schema()がToolスキーマを生成。"""
-        # Arrange: モックDBとツールを準備
-        mock_db = MagicMock()
+        # Arrange: ツールを準備
         r2_config = R2Config.model_construct(
             bucket_name="bucket", events_path="events/"
         )
-        tool = GetListeningStatsTool(mock_db, r2_config)
+        tool = GetListeningStatsTool(r2_config)
 
         # Act: to_schema()でスキーマを生成
         schema = tool.to_schema()
@@ -238,7 +221,9 @@ class TestGetListeningStatsTool:
             r2_config = R2Config.model_construct(
                 bucket_name="bucket", events_path="events/"
             )
-            tool = GetListeningStatsTool(mock_db, r2_config)
+            tool = GetListeningStatsTool(
+                r2_config, db_connection_factory=lambda: mock_db
+            )
 
             # Act: ツールを実行
             result = tool.execute(
@@ -254,12 +239,11 @@ class TestGetListeningStatsTool:
 
     def test_execute_with_invalid_date_format_raises_error(self):
         """不正な日付形式でエラー。"""
-        # Arrange: モックDBとツールを準備
-        mock_db = MagicMock()
+        # Arrange: ツールを準備
         r2_config = R2Config.model_construct(
             bucket_name="bucket", events_path="events/"
         )
-        tool = GetListeningStatsTool(mock_db, r2_config)
+        tool = GetListeningStatsTool(r2_config)
 
         # Act & Assert: 不正な日付形式でValueErrorが発生することを検証
         with pytest.raises(ValueError, match="invalid_start_date"):
@@ -280,7 +264,9 @@ class TestGetListeningStatsTool:
             r2_config = R2Config.model_construct(
                 bucket_name="bucket", events_path="events/"
             )
-            tool = GetListeningStatsTool(mock_db, r2_config)
+            tool = GetListeningStatsTool(
+                r2_config, db_connection_factory=lambda: mock_db
+            )
 
             # Act: granularityパラメータを省略して実行
             tool.execute(start_date="2024-01-01", end_date="2024-01-31")

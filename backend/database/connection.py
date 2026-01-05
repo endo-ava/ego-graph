@@ -4,6 +4,7 @@
 R2のParquetファイルを直接クエリします。
 """
 
+import hashlib
 import logging
 from typing import Optional
 from urllib.parse import urlparse
@@ -42,6 +43,15 @@ class DuckDBConnection:
         self.r2_config = r2_config
         self.conn: Optional[duckdb.DuckDBPyConnection] = None
 
+    def _build_secret_name(self, endpoint: str) -> str:
+        """R2用のSECRET名を生成する。
+
+        同一エンドポイント/アクセスキー/シークレットキーでも衝突しないようにハッシュ化する。
+        """
+        seed = f"{endpoint}|{self.r2_config.access_key_id}|{self.r2_config.secret_access_key.get_secret_value()}"
+        digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:12]
+        return f"r2_{digest}"
+
     def __enter__(self) -> duckdb.DuckDBPyConnection:
         """コンテキストマネージャーのエントリー。
 
@@ -70,9 +80,19 @@ class DuckDBConnection:
                     f"Invalid R2 endpoint URL: '{self.r2_config.endpoint_url}'. "
                     "Could not extract hostname or path."
                 )
+            secret_name = self._build_secret_name(endpoint)
+            # SECRET名はidentifierなのでプレースホルダではなくquotingで保護
+            # secret_nameはハッシュ値なので英数字のみだが、安全のためquoteする
+            try:
+                self.conn.execute(f'DROP SECRET IF NOT EXISTS "{secret_name}";')
+            except duckdb.Error:
+                pass
+
+            # CREATE SECRETではSECRET名はidentifierなので直接埋め込み（quote済み）
+            # 認証情報はプレースホルダを使用
             self.conn.execute(
-                """
-                CREATE SECRET (
+                f"""
+                CREATE SECRET "{secret_name}" (
                     TYPE S3,
                     KEY_ID ?,
                     SECRET ?,

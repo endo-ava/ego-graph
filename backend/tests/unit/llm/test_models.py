@@ -60,6 +60,131 @@ class TestMessage:
         assert message.role == "assistant"
         assert message.content is None
 
+    def test_create_tool_message(self):
+        """ツール結果メッセージの作成。"""
+        # Arrange: ツール結果メッセージのデータを準備
+        tool_call_id = "call_123"
+        tool_name = "get_top_tracks"
+        tool_result = "Top 5 tracks retrieved"
+
+        # Act: ツール結果メッセージを作成
+        msg = Message(
+            role="tool",
+            content=tool_result,
+            tool_call_id=tool_call_id,
+            name=tool_name,
+        )
+
+        # Assert: メッセージが正しく作成されることを検証
+        assert msg.role == "tool"
+        assert msg.content == "Top 5 tracks retrieved"
+        assert msg.tool_call_id == "call_123"
+        assert msg.name == "get_top_tracks"
+
+    def test_tool_call_id_field(self):
+        """tool_call_idフィールドのテスト。"""
+        # Arrange & Act: tool_call_idを持つメッセージを作成
+        msg = Message(role="tool", content="result", tool_call_id="call_abc")
+
+        # Assert: tool_call_idが正しく設定されることを検証
+        assert msg.tool_call_id == "call_abc"
+
+    def test_name_field(self):
+        """nameフィールドのテスト。"""
+        # Arrange & Act: nameを持つメッセージを作成
+        msg = Message(role="tool", content="result", name="search_tool")
+
+        # Assert: nameが正しく設定されることを検証
+        assert msg.name == "search_tool"
+
+    def test_content_as_list(self):
+        """contentがlist型の場合のテスト（Anthropic tool_result形式）。"""
+        # Arrange: list形式のcontentを準備
+        content_blocks = [
+            {"type": "tool_result", "tool_use_id": "toolu_123", "content": "Result 1"},
+            {"type": "text", "text": "Additional context"},
+        ]
+
+        # Act: list形式のcontentを持つメッセージを作成
+        msg = Message(role="user", content=content_blocks)
+
+        # Assert: list形式のcontentが正しく設定されることを検証
+        assert msg.role == "user"
+        assert isinstance(msg.content, list)
+        assert len(msg.content) == 2
+        assert msg.content[0]["type"] == "tool_result"
+        assert msg.content[1]["type"] == "text"
+
+    def test_content_as_string_backward_compatibility(self):
+        """contentが文字列の場合の後方互換性テスト。"""
+        # Arrange & Act: 従来通りの文字列contentでメッセージを作成
+        msg = Message(role="user", content="Hello, world!")
+
+        # Assert: 文字列contentが正しく設定されることを検証
+        assert msg.role == "user"
+        assert msg.content == "Hello, world!"
+        assert isinstance(msg.content, str)
+
+    def test_tool_calls_field(self):
+        """tool_callsフィールドのテスト（ToolCallオブジェクト形式）。"""
+        # Arrange: tool_calls データを準備
+        tool_calls = [
+            ToolCall(
+                id="call_1",
+                name="get_weather",
+                parameters={"location": "Tokyo"},
+            ),
+            ToolCall(
+                id="call_2",
+                name="get_time",
+                parameters={},
+            ),
+        ]
+
+        # Act: tool_callsを持つassistantメッセージを作成
+        msg = Message(role="assistant", content="", tool_calls=tool_calls)
+
+        # Assert: tool_callsが正しく設定されることを検証
+        assert msg.role == "assistant"
+        assert msg.tool_calls is not None
+        assert len(msg.tool_calls) == 2
+        assert msg.tool_calls[0].id == "call_1"
+        assert msg.tool_calls[0].name == "get_weather"
+        assert msg.tool_calls[1].id == "call_2"
+
+    def test_all_new_fields_are_optional(self):
+        """新フィールドが全てOptionalであることを確認。"""
+        # Arrange & Act: 新フィールドなしでメッセージを作成
+        msg = Message(role="user", content="Test message")
+
+        # Assert: 新フィールドがNoneであることを検証
+        assert msg.tool_call_id is None
+        assert msg.name is None
+        assert msg.tool_calls is None
+
+    def test_complex_tool_message_with_list_content(self):
+        """複雑なツールメッセージ（list content + tool_call_id）のテスト。"""
+        # Arrange: Anthropic形式の複雑なツール結果を準備
+        content_blocks = [
+            {
+                "type": "tool_result",
+                "tool_use_id": "toolu_abc123",
+                "content": [
+                    {"type": "text", "text": "Here are the results:"},
+                    {"type": "json", "json": {"items": [1, 2, 3]}},
+                ],
+            }
+        ]
+
+        # Act: 複雑なツール結果メッセージを作成
+        msg = Message(role="user", content=content_blocks, tool_call_id="toolu_abc123")
+
+        # Assert: 全てのフィールドが正しく設定されることを検証
+        assert msg.role == "user"
+        assert isinstance(msg.content, list)
+        assert msg.content[0]["type"] == "tool_result"
+        assert msg.tool_call_id == "toolu_abc123"
+
 
 class TestToolCall:
     """ToolCallモデルのテスト。"""
@@ -207,4 +332,6 @@ class TestChatResponse:
 
         # Act & Assert: ValidationErrorが発生することを検証
         with pytest.raises(ValidationError):
-            ChatResponse(id="resp_bad", message=Message(role="assistant", content="Test"))
+            ChatResponse(
+                id="resp_bad", message=Message(role="assistant", content="Test")
+            )

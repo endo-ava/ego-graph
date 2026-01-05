@@ -66,7 +66,7 @@ class OpenAIProvider(BaseLLMProvider):
         """
         payload: dict[str, Any] = {
             "model": self.model_name,
-            "messages": [msg.model_dump() for msg in messages],
+            "messages": self._convert_messages_to_provider_format(messages),
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
@@ -95,6 +95,66 @@ class OpenAIProvider(BaseLLMProvider):
             response.raise_for_status()
 
             return self._parse_response(response.json())
+
+    def _convert_messages_to_provider_format(
+        self, messages: list[Message]
+    ) -> list[dict]:
+        """MessageモデルをOpenAI API形式に変換します。
+
+        Args:
+            messages: 統一Message形式のメッセージリスト
+
+        Returns:
+            OpenAI API形式のメッセージリスト
+
+        Raises:
+            ValueError: role="tool"のメッセージでtool_call_idまたはnameが不足している場合
+        """
+        converted = []
+        for msg in messages:
+            if msg.role == "tool":
+                # tool resultメッセージではtool_call_idとnameが必須
+                if not msg.tool_call_id:
+                    raise ValueError(
+                        "invalid_tool_message: tool_call_id is required for role='tool'"
+                    )
+                if not msg.name:
+                    raise ValueError(
+                        "invalid_tool_message: name is required for role='tool'"
+                    )
+
+                converted.append(
+                    {
+                        "role": "tool",
+                        "content": msg.content or "",
+                        "tool_call_id": msg.tool_call_id,
+                        "name": msg.name,
+                    }
+                )
+            elif msg.role == "assistant" and msg.tool_calls:
+                # assistantメッセージでtool_callsがある場合
+                # ToolCallオブジェクトをOpenAI形式に変換
+                converted_tool_calls = []
+                for tc in msg.tool_calls:
+                    converted_tool_calls.append({
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.name,
+                            "arguments": json.dumps(tc.parameters)
+                        }
+                    })
+                message_dict = {
+                    "role": "assistant",
+                    "content": msg.content or "",
+                    "tool_calls": converted_tool_calls,
+                }
+                converted.append(message_dict)
+            else:
+                # 通常のメッセージ（user, system, tool_callsのないassistant）
+                converted.append({"role": msg.role, "content": msg.content or ""})
+
+        return converted
 
     def _convert_tools_to_provider_format(self, tools: list[Tool]) -> list[dict]:
         """MCPツールをOpenAI function calling形式に変換します。
@@ -144,7 +204,11 @@ class OpenAIProvider(BaseLLMProvider):
 
         return ChatResponse(
             id=raw["id"],
-            message=Message(role=message["role"], content=message.get("content", "")),
+            message=Message(
+                role=message["role"],
+                content=message.get("content", ""),
+                tool_calls=tool_calls,
+            ),
             tool_calls=tool_calls,
             usage=raw.get("usage"),
             finish_reason=choice["finish_reason"],

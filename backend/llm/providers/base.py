@@ -41,7 +41,11 @@ class BaseLLMProvider(ABC):
         Returns:
             マスキング済みの文字列表現
         """
-        masked_key = f"{self._api_key[:4]}...{self._api_key[-4:]}" if len(self._api_key) > 8 else "***"
+        masked_key = (
+            f"{self._api_key[:4]}...{self._api_key[-4:]}"
+            if len(self._api_key) > 8
+            else "***"
+        )
         return f"{self.__class__.__name__}(api_key='{masked_key}', model_name='{self.model_name}')"
 
     def __str__(self) -> str:

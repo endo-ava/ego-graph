@@ -21,9 +21,7 @@ def validate_date_range(
     start = parse_date(start_date, "start_date")
     end = parse_date(end_date, "end_date")
     if start > end:
-        raise ValueError(
-            "invalid_date_range: start_date must be on or before end_date"
-        )
+        raise ValueError("invalid_date_range: start_date must be on or before end_date")
     return start, end
 
 
@@ -32,9 +30,7 @@ def validate_limit(limit: Any, *, min_value: int = 1, max_value: int = 100) -> i
     if not isinstance(limit, int):
         raise ValueError("invalid_limit: must be a positive integer")
     if limit < min_value or limit > max_value:
-        raise ValueError(
-            f"invalid_limit: must be between {min_value} and {max_value}"
-        )
+        raise ValueError(f"invalid_limit: must be between {min_value} and {max_value}")
     return limit
 
 

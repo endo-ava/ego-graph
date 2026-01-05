@@ -40,7 +40,9 @@ class ChatSession:
         prompt_session: prompt_toolkitセッション
     """
 
-    def __init__(self, base_url: str = "http://localhost:8000", api_key: Optional[str] = None):
+    def __init__(
+        self, base_url: str = "http://localhost:8000", api_key: Optional[str] = None
+    ):
         """ChatSessionを初期化。
 
         Args:
