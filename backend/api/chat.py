@@ -102,7 +102,7 @@ async def chat(
         # ツール実行ループ
         conversation_history = request.messages.copy()
         iteration = 0
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         start_time = loop.time()
 
         while iteration < MAX_ITERATIONS:
@@ -212,7 +212,7 @@ async def _execute_tools_parallel(
         実行結果のリスト。成功時は {"success": True, "result": ...}、
         失敗時は {"success": False, "error": ..., "error_type": ...} を含む。
     """
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     async def execute_single_tool(tool_call: ToolCall) -> dict[str, Any]:
         """単一ツールを実行する。

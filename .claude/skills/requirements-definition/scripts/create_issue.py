@@ -167,7 +167,7 @@ def main() -> None:
         epilog=f"ラベル例:\n"
         f"  カテゴリ: {', '.join(CATEGORY_EXAMPLES)}\n"
         f"  コンポーネント: {', '.join(COMPONENT_EXAMPLES)}\n"
-        f"（カスタムラベルも使用可能）",
+        f"(カスタムラベルも使用可能)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--title", "-t", help="Issue のタイトル")

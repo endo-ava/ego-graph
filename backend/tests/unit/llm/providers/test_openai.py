@@ -254,7 +254,7 @@ class TestOpenAIProvider:
         messages = [Message(role="tool", content='{"result": "ok"}', name="get_stats")]
 
         # Act & Assert: tool_call_idが必須であることを検証
-        with pytest.raises(ValueError, match="invalid_tool_message.*tool_call_id"):
+        with pytest.raises(ValueError, match=r"invalid_tool_message.*tool_call_id"):
             provider._convert_messages_to_provider_format(messages)
 
     def test_convert_tool_message_requires_name(self):
@@ -266,5 +266,5 @@ class TestOpenAIProvider:
         ]
 
         # Act & Assert: nameが必須であることを検証
-        with pytest.raises(ValueError, match="invalid_tool_message.*name"):
+        with pytest.raises(ValueError, match=r"invalid_tool_message.*name"):
             provider._convert_messages_to_provider_format(messages)
