@@ -7,7 +7,9 @@ LLMが必要に応じてツールを呼び出し、データにアクセスし�
 import asyncio
 import json
 import logging
+from datetime import datetime
 from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -25,6 +27,7 @@ router = APIRouter(prefix="/v1/chat", tags=["chat"])
 # 定数
 MAX_ITERATIONS = 5
 TOTAL_TIMEOUT = 30.0
+JST = ZoneInfo("Asia/Tokyo")
 
 
 class ChatRequest(BaseModel):
@@ -101,6 +104,24 @@ async def chat(
 
         # ツール実行ループ
         conversation_history = request.messages.copy()
+
+        # システムメッセージに現在日を追加（まだ含まれていない場合）
+        if not any(msg.role == "system" for msg in conversation_history):
+            now = datetime.now(JST)
+            current_date = now.strftime("%Y-%m-%d")
+            current_time = now.strftime("%H:%M:%S")
+            system_message = Message(
+                role="system",
+                content=f"""あなたはユーザーのデジタルライフログを分析するアシスタントです。
+
+現在の日時情報:
+- 今日の日付: {current_date}
+- 現在時刻: {current_time} JST (日本標準時)
+""",
+            )
+            conversation_history.insert(0, system_message)
+            logger.debug("Added system message with current date: %s", current_date)
+
         iteration = 0
         loop = asyncio.get_running_loop()
         start_time = loop.time()
@@ -179,7 +200,9 @@ async def chat(
 
             # ツール結果を履歴に追加
             # 長さの不一致を検出するために strict=True を使用（Python 3.10+）
-            for tool_call, result in zip(response.tool_calls, tool_results, strict=True):
+            for tool_call, result in zip(
+                response.tool_calls, tool_results, strict=True
+            ):
                 tool_message = _create_tool_result_message(tool_call, result)
                 conversation_history.append(tool_message)
 
@@ -250,7 +273,10 @@ async def _execute_tools_parallel(
             )
             return {
                 "success": False,
-                "error": "Internal tool execution error. Check server logs for details.",
+                "error": (
+                    "Internal tool execution error. "
+                    "Check server logs for details."
+                ),
                 "error_type": "InternalError",
             }
 

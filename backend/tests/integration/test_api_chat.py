@@ -1,10 +1,14 @@
 """API/Chat統合テスト。"""
 
 from copy import deepcopy
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
 
 from backend.api import deps
 from backend.llm.models import ChatResponse, Message, ToolCall
+
+JST = ZoneInfo("Asia/Tokyo")
 
 
 class TestChatEndpoint:
@@ -191,3 +195,99 @@ class TestChatEndpoint:
             )
 
             assert response.status_code == 422
+
+    def test_chat_adds_system_message_with_date(self, test_client, mock_backend_config):
+        """システムメッセージに現在日が追加される。"""
+        mock_response = ChatResponse(
+            id="chatcmpl-test",
+            message=Message(role="assistant", content="Test response"),
+            finish_reason="stop",
+        )
+
+        with (
+            patch("backend.api.chat.LLMClient") as mock_llm_class,
+            patch("backend.api.chat.get_db_connection") as mock_get_db,
+        ):
+            mock_llm_instance = MagicMock()
+            mock_llm_instance.chat = AsyncMock(return_value=mock_response)
+            mock_llm_class.return_value = mock_llm_instance
+
+            mock_conn = MagicMock()
+            mock_get_db.return_value = mock_conn
+
+            response = test_client.post(
+                "/v1/chat",
+                json={"messages": [{"role": "user", "content": "Hello"}]},
+                headers={"X-API-Key": "test-backend-key"},
+            )
+
+            assert response.status_code == 200
+
+            # LLMクライアントのchatメソッドが呼ばれたことを確認
+            mock_llm_instance.chat.assert_called_once()
+            call_args = mock_llm_instance.chat.call_args
+
+            # messagesを取得
+            messages = call_args.kwargs["messages"]
+
+            # 先頭がsystemメッセージであることを確認
+            assert len(messages) >= 2
+            assert messages[0].role == "system"
+            assert "今日の日付" in messages[0].content
+            assert "現在時刻" in messages[0].content
+            assert "JST" in messages[0].content
+
+            # 現在日が含まれていることを確認
+            current_date = datetime.now(JST).strftime("%Y-%m-%d")
+            assert current_date in messages[0].content
+
+            # 元のユーザーメッセージが2番目にあることを確認
+            assert messages[1].role == "user"
+            assert messages[1].content == "Hello"
+
+    def test_chat_does_not_duplicate_system_message(
+        self, test_client, mock_backend_config
+    ):
+        """既にシステムメッセージがある場合は追加しない。"""
+        mock_response = ChatResponse(
+            id="chatcmpl-test",
+            message=Message(role="assistant", content="Test response"),
+            finish_reason="stop",
+        )
+
+        with (
+            patch("backend.api.chat.LLMClient") as mock_llm_class,
+            patch("backend.api.chat.get_db_connection") as mock_get_db,
+        ):
+            mock_llm_instance = MagicMock()
+            mock_llm_instance.chat = AsyncMock(return_value=mock_response)
+            mock_llm_class.return_value = mock_llm_instance
+
+            mock_conn = MagicMock()
+            mock_get_db.return_value = mock_conn
+
+            # 既にsystemメッセージが含まれているリクエスト
+            response = test_client.post(
+                "/v1/chat",
+                json={
+                    "messages": [
+                        {"role": "system", "content": "Custom system message"},
+                        {"role": "user", "content": "Hello"},
+                    ]
+                },
+                headers={"X-API-Key": "test-backend-key"},
+            )
+
+            assert response.status_code == 200
+
+            # LLMクライアントのchatメソッドが呼ばれたことを確認
+            mock_llm_instance.chat.assert_called_once()
+            call_args = mock_llm_instance.chat.call_args
+
+            # messagesを取得
+            messages = call_args.kwargs["messages"]
+
+            # systemメッセージが1つだけであることを確認
+            system_messages = [m for m in messages if m.role == "system"]
+            assert len(system_messages) == 1
+            assert system_messages[0].content == "Custom system message"
