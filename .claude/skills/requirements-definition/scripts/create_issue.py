@@ -27,7 +27,9 @@ CATEGORY_EXAMPLES = ["feature", "fix"]
 COMPONENT_EXAMPLES = ["backend", "frontend", "ingest", "shared"]
 
 
-def create_issue_with_gh(title: str, body: str, labels: list[str] | None = None) -> None:
+def create_issue_with_gh(
+    title: str, body: str, labels: list[str] | None = None
+) -> None:
     """gh CLI を使って Issue を作成。
 
     Args:
@@ -163,9 +165,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="GitHub Issue を作成するスクリプト",
         epilog=f"ラベル例:\n"
-               f"  カテゴリ: {', '.join(CATEGORY_EXAMPLES)}\n"
-               f"  コンポーネント: {', '.join(COMPONENT_EXAMPLES)}\n"
-               f"（カスタムラベルも使用可能）",
+        f"  カテゴリ: {', '.join(CATEGORY_EXAMPLES)}\n"
+        f"  コンポーネント: {', '.join(COMPONENT_EXAMPLES)}\n"
+        f"（カスタムラベルも使用可能）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--title", "-t", help="Issue のタイトル")
@@ -182,7 +184,9 @@ def main() -> None:
         help=f"コンポーネントラベル（複数指定可、例: {', '.join(COMPONENT_EXAMPLES)}）",
     )
     parser.add_argument("--labels", "-l", help="追加ラベル（カンマ区切り）")
-    parser.add_argument("--interactive", "-i", action="store_true", help="対話形式で作成")
+    parser.add_argument(
+        "--interactive", "-i", action="store_true", help="対話形式で作成"
+    )
 
     args = parser.parse_args()
 

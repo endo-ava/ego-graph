@@ -14,6 +14,7 @@
 
 **質問1: 使用するCLIツール**（複数選択可）
 - CodeRabbit
+- claude code (code-reviewer SubAgent)
 - Codex
 - Gemini
 
@@ -25,7 +26,9 @@
 
 選択されたツールごとに`other-cli-reviewer`サブエージェントを起動。
 
-**重要**: 複数のサブエージェントを並列で起動する場合、**1つのメッセージで複数のTask tool callを送る**。
+複数のサブエージェントを並列で起動する場合、**1つのメッセージで複数のTask tool callを送る**。
+
+ただし、claude code (code-reviewer SubAgent)は、`code-reviewer`サブエージェントを呼び出す。
 
 **例（CodeRabbitとGeminiを使用する場合）**:
 ```
@@ -48,6 +51,27 @@ Task 2:
   - 使用ツール: gemini
   - レビュー対象: main
   "
+```
+
+**例2（CodeRabbitとClaude Codeを使用する場合）**:
+```
+1つのメッセージで以下の2つのTask tool callを送る：
+
+Task 1:
+- subagent_type: "other-cli-reviewer"
+- description: "CodeRabbitレビュー実行"
+- prompt: "
+  以下のパラメータでコードレビューを実行してください：
+  - 使用ツール: coderabbit
+  - レビュー対象: main
+  "
+
+-> レビューコマンドを実施するサブエージェントを実行するイメージ
+
+Task 2: "code-reviewer"サブエージェントを呼び出し
+
+-> サブエージェント自身のレビューさせるイメージ
+
 ```
 
 ### Phase 3: レビュー結果の統合
