@@ -54,11 +54,7 @@ def test_transform_plays_missing_track():
 def test_transform_plays_uuids_for_missing_ids():
     """ID が欠落している場合に UUID が生成されることをテストする。"""
     # Arrange: 楽曲名のみが指定された不完全なデータを準備
-    raw_items = [
-        {
-            "track": {"name": "Unknown Song"}
-        }
-    ]
+    raw_items = [{"track": {"name": "Unknown Song"}}]
 
     # Act: 変換を実行
     events = transform_plays_to_events(raw_items)
