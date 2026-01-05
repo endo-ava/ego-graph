@@ -87,3 +87,5 @@ data/
 tmp/
 
 scripts/install-android.ps1
+# Ignore git worktree checkout
+wt1/
