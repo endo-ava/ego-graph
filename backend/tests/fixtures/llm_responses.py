@@ -3,6 +3,8 @@
 import json
 from typing import Any, Dict, List, Optional
 
+from backend.llm.models import ChatResponse, Message
+
 
 def get_mock_openai_response(
     content: str = "Test response", tool_calls: Optional[List[Dict[str, Any]]] = None
@@ -118,3 +120,22 @@ def get_mock_anthropic_tool_use_response(
         "model": "claude-3-5-sonnet-20241022",
         "usage": {"input_tokens": 10, "output_tokens": 20},
     }
+
+
+def mock_chat_response(content: str, tool_calls=None) -> ChatResponse:
+    """モックChatResponseオブジェクトを生成します。
+
+    Args:
+        content: レスポンスのコンテンツ
+        tool_calls: ツール呼び出しのリスト（オプション）
+
+    Returns:
+        ChatResponseオブジェクト
+    """
+    return ChatResponse(
+        id="test-response-123",
+        message=Message(role="assistant", content=content, tool_calls=tool_calls),
+        tool_calls=tool_calls,
+        usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+        finish_reason="stop" if tool_calls is None else "tool_calls",
+    )

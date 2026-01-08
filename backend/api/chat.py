@@ -11,13 +11,15 @@ from datetime import datetime
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
+import duckdb
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.api.deps import get_config, get_db_connection, verify_api_key
+from backend.api.deps import get_chat_db, get_config, get_db_connection, verify_api_key
 from backend.config import BackendConfig
 from backend.database.connection import DuckDBConnection
 from backend.llm import LLMClient, Message, ToolCall
+from backend.services.thread_service import ThreadService
 from backend.tools import GetListeningStatsTool, GetTopTracksTool, ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -29,12 +31,16 @@ MAX_ITERATIONS = 5
 TOTAL_TIMEOUT = 30.0
 JST = ZoneInfo("Asia/Tokyo")
 
+# スレッド作成の競合状態を防ぐためのロック
+_thread_creation_lock = asyncio.Lock()
+
 
 class ChatRequest(BaseModel):
     """チャットリクエスト。"""
 
     messages: list[Message]
     stream: bool = False  # 将来のストリーミング対応用
+    thread_id: Optional[str] = None  # 既存スレッドの場合はUUID、新規の場合はNone
 
 
 class ChatResponseModel(BaseModel):
@@ -44,12 +50,14 @@ class ChatResponseModel(BaseModel):
     message: Message
     tool_calls: Optional[list[dict]] = None
     usage: Optional[dict] = None
+    thread_id: str  # スレッドのUUID（新規作成時も含む）
 
 
 @router.post("", response_model=ChatResponseModel)
 async def chat(
     request: ChatRequest,
     _db_connection: DuckDBConnection = Depends(get_db_connection),
+    chat_db: duckdb.DuckDBPyConnection = Depends(get_chat_db),
     config: BackendConfig = Depends(get_config),
     _: None = Depends(verify_api_key),
 ):
@@ -84,6 +92,71 @@ async def chat(
         )
 
     logger.info("Received chat request with %s messages", len(request.messages))
+
+    # MVP: ユーザーIDは固定値
+    user_id = "default_user"
+
+    # スレッドサービスの初期化
+    thread_service = ThreadService(chat_db)
+
+    # スレッドID処理（新規 or 既存）
+    thread_id: str
+    try:
+        if request.thread_id is None:
+            # 新規スレッド: 初回ユーザーメッセージから作成
+            first_user_message = next(
+                (msg for msg in request.messages if msg.role == "user"), None
+            )
+            if first_user_message is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="At least one user message is required for new thread",
+                )
+
+            # 複数リクエストが同時に到達した場合の重複スレッド作成を防ぐ
+            async with _thread_creation_lock:
+                thread = thread_service.create_thread(
+                    user_id, first_user_message.content or ""
+                )
+                thread_id = thread.thread_id
+                logger.info("Created new thread: thread_id=%s", thread_id)
+
+            # 初回ユーザーメッセージを保存
+            thread_service.add_message(
+                thread_id=thread_id,
+                user_id=user_id,
+                role="user",
+                content=first_user_message.content or "",
+            )
+        else:
+            # 既存スレッド: 存在確認
+            thread = thread_service.get_thread(request.thread_id)
+            if thread is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Thread not found: {request.thread_id}",
+                )
+            thread_id = request.thread_id
+            logger.info("Using existing thread: thread_id=%s", thread_id)
+
+            # 最新のユーザーメッセージを保存
+            last_user_message = next(
+                (msg for msg in reversed(request.messages) if msg.role == "user"), None
+            )
+            if last_user_message:
+                thread_service.add_message(
+                    thread_id=thread_id,
+                    user_id=user_id,
+                    role="user",
+                    content=last_user_message.content or "",
+                )
+    except duckdb.Error as e:
+        logger.error(
+            "Database error during thread/message handling: %s", type(e).__name__
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Database error: {type(e).__name__}"
+        ) from e
 
     try:
         # LLMクライアントの初期化
@@ -160,11 +233,21 @@ async def chat(
             # ツール呼び出しがなければ終了
             if not response.tool_calls:
                 logger.info("Chat completed after %s iteration(s)", iteration)
+
+                # アシスタント応答をDB保存
+                thread_service.add_message(
+                    thread_id=thread_id,
+                    user_id=user_id,
+                    role="assistant",
+                    content=response.message.content or "",
+                )
+
                 return ChatResponseModel(
                     id=response.id,
                     message=response.message,
                     tool_calls=None,
                     usage=response.usage,
+                    thread_id=thread_id,
                 )
 
             # assistant メッセージを履歴に追加
@@ -274,8 +357,7 @@ async def _execute_tools_parallel(
             return {
                 "success": False,
                 "error": (
-                    "Internal tool execution error. "
-                    "Check server logs for details."
+                    "Internal tool execution error. Check server logs for details."
                 ),
                 "error_type": "InternalError",
             }

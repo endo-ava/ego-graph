@@ -136,14 +136,16 @@ class OpenAIProvider(BaseLLMProvider):
                 # ToolCallオブジェクトをOpenAI形式に変換
                 converted_tool_calls = []
                 for tc in msg.tool_calls:
-                    converted_tool_calls.append({
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {
-                            "name": tc.name,
-                            "arguments": json.dumps(tc.parameters)
+                    converted_tool_calls.append(
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.name,
+                                "arguments": json.dumps(tc.parameters),
+                            },
                         }
-                    })
+                    )
                 message_dict = {
                     "role": "assistant",
                     "content": msg.content or "",

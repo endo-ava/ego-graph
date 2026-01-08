@@ -96,7 +96,9 @@ class GetTopTracksTool(ToolBase):
             db_connection = self._db_connection_factory()
             # ファクトリから返されたオブジェクトをコンテキストマネージャーとして使用
             with db_connection as conn:
-                return fetch_top_tracks(conn, self.r2_config, start, end, validated_limit)
+                return fetch_top_tracks(
+                    conn, self.r2_config, start, end, validated_limit
+                )
 
         # 通常の場合はDuckDBConnectionをコンテキストマネージャーとして使用
         with DuckDBConnection(self.r2_config) as conn:
