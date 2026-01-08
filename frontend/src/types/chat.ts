@@ -31,6 +31,7 @@ export interface ToolCall {
 export interface ChatRequest {
   messages: Message[];
   stream?: boolean;
+  thread_id?: string | null;
 }
 
 /**
@@ -41,6 +42,7 @@ export interface ChatResponse {
   message: Message;
   tool_calls?: ToolCall[] | null;
   usage?: Record<string, unknown> | null;
+  thread_id: string;
 }
 
 /**
@@ -51,6 +53,50 @@ export interface ChatMessage extends Message {
   timestamp: Date;
   isLoading?: boolean;
   isError?: boolean;
+}
+
+/**
+ * スレッド情報
+ */
+export interface Thread {
+  thread_id: string;
+  user_id: string;
+  title: string;
+  preview: string | null;
+  message_count: number;
+  created_at: string;
+  last_message_at: string;
+}
+
+/**
+ * スレッド一覧レスポンス
+ */
+export interface ThreadListResponse {
+  threads: Thread[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * スレッドメッセージ
+ * 注: チャット履歴として保存されたメッセージはcontentが常に存在します（null不可）
+ */
+export interface ThreadMessage {
+  message_id: string;
+  thread_id: string;
+  role: 'user' | 'assistant'; // システムメッセージは履歴に保存されない
+  content: string; // 常に存在（Message型のようにnullableではない）
+  created_at: string;
+}
+
+/**
+ * スレッドメッセージ一覧レスポンス
+ */
+export interface ThreadMessagesResponse {
+  thread_id: string;
+  // Backendはtotalを返さないため、必要になったらAPI拡張する
+  messages: ThreadMessage[];
 }
 
 /**

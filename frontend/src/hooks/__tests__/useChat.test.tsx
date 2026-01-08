@@ -49,6 +49,7 @@ describe('useChat', () => {
     // APIモック（遅延を追加してローディング状態をテスト可能にする）
     const mockResponse: ChatResponse = {
       id: 'response-1',
+      thread_id: 'thread-1',
       message: {
         role: 'assistant',
         content: 'Hello! How can I help you?',
@@ -107,7 +108,9 @@ describe('useChat', () => {
       new api.ApiRequestError(501, 'LLM provider not configured'),
     );
 
-    result.current.sendMessage('Test message');
+    act(() => {
+      result.current.sendMessage('Test message');
+    });
 
     // 楽観的更新でメッセージが追加される
     await waitFor(() => {
@@ -138,7 +141,9 @@ describe('useChat', () => {
       new api.ApiRequestError(504, 'Request timeout'),
     );
 
-    result.current.sendMessage('Test message');
+    act(() => {
+      result.current.sendMessage('Test message');
+    });
 
     await waitFor(() => {
       expect(result.current.messages).toHaveLength(2);
@@ -165,7 +170,9 @@ describe('useChat', () => {
       new api.ApiRequestError(502, 'OpenAI API rate limit exceeded'),
     );
 
-    result.current.sendMessage('Test message');
+    act(() => {
+      result.current.sendMessage('Test message');
+    });
 
     await waitFor(() => {
       expect(result.current.messages).toHaveLength(2);
@@ -193,7 +200,9 @@ describe('useChat', () => {
       new api.ApiRequestError(401, 'Unauthorized'),
     );
 
-    result.current.sendMessage('Test message');
+    act(() => {
+      result.current.sendMessage('Test message');
+    });
 
     await waitFor(() => {
       expect(result.current.messages).toHaveLength(2);
@@ -220,7 +229,9 @@ describe('useChat', () => {
       new Error('Network error'),
     );
 
-    result.current.sendMessage('Test message');
+    act(() => {
+      result.current.sendMessage('Test message');
+    });
 
     await waitFor(() => {
       expect(result.current.messages).toHaveLength(2);
@@ -245,6 +256,7 @@ describe('useChat', () => {
     // APIモック
     const mockResponse: ChatResponse = {
       id: 'response-1',
+      thread_id: 'thread-1',
       message: {
         role: 'assistant',
         content: 'Response',
@@ -253,7 +265,9 @@ describe('useChat', () => {
     vi.spyOn(api, 'sendChatMessage').mockResolvedValue(mockResponse);
 
     // メッセージ送信
-    result.current.sendMessage('Hello');
+    act(() => {
+      result.current.sendMessage('Hello');
+    });
 
     await waitFor(() => {
       expect(result.current.messages).toHaveLength(2);
@@ -278,6 +292,7 @@ describe('useChat', () => {
       .spyOn(api, 'sendChatMessage')
       .mockResolvedValue({
         id: 'response-1',
+        thread_id: 'thread-1',
         message: {
           role: 'assistant',
           content: 'Response 1',
@@ -285,7 +300,9 @@ describe('useChat', () => {
       });
 
     // 最初のメッセージ送信
-    result.current.sendMessage('First message');
+    act(() => {
+      result.current.sendMessage('First message');
+    });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -306,13 +323,16 @@ describe('useChat', () => {
     // 2つ目のメッセージ送信（会話履歴含む）
     sendChatMessageSpy.mockResolvedValue({
       id: 'response-2',
+      thread_id: 'thread-1',
       message: {
         role: 'assistant',
         content: 'Response 2',
       },
     });
 
-    result.current.sendMessage('Second message');
+    act(() => {
+      result.current.sendMessage('Second message');
+    });
 
     await waitFor(() => {
       expect(sendChatMessageSpy).toHaveBeenCalledTimes(2);
@@ -349,6 +369,7 @@ describe('useChat', () => {
           setTimeout(() => {
             resolve({
               id: 'response-1',
+              thread_id: 'thread-1',
               message: {
                 role: 'assistant',
                 content: 'Response',
@@ -359,7 +380,9 @@ describe('useChat', () => {
     );
 
     // メッセージ送信
-    result.current.sendMessage('Hello');
+    act(() => {
+      result.current.sendMessage('Hello');
+    });
 
     // isLoadingがtrueになることを確認
     await waitFor(() => {
