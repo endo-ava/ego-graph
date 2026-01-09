@@ -1,4 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
+import { config as loadEnv } from 'dotenv';
+
+// .env ファイルを読み込む
+loadEnv();
 
 interface CapacitorUpdaterConfig {
   autoUpdate: boolean;
