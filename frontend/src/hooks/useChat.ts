@@ -3,14 +3,22 @@
  * TanStack Query と Zustand を組み合わせて使用します
  */
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useChatStore } from '@/lib/store';
 import { sendChatMessage, ApiRequestError } from '@/lib/api';
 import type { ChatMessage, Message } from '@/types/chat';
 
 export function useChat() {
-  const { messages, addMessage, updateLastMessage, setLastMessageError, clearMessages } =
-    useChatStore();
+  const {
+    messages,
+    currentThreadId,
+    addMessage,
+    updateLastMessage,
+    setLastMessageError,
+    clearMessages,
+    setCurrentThreadId,
+  } = useChatStore();
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: sendChatMessage,
@@ -19,6 +27,12 @@ export function useChat() {
       if (data.message.content) {
         updateLastMessage(data.message.content);
       }
+      // スレッドIDを保存
+      if (data.thread_id) {
+        setCurrentThreadId(data.thread_id);
+      }
+      // スレッド一覧を無効化して再取得をトリガー
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
     },
     onError: (error) => {
       // エラーメッセージを設定
@@ -81,6 +95,7 @@ export function useChat() {
     mutation.mutate({
       messages: apiMessages,
       stream: false,
+      thread_id: currentThreadId,
     });
   };
 

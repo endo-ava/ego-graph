@@ -11,6 +11,8 @@ from pydantic import SecretStr
 
 from backend.api import deps
 from backend.config import BackendConfig, LLMConfig
+from backend.database import chat_connection
+from backend.database.chat_connection import ChatDuckDBConnection, create_chat_tables
 from backend.main import create_app
 from shared.config import R2Config
 
@@ -46,6 +48,12 @@ def clear_env_vars(monkeypatch):
     monkeypatch.delenv("BACKEND_RELOAD", raising=False)
     monkeypatch.delenv("BACKEND_API_KEY", raising=False)
     monkeypatch.delenv("LOG_LEVEL", raising=False)
+
+
+@pytest.fixture(autouse=True)
+def reset_backend_config_cache():
+    """BackendConfigのキャッシュを毎回リセットする。"""
+    deps._config = None
 
 
 @pytest.fixture(autouse=True)
@@ -273,3 +281,43 @@ def mock_db_and_parquet():
         mock_get_db.return_value.__exit__.return_value = False
 
         yield {"mock_get_db": mock_get_db, "mock_conn": mock_conn}
+
+
+# ========================================
+# チャット履歴テスト用フィクスチャ
+# ========================================
+
+
+@pytest.fixture
+def test_client_with_chat_db(tmp_path, monkeypatch):
+    """チャット履歴DBを使用するテストクライアントを提供します。
+
+    LLM、R2、チャット履歴DBを設定したFastAPIテストクライアントを返します。
+    統合テストで使用します。
+    """
+
+    # 一時的なチャット履歴DBパスを設定
+    chat_db_path = tmp_path / "test_chat.duckdb"
+
+    # chat_connection.pyのDB_PATHをモンキーパッチ
+    monkeypatch.setattr(chat_connection, "DB_PATH", chat_db_path)
+
+    # LLM APIキーとモデルを設定（モックLLMを使用）
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_MODEL_NAME", "gpt-4")
+
+    # R2設定（ダミー）
+    monkeypatch.setenv("R2_ENDPOINT_URL", "https://test.r2.cloudflarestorage.com")
+    monkeypatch.setenv("R2_ACCESS_KEY_ID", "test-access-key")
+    monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "test-secret-key")
+    monkeypatch.setenv("R2_BUCKET_NAME", "test-bucket")
+
+    # テーブルを事前に作成
+    with ChatDuckDBConnection() as conn:
+        create_chat_tables(conn)
+
+    app = create_app()
+    client = TestClient(app)
+
+    yield client

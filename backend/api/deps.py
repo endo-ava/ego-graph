@@ -11,6 +11,7 @@ import duckdb
 from fastapi import Depends, Header, HTTPException
 
 from backend.config import BackendConfig
+from backend.database.chat_connection import ChatDuckDBConnection
 from backend.database.connection import DuckDBConnection
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,22 @@ def get_db_connection(
         raise ValueError("R2 configuration is required")
 
     with DuckDBConnection(config.r2) as conn:
+        yield conn
+
+
+def get_chat_db() -> Generator[duckdb.DuckDBPyConnection, None, None]:
+    """チャット履歴用DuckDB接続を取得します。
+
+    ChatDuckDBConnectionをコンテキストマネージャーとして使用し、
+    開かれた接続をyieldします。接続は自動的にクローズされます。
+
+    Yields:
+        duckdb.DuckDBPyConnection: 開かれたDuckDB接続（チャット履歴用）
+
+    Raises:
+        duckdb.Error: DuckDB接続に失敗した場合
+    """
+    with ChatDuckDBConnection() as conn:
         yield conn
 
 

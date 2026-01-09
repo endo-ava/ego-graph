@@ -28,6 +28,7 @@ describe('sendChatMessage', () => {
   it('sends chat message successfully', async () => {
     const mockResponse: ChatResponse = {
       id: 'response-1',
+      thread_id: 'thread-1',
       message: {
         role: 'assistant',
         content: 'Hello! How can I help you?',
@@ -74,6 +75,7 @@ describe('sendChatMessage', () => {
 
     const mockResponse: ChatResponse = {
       id: 'response-1',
+      thread_id: 'thread-1',
       message: {
         role: 'assistant',
         content: 'Response',
@@ -109,6 +111,7 @@ describe('sendChatMessage', () => {
 
     const mockResponse: ChatResponse = {
       id: 'response-1',
+      thread_id: 'thread-1',
       message: {
         role: 'assistant',
         content: 'Response',
@@ -143,6 +146,7 @@ describe('sendChatMessage', () => {
 
     const mockResponse: ChatResponse = {
       id: 'response-1',
+      thread_id: 'thread-1',
       message: {
         role: 'assistant',
         content: 'Response',
@@ -307,6 +311,7 @@ describe('sendChatMessage', () => {
 
     const mockResponse: ChatResponse = {
       id: 'response-1',
+      thread_id: 'thread-1',
       message: {
         role: 'assistant',
         content: 'Response',
@@ -372,6 +377,7 @@ describe('sendChatMessage', () => {
   it('sends stream parameter correctly', async () => {
     const mockResponse: ChatResponse = {
       id: 'response-1',
+      thread_id: 'thread-1',
       message: {
         role: 'assistant',
         content: 'Response',

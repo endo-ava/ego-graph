@@ -309,7 +309,9 @@ class TestChatEndpointToolLoop:
                 role="assistant",
                 content="",
                 tool_calls=[
-                    ToolCall(id="call_1", name="get_top_tracks", parameters={"limit": 3})
+                    ToolCall(
+                        id="call_1", name="get_top_tracks", parameters={"limit": 3}
+                    )
                 ],
             ),
             tool_calls=[
@@ -392,7 +394,9 @@ class TestChatEndpointToolLoop:
                 role="assistant",
                 content="",
                 tool_calls=[
-                    ToolCall(id="call_1", name="get_top_tracks", parameters={"limit": 5}),
+                    ToolCall(
+                        id="call_1", name="get_top_tracks", parameters={"limit": 5}
+                    ),
                     ToolCall(
                         id="call_2",
                         name="get_listening_stats",
@@ -525,7 +529,9 @@ class TestChatEndpointToolLoop:
                 role="assistant",
                 content="",
                 tool_calls=[
-                    ToolCall(id="call_1", name="get_top_tracks", parameters={"limit": 1})
+                    ToolCall(
+                        id="call_1", name="get_top_tracks", parameters={"limit": 1}
+                    )
                 ],
             ),
             tool_calls=[

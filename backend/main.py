@@ -4,14 +4,34 @@
 """
 
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api import chat, data, health
+from backend.api import chat, data, health, threads
 from backend.config import BackendConfig
+from backend.database.chat_connection import ChatDuckDBConnection, create_chat_tables
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """アプリケーションのライフサイクル管理。
+
+    起動時にチャット履歴用のテーブルを作成します。
+    """
+    logger.info("Running startup tasks")
+    try:
+        with ChatDuckDBConnection() as conn:
+            create_chat_tables(conn)
+        logger.info("Chat tables initialized successfully")
+    except Exception:
+        logger.exception("Failed to initialize chat tables")
+        raise
+
+    yield
 
 
 def create_app(config: BackendConfig | None = None) -> FastAPI:
@@ -32,6 +52,7 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
         version="0.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     # CORS設定（環境変数から読み取り）
@@ -76,6 +97,7 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(data.router)
     app.include_router(chat.router)
+    app.include_router(threads.router)
 
     logger.info("EgoGraph Backend initialized successfully")
 

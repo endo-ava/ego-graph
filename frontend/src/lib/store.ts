@@ -8,14 +8,22 @@ import type { ChatMessage } from '@/types/chat';
 
 interface ChatStore {
   messages: ChatMessage[];
+  currentThreadId: string | null;
+  sidebarOpen: boolean;
   addMessage: (message: ChatMessage) => void;
   updateLastMessage: (content: string) => void;
   setLastMessageError: (isError: boolean) => void;
   clearMessages: () => void;
+  setMessages: (messages: ChatMessage[]) => void;
+  setCurrentThreadId: (threadId: string | null) => void;
+  setSidebarOpen: (open: boolean) => void;
+  toggleSidebar: () => void;
 }
 
 export const useChatStore = create<ChatStore>((set) => ({
   messages: [],
+  currentThreadId: null,
+  sidebarOpen: false,
 
   addMessage: (message) =>
     set((state) => ({
@@ -50,5 +58,13 @@ export const useChatStore = create<ChatStore>((set) => ({
       return { messages };
     }),
 
-  clearMessages: () => set({ messages: [] }),
+  clearMessages: () => set({ messages: [], currentThreadId: null }),
+
+  setMessages: (messages) => set({ messages }),
+
+  setCurrentThreadId: (threadId) => set({ currentThreadId: threadId }),
+
+  setSidebarOpen: (open) => set({ sidebarOpen: open }),
+
+  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 }));
