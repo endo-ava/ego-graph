@@ -44,7 +44,7 @@ export function Sidebar() {
         aria-label="スレッド一覧"
       >
         {/* ヘッダー */}
-        <header className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+        <header className="flex items-center justify-between px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] border-b shrink-0">
           <h2 className="font-semibold text-lg">会話履歴</h2>
           <Button
             variant="ghost"
