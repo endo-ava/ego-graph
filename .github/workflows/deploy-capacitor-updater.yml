@@ -12,7 +12,7 @@ jobs:
   build-and-upload:
     runs-on: ubuntu-latest
     env:
-      R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+      R2_BUCKET: ${{ secrets.R2_PUBLIC_BUCKET_NAME }}
       R2_ENDPOINT: ${{ secrets.R2_ENDPOINT_URL }}
       R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
     steps:
