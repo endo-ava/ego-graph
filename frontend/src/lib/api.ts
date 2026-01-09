@@ -205,6 +205,7 @@ export async function getThread(threadId: string): Promise<Thread> {
  */
 export async function getThreadMessages(
   threadId: string,
+  options?: { signal?: AbortSignal },
 ): Promise<ThreadMessagesResponse> {
   const { apiUrl, apiKey, debug } = getApiConfig();
   const headers: Record<string, string> = {
@@ -226,6 +227,7 @@ export async function getThreadMessages(
       headers,
       mode: 'cors',
       credentials: 'omit',
+      signal: options?.signal,
     },
   );
 

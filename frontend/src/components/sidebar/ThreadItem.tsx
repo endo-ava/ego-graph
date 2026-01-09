@@ -3,6 +3,7 @@
  * 個別のスレッドを表示し、クリック時の履歴復元を担当します
  */
 
+import { useRef } from 'react';
 import { useChatStore } from '@/lib/store';
 import { getThreadMessages } from '@/lib/api';
 import type { Thread, ChatMessage } from '@/types/chat';
@@ -13,15 +14,25 @@ interface ThreadItemProps {
 
 export function ThreadItem({ thread }: ThreadItemProps) {
   const { setCurrentThreadId, setMessages, setSidebarOpen, currentThreadId } = useChatStore();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const isActive = currentThreadId === thread.thread_id;
 
   const handleClick = async () => {
     const clickedThreadId = thread.thread_id;
 
+    // 前のリクエストがあればキャンセル
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // 新しいAbortControllerを作成
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       // 1. スレッドメッセージを取得
-      const response = await getThreadMessages(clickedThreadId);
+      const response = await getThreadMessages(clickedThreadId, { signal: controller.signal });
 
       // 2. 競合を防ぐため、レスポンス受信後にスレッドIDを設定
       setCurrentThreadId(clickedThreadId);
@@ -40,8 +51,12 @@ export function ThreadItem({ thread }: ThreadItemProps) {
         setSidebarOpen(false);
       }
     } catch (error) {
+      // AbortErrorは無視（意図的なキャンセル）
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
       console.error('Failed to load thread messages:', error);
-      // TODO: トースト通知やエラーメッセージUIを追加
+      alert('スレッドの読み込みに失敗しました。もう一度試してください。');
     }
   };
 
@@ -52,7 +67,7 @@ export function ThreadItem({ thread }: ThreadItemProps) {
         isActive ? 'bg-accent' : ''
       }`}
       aria-label={`スレッド: ${thread.title}`}
-      aria-current={isActive ? 'true' : undefined}
+      aria-current={isActive ? 'page' : undefined}
     >
       <div className="font-bold text-sm line-clamp-2 mb-1">{thread.title}</div>
     </button>
