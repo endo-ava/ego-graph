@@ -17,12 +17,14 @@ export function ThreadItem({ thread }: ThreadItemProps) {
   const isActive = currentThreadId === thread.thread_id;
 
   const handleClick = async () => {
-    try {
-      // 1. スレッドIDを設定
-      setCurrentThreadId(thread.thread_id);
+    const clickedThreadId = thread.thread_id;
 
-      // 2. スレッドメッセージを取得
-      const response = await getThreadMessages(thread.thread_id);
+    try {
+      // 1. スレッドメッセージを取得
+      const response = await getThreadMessages(clickedThreadId);
+
+      // 2. 競合を防ぐため、レスポンス受信後にスレッドIDを設定
+      setCurrentThreadId(clickedThreadId);
 
       // 3. メッセージを履歴に復元（ChatMessage形式に変換）
       const messages: ChatMessage[] = response.messages.map((msg) => ({
@@ -39,7 +41,7 @@ export function ThreadItem({ thread }: ThreadItemProps) {
       }
     } catch (error) {
       console.error('Failed to load thread messages:', error);
-      // エラーハンドリングは必要に応じて追加
+      // TODO: トースト通知やエラーメッセージUIを追加
     }
   };
 
