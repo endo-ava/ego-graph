@@ -210,10 +210,20 @@ UI/機能変更時にネイティブアプリの再ビルド・再インスト�
 **フロー**:
 
 ```
-アプリ起動 → サーバーに更新確認 → 新Webアセットをダウンロード → 次回起動時に適用
+アプリ起動
+  ↓
+CloudFlare Workers に更新確認（GET）
+  ↓
+Workers が R2 から最新情報取得
+  ↓
+新 Web アセットをダウンロード（Workers 経由）
+  ↓
+次回起動時に適用
 ```
 
 **制約**: ネイティブコード変更時は手動更新が必要。
+
+**アーキテクチャ**: R2 の公開バケットは POST でしかアクセスできないため、CloudFlare Workers をプロキシとして使用。詳細は 7.4 を参照。
 
 ### 7.2 インストール
 
@@ -244,30 +254,90 @@ if (updaterUrl) {
 }
 ```
 
-例（R2 の公開 URL）:
+例（CloudFlare Workers 経由の URL）:
 
 ```
-CAPACITOR_UPDATER_URL=https://<r2-public-domain>/<bucket>/capacitor_updates/latest.json
+CAPACITOR_UPDATER_URL=https://capacitor-updater-proxy.your-account.workers.dev/capacitor_updates/latest.json
 ```
 
-### 7.4 配信先（R2）
+### 7.4 配信先（R2 + CloudFlare Workers）
 
-R2 に以下を配置する（公開 URL で配信する）。
+#### 7.4.1 問題点
+
+R2 の公開バケットは POST メソッドでしかアクセスできない制約がある。
+一方、CapacitorUpdater は GET メソッドでアセットを取得する仕様のため、直接 R2 にアクセスできない。
+
+#### 7.4.2 解決策
+
+CloudFlare Workers をプロキシとして使用し、以下の構成で配信する:
+
+```
+Capacitor App (GET request)
+  ↓
+CloudFlare Workers (プロキシ)
+  ↓ (POST request to R2)
+R2 Bucket (private)
+```
+
+Workers が GET リクエストを受け取り、R2 へ POST でアクセスして結果を返す。
+
+#### 7.4.3 CloudFlare Workers の設定
+
+##### 1: Workers プロジェクト作成
+
+CloudFlare ダッシュボード → Workers & Pages → Create application → Create Worker
+
+##### 2: Quick Edit でWorkers コード実装
+
+`workers.js` に以下を記述:
+
+```typescript
+export default {
+  async fetch(request) {
+    if (request.method !== 'POST') {
+      return new Response('Method Not Allowed', { status:
+405 });
+    }
+
+    const latestUrl = 'https://pub-XXX.r2.dev/capacitor_updates/latest.json';
+    const res = await fetch(latestUrl, { headers:
+{ 'Accept': 'application/json' } });
+
+    if (!res.ok) {
+      return new Response('Upstream error', { status:
+502 });
+    }
+
+    const body = await res.text();
+    return new Response(body, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  },
+};
+```
+
+##### 3: デプロイ
+
+#### 7.4.4 R2 へのファイル配置
+
+R2 には以下を配置する（Workers 経由でアクセス）:
 
 - `capacitor_updates/latest.json`: 最新バージョン情報
 - `capacitor_updates/app-<version>.zip`: Web アセットの zip
 
-JSON フォーマット:
+JSON フォーマット（`latest.json`）:
 
 ```json
 {
   "version": "0.2.0",
-  "url": "https://<r2-public-domain>/<bucket>/capacitor_updates/app-0.2.0.zip"
+  "url": "https://capacitor-updater-proxy.your-account.workers.dev/capacitor_updates/app-0.2.0.zip"
 }
 ```
 
 **重要**:
 
+- `url` は Workers の URL を指定する
 - `version` が変わらないと更新されない
 - ネイティブ変更は対象外（APK 再インストールが必要）
 
@@ -292,7 +362,7 @@ GitHub Actions で自動化推奨。
 ### 7.7 GitHub Actions（デバッグ Web アセット自動配信）
 
 `deploy-capacitor-updater.yml` を使用する。
-R2 の公開 URL に `capacitor_updates/` を配置し、`latest.json` を更新する。
+R2 に `capacitor_updates/` を配置し、`latest.json` を更新する。
 
 **必要な GitHub 設定**:
 
@@ -306,14 +376,14 @@ Repository Secrets:
 - `R2_SECRET_ACCESS_KEY`
 - `R2_ENDPOINT_URL`: R2 の S3 互換エンドポイント（例: `https://<account-id>.r2.cloudflarestorage.com`）
 - `R2_BUCKET_NAME`: R2 バケット名
-- `R2_PUBLIC_BASE_URL`: 公開 URL のベース（例: `https://<r2-public-domain>`）
+- `CAPACITOR_UPDATER_WORKERS_URL`: CloudFlare Workers の URL（例: `https://capacitor-updater-proxy.your-account.workers.dev`）
 
 **動作**:
 
 - `frontend` の `npm run build` を実行
 - `dist/` を zip 化し `app-<version>-<sha>.zip` を生成
-- `latest.json` を更新して R2 へアップロード
-- 配信先は `s3://<bucket>/capacitor_updates/`
+- `latest.json` を生成（`url` は Workers の URL を使用）
+- R2 へアップロード（配信先: `s3://<bucket>/capacitor_updates/`）
 
 ### 7.8 メリット
 

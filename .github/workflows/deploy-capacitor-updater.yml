@@ -15,6 +15,7 @@ jobs:
       R2_BUCKET: ${{ secrets.R2_PUBLIC_BUCKET_NAME }}
       R2_ENDPOINT: ${{ secrets.R2_ENDPOINT_URL }}
       R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+      CAPACITOR_UPDATER_URL: ${{ secrets.CAPACITOR_UPDATER_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,7 +48,7 @@ jobs:
           echo "📦 Created latest.json with content:"
           cat latest.json
           echo ""
-          echo "🔗 Update check URL: ${R2_PUBLIC_BASE_URL}/capacitor_updates/latest.json"
+          echo "🔗 Update check URL: ${CAPACITOR_UPDATER_URL}"
 
       - name: Upload to R2
         working-directory: frontend
@@ -68,10 +69,14 @@ jobs:
       - name: Verify deployment
         run: |
           echo "🔍 Verifying deployed latest.json..."
-          LATEST_URL="${{ env.R2_PUBLIC_BASE_URL }}/capacitor_updates/latest.json"
-          echo "Fetching from: ${LATEST_URL}"
-          sleep 2  # Wait for R2 to propagate
-          RESPONSE=$(curl -s "${LATEST_URL}")
+          UPDATE_URL="${{ env.CAPACITOR_UPDATER_URL }}"
+          if [ -z "${UPDATE_URL}" ]; then
+            echo "❌ ERROR: CAPACITOR_UPDATER_URL is not set"
+            exit 1
+          fi
+          echo "POST to: ${UPDATE_URL}"
+          sleep 2  # Wait for storage to propagate
+          RESPONSE=$(curl -s -f -X POST -H "Content-Type: application/json" -d "{}" "${UPDATE_URL}")
           echo "Response: ${RESPONSE}"
 
           VERSION_IN_JSON=$(echo "${RESPONSE}" | jq -r '.version')
@@ -80,7 +85,7 @@ jobs:
           echo "📋 Deployment Summary:"
           echo "  Version: ${VERSION_IN_JSON}"
           echo "  Package URL: ${URL_IN_JSON}"
-          echo "  Update check URL: ${LATEST_URL}"
+          echo "  Update check URL: ${UPDATE_URL}"
 
           if [ -z "${VERSION_IN_JSON}" ] || [ "${VERSION_IN_JSON}" = "null" ]; then
             echo "❌ ERROR: Failed to fetch or parse latest.json"
