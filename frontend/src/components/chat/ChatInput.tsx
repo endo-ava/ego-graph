@@ -3,10 +3,11 @@
  * 自動拡張するテキストエリアと送信ボタン
  */
 
-import { useState, KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { Capacitor } from '@capacitor/core';
 import { Button } from '@/components/ui/button';
+import { useChatStore } from '@/lib/store';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -15,6 +16,15 @@ interface ChatInputProps {
 
 export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   const [input, setInput] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const sidebarOpen = useChatStore((state) => state.sidebarOpen);
+
+  // サイドバーが開いたときに入力欄のフォーカスを外す
+  useEffect(() => {
+    if (sidebarOpen && textareaRef.current) {
+      textareaRef.current.blur();
+    }
+  }, [sidebarOpen]);
 
   const handleSubmit = () => {
     if (!input.trim() || disabled) return;
@@ -37,6 +47,7 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
     <div className="border-t bg-background p-4">
       <div className="mx-auto flex max-w-3xl gap-2">
         <TextareaAutosize
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
