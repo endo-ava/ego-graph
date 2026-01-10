@@ -48,6 +48,7 @@ async function initializeApp() {
     // Webアセット更新の適用完了を通知
     try {
       await CapacitorUpdater.notifyAppReady();
+      console.log('CapacitorUpdater: notifyAppReady called successfully');
     } catch (error) {
       console.warn('CapacitorUpdater notifyAppReady failed:', error);
     }

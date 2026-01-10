@@ -44,6 +44,10 @@ jobs:
         working-directory: frontend
         run: |
           echo "{\"version\":\"${VERSION}\",\"url\":\"${R2_PUBLIC_BASE_URL}/capacitor_updates/app-${VERSION}.zip\"}" > latest.json
+          echo "📦 Created latest.json with content:"
+          cat latest.json
+          echo ""
+          echo "🔗 Update check URL: ${R2_PUBLIC_BASE_URL}/capacitor_updates/latest.json"
 
       - name: Upload to R2
         working-directory: frontend
@@ -59,3 +63,28 @@ jobs:
             --endpoint-url "${R2_ENDPOINT}" \
             --content-type "application/json" \
             --cache-control "no-cache"
+          echo "✅ Upload completed"
+
+      - name: Verify deployment
+        run: |
+          echo "🔍 Verifying deployed latest.json..."
+          LATEST_URL="${{ env.R2_PUBLIC_BASE_URL }}/capacitor_updates/latest.json"
+          echo "Fetching from: ${LATEST_URL}"
+          sleep 2  # Wait for R2 to propagate
+          RESPONSE=$(curl -s "${LATEST_URL}")
+          echo "Response: ${RESPONSE}"
+
+          VERSION_IN_JSON=$(echo "${RESPONSE}" | jq -r '.version')
+          URL_IN_JSON=$(echo "${RESPONSE}" | jq -r '.url')
+
+          echo "📋 Deployment Summary:"
+          echo "  Version: ${VERSION_IN_JSON}"
+          echo "  Package URL: ${URL_IN_JSON}"
+          echo "  Update check URL: ${LATEST_URL}"
+
+          if [ -z "${VERSION_IN_JSON}" ] || [ "${VERSION_IN_JSON}" = "null" ]; then
+            echo "❌ ERROR: Failed to fetch or parse latest.json"
+            exit 1
+          fi
+
+          echo "✅ Deployment verified successfully"
