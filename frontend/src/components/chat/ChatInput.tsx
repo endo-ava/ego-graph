@@ -5,6 +5,7 @@
 
 import { useState, KeyboardEvent } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
+import { Capacitor } from '@capacitor/core';
 import { Button } from '@/components/ui/button';
 
 interface ChatInputProps {
@@ -23,8 +24,10 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter送信、Shift+Enter改行
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // モバイル（iOS/Android）ではEnterキーで改行のみ、デスクトップ（Web）ではEnter送信、Shift+Enter改行
+    const isNative = Capacitor.isNativePlatform();
+
+    if (e.key === 'Enter' && !e.shiftKey && !isNative) {
       e.preventDefault();
       handleSubmit();
     }
