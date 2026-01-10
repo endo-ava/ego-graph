@@ -226,10 +226,12 @@ npx cap sync
 
 `capacitor.config.ts` で更新 URL を設定する。
 EgoGraph では `CAPACITOR_UPDATER_URL` 環境変数から読み込む。
+`.env` を読み込むために `dotenv` を利用しているため、`frontend/.env` に記載すれば反映される。
 `npx cap sync` やビルド時に設定しておくこと。
 
 > **注意**: `capacitor.config.ts` は Node.js で実行される設定ファイルのため、
 > `VITE_` プレフィックスは不要です。`process.env` で直接読み込みます。
+> `frontend` 以外のディレクトリから実行する場合は、環境変数として明示的に渡してください。
 
 ```typescript
 const updaterUrl = process.env.CAPACITOR_UPDATER_URL;
