@@ -6,7 +6,7 @@ base_urlを変更するだけで両方をサポートできます。
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -46,7 +46,7 @@ class OpenAIProvider(BaseLLMProvider):
     async def chat_completion(
         self,
         messages: list[Message],
-        tools: Optional[list[Tool]] = None,
+        tools: list[Tool] | None = None,
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ) -> ChatResponse:
@@ -108,7 +108,8 @@ class OpenAIProvider(BaseLLMProvider):
             OpenAI API形式のメッセージリスト
 
         Raises:
-            ValueError: role="tool"のメッセージでtool_call_idまたはnameが不足している場合
+            ValueError: role="tool"のメッセージで
+                tool_call_idまたはnameが不足している場合
         """
         converted = []
         for msg in messages:

@@ -6,7 +6,6 @@ R2のParquetファイルを直接クエリします。
 
 import hashlib
 import logging
-from typing import Optional
 from urllib.parse import urlparse
 
 import duckdb
@@ -41,14 +40,17 @@ class DuckDBConnection:
             r2_config: R2設定（認証情報とバケット情報）
         """
         self.r2_config = r2_config
-        self.conn: Optional[duckdb.DuckDBPyConnection] = None
+        self.conn: duckdb.DuckDBPyConnection | None = None
 
     def _build_secret_name(self, endpoint: str) -> str:
         """R2用のSECRET名を生成する。
 
         同一エンドポイント/アクセスキー/シークレットキーでも衝突しないようにハッシュ化する。
         """
-        seed = f"{endpoint}|{self.r2_config.access_key_id}|{self.r2_config.secret_access_key.get_secret_value()}"
+        seed = (
+            f"{endpoint}|{self.r2_config.access_key_id}"
+            f"|{self.r2_config.secret_access_key.get_secret_value()}"
+        )
         digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:12]
         return f"r2_{digest}"
 

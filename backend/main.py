@@ -56,42 +56,30 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
     )
 
     # CORS設定（環境変数から読み取り）
-    # CORS_ORIGINS="https://example.com,https://app.example.com" のように設定
     origins = [
-        origin.strip()
-        for origin in config.cors_origins.split(",")
-        if origin.strip()  # 空文字・空白のみのエントリを除外
+        origin.strip() for origin in config.cors_origins.split(",") if origin.strip()
     ]
 
-    # ワイルドカード使用時の処理
+    # ワイルドカードまたは空のオリジンリストの場合は警告を出力
     if "*" in origins:
-        # 開発環境ではワイルドカードを許可、ただし allow_credentials は無効化
         logger.warning(
             "CORS: ワイルドカード '*' が設定されています。開発環境用です。"
             "本番環境では具体的なオリジンを指定してください。"
         )
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=False,  # ワイルドカード使用時は False
-            allow_methods=["*"],
-            allow_headers=["*"],
+        origins = ["*"]
+    elif not origins:
+        logger.warning(
+            "CORS origins が設定されていません。"
+            "CORSミドルウェアは空のオリジンリストで動作します。"
         )
-    else:
-        # origins が空の場合は警告を出力
-        if not origins:
-            logger.warning(
-                "CORS origins が設定されていません。CORSミドルウェアは空のオリジンリストで動作します。"
-            )
 
-        # 開発環境では allow_credentials=False（本番では True に変更可能）
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=origins,
-            allow_credentials=False,  # 開発環境ではシンプルにfalse
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     # ルーターの登録
     app.include_router(health.router)

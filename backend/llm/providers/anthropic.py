@@ -1,7 +1,7 @@
 """Anthropic (Claude) プロバイダー。"""
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -26,7 +26,7 @@ class AnthropicProvider(BaseLLMProvider):
         self.base_url = "https://api.anthropic.com/v1"
         self.api_version = "2023-06-01"
         # コネクションプーリングのためクライアントを再利用
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """共有AsyncClientを取得（遅延初期化）。
@@ -113,7 +113,7 @@ class AnthropicProvider(BaseLLMProvider):
     async def chat_completion(
         self,
         messages: list[Message],
-        tools: Optional[list[Tool]] = None,
+        tools: list[Tool] | None = None,
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ) -> ChatResponse:

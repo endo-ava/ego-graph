@@ -4,7 +4,6 @@
 """
 
 import logging
-from typing import Optional
 
 from backend.llm.models import ChatResponse, Message
 from backend.llm.providers import AnthropicProvider, BaseLLMProvider, OpenAIProvider
@@ -40,7 +39,9 @@ class LLMClient:
             provider_name, api_key, model_name, **kwargs
         )
         logger.info(
-            f"Initialized LLM client with provider: {provider_name}, model: {model_name}"
+            "Initialized LLM client with provider: %s, model: %s",
+            provider_name,
+            model_name,
         )
 
     def _create_provider(
@@ -86,7 +87,7 @@ class LLMClient:
     async def chat(
         self,
         messages: list[Message],
-        tools: Optional[list[Tool]] = None,
+        tools: list[Tool] | None = None,
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ) -> ChatResponse:

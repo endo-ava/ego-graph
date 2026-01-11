@@ -57,9 +57,9 @@ def test_get_threads_performance_1000_threads(thread_service):
     assert len(threads) == num_threads
 
     # パフォーマンス目標: 1秒以内
-    assert (
-        elapsed_time < 1.0
-    ), f"Expected < 1.0s, but took {elapsed_time:.3f}s for {num_threads} threads"
+    assert elapsed_time < 1.0, (
+        f"Expected < 1.0s, but took {elapsed_time:.3f}s for {num_threads} threads"
+    )
 
     # 各スレッドのデータが正しく取得されているか確認
     for thread in threads[:10]:  # 最初の10件のみ検証
@@ -109,9 +109,9 @@ def test_get_threads_performance_with_many_messages(thread_service):
 
     # message_countが正しく集計されているか確認
     for thread in threads:
-        assert (
-            thread.message_count == messages_per_thread
-        ), f"Expected {messages_per_thread} messages, got {thread.message_count}"
+        assert thread.message_count == messages_per_thread, (
+            f"Expected {messages_per_thread} messages, got {thread.message_count}"
+        )
 
 
 def test_get_threads_pagination_performance(thread_service):
@@ -142,9 +142,9 @@ def test_get_threads_pagination_performance(thread_service):
     assert len(threads) == 20
 
     # パフォーマンス目標: 0.2秒以内（OFFSETが大きくても遅くならないこと）
-    assert (
-        elapsed_time < 0.2
-    ), f"Expected < 0.2s, but took {elapsed_time:.3f}s for offset=480"
+    assert elapsed_time < 0.2, (
+        f"Expected < 0.2s, but took {elapsed_time:.3f}s for offset=480"
+    )
 
 
 @pytest.mark.slow

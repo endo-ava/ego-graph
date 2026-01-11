@@ -15,9 +15,9 @@ Features:
 import asyncio
 import os
 import sys
-from typing import Optional
 
 import httpx
+from dotenv import load_dotenv
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import InMemoryHistory
 from rich.console import Console
@@ -41,7 +41,7 @@ class ChatSession:
     """
 
     def __init__(
-        self, base_url: str = "http://localhost:8000", api_key: Optional[str] = None
+        self, base_url: str = "http://localhost:8000", api_key: str | None = None
     ):
         """ChatSessionを初期化。
 
@@ -203,7 +203,8 @@ class ChatSession:
             f"  Prompt:     [cyan]{'█' * prompt_bar_width}[/cyan] {prompt_tokens:,}"
         )
         self.console.print(
-            f"  Completion: [green]{'█' * completion_bar_width}[/green] {completion_tokens:,}"
+            f"  Completion: [green]{'█' * completion_bar_width}[/green] "
+            f"{completion_tokens:,}"
         )
         self.console.print(f"  [bold]Total:      {total_tokens:,}[/bold]")
 
@@ -246,7 +247,7 @@ class ChatSession:
 
 
 async def run_interactive_chat(
-    base_url: str = "http://localhost:8000", api_key: Optional[str] = None
+    base_url: str = "http://localhost:8000", api_key: str | None = None
 ):
     """インタラクティブなチャットセッションを実行。
 
@@ -324,7 +325,10 @@ async def run_interactive_chat(
             except httpx.HTTPStatusError as e:
                 console.print(
                     Panel(
-                        f"[red]HTTP {e.response.status_code}[/red]\n\n{e.response.text}",
+                        (
+                            f"[red]HTTP {e.response.status_code}[/red]\n\n"
+                            f"{e.response.text}"
+                        ),
                         title="API Error",
                         border_style="red",
                     )
@@ -375,8 +379,6 @@ def _get_help_panel() -> Panel:
 
 def main():
     """CLIのエントリーポイント。"""
-    from dotenv import load_dotenv
-
     # .envファイルを読み込み
     load_dotenv()
 

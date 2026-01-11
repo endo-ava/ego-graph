@@ -140,7 +140,8 @@ def get_listening_stats(
 
     date_format = date_format_map[granularity]
 
-    # DuckDBのstrftimeフォーマット文字列は動的に埋める必要があるため例外的にf-stringを使用
+    # DuckDBのstrftimeフォーマット文字列は動的に埋める必要があるため
+    # 例外的にf-stringを使用
     query = f"""
         SELECT
             strftime(played_at_utc::DATE, '{date_format}') as period,

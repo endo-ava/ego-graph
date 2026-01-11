@@ -66,7 +66,8 @@ async def get_top_tracks_endpoint(
         トップトラックのリスト
 
     Example:
-        GET /v1/data/spotify/stats/top-tracks?start_date=2024-01-01&end_date=2024-01-31&limit=5
+        GET /v1/data/spotify/stats/top-tracks?start_date=2024-01-01&
+            end_date=2024-01-31&limit=5
     """
     try:
         start, end = validate_date_range(start_date, end_date)
@@ -100,7 +101,8 @@ async def get_listening_stats_endpoint(
         期間別統計のリスト
 
     Example:
-        GET /v1/data/spotify/stats/listening?start_date=2024-01-01&end_date=2024-01-31&granularity=week
+        GET /v1/data/spotify/stats/listening?start_date=2024-01-01&
+            end_date=2024-01-31&granularity=week
     """
     try:
         start, end = validate_date_range(start_date, end_date)

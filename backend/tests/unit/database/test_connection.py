@@ -30,7 +30,7 @@ class TestDuckDBConnection:
         db_conn = DuckDBConnection(mock_r2_config)
 
         # Act: コンテキストマネージャーで接続を使用
-        with db_conn as conn:
+        with db_conn:
             # Assert: コンテキスト内では接続が有効
             assert db_conn.conn is not None
 
@@ -73,7 +73,7 @@ class TestDuckDBConnection:
             mock_execute.side_effect = [None, Exception("Test error")]
 
             with pytest.raises(Exception, match="Test error"):
-                with db_conn as conn:
+                with db_conn:
                     pass
 
             # Assert: 例外発生後、connはNoneになっている

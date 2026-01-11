@@ -171,6 +171,7 @@ def test_get_thread_invalid_uuid_format(test_client_with_chat_db):
 
 def test_chat_with_invalid_thread_id_format(test_client_with_chat_db, monkeypatch):
     """不正な形式のthread_idでチャットリクエストをテストします。"""
+
     # LLMレスポンスをモック（使用されないが設定は必要）
     async def mock_chat(*args, **kwargs):
         return mock_chat_response(content="Should not be called")

@@ -1,7 +1,7 @@
 """LLMプロバイダーの基底クラス。"""
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from backend.llm.models import ChatResponse, Message
 from backend.tools.base import Tool
@@ -46,7 +46,10 @@ class BaseLLMProvider(ABC):
             if len(self._api_key) > 8
             else "***"
         )
-        return f"{self.__class__.__name__}(api_key='{masked_key}', model_name='{self.model_name}')"
+        return (
+            f"{self.__class__.__name__}"
+            f"(api_key='{masked_key}', model_name='{self.model_name}')"
+        )
 
     def __str__(self) -> str:
         """安全な文字列表現を返します（APIキーをマスキング）。
@@ -60,7 +63,7 @@ class BaseLLMProvider(ABC):
     async def chat_completion(
         self,
         messages: list[Message],
-        tools: Optional[list[Tool]] = None,
+        tools: list[Tool] | None = None,
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ) -> ChatResponse:

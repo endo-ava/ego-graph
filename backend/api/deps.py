@@ -5,7 +5,7 @@
 
 import logging
 import secrets
-from typing import Generator, Optional
+from collections.abc import Generator
 
 import duckdb
 from fastapi import Depends, Header, HTTPException
@@ -17,7 +17,7 @@ from backend.database.connection import DuckDBConnection
 logger = logging.getLogger(__name__)
 
 # グローバル設定（1回だけロード）
-_config: Optional[BackendConfig] = None
+_config: BackendConfig | None = None
 
 
 def get_config() -> BackendConfig:
@@ -79,7 +79,7 @@ def get_chat_db() -> Generator[duckdb.DuckDBPyConnection, None, None]:
 
 
 async def verify_api_key(
-    x_api_key: Optional[str] = Header(None),
+    x_api_key: str | None = Header(None),
     config: BackendConfig = Depends(get_config),
 ) -> None:
     """API Key認証（オプショナル）。
