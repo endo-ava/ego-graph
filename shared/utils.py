@@ -105,7 +105,7 @@ def log_execution_time[T: Callable](func: T) -> T:
         logger.info("Completed %s in %.2fs", func.__name__, elapsed)
         return result
 
-    return wrapper  # type: ignore[return-value]
+    return wrapper
 
 
 def iso8601_to_unix_ms(iso_timestamp) -> int:

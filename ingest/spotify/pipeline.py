@@ -26,6 +26,11 @@ def setup_duckdb_r2(conn: duckdb.DuckDBPyConnection, r2_conf) -> None:
     """DuckDBでR2(S3互換)を読み込む設定を行う。"""
     parsed_url = urlparse(r2_conf.endpoint_url)
     endpoint_host = parsed_url.netloc or parsed_url.path
+    if not endpoint_host:
+        raise ValueError(
+            "Invalid R2 endpoint URL: "
+            f"'{r2_conf.endpoint_url}'. Could not extract hostname or path."
+        )
 
     conn.execute("INSTALL httpfs; LOAD httpfs;")
     conn.execute(
@@ -123,12 +128,15 @@ def _enrich_tracks(
         track_rows = [transform_track_info(t) for t in tracks if t and t.get("id")]
         if track_rows:
             now = datetime.now(timezone.utc)
-            storage.save_master_parquet(
+            result = storage.save_master_parquet(
                 track_rows,
                 prefix="spotify/tracks",
                 year=now.year,
                 month=now.month,
             )
+            if result is None:
+                logger.error("Failed to save track master parquet.")
+                return
     except Exception:
         logger.exception("Failed to enrich track master data")
 
@@ -149,7 +157,10 @@ def _enrich_artists(
         storage.save_raw_json(artists, prefix="spotify/artists")
         artist_rows = [transform_artist_info(a) for a in artists if a and a.get("id")]
         if artist_rows:
-            storage.save_master_parquet(artist_rows, prefix="spotify/artists")
+            result = storage.save_master_parquet(artist_rows, prefix="spotify/artists")
+            if result is None:
+                logger.error("Failed to save artist master parquet.")
+                return
     except Exception:
         logger.exception("Failed to enrich artist master data")
 

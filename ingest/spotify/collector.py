@@ -61,15 +61,22 @@ def _paginate(
         if not page_items:
             break
 
-        items.extend(page_items)
+        if max_items is not None:
+            remaining = max_items - len(items)
+            if remaining <= 0:
+                break
+            items.extend(page_items[:remaining])
+            if len(items) >= max_items:
+                break
+        else:
+            items.extend(page_items)
         offset += len(page_items)
-
-        if max_items and len(items) >= max_items:
-            break
 
         if not results.get("next"):
             break
 
+    if max_items is not None:
+        return items[:max_items]
     return items
 
 
@@ -242,7 +249,7 @@ class SpotifyCollector:
             try:
                 tracks = self.get_playlist_tracks(playlist_id)
                 playlist["full_tracks"] = tracks
-            except Exception as e:
+            except spotipy.SpotifyException as e:
                 logger.warning(
                     "Failed to fetch tracks for playlist %s: %s",
                     playlist.get("name"),

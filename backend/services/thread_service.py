@@ -243,7 +243,7 @@ class ThreadService:
             thread_id: スレッドのUUID
 
         Returns:
-            Thread | None: スレッドオブジェクト（存在しない場合はNone）
+            Thread | None: スレッドオブジェクト(存在しない場合はNone)
 
         Raises:
             duckdb.Error: データベース操作に失敗した場合
