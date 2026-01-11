@@ -3,7 +3,7 @@
 複数のLLMプロバイダー間で統一されたインターフェースを提供します。
 """
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -16,16 +16,17 @@ class Message(BaseModel):
         content: メッセージ本文（文字列またはAnthropicのtool_result形式のリスト）
         tool_call_id: ツール結果メッセージ用のID（OpenAI形式）
         name: ツール名（OpenAI形式のtool結果メッセージ用）
-        tool_calls: assistantメッセージに含まれるツール呼び出し（ToolCallオブジェクトのリスト）
+        tool_calls: assistantメッセージに含まれるツール呼び出し
+            （ToolCallオブジェクトのリスト）
     """
 
     role: Literal["user", "assistant", "system", "tool"]
     # tool callsのみの場合はNoneを許可
-    content: Optional[str | list[dict[str, Any]]] = None
-    tool_call_id: Optional[str] = None  # OpenAI tool result用
-    name: Optional[str] = None  # OpenAI tool result用のツール名
+    content: str | list[dict[str, Any]] | None = None
+    tool_call_id: str | None = None  # OpenAI tool result用
+    name: str | None = None  # OpenAI tool result用のツール名
     # assistant messageのtool_calls（ToolCallオブジェクトのリスト）
-    tool_calls: Optional[list["ToolCall"]] = None
+    tool_calls: list["ToolCall"] | None = None
 
 
 class ToolCall(BaseModel):
@@ -44,7 +45,7 @@ class ChatResponse(BaseModel):
 
     id: str
     message: Message
-    tool_calls: Optional[list[ToolCall]] = None
+    tool_calls: list[ToolCall] | None = None
     # tokens情報（プロバイダーによって構造が異なる）
-    usage: Optional[dict[str, Any]] = None
+    usage: dict[str, Any] | None = None
     finish_reason: str

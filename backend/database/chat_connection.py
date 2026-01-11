@@ -6,7 +6,6 @@ R2用の:memory:接続（connection.py）とは独立しています。
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import duckdb
 
@@ -24,13 +23,16 @@ class ChatDuckDBConnection:
 
     Example:
         >>> with ChatDuckDBConnection() as conn:
-        ...     result = conn.execute("SELECT * FROM threads WHERE user_id = ?", ("default_user",))
+        ...     result = conn.execute(
+        ...         "SELECT * FROM threads WHERE user_id = ?",
+        ...         ("default_user",)
+        ...     )
         ...     threads = result.fetchall()
     """
 
     def __init__(self):
         """ChatDuckDBConnectionを初期化します。"""
-        self.conn: Optional[duckdb.DuckDBPyConnection] = None
+        self.conn: duckdb.DuckDBPyConnection | None = None
 
     def __enter__(self) -> duckdb.DuckDBPyConnection:
         """コンテキストマネージャーのエントリー。

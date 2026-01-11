@@ -1,7 +1,5 @@
 """EgoGraphの設定モデル。"""
 
-from typing import Optional
-
 from pydantic import BaseModel, SecretStr, field_validator
 
 
@@ -29,7 +27,7 @@ class EmbeddingConfig(BaseModel):
 
     model_name: str = "cl-nagoya/ruri-v3-310m"
     batch_size: int = 32
-    device: Optional[str] = None
+    device: str | None = None
     expected_dimension: int = 768
 
 
@@ -65,7 +63,7 @@ class DuckDBConfig(BaseModel):
     """DuckDB設定。"""
 
     db_path: str = "data/analytics.duckdb"
-    r2: Optional[R2Config] = None
+    r2: R2Config | None = None
 
 
 class Config(BaseModel):
@@ -73,11 +71,11 @@ class Config(BaseModel):
 
     log_level: str = "INFO"
 
-    spotify: Optional[SpotifyConfig] = None
-    lastfm: Optional[LastFmConfig] = None
-    embedding: Optional[EmbeddingConfig] = None
-    qdrant: Optional[QdrantConfig] = None
-    duckdb: Optional[DuckDBConfig] = None
+    spotify: SpotifyConfig | None = None
+    lastfm: LastFmConfig | None = None
+    embedding: EmbeddingConfig | None = None
+    qdrant: QdrantConfig | None = None
+    duckdb: DuckDBConfig | None = None
 
     def validate_all(self) -> None:
         """全ての必須設定が存在することを検証します。"""

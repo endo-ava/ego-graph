@@ -8,7 +8,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import duckdb
@@ -40,7 +40,7 @@ class ChatRequest(BaseModel):
 
     messages: list[Message]
     stream: bool = False  # 将来のストリーミング対応用
-    thread_id: Optional[str] = None  # 既存スレッドの場合はUUID、新規の場合はNone
+    thread_id: str | None = None  # 既存スレッドの場合はUUID、新規の場合はNone
 
 
 class ChatResponseModel(BaseModel):
@@ -48,8 +48,8 @@ class ChatResponseModel(BaseModel):
 
     id: str
     message: Message
-    tool_calls: Optional[list[dict]] = None
-    usage: Optional[dict] = None
+    tool_calls: list[dict] | None = None
+    usage: dict | None = None
     thread_id: str  # スレッドのUUID（新規作成時も含む）
 
 

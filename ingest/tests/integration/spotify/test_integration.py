@@ -273,4 +273,6 @@ def test_master_enrichment_flow():
     mock_storage.save_master_parquet.assert_any_call(
         ANY, prefix="spotify/tracks", year=ANY, month=ANY
     )
-    mock_storage.save_master_parquet.assert_any_call(ANY, prefix="spotify/artists")
+    mock_storage.save_master_parquet.assert_any_call(
+        ANY, prefix="spotify/artists", year=ANY, month=ANY
+    )

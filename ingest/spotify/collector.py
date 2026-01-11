@@ -6,8 +6,10 @@ Spotify Web APIに接続し、以下を収集します:
 """
 
 import logging
+from collections.abc import Callable
 from typing import Any
 
+import requests
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from tenacity import (
@@ -25,6 +27,66 @@ from .config import (
 )
 
 logger = logging.getLogger(__name__)
+
+# 共通リトライデコレータ
+spotify_retry = retry(
+    retry=retry_if_exception_type(
+        (spotipy.SpotifyException, requests.exceptions.RequestException)
+    ),
+    stop=stop_after_attempt(MAX_RETRIES),
+    wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
+)
+
+
+def _paginate(
+    fetch_fn: Callable[..., dict[str, Any]],
+    limit: int,
+    *,
+    max_items: int | None = None,
+) -> list[dict[str, Any]]:
+    """ページネーションを使用してすべてのアイテムを取得する汎用ヘルパー。
+
+    Args:
+        fetch_fn: offset と limit を受け取り、API レスポンス辞書を返す関数
+        limit: 1ページあたりの最大アイテム数
+        max_items: 取得する最大アイテム数 (None の場合は無制限)
+
+    Returns:
+        すべてのアイテムのリスト
+    """
+    items: list[dict[str, Any]] = []
+    offset = 0
+
+    while True:
+        results = fetch_fn(offset=offset, limit=limit)
+        if not isinstance(results, dict):
+            logger.warning(
+                "Pagination fetch returned non-dict result; stopping. type=%s",
+                type(results).__name__,
+            )
+            break
+        page_items = results.get("items", [])
+
+        if not page_items:
+            break
+
+        if max_items is not None:
+            remaining = max_items - len(items)
+            if remaining <= 0:
+                break
+            items.extend(page_items[:remaining])
+            if len(items) >= max_items:
+                break
+        else:
+            items.extend(page_items)
+        offset += len(page_items)
+
+        if not results.get("next"):
+            break
+
+    if max_items is not None:
+        return items[:max_items]
+    return items
 
 
 class SpotifyCollector:
@@ -58,32 +120,21 @@ class SpotifyCollector:
         self.client_secret = client_secret
         self.refresh_token = refresh_token
 
-        # OAuthマネージャーの設定
         self.auth_manager = SpotifyOAuth(
             client_id=client_id,
             client_secret=client_secret,
             redirect_uri=redirect_uri,
             scope=scope,
-            open_browser=False,  # ヘッドレス環境ではブラウザを開かない
+            open_browser=False,
         )
 
-        # アクセストークンのリフレッシュ
-        try:
-            self.auth_manager.refresh_access_token(refresh_token)
-            logger.info("Successfully refreshed Spotify access token")
-        except Exception:
-            logger.exception("Failed to refresh access token")
-            raise
+        self.auth_manager.refresh_access_token(refresh_token)
+        logger.info("Successfully refreshed Spotify access token")
 
-        # Spotifyクライアントの初期化
         self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
         logger.info("Spotify collector initialized")
 
-    @retry(
-        retry=retry_if_exception_type((spotipy.SpotifyException,)),
-        stop=stop_after_attempt(MAX_RETRIES),
-        wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
-    )
+    @spotify_retry
     def get_recently_played(
         self, limit: int = RECENTLY_PLAYED_LIMIT, after: int | None = None
     ) -> list[dict[str, Any]]:
@@ -104,42 +155,30 @@ class SpotifyCollector:
             afterパラメータを使用すると、指定したタイムスタンプより後の
             再生履歴のみが返されます(タイムスタンプ自体は含まれません)。
         """
-        # ログ出力: 増分取得か全件取得かを明示
         if after is not None:
             logger.info(
-                f"Fetching recently played tracks incrementally "
-                f"(limit={limit}, after={after} ms)"
+                "Fetching recently played tracks incrementally (limit=%d, after=%d ms)",
+                limit,
+                after,
             )
         else:
-            logger.info(f"Fetching recently played tracks (limit={limit})")
+            logger.info("Fetching recently played tracks (limit=%d)", limit)
 
-        try:
-            # afterパラメータを条件付きで渡す
-            api_params = {"limit": limit}
-            if after is not None:
-                api_params["after"] = after
+        api_params: dict[str, Any] = {"limit": limit}
+        if after is not None:
+            api_params["after"] = after
 
-            results = self.sp.current_user_recently_played(**api_params)
-            items = results.get("items", [])
+        results = self.sp.current_user_recently_played(**api_params)
+        items = results.get("items", [])
 
-            # 結果の詳細ログ
-            if after is not None and len(items) == 0:
-                logger.info(
-                    "No new tracks found since last fetch. Database is up to date."
-                )
-            else:
-                logger.info(f"Successfully fetched {len(items)} recently played tracks")
+        if after is not None and len(items) == 0:
+            logger.info("No new tracks found since last fetch. Database is up to date.")
+        else:
+            logger.info("Successfully fetched %d recently played tracks", len(items))
 
-            return items
-        except spotipy.SpotifyException:
-            logger.exception("Failed to fetch recently played tracks")
-            raise
+        return items
 
-    @retry(
-        retry=retry_if_exception_type((spotipy.SpotifyException,)),
-        stop=stop_after_attempt(MAX_RETRIES),
-        wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
-    )
+    @spotify_retry
     def get_user_playlists(self, limit: int = PLAYLISTS_LIMIT) -> list[dict[str, Any]]:
         """ユーザーのプレイリストを取得します。
 
@@ -152,38 +191,19 @@ class SpotifyCollector:
         Raises:
             spotipy.SpotifyException: リトライ後にAPI呼び出しが失敗した場合
         """
-        logger.info(f"Fetching user playlists (limit={limit})")
+        logger.info("Fetching user playlists (limit=%d)", limit)
 
-        playlists = []
-        offset = 0
+        playlists = _paginate(
+            lambda offset, limit: self.sp.current_user_playlists(
+                limit=limit, offset=offset
+            ),
+            limit,
+        )
 
-        try:
-            while True:
-                results = self.sp.current_user_playlists(limit=limit, offset=offset)
-                items = results.get("items", [])
+        logger.info("Successfully fetched %d playlists", len(playlists))
+        return playlists
 
-                if not items:
-                    break
-
-                playlists.extend(items)
-                offset += len(items)
-
-                # さらにプレイリストがあるか確認
-                if not results.get("next"):
-                    break
-
-            logger.info(f"Successfully fetched {len(playlists)} playlists")
-            return playlists
-
-        except spotipy.SpotifyException:
-            logger.exception("Failed to fetch playlists")
-            raise
-
-    @retry(
-        retry=retry_if_exception_type((spotipy.SpotifyException,)),
-        stop=stop_after_attempt(MAX_RETRIES),
-        wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
-    )
+    @spotify_retry
     def get_playlist_tracks(self, playlist_id: str) -> list[dict[str, Any]]:
         """プレイリストから全トラックを取得します。
 
@@ -196,35 +216,18 @@ class SpotifyCollector:
         Raises:
             spotipy.SpotifyException: リトライ後にAPI呼び出しが失敗した場合
         """
-        logger.debug(f"Fetching tracks for playlist {playlist_id}")
+        logger.debug("Fetching tracks for playlist %s", playlist_id)
+        limit = 100
 
-        tracks = []
-        offset = 0
-        limit = 100  # Spotifyによる最大許容数
+        tracks = _paginate(
+            lambda offset, limit: self.sp.playlist_tracks(
+                playlist_id, limit=limit, offset=offset
+            ),
+            limit,
+        )
 
-        try:
-            while True:
-                results = self.sp.playlist_tracks(
-                    playlist_id, limit=limit, offset=offset
-                )
-                items = results.get("items", [])
-
-                if not items:
-                    break
-
-                tracks.extend(items)
-                offset += len(items)
-
-                # さらにトラックがあるか確認
-                if not results.get("next"):
-                    break
-
-            logger.debug(f"Fetched {len(tracks)} tracks from playlist {playlist_id}")
-            return tracks
-
-        except spotipy.SpotifyException:
-            logger.exception("Failed to fetch playlist tracks")
-            raise
+        logger.debug("Fetched %d tracks from playlist %s", len(tracks), playlist_id)
+        return tracks
 
     def get_playlists_with_tracks(
         self, limit: int = PLAYLISTS_LIMIT
@@ -244,35 +247,32 @@ class SpotifyCollector:
             spotipy.SpotifyException: API呼び出しが失敗した場合
         """
         playlists = self.get_user_playlists(limit=limit)
-
         enriched_playlists = []
+
         for playlist in playlists:
             playlist_id = playlist.get("id")
             if not playlist_id:
-                logger.warning(f"Skipping playlist without ID: {playlist.get('name')}")
+                logger.warning("Skipping playlist without ID: %s", playlist.get("name"))
                 continue
 
             try:
                 tracks = self.get_playlist_tracks(playlist_id)
                 playlist["full_tracks"] = tracks
-                enriched_playlists.append(playlist)
-            except Exception as e:
+            except spotipy.SpotifyException as e:
                 logger.warning(
-                    f"Failed to fetch tracks for playlist {playlist.get('name')}: {e}"
+                    "Failed to fetch tracks for playlist %s: %s",
+                    playlist.get("name"),
+                    e,
                 )
-                # トラックなしでプレイリストを含める
-                enriched_playlists.append(playlist)
+
+            enriched_playlists.append(playlist)
 
         logger.info(
-            f"Successfully enriched {len(enriched_playlists)} playlists with tracks"
+            "Successfully enriched %d playlists with tracks", len(enriched_playlists)
         )
         return enriched_playlists
 
-    @retry(
-        retry=retry_if_exception_type((spotipy.SpotifyException,)),
-        stop=stop_after_attempt(MAX_RETRIES),
-        wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
-    )
+    @spotify_retry
     def get_audio_features(self, track_ids: list[str]) -> list[dict[str, Any]]:
         """複数のトラックのAudio Features(特徴量)を取得します。
 
@@ -295,24 +295,18 @@ class SpotifyCollector:
         if not track_ids:
             return []
 
-        logger.debug(f"Fetching audio features for {len(track_ids)} tracks")
-
-        # Spotify APIは一度に最大100IDまで
-        chunk_size = 100
-        all_features = []
+        logger.debug("Fetching audio features for %d tracks", len(track_ids))
 
         try:
-            for i in range(0, len(track_ids), chunk_size):
-                chunk = track_ids[i : i + chunk_size]
-                features = self.sp.audio_features(tracks=chunk)
-                if features:
-                    all_features.extend(features)
-
+            all_features = self._fetch_in_chunks(
+                track_ids,
+                chunk_size=100,
+                fetch_fn=lambda chunk: self.sp.audio_features(tracks=chunk),
+            )
             logger.info(
-                f"Successfully fetched audio features for {len(all_features)} tracks"
+                "Successfully fetched audio features for %d tracks", len(all_features)
             )
             return all_features
-
         except spotipy.SpotifyException as e:
             if e.http_status == 403:
                 logger.warning(
@@ -322,62 +316,71 @@ class SpotifyCollector:
                     "created after Nov 2024."
                 )
                 return []
-
-            logger.exception("Failed to fetch audio features")
             raise
 
-    @retry(
-        retry=retry_if_exception_type((spotipy.SpotifyException,)),
-        stop=stop_after_attempt(MAX_RETRIES),
-        wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
-    )
+    @spotify_retry
     def get_tracks(self, track_ids: list[str]) -> list[dict[str, Any]]:
         """複数のトラック情報を取得します。"""
         if not track_ids:
             return []
 
-        logger.debug(f"Fetching track details for {len(track_ids)} tracks")
+        logger.debug("Fetching track details for %d tracks", len(track_ids))
 
-        chunk_size = 50
-        all_tracks = []
+        all_tracks = self._fetch_in_chunks(
+            track_ids,
+            chunk_size=50,
+            fetch_fn=lambda chunk: self.sp.tracks(chunk),
+            response_key="tracks",
+        )
+        logger.info("Successfully fetched %d track details", len(all_tracks))
+        return all_tracks
 
-        try:
-            for i in range(0, len(track_ids), chunk_size):
-                chunk = track_ids[i : i + chunk_size]
-                response = self.sp.tracks(chunk)
-                tracks = response.get("tracks", []) if response else []
-                all_tracks.extend([t for t in tracks if t])
-
-            logger.info(f"Successfully fetched {len(all_tracks)} track details")
-            return all_tracks
-        except spotipy.SpotifyException:
-            logger.exception("Failed to fetch tracks")
-            raise
-
-    @retry(
-        retry=retry_if_exception_type((spotipy.SpotifyException,)),
-        stop=stop_after_attempt(MAX_RETRIES),
-        wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
-    )
+    @spotify_retry
     def get_artists(self, artist_ids: list[str]) -> list[dict[str, Any]]:
         """複数のアーティスト情報を取得します。"""
         if not artist_ids:
             return []
 
-        logger.debug(f"Fetching artist details for {len(artist_ids)} artists")
+        logger.debug("Fetching artist details for %d artists", len(artist_ids))
 
-        chunk_size = 50
-        all_artists = []
+        all_artists = self._fetch_in_chunks(
+            artist_ids,
+            chunk_size=50,
+            fetch_fn=lambda chunk: self.sp.artists(chunk),
+            response_key="artists",
+        )
+        logger.info("Successfully fetched %d artist details", len(all_artists))
+        return all_artists
 
-        try:
-            for i in range(0, len(artist_ids), chunk_size):
-                chunk = artist_ids[i : i + chunk_size]
-                response = self.sp.artists(chunk)
-                artists = response.get("artists", []) if response else []
-                all_artists.extend([a for a in artists if a])
+    def _fetch_in_chunks(
+        self,
+        ids: list[str],
+        chunk_size: int,
+        fetch_fn: Callable[[list[str]], Any],
+        response_key: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """IDリストをチャンクに分割してAPIを呼び出す共通ヘルパー。
 
-            logger.info(f"Successfully fetched {len(all_artists)} artist details")
-            return all_artists
-        except spotipy.SpotifyException:
-            logger.exception("Failed to fetch artists")
-            raise
+        Args:
+            ids: 取得対象のIDリスト
+            chunk_size: 1回のAPIコールで処理するID数
+            fetch_fn: チャンクを受け取りAPIレスポンスを返す関数
+            response_key: レスポンスから抽出するキー(Noneの場合はレスポンス全体を使用)
+
+        Returns:
+            取得したアイテムのリスト(Noneを除外)
+        """
+        all_items: list[dict[str, Any]] = []
+
+        for i in range(0, len(ids), chunk_size):
+            chunk = ids[i : i + chunk_size]
+            response = fetch_fn(chunk)
+
+            if response_key:
+                items = response.get(response_key, []) if response else []
+            else:
+                items = response if response else []
+
+            all_items.extend([item for item in items if item])
+
+        return all_items

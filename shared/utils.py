@@ -1,7 +1,9 @@
 """EgoGraphのためのユーティリティ関数。"""
 
 import logging
+from collections.abc import Callable
 from datetime import datetime, timezone
+from functools import wraps
 from typing import Any
 from uuid import UUID
 
@@ -77,7 +79,7 @@ def safe_get(data: dict[str, Any], *keys: str, default: Any = None) -> Any:
     return current
 
 
-def log_execution_time(func):
+def log_execution_time[T: Callable](func: T) -> T:
     """関数の実行時間をログ出力するデコレータ。
 
     Args:
@@ -87,20 +89,21 @@ def log_execution_time(func):
         ラップされた関数
     """
 
+    @wraps(func)
     def wrapper(*args, **kwargs):
         start_time = datetime.now(timezone.utc)
-        logger.info(f"Starting {func.__name__}")
+        logger.info("Starting %s", func.__name__)
 
         try:
             result = func(*args, **kwargs)
-            elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
-            logger.info(f"Completed {func.__name__} in {elapsed:.2f}s")
         except Exception:
             elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
-            logger.exception(f"Failed {func.__name__} after {elapsed:.2f}s")
+            logger.exception("Failed %s after %.2fs", func.__name__, elapsed)
             raise
-        else:
-            return result
+
+        elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
+        logger.info("Completed %s in %.2fs", func.__name__, elapsed)
+        return result
 
     return wrapper
 

@@ -6,7 +6,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -80,10 +80,10 @@ class UnifiedDataModel(BaseModel):
     type: DataType = Field(..., description="データコンテンツの種類")
     timestamp: datetime = Field(..., description="データの日時 (ISO8601)")
     raw_text: str = Field(..., description="検索可能なテキストコンテンツ")
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict, description="ソース固有のメタデータ"
     )
-    embedding: Optional[List[float]] = Field(
+    embedding: list[float] | None = Field(
         None, description="ベクトル埋め込み (ruri-v3用768次元)"
     )
     sensitivity: SensitivityLevel = Field(
@@ -91,7 +91,7 @@ class UnifiedDataModel(BaseModel):
     )
     nsfw: bool = Field(False, description="NSFW/不適切なコンテンツフラグ")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書表現に変換します。
 
         Returns:
@@ -100,7 +100,7 @@ class UnifiedDataModel(BaseModel):
         return self.model_dump(mode="json")
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "UnifiedDataModel":
+    def from_dict(cls, data: dict[str, Any]) -> "UnifiedDataModel":
         """辞書からインスタンスを作成します。
 
         Args:

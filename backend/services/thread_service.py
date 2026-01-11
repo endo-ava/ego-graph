@@ -5,7 +5,6 @@
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 from uuid import uuid4
 
 import duckdb
@@ -237,14 +236,14 @@ class ThreadService:
 
         return threads, total
 
-    def get_thread(self, thread_id: str) -> Optional[Thread]:
+    def get_thread(self, thread_id: str) -> Thread | None:
         """スレッドを取得します。
 
         Args:
             thread_id: スレッドのUUID
 
         Returns:
-            Optional[Thread]: スレッドオブジェクト（存在しない場合はNone）
+            Thread | None: スレッドオブジェクト(存在しない場合はNone)
 
         Raises:
             duckdb.Error: データベース操作に失敗した場合

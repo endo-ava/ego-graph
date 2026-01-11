@@ -349,7 +349,10 @@ class TestChatEndpointToolLoop:
             id="chatcmpl-3",
             message=Message(
                 role="assistant",
-                content="You listened to 500 plays total, with Track 1 being your favorite.",
+                content=(
+                    "You listened to 500 plays total, "
+                    "with Track 1 being your favorite."
+                ),
             ),
             finish_reason="stop",
             usage={"prompt_tokens": 100, "completion_tokens": 30},
@@ -486,7 +489,10 @@ class TestChatEndpointToolLoop:
             id="chatcmpl-2",
             message=Message(
                 role="assistant",
-                content="Sorry, the date format was invalid. Please provide a valid date.",
+                content=(
+                    "Sorry, the date format was invalid. "
+                    "Please provide a valid date."
+                ),
             ),
             finish_reason="stop",
             usage={"prompt_tokens": 60, "completion_tokens": 15},

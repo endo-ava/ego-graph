@@ -5,7 +5,6 @@ shared.configを拡張し、LLM APIとバックエンドサーバー固有の設
 
 import logging
 import os
-from typing import Optional
 
 from pydantic import Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -53,7 +52,7 @@ class BackendConfig(BaseSettings):
     reload: bool = Field(True, alias="BACKEND_RELOAD")
 
     # オプショナル認証
-    api_key: Optional[SecretStr] = Field(None, alias="BACKEND_API_KEY")
+    api_key: SecretStr | None = Field(None, alias="BACKEND_API_KEY")
 
     # CORS設定
     cors_origins: str = Field("*", alias="CORS_ORIGINS")  # カンマ区切り
@@ -62,8 +61,8 @@ class BackendConfig(BaseSettings):
     log_level: str = Field("INFO", alias="LOG_LEVEL")
 
     # サブ設定
-    llm: Optional[LLMConfig] = None
-    r2: Optional[R2Config] = None
+    llm: LLMConfig | None = None
+    r2: R2Config | None = None
 
     @classmethod
     def from_env(cls) -> "BackendConfig":

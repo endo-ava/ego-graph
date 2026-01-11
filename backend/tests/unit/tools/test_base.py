@@ -28,7 +28,8 @@ class TestTool:
 
     def test_missing_required_fields_raises_error(self):
         """必須フィールド欠落でエラー。"""
-        # Arrange & Act & Assert: 必須フィールドが欠落している場合にValidationErrorが発生することを検証
+        # Arrange & Act & Assert: 必須フィールドが欠落している場合に
+        # ValidationErrorが発生することを検証
         with pytest.raises(ValidationError):
             Tool(name="test_tool")
 
