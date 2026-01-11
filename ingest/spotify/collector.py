@@ -9,6 +9,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
+import requests
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from tenacity import (
@@ -29,7 +30,9 @@ logger = logging.getLogger(__name__)
 
 # 共通リトライデコレータ
 spotify_retry = retry(
-    retry=retry_if_exception_type((spotipy.SpotifyException,)),
+    retry=retry_if_exception_type(
+        (spotipy.SpotifyException, requests.exceptions.RequestException)
+    ),
     stop=stop_after_attempt(MAX_RETRIES),
     wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
 )
@@ -56,6 +59,12 @@ def _paginate(
 
     while True:
         results = fetch_fn(offset=offset, limit=limit)
+        if not isinstance(results, dict):
+            logger.warning(
+                "Pagination fetch returned non-dict result; stopping. type=%s",
+                type(results).__name__,
+            )
+            break
         page_items = results.get("items", [])
 
         if not page_items:

@@ -157,7 +157,13 @@ def _enrich_artists(
         storage.save_raw_json(artists, prefix="spotify/artists")
         artist_rows = [transform_artist_info(a) for a in artists if a and a.get("id")]
         if artist_rows:
-            result = storage.save_master_parquet(artist_rows, prefix="spotify/artists")
+            now = datetime.now(timezone.utc)
+            result = storage.save_master_parquet(
+                artist_rows,
+                prefix="spotify/artists",
+                year=now.year,
+                month=now.month,
+            )
             if result is None:
                 logger.error("Failed to save artist master parquet.")
                 return
