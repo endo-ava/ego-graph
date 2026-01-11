@@ -103,9 +103,23 @@ def _load_existing_master_ids(r2_conf) -> tuple[set[str], set[str]]:
             _load_existing_ids(conn, tracks_url, "track_id"),
             _load_existing_ids(conn, artists_url, "artist_id"),
         )
-    except Exception:
-        logger.exception("Failed to load existing Spotify master IDs")
-        return set(), set()
+    except (duckdb.IOException, duckdb.CatalogException) as e:
+        if "No files found" in str(e):
+            logger.info("No existing master data found. Starting fresh.")
+            return set(), set()
+        logger.error(
+            "Failed to load existing Spotify master IDs: %s: %s",
+            type(e).__name__,
+            e,
+        )
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to load existing Spotify master IDs: %s: %s",
+            type(e).__name__,
+            e,
+        )
+        raise
     finally:
         if conn is not None:
             conn.close()
@@ -115,11 +129,11 @@ def _enrich_tracks(
     new_track_ids: list[str],
     collector: SpotifyCollector,
     storage: SpotifyStorage,
-) -> None:
+) -> bool:
     """新規トラックのマスターデータを取得して保存する。"""
     if not new_track_ids:
         logger.info("No new tracks to enrich.")
-        return
+        return True
 
     logger.info("Fetching %d new track details.", len(new_track_ids))
     try:
@@ -136,20 +150,26 @@ def _enrich_tracks(
             )
             if result is None:
                 logger.error("Failed to save track master parquet.")
-                return
-    except Exception:
-        logger.exception("Failed to enrich track master data")
+                return False
+        return True
+    except Exception as e:
+        logger.error(
+            "Failed to enrich track master data: %s: %s",
+            type(e).__name__,
+            e,
+        )
+        return False
 
 
 def _enrich_artists(
     new_artist_ids: list[str],
     collector: SpotifyCollector,
     storage: SpotifyStorage,
-) -> None:
+) -> bool:
     """新規アーティストのマスターデータを取得して保存する。"""
     if not new_artist_ids:
         logger.info("No new artists to enrich.")
-        return
+        return True
 
     logger.info("Fetching %d new artist details.", len(new_artist_ids))
     try:
@@ -166,9 +186,15 @@ def _enrich_artists(
             )
             if result is None:
                 logger.error("Failed to save artist master parquet.")
-                return
-    except Exception:
-        logger.exception("Failed to enrich artist master data")
+                return False
+        return True
+    except Exception as e:
+        logger.error(
+            "Failed to enrich artist master data: %s: %s",
+            type(e).__name__,
+            e,
+        )
+        return False
 
 
 def enrich_master_data(
@@ -179,7 +205,11 @@ def enrich_master_data(
     existing_track_ids: set[str] | None = None,
     existing_artist_ids: set[str] | None = None,
 ) -> None:
-    """再生履歴からマスター情報を補完して保存する。"""
+    """再生履歴からマスター情報を補完して保存する。
+
+    Raises:
+        RuntimeError: マスターの保存に失敗した場合
+    """
     track_ids, artist_ids = _extract_unique_ids(items)
     if not track_ids and not artist_ids:
         logger.info("No master candidates found in recently played data.")
@@ -191,8 +221,17 @@ def enrich_master_data(
     new_track_ids = [tid for tid in track_ids if tid not in existing_track_ids]
     new_artist_ids = [aid for aid in artist_ids if aid not in existing_artist_ids]
 
-    _enrich_tracks(new_track_ids, collector, storage)
-    _enrich_artists(new_artist_ids, collector, storage)
+    track_ok = _enrich_tracks(new_track_ids, collector, storage)
+    artist_ok = _enrich_artists(new_artist_ids, collector, storage)
+    if not track_ok or not artist_ok:
+        failed_targets = []
+        if not track_ok:
+            failed_targets.append("tracks")
+        if not artist_ok:
+            failed_targets.append("artists")
+        raise RuntimeError(
+            "Failed to enrich master data: " + ", ".join(failed_targets)
+        )
 
 
 def _group_events_by_month(
