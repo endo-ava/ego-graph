@@ -14,6 +14,11 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger(__name__)
 
 
+def _normalize_path(path: str) -> str:
+    """パスを正規化して末尾に / を付ける。"""
+    return path.rstrip("/") + "/"
+
+
 class SpotifyStorage:
     """Spotifyデータの保存・永続化を管理するクラス。"""
 
@@ -39,11 +44,10 @@ class SpotifyStorage:
             master_path: マスターデータの保存先プレフィックス
         """
         self.bucket_name = bucket_name
-        self.raw_path = raw_path.rstrip("/") + "/"
-        self.events_path = events_path.rstrip("/") + "/"
-        self.master_path = master_path.rstrip("/") + "/"
+        self.raw_path = _normalize_path(raw_path)
+        self.events_path = _normalize_path(events_path)
+        self.master_path = _normalize_path(master_path)
 
-        # S3クライアントの初期化
         self.s3 = boto3.client(
             "s3",
             endpoint_url=endpoint_url,
@@ -51,7 +55,45 @@ class SpotifyStorage:
             aws_secret_access_key=secret_access_key,
             region_name="auto",
         )
-        logger.info(f"Storage initialized for bucket: {bucket_name}")
+        logger.info("Storage initialized for bucket: %s", bucket_name)
+
+    def _upload_parquet(
+        self, data: list[dict[str, Any]], key: str, description: str
+    ) -> str | None:
+        """データをParquet形式でS3にアップロードする共通処理。
+
+        Args:
+            data: 保存するデータ(辞書のリスト)
+            key: S3オブジェクトキー
+            description: ログ用の説明
+
+        Returns:
+            保存されたオブジェクトのキー (失敗時はNone)
+        """
+        if not data:
+            logger.warning("No data provided for %s.", description)
+            return None
+
+        try:
+            df = pd.DataFrame(data)
+            buffer = BytesIO()
+            df.to_parquet(buffer, index=False, engine="pyarrow")
+            buffer.seek(0)
+
+            self.s3.put_object(
+                Bucket=self.bucket_name,
+                Key=key,
+                Body=buffer.getvalue(),
+                ContentType="application/octet-stream",
+            )
+            logger.info("Saved %s to %s", description, key)
+            return key
+        except ImportError:
+            logger.exception("Pandas or PyArrow is required for Parquet saving")
+            return None
+        except Exception:
+            logger.exception("Failed to save %s", description)
+            return None
 
     def save_raw_json(
         self, data: list[dict[str, Any]] | dict[str, Any], prefix: str = "spotify"
@@ -71,7 +113,6 @@ class SpotifyStorage:
         timestamp_str = now.strftime("%Y%m%d_%H%M%S")
         unique_id = str(uuid.uuid4())[:8]
 
-        # パスの構築
         date_path = now.strftime("%Y/%m/%d")
         file_name = f"{timestamp_str}_{unique_id}.json"
         key = f"{self.raw_path}{prefix}/{date_path}/{file_name}"
@@ -84,7 +125,7 @@ class SpotifyStorage:
                 Body=json_bytes,
                 ContentType="application/json",
             )
-            logger.info(f"Saved raw JSON to {key}")
+            logger.info("Saved raw JSON to %s", key)
             return key
         except ClientError:
             logger.exception("Failed to save raw JSON")
@@ -110,39 +151,12 @@ class SpotifyStorage:
         Returns:
             保存されたオブジェクトのキー (失敗時はNone)
         """
-        if not data:
-            logger.warning("No data provided for Parquet save.")
-            return None
-
         unique_id = str(uuid.uuid4())
         key = (
             f"{self.events_path}{prefix}/"
             f"year={year}/month={month:02d}/{unique_id}.parquet"
         )
-
-        try:
-            # Pandas DataFrameに変換
-            df = pd.DataFrame(data)
-
-            # DataFrameをParquetバイナリとしてメモリ書き出し
-            buffer = BytesIO()
-            df.to_parquet(buffer, index=False, engine="pyarrow")
-            buffer.seek(0)
-
-            self.s3.put_object(
-                Bucket=self.bucket_name,
-                Key=key,
-                Body=buffer.getvalue(),
-                ContentType="application/octet-stream",
-            )
-            logger.info(f"Saved Parquet to {key}")
-            return key
-        except ImportError:
-            logger.exception("Pandas or PyArrow is required for Parquet saving")
-            return None
-        except Exception:
-            logger.exception("Failed to save Parquet")
-            return None
+        return self._upload_parquet(data, key, "Parquet")
 
     def save_master_parquet(
         self,
@@ -166,11 +180,8 @@ class SpotifyStorage:
         Returns:
             保存されたオブジェクトのキー (失敗時はNone)
         """
-        if not data:
-            logger.warning("No data provided for master Parquet save.")
-            return None
-
         unique_id = str(uuid.uuid4())
+
         if year is not None and month is not None:
             key = (
                 f"{self.master_path}{prefix}/"
@@ -179,27 +190,7 @@ class SpotifyStorage:
         else:
             key = f"{self.master_path}{prefix}/{unique_id}.parquet"
 
-        try:
-            df = pd.DataFrame(data)
-
-            buffer = BytesIO()
-            df.to_parquet(buffer, index=False, engine="pyarrow")
-            buffer.seek(0)
-
-            self.s3.put_object(
-                Bucket=self.bucket_name,
-                Key=key,
-                Body=buffer.getvalue(),
-                ContentType="application/octet-stream",
-            )
-            logger.info(f"Saved master Parquet to {key}")
-            return key
-        except ImportError:
-            logger.exception("Pandas or PyArrow is required for Parquet saving")
-            return None
-        except Exception:
-            logger.exception("Failed to save master Parquet")
-            return None
+        return self._upload_parquet(data, key, "master Parquet")
 
     def get_ingest_state(
         self, key: str = "state/spotify_ingest_state.json"
@@ -227,7 +218,7 @@ class SpotifyStorage:
 
     def save_ingest_state(
         self, state: dict[str, Any], key: str = "state/spotify_ingest_state.json"
-    ):
+    ) -> None:
         """インジェスト状態(カーソル)を保存する。
 
         Args:
@@ -241,6 +232,6 @@ class SpotifyStorage:
                 Body=json.dumps(state),
                 ContentType="application/json",
             )
-            logger.info(f"Saved ingest state to {key}")
+            logger.info("Saved ingest state to %s", key)
         except Exception:
             logger.exception("Failed to save ingest state")

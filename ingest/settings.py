@@ -1,7 +1,8 @@
 """Ingest用の環境変数ローダー。"""
 
 import logging
-from typing import Optional
+from collections.abc import Callable
+from typing import TypeVar
 
 from pydantic import Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +17,30 @@ from shared.config import (
 )
 
 ENV_FILES = ["ingest/.env", ".env"]
+
+T = TypeVar("T")
+
+
+def _try_load_config(
+    loader: Callable[[], T], name: str, *, required: bool = False
+) -> T | None:
+    """設定をロードし、失敗時はログを出力してNoneを返す。
+
+    Args:
+        loader: 設定をロードする関数
+        name: ログ用の設定名
+        required: True の場合、失敗時に例外を再送出
+
+    Returns:
+        ロードされた設定、または None
+    """
+    try:
+        return loader()
+    except (ValidationError, ValueError) as e:
+        if required:
+            raise
+        logging.info("%s config not available: %s", name, type(e).__name__)
+        return None
 
 
 class SpotifySettings(BaseSettings):
@@ -55,7 +80,7 @@ class EmbeddingSettings(BaseSettings):
 
     model_name: str = Field("cl-nagoya/ruri-v3-310m", alias="EMBEDDING_MODEL_NAME")
     batch_size: int = Field(32, alias="EMBEDDING_BATCH_SIZE")
-    device: Optional[str] = Field(None, alias="EMBEDDING_DEVICE")
+    device: str | None = Field(None, alias="EMBEDDING_DEVICE")
     expected_dimension: int = Field(768, alias="EMBEDDING_DIMENSION")
 
     def to_config(self) -> EmbeddingConfig:
@@ -128,7 +153,7 @@ class DuckDBSettings(BaseSettings):
 
     db_path: str = Field("data/analytics.duckdb", alias="DUCKDB_PATH")
 
-    def to_config(self, r2_config: Optional[R2Config]) -> DuckDBConfig:
+    def to_config(self, r2_config: R2Config | None) -> DuckDBConfig:
         return DuckDBConfig(db_path=self.db_path, r2=r2_config)
 
 
@@ -147,34 +172,18 @@ class IngestSettings(BaseSettings):
         settings = cls()
         config = Config(log_level=settings.log_level)
 
-        try:
-            config.spotify = SpotifySettings().to_config()
-        except (ValidationError, ValueError):
-            logging.info("Spotify config not available")
+        config.spotify = _try_load_config(
+            lambda: SpotifySettings().to_config(), "Spotify"
+        )
+        config.embedding = _try_load_config(
+            lambda: EmbeddingSettings().to_config(), "Embedding"
+        )
+        config.qdrant = _try_load_config(lambda: QdrantSettings().to_config(), "Qdrant")
 
-        try:
-            config.embedding = EmbeddingSettings().to_config()
-        except (ValidationError, ValueError):
-            logging.info("Embedding config not available")
-
-        try:
-            config.qdrant = QdrantSettings().to_config()
-        except (ValidationError, ValueError):
-            logging.info(
-                "Qdrant config not available, vector search features will be disabled"
-            )
-
-        try:
-            r2_config = None
-            try:
-                r2_config = R2Settings().to_config()
-            except (ValidationError, ValueError):
-                logging.info(
-                    "R2 config not available, DuckDB will run in local-only mode"
-                )
-            config.duckdb = DuckDBSettings().to_config(r2_config)
-        except (ValidationError, ValueError):
-            logging.info("DuckDB config not available")
+        r2_config = _try_load_config(lambda: R2Settings().to_config(), "R2")
+        config.duckdb = _try_load_config(
+            lambda: DuckDBSettings().to_config(r2_config), "DuckDB"
+        )
 
         logging.basicConfig(
             level=getattr(logging, config.log_level.upper()),
