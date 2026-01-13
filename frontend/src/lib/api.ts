@@ -11,6 +11,7 @@ import type {
   Thread,
   ThreadListResponse,
   ThreadMessagesResponse,
+  ModelsResponse,
 } from '@/types/chat';
 
 interface ApiConfig {
@@ -88,6 +89,55 @@ export async function sendChatMessage(
 
   if (debug) {
     console.log('[API] Response:', data);
+  }
+
+  return data;
+}
+
+/**
+ * モデル一覧取得
+ */
+export async function getModels(): Promise<ModelsResponse> {
+  const { apiUrl, apiKey, debug } = getApiConfig();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+  }
+
+  if (debug) {
+    console.log('[API] Fetching models');
+  }
+
+  const response = await fetch(`${apiUrl}/v1/chat/models`, {
+    method: 'GET',
+    headers,
+    mode: 'cors',
+    credentials: 'omit',
+  });
+
+  if (!response.ok) {
+    let errorDetail = `HTTP ${response.status}`;
+    try {
+      const errorData = (await response.json()) as ApiError;
+      errorDetail = errorData.detail || errorDetail;
+    } catch {
+      // JSON parseに失敗した場合はHTTPステータスをそのまま使用
+    }
+
+    if (debug) {
+      console.error('[API] Get models failed:', errorDetail);
+    }
+
+    throw new ApiRequestError(response.status, errorDetail);
+  }
+
+  const data = (await response.json()) as ModelsResponse;
+
+  if (debug) {
+    console.log('[API] Models response:', data);
   }
 
   return data;

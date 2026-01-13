@@ -394,4 +394,131 @@ describe('useChat', () => {
       expect(result.current.isLoading).toBe(false);
     });
   });
+
+  it('チャット送信時にmodel_nameがリクエストに含まれる', async () => {
+    const wrapper = createWrapper();
+
+    // ストアに選択モデルを設定
+    useChatStore.setState({
+      selectedModel: 'test-model-id',
+    });
+
+    const sendChatMessageSpy = vi.spyOn(api, 'sendChatMessage').mockResolvedValue({
+      id: 'response-1',
+      thread_id: 'thread-1',
+      message: {
+        role: 'assistant',
+        content: 'Response',
+      },
+    });
+
+    const { result } = renderHook(() => useChat(), { wrapper });
+
+    // メッセージ送信
+    act(() => {
+      result.current.sendMessage('Test message');
+    });
+
+    await waitFor(() => {
+      expect(sendChatMessageSpy).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // model_nameがリクエストに含まれることを確認
+    const callArgs = sendChatMessageSpy.mock.calls[0]?.[0];
+    expect(callArgs).toMatchObject({
+      messages: [
+        {
+          role: 'user',
+          content: 'Test message',
+        },
+      ],
+      stream: false,
+      model_name: 'test-model-id',
+    });
+  });
+
+  it('レスポンスのmodel_nameがメッセージに保存される', async () => {
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useChat(), { wrapper });
+
+    // APIレスポンスにmodel_nameを含める
+    vi.spyOn(api, 'sendChatMessage').mockResolvedValue({
+      id: 'response-1',
+      thread_id: 'thread-1',
+      message: {
+        role: 'assistant',
+        content: 'Hello! How can I help you?',
+      },
+      model_name: 'gpt-4',
+    });
+
+    // メッセージ送信
+    act(() => {
+      result.current.sendMessage('Hello');
+    });
+
+    await waitFor(() => {
+      expect(result.current.messages).toHaveLength(2);
+    });
+
+    // レスポンスのmodel_nameがメッセージに保存される
+    await waitFor(() => {
+      expect(result.current.messages[1]).toMatchObject({
+        role: 'assistant',
+        content: 'Hello! How can I help you?',
+        model_name: 'gpt-4',
+        isLoading: false,
+      });
+    });
+  });
+
+  it('楽観的更新時にselectedModelがメッセージに設定される', async () => {
+    const wrapper = createWrapper();
+
+    // ストアに選択モデルを設定
+    useChatStore.setState({
+      selectedModel: 'local-model',
+    });
+
+    // APIモック（遅延あり）
+    vi.spyOn(api, 'sendChatMessage').mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve({
+        id: 'response-1',
+        thread_id: 'thread-1',
+        message: {
+          role: 'assistant',
+          content: 'Response',
+        },
+      }), 100)),
+    );
+
+    const { result } = renderHook(() => useChat(), { wrapper });
+
+    // メッセージ送信
+    act(() => {
+      result.current.sendMessage('Hello');
+    });
+
+    // 楽観的更新でアシスタントメッセージが追加される
+    await waitFor(() => {
+      expect(result.current.messages).toHaveLength(2);
+    });
+
+    // 楽観的更新時のアシスタントメッセージにmodel_nameが設定される
+    expect(result.current.messages[1]).toMatchObject({
+      role: 'assistant',
+      content: '',
+      isLoading: true,
+      model_name: 'local-model',
+    });
+
+    // API完了を待つ
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+  });
 });

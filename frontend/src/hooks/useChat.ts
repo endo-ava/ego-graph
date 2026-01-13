@@ -9,23 +9,25 @@ import { sendChatMessage, ApiRequestError } from '@/lib/api';
 import type { ChatMessage, Message } from '@/types/chat';
 
 export function useChat() {
-  const {
-    messages,
-    currentThreadId,
-    addMessage,
-    updateLastMessage,
-    setLastMessageError,
-    clearMessages,
-    setCurrentThreadId,
-  } = useChatStore();
+   const {
+     messages,
+     currentThreadId,
+     addMessage,
+     updateLastMessage,
+     updateLastMessageWithModel,
+     setLastMessageError,
+     clearMessages,
+     setCurrentThreadId,
+     selectedModel,
+   } = useChatStore();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: sendChatMessage,
     onSuccess: (data) => {
-      // アシスタントのメッセージを更新
+      // アシスタントのメッセージを更新（model_nameも含めて更新）
       if (data.message.content) {
-        updateLastMessage(data.message.content);
+        updateLastMessageWithModel(data.message.content, data.model_name || null);
       }
       // スレッドIDを保存
       if (data.thread_id) {
@@ -46,6 +48,10 @@ export function useChat() {
           errorMessage = `LLM APIエラー: ${error.detail}`;
         } else if (error.status === 401) {
           errorMessage = '認証に失敗しました。API Keyを確認してください。';
+        } else if (error.status === 400) {
+          errorMessage = error.detail.startsWith('invalid_model_name:')
+            ? '指定されたモデルは使用できません'
+            : error.detail;
         } else {
           errorMessage = error.detail;
         }
@@ -88,6 +94,7 @@ export function useChat() {
       content: '',
       timestamp: new Date(),
       isLoading: true,
+      model_name: selectedModel,
     };
     addMessage(assistantMessage);
 
@@ -96,6 +103,7 @@ export function useChat() {
       messages: apiMessages,
       stream: false,
       thread_id: currentThreadId,
+      model_name: selectedModel,
     });
   };
 
