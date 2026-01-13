@@ -87,5 +87,6 @@ data/
 tmp/
 
 scripts/install-android.ps1
+scripts/install-lsp.sh
 # Ignore git worktree checkout
 wt1/

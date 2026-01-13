@@ -30,7 +30,9 @@
       "WebSearch",
       "Bash(npm test:*)",
       "Bash(npm view:*)",
-      "Bash(uv run mypy:*)"
+      "Bash(uv run mypy:*)",
+      "mcp__serena__think_about_task_adherence",
+      "Bash(npm run test:run:*)"
     ],
     "deny": [
       "Read(.env)",
