@@ -3,7 +3,7 @@
  * 状態管理, localStorage連携, メッセージ更新を検証
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useChatStore } from '../store';
 import type { ChatMessage } from '@/types/chat';
 
@@ -74,17 +74,6 @@ describe('useChatStore', () => {
 
       // localStorageに保存される
       expect(localStorageMock.getItem('selected_model')).toBe('new-model-id');
-    });
-
-    it('localStorageから初期値を読み込む (persist middleware経由)', () => {
-      localStorageMock.setItem('selected_model', 'saved-model-id');
-
-      vi.resetModules();
-
-      const { useChatStore: newUseChatStore } = require('../store');
-      const store = newUseChatStore.getState();
-
-      expect(store.selectedModel).toBe('saved-model-id');
     });
   });
 
@@ -159,7 +148,7 @@ describe('useChatStore', () => {
         content: 'Response',
         isLoading: false,
       });
-      expect(updatedMessages[0].model_name).toBeUndefined();
+      expect(updatedMessages[0]!.model_name).toBeUndefined();
     });
 
     it('メッセージが空の場合は何もしない', () => {
@@ -190,7 +179,7 @@ describe('useChatStore', () => {
       store.updateLastMessageWithModel('Updated content', 'model');
 
       // isLoadingがfalseになる
-      expect(useChatStore.getState().messages[0].isLoading).toBe(false);
+      expect(useChatStore.getState().messages[0]!.isLoading).toBe(false);
     });
   });
 

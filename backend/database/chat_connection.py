@@ -121,15 +121,5 @@ def create_chat_tables(conn: duckdb.DuckDBPyConnection):
         ON messages(thread_id, created_at)
     """)
 
-    # 既存のmessagesテーブルにmodel_nameカラムを追加（存在しない場合のみ）
-    try:
-        logger.info("Adding model_name column to messages table")
-        conn.execute("ALTER TABLE messages ADD COLUMN model_name VARCHAR")
-    except duckdb.Error as e:
-        # カラムが既に存在する場合は無視
-        if "Duplicate Column" not in str(e):
-            logger.warning("Failed to add model_name column: %s", e)
-            raise
-
     conn.commit()
     logger.info("Chat tables created successfully")
