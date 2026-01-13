@@ -233,8 +233,7 @@ class TestChatEndpoint:
             # 先頭がsystemメッセージであることを確認
             assert len(messages) >= 2
             assert messages[0].role == "system"
-            assert "今日の日付" in messages[0].content
-            assert "現在時刻" in messages[0].content
+            assert "現在日時" in messages[0].content
             assert "JST" in messages[0].content
 
             # 現在日が含まれていることを確認
