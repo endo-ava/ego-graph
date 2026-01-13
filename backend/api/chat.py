@@ -19,6 +19,7 @@ from backend.api.deps import get_chat_db, get_config, get_db_connection, verify_
 from backend.config import BackendConfig
 from backend.database.connection import DuckDBConnection
 from backend.llm import LLMClient, Message, ToolCall
+from backend.models.llm_model import DEFAULT_MODEL, get_all_models, get_model
 from backend.services.thread_service import ThreadService
 from backend.tools import GetListeningStatsTool, GetTopTracksTool, ToolRegistry
 
@@ -41,6 +42,7 @@ class ChatRequest(BaseModel):
     messages: list[Message]
     stream: bool = False  # 将来のストリーミング対応用
     thread_id: str | None = None  # 既存スレッドの場合はUUID、新規の場合はNone
+    model_name: str | None = None  # 追加: モデル名
 
 
 class ChatResponseModel(BaseModel):
@@ -51,6 +53,21 @@ class ChatResponseModel(BaseModel):
     tool_calls: list[dict] | None = None
     usage: dict | None = None
     thread_id: str  # スレッドのUUID（新規作成時も含む）
+    model_name: str | None = None  # 追加: 使用したモデル名
+
+
+@router.get("/models")
+async def get_models_endpoint(_: None = Depends(verify_api_key)):
+    """利用可能なモデル一覧を取得する。
+
+    Returns:
+        モデル情報のリストを含む辞書
+    """
+
+    return {
+        "models": get_all_models(),
+        "default_model": DEFAULT_MODEL,
+    }
 
 
 @router.post("", response_model=ChatResponseModel)
@@ -127,6 +144,7 @@ async def chat(
                 user_id=user_id,
                 role="user",
                 content=first_user_message.content or "",
+                model_name=None,  # ユーザーメッセージにはmodel_nameなし
             )
         else:
             # 既存スレッド: 存在確認
@@ -149,6 +167,7 @@ async def chat(
                     user_id=user_id,
                     role="user",
                     content=last_user_message.content or "",
+                    model_name=None,  # ユーザーメッセージにはmodel_nameなし
                 )
     except duckdb.Error as e:
         logger.error(
@@ -159,11 +178,24 @@ async def chat(
         ) from e
 
     try:
+        # モデル名の決定ロジックを明確化
+        if request.model_name is not None:
+            used_model_name = request.model_name
+        else:
+            used_model_name = config.llm.model_name
+
+        # モデル名のバリデーション
+        try:
+            get_model(used_model_name)
+        except ValueError as e:
+            logger.error("Invalid model name: %s", used_model_name)
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
         # LLMクライアントの初期化
         llm = LLMClient(
             provider_name=config.llm.provider,
             api_key=config.llm.api_key.get_secret_value(),
-            model_name=config.llm.model_name,
+            model_name=used_model_name,
             enable_web_search=config.llm.enable_web_search,
         )
 
@@ -258,6 +290,7 @@ async def chat(
                     user_id=user_id,
                     role="assistant",
                     content=response.message.content or "",
+                    model_name=used_model_name,  # 使用したモデル名を保存
                 )
 
                 return ChatResponseModel(
@@ -266,6 +299,7 @@ async def chat(
                     tool_calls=None,
                     usage=response.usage,
                     thread_id=thread_id,
+                    model_name=used_model_name,
                 )
 
             # assistant メッセージを履歴に追加
