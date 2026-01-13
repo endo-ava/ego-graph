@@ -20,6 +20,11 @@ vi.mock('@capacitor/core', () => ({
   },
 }));
 
+// ModelSelectorをモック
+vi.mock('../ModelSelector', () => ({
+  ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
+}));
+
 import { useChatStore } from '@/lib/store';
 import { Capacitor } from '@capacitor/core';
 
