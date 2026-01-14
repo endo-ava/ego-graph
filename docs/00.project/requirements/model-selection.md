@@ -94,7 +94,7 @@ Assistant (MIMO v2 Flash):
 別の回答...
 ```
 
-**API: GET /v1/models レスポンス**
+**API: GET /v1/chat/models レスポンス**
 ```json
 {
   "models": [
@@ -130,7 +130,7 @@ Assistant (MIMO v2 Flash):
 - ✅ メッセージごとのモデル名表示
 - ✅ 同一スレッドでのモデル切り替え
 - ✅ ChatRequest に model_name 追加
-- ✅ GET /v1/models エンドポイント
+- ✅ GET /v1/chat/models エンドポイント
 - ✅ バックエンドでモデル情報管理（固定値）
 
 ### 今回やらない（Won't）
@@ -203,7 +203,7 @@ And そのモデルでメッセージ送信できる
 
 ### AC6: モデル一覧API
 ```gherkin
-Given バックエンドに GET /v1/models エンドポイントがある
+Given バックエンドに GET /v1/chat/models エンドポイントがある
 When フロントエンドが呼び出す
 Then 利用可能なモデル一覧が返る
 And 各モデルにid, name, provider, input_cost, output_costが含まれる
