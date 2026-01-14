@@ -287,35 +287,53 @@ Workers が GET リクエストを受け取り、R2 へ POST でアクセスし�
 
 CloudFlare ダッシュボード → Workers & Pages → Create application → Create Worker
 
-##### 2: Quick Edit でWorkers コード実装
+##### 2: R2 バケットのバインド
+
+1. 作成した Worker の `Settings` → `Variables` → `R2 Bucket Bindings` を開く
+2. `Add binding` をクリック
+3. Variable name: `BUCKET`
+4. R2 Bucket: 作成済みのバケットを選択
+5. `Deploy`
+
+##### 3: Workers コード実装
 
 `workers.js` に以下を記述:
 
-```typescript
+```javascript
 export default {
-  async fetch(request) {
-    if (request.method !== 'POST') {
-      return new Response('Method Not Allowed', { status:
-405 });
+  async fetch(request, env) {
+    if (request.method !== "GET") {
+      return new Response("Method Not Allowed", { status: 405 });
     }
 
-    const latestUrl = 'https://pub-XXX.r2.dev/capacitor_updates/latest.json';
-    const res = await fetch(latestUrl, { headers:
-{ 'Accept': 'application/json' } });
+    const url = new URL(request.url);
+    const path = url.pathname.slice(1); // 先頭のスラッシュを削除してキーにする
 
-    if (!res.ok) {
-      return new Response('Upstream error', { status:
-502 });
+    if (!path) {
+      return new Response("Not Found", { status: 404 });
     }
 
-    const body = await res.text();
-    return new Response(body, {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
+    // バインディング経由で取得 (認証不要、GET/POST制限なし)
+    const object = await env.BUCKET.get(path);
+
+    if (object === null) {
+      return new Response("Object Not Found", { status: 404 });
+    }
+
+    const headers = new Headers();
+    object.writeHttpMetadata(headers);
+    headers.set("etag", object.httpEtag);
+    headers.set("Access-Control-Allow-Origin", "*"); // CORS
+
+    return new Response(object.body, {
+      headers,
     });
   },
 };
 ```
+
+これにより、Worker は R2 バケット内のファイルを直接読み込んで配信します。
+HTTP メソッドの制約や認証の問題を回避できる最も確実な方法です。
 
 ##### 3: デプロイ
 

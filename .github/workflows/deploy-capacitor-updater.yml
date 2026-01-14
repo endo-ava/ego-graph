@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'frontend/**'
+      - "frontend/**"
       - ".github/workflows/deploy-capacitor-updater.yml"
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install dependencies
         working-directory: frontend
@@ -69,14 +69,15 @@ jobs:
       - name: Verify deployment
         run: |
           echo "🔍 Verifying deployed latest.json..."
-          UPDATE_CHECK_URL="${{ secrets.CAPACITOR_UPDATER_WORKERS_URL }}/capacitor_updates/latest.json"
-          if [ -z "${UPDATE_CHECK_URL}" ]; then
-            echo "❌ ERROR: CAPACITOR_UPDATER_WORKERS_URL is not set"
+
+          if [ -z "$CAPACITOR_UPDATER_URL" ]; then
+            echo "❌ ERROR: CAPACITOR_UPDATER_URL is not set"
             exit 1
           fi
-          echo "GET from: ${UPDATE_CHECK_URL}"
+
+          echo "GET from: $CAPACITOR_UPDATER_URL"
           sleep 2  # Wait for storage to propagate
-          RESPONSE=$(curl -s -f "${UPDATE_CHECK_URL}")
+          RESPONSE=$(curl -s -f "$CAPACITOR_UPDATER_URL")
           echo "Response: ${RESPONSE}"
 
           VERSION_IN_JSON=$(echo "${RESPONSE}" | jq -r '.version')
@@ -85,7 +86,7 @@ jobs:
           echo "📋 Deployment Summary:"
           echo "  Version: ${VERSION_IN_JSON}"
           echo "  Package URL: ${URL_IN_JSON}"
-          echo "  Update check URL: ${UPDATE_URL}"
+          echo "  Update check URL: ${CAPACITOR_UPDATER_URL}"
 
           if [ -z "${VERSION_IN_JSON}" ] || [ "${VERSION_IN_JSON}" = "null" ]; then
             echo "❌ ERROR: Failed to fetch or parse latest.json"
