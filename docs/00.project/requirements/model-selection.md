@@ -53,7 +53,7 @@ status: draft
 
 5. **API設計**
    - `ChatRequest` に `model_name` フィールド追加（optional）
-   - `GET /v1/models` エンドポイント追加（モデル一覧+コスト情報）
+   - `GET /v1/chat/models` エンドポイント追加（モデル一覧+コスト情報）
    - `ChatResponse` に使用モデル名を含める
 
 ### 期待する挙動

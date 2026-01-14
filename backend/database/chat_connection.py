@@ -109,8 +109,7 @@ def create_chat_tables(conn: duckdb.DuckDBPyConnection):
             user_id VARCHAR NOT NULL,
             role VARCHAR NOT NULL,
             content TEXT NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL,
-            model_name VARCHAR
+            created_at TIMESTAMPTZ NOT NULL
         )
     """)
 
@@ -120,6 +119,23 @@ def create_chat_tables(conn: duckdb.DuckDBPyConnection):
         CREATE INDEX IF NOT EXISTS idx_thread_created
         ON messages(thread_id, created_at)
     """)
+
+    # マイグレーション: model_name カラムの追加
+    # 既存のDBに対してmodel_nameカラムを追加する
+    # カラムの存在を確認してから追加する
+    result = conn.execute("""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'messages' AND column_name = 'model_name'
+    """).fetchall()
+
+    if not result:
+        conn.execute("""
+            ALTER TABLE messages ADD COLUMN model_name VARCHAR
+        """)
+        logger.info("Added model_name column to messages table")
+    else:
+        logger.debug("model_name column already exists, skipping migration")
 
     conn.commit()
     logger.info("Chat tables created successfully")

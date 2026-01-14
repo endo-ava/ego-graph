@@ -114,7 +114,7 @@ export function ModelSelector() {
   }
 
   return (
-    <div className="relative">
+    <div ref={dropdownRef} className="relative">
       <Button
         variant="outline"
         onClick={() => setIsOpen(!isOpen)}
@@ -127,7 +127,7 @@ export function ModelSelector() {
       </Button>
 
       {isOpen && (
-        <div ref={dropdownRef} className="absolute z-10 mt-2 w-full rounded-md border bg-popover p-1 shadow-md">
+        <div className="absolute z-10 mt-2 w-full rounded-md border bg-popover p-1 shadow-md">
           {models.map((model) => (
             <button
               key={model.id}
