@@ -97,9 +97,9 @@ def mock_llm_config():
 
     # model_construct()を使って検証をスキップして直接構築
     return LLMConfig.model_construct(
-        provider="openai",
+        provider="openrouter",
         api_key=SecretStr("test-api-key"),  # SecretStrでラップ
-        model_name="gpt-4o-mini",
+        model_name="tngtech/deepseek-r1t2-chimera:free",  # プリセットに存在するモデル
         temperature=0.7,
         max_tokens=2048,
     )
@@ -303,9 +303,9 @@ def test_client_with_chat_db(tmp_path, monkeypatch):
     monkeypatch.setattr(chat_connection, "DB_PATH", chat_db_path)
 
     # LLM APIキーとモデルを設定（モックLLMを使用）
-    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_PROVIDER", "openrouter")
     monkeypatch.setenv("LLM_API_KEY", "test-key")
-    monkeypatch.setenv("LLM_MODEL_NAME", "gpt-4")
+    monkeypatch.setenv("LLM_MODEL_NAME", "tngtech/deepseek-r1t2-chimera:free")
 
     # R2設定（ダミー）
     monkeypatch.setenv("R2_ENDPOINT_URL", "https://test.r2.cloudflarestorage.com")

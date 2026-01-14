@@ -13,7 +13,13 @@ interface ThreadItemProps {
 }
 
 export function ThreadItem({ thread }: ThreadItemProps) {
-  const { setCurrentThreadId, setMessages, setSidebarOpen, currentThreadId } = useChatStore();
+  const {
+    setCurrentThreadId,
+    setMessages,
+    setSidebarOpen,
+    currentThreadId,
+    setSelectedModel,
+  } = useChatStore();
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const isActive = currentThreadId === thread.thread_id;
@@ -43,10 +49,20 @@ export function ThreadItem({ thread }: ThreadItemProps) {
         role: msg.role,
         content: msg.content,
         timestamp: new Date(msg.created_at),
+        model_name: msg.model_name || undefined,
       }));
       setMessages(messages);
 
-      // 4. モバイルの場合はサイドバーを閉じる
+      // 4. 最後のアシスタントメッセージのモデル名を取得して選択モデルを設定
+      const lastAssistantMessage = [...response.messages]
+        .reverse()
+        .find((msg) => msg.role === 'assistant');
+      if (lastAssistantMessage?.model_name) {
+        setSelectedModel(lastAssistantMessage.model_name);
+      }
+      // 古いスレッドで model_name が null の場合、選択モデルは変更しない（デフォルトモデルは ModelSelector で設定）
+
+      // 5. モバイルの場合はサイドバーを閉じる
       if (window.innerWidth < 768) {
         setSidebarOpen(false);
       }

@@ -32,6 +32,7 @@ export interface ChatRequest {
   messages: Message[];
   stream?: boolean;
   thread_id?: string | null;
+  model_name?: string;
 }
 
 /**
@@ -43,6 +44,7 @@ export interface ChatResponse {
   tool_calls?: ToolCall[] | null;
   usage?: Record<string, unknown> | null;
   thread_id: string;
+  model_name?: string;
 }
 
 /**
@@ -53,6 +55,7 @@ export interface ChatMessage extends Message {
   timestamp: Date;
   isLoading?: boolean;
   isError?: boolean;
+  model_name?: string;
 }
 
 /**
@@ -88,6 +91,7 @@ export interface ThreadMessage {
   role: 'user' | 'assistant'; // システムメッセージは履歴に保存されない
   content: string; // 常に存在（Message型のようにnullableではない）
   created_at: string;
+  model_name?: string | null; // 使用したLLMモデル名（assistantメッセージのみ）
 }
 
 /**
@@ -104,4 +108,24 @@ export interface ThreadMessagesResponse {
  */
 export interface ApiError {
   detail: string;
+}
+
+/**
+ * LLMモデル情報
+ */
+export interface LLMModel {
+  id: string;
+  name: string;
+  provider: string;
+  input_cost_per_1m: number;
+  output_cost_per_1m: number;
+  is_free: boolean;
+}
+
+/**
+ * モデル一覧レスポンス
+ */
+export interface ModelsResponse {
+  models: LLMModel[];
+  default_model: string;
 }

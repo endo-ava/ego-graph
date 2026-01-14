@@ -256,3 +256,145 @@ def test_timezone_utc(thread_service):
     )
 
     assert message.created_at.tzinfo == timezone.utc
+
+
+def test_add_message_with_model_name(thread_service):
+    """model_nameパラメータが正しく保存される。"""
+    # Arrange
+    user_id = "test_user"
+    thread = thread_service.create_thread(user_id, "Test message")
+    model_name = "deepseek/deepseek-v3.2"
+
+    # Act
+    message = thread_service.add_message(
+        thread_id=thread.thread_id,
+        user_id=user_id,
+        role="assistant",
+        content="Test response",
+        model_name=model_name,
+    )
+
+    # Assert
+    assert message.model_name == model_name
+    assert message.role == "assistant"
+
+
+def test_add_message_without_model_name(thread_service):
+    """model_nameがNoneの場合も保存される。"""
+    # Arrange
+    user_id = "test_user"
+    thread = thread_service.create_thread(user_id, "Test message")
+
+    # Act
+    message = thread_service.add_message(
+        thread_id=thread.thread_id,
+        user_id=user_id,
+        role="user",
+        content="User message",
+        model_name=None,
+    )
+
+    # Assert
+    assert message.model_name is None
+    assert message.role == "user"
+
+
+def test_add_message_model_name_default_value(thread_service):
+    """model_nameのデフォルト値がNoneである。"""
+    # Arrange
+    user_id = "test_user"
+    thread = thread_service.create_thread(user_id, "Test message")
+
+    # Act: model_name引数を省略
+    message = thread_service.add_message(
+        thread_id=thread.thread_id,
+        user_id=user_id,
+        role="user",
+        content="User message",
+    )
+
+    # Assert
+    assert message.model_name is None
+
+
+def test_get_messages_includes_model_name(thread_service):
+    """get_messagesで取得したメッセージにmodel_nameが含まれる。"""
+    # Arrange
+    user_id = "test_user"
+    thread = thread_service.create_thread(user_id, "Test message")
+
+    # ユーザーメッセージ（model_nameなし）
+    thread_service.add_message(
+        thread_id=thread.thread_id,
+        user_id=user_id,
+        role="user",
+        content="User question",
+        model_name=None,
+    )
+
+    # アシスタントメッセージ（model_nameあり）
+    model_name = "gpt-4o-mini"
+    thread_service.add_message(
+        thread_id=thread.thread_id,
+        user_id=user_id,
+        role="assistant",
+        content="Assistant response",
+        model_name=model_name,
+    )
+
+    # Act
+    messages = thread_service.get_messages(thread.thread_id)
+
+    # Assert
+    assert len(messages) == 2
+
+    # 1番目: ユーザーメッセージ
+    assert messages[0].role == "user"
+    assert messages[0].model_name is None
+
+    # 2番目: アシスタントメッセージ
+    assert messages[1].role == "assistant"
+    assert messages[1].model_name == model_name
+
+
+def test_get_messages_multiple_models(thread_service):
+    """複数の異なるモデルを使用したメッセージが正しく保存・取得される。"""
+    # Arrange
+    user_id = "test_user"
+    thread = thread_service.create_thread(user_id, "Test message")
+
+    models = [
+        "gpt-4o-mini",
+        "deepseek/deepseek-v3.2",
+        "tngtech/deepseek-r1t2-chimera:free",
+    ]
+
+    # 複数のモデルでアシスタントメッセージを追加
+    for i, model in enumerate(models):
+        # ユーザーメッセージ
+        thread_service.add_message(
+            thread_id=thread.thread_id,
+            user_id=user_id,
+            role="user",
+            content=f"Question {i}",
+        )
+        # アシスタントメッセージ
+        thread_service.add_message(
+            thread_id=thread.thread_id,
+            user_id=user_id,
+            role="assistant",
+            content=f"Response {i}",
+            model_name=model,
+        )
+
+    # Act
+    messages = thread_service.get_messages(thread.thread_id)
+
+    # Assert
+    assert len(messages) == 6  # 3ペア（user + assistant）
+
+    # 各アシスタントメッセージが正しいモデル名を持つことを確認
+    assistant_messages = [msg for msg in messages if msg.role == "assistant"]
+    assert len(assistant_messages) == 3
+    for i, msg in enumerate(assistant_messages):
+        assert msg.model_name == models[i]

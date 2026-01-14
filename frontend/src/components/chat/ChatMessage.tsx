@@ -44,6 +44,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold">
             {isUser ? 'You' : 'Assistant'}
+            {!isUser && message.model_name && (
+              <span className="ml-2 text-xs text-muted-foreground">
+                ({message.model_name})
+              </span>
+            )}
           </span>
           <span className="text-xs text-muted-foreground">
             {format(message.timestamp, 'HH:mm')}

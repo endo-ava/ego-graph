@@ -45,6 +45,7 @@ class ThreadMessage(BaseModel):
         role: メッセージの送信者（'user' | 'assistant'）
         content: メッセージ本文（チャット履歴では常に存在）
         created_at: メッセージ作成日時（UTC）
+        model_name: 使用したLLMモデル名（assistantメッセージのみ、optinal）
     """
 
     message_id: str
@@ -53,6 +54,7 @@ class ThreadMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
     created_at: datetime
+    model_name: str | None = None
 
 
 class ThreadListResponse(BaseModel):

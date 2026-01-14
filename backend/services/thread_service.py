@@ -87,7 +87,12 @@ class ThreadService:
         )
 
     def add_message(
-        self, thread_id: str, user_id: str, role: str, content: str
+        self,
+        thread_id: str,
+        user_id: str,
+        role: str,
+        content: str,
+        model_name: str | None = None,
     ) -> ThreadMessage:
         """スレッドにメッセージを追加します。
 
@@ -98,6 +103,7 @@ class ThreadService:
             user_id: ユーザーID
             role: メッセージの送信者（'user' | 'assistant'）
             content: メッセージ本文
+            model_name: 使用したLLMモデル名（assistantメッセージのみ）
 
         Returns:
             ThreadMessage: 追加されたメッセージオブジェクト
@@ -113,11 +119,12 @@ class ThreadService:
             self.conn.execute(
                 """
                 INSERT INTO messages (
-                    message_id, thread_id, user_id, role, content, created_at
+                    message_id, thread_id, user_id, role, content,
+                    created_at, model_name
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (message_id, thread_id, user_id, role, content, now),
+                (message_id, thread_id, user_id, role, content, now, model_name),
             )
 
             # スレッドのlast_message_atを更新
@@ -149,6 +156,7 @@ class ThreadService:
             role=role,
             content=content,
             created_at=now,
+            model_name=model_name,
         )
 
     def get_threads(
@@ -303,7 +311,7 @@ class ThreadService:
         """
         result = self.conn.execute(
             """
-            SELECT message_id, thread_id, user_id, role, content, created_at
+            SELECT message_id, thread_id, user_id, role, content, created_at, model_name
             FROM messages
             WHERE thread_id = ?
             ORDER BY created_at ASC
@@ -319,6 +327,7 @@ class ThreadService:
                 role=row[3],
                 content=row[4],
                 created_at=row[5].replace(tzinfo=timezone.utc),
+                model_name=row[6],
             )
             for row in result.fetchall()
         ]
