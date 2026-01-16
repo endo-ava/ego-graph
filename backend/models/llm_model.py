@@ -15,9 +15,9 @@ class LLMModel(BaseModel):
 
 
 MODELS_CONFIG = {
-    "tngtech/deepseek-r1t2-chimera:free": LLMModel(
-        id="tngtech/deepseek-r1t2-chimera:free",
-        name="DeepSeek R1T2 Chimera",
+    "openai/gpt-oss-120b:free": LLMModel(
+        id="openai/gpt-oss-120b:free",
+        name="GPT-OSS-120B",
         provider="openrouter",
         input_cost_per_1m=0.0,
         output_cost_per_1m=0.0,
@@ -26,6 +26,14 @@ MODELS_CONFIG = {
     "xiaomi/mimo-v2-flash:free": LLMModel(
         id="xiaomi/mimo-v2-flash:free",
         name="MIMO v2 Flash",
+        provider="openrouter",
+        input_cost_per_1m=0.0,
+        output_cost_per_1m=0.0,
+        is_free=True,
+    ),
+    "mistralai/devstral-2512:free": LLMModel(
+        id="mistralai/devstral-2512:free",
+        name="DevStral-2512",
         provider="openrouter",
         input_cost_per_1m=0.0,
         output_cost_per_1m=0.0,
@@ -49,7 +57,7 @@ MODELS_CONFIG = {
     ),
 }
 
-DEFAULT_MODEL = "tngtech/deepseek-r1t2-chimera:free"
+DEFAULT_MODEL = "xiaomi/mimo-v2-flash:free"
 
 
 def get_model(model_id: str) -> LLMModel:

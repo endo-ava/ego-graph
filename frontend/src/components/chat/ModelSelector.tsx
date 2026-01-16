@@ -10,42 +10,6 @@ import { useChatStore } from '@/lib/store';
 import { getModels } from '@/lib/api';
 import type { LLMModel } from '@/types/chat';
 
-// フォールバック用のプリセットモデル一覧
-const FALLBACK_MODELS: LLMModel[] = [
-  {
-    id: 'tngtech/deepseek-r1t2-chimera:free',
-    name: 'DeepSeek R1T2 Chimera',
-    provider: 'openrouter',
-    input_cost_per_1m: 0.0,
-    output_cost_per_1m: 0.0,
-    is_free: true,
-  },
-  {
-    id: 'xiaomi/mimo-v2-flash:free',
-    name: 'MIMO v2 Flash',
-    provider: 'openrouter',
-    input_cost_per_1m: 0.0,
-    output_cost_per_1m: 0.0,
-    is_free: true,
-  },
-  {
-    id: 'x-ai/grok-4.1-fast',
-    name: 'Grok 4.1 Fast',
-    provider: 'openrouter',
-    input_cost_per_1m: 0.20,
-    output_cost_per_1m: 0.50,
-    is_free: false,
-  },
-  {
-    id: 'deepseek/deepseek-v3.2',
-    name: 'DeepSeek v3.2',
-    provider: 'openrouter',
-    input_cost_per_1m: 0.25,
-    output_cost_per_1m: 0.38,
-    is_free: false,
-  },
-];
-
 // コスト表示のフォーマット
 function formatCost(model: LLMModel): string {
   if (model.is_free) {
@@ -85,8 +49,7 @@ export function ModelSelector() {
     staleTime: 1000 * 60 * 5,
   });
 
-  // API取得したモデル or フォールバック
-  const models = data?.models ?? FALLBACK_MODELS;
+  const models = data?.models ?? [];
 
   // 初回ロード時に選択されているモデルが一覧に含まれない場合、デフォルトモデルを選択
   useEffect(() => {
@@ -102,12 +65,25 @@ export function ModelSelector() {
     }
   }, [models, selectedModel, setSelectedModel, isLoading, data?.default_model]);
 
+  if (isLoading) {
+    return (
+      <Button variant="outline" className="w-full justify-between h-auto py-2" disabled>
+        <span className="text-sm">Loading models...</span>
+      </Button>
+    );
+  }
+
+  if (error || models.length === 0) {
+    console.error('Failed to load models:', error);
+    return (
+      <Button variant="destructive" className="w-full justify-between h-auto py-2" disabled>
+        <span className="text-sm">Failed to load models</span>
+      </Button>
+    );
+  }
+
   // 選択中のモデル情報を取得
   const currentModel = models.find((m) => m.id === selectedModel) || models[0];
-
-  if (error) {
-    console.error('Failed to load models:', error);
-  }
 
   if (!currentModel) {
     return null;
@@ -127,7 +103,7 @@ export function ModelSelector() {
       </Button>
 
       {isOpen && (
-        <div className="absolute z-10 mt-2 w-full rounded-md border bg-popover p-1 shadow-md">
+        <div className="absolute bottom-full z-10 mb-2 w-full rounded-md border bg-popover p-1 shadow-md">
           {models.map((model) => (
             <button
               key={model.id}
