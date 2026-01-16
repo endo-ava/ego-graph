@@ -30,6 +30,10 @@ jobs:
 
       - name: Build web assets
         working-directory: frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
+          VITE_DEBUG: false
         run: VITE_BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" npm run build
 
       - name: Package updater assets
