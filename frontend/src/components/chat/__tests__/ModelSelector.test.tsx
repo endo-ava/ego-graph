@@ -113,31 +113,22 @@ describe('ModelSelector', () => {
     expect(api.getModels).toHaveBeenCalledTimes(1);
   });
 
-  it('フォールバックモデルを使用する (API失敗時)', async () => {
+  it('API失敗時にエラーメッセージを表示する', async () => {
     // API エラーをモック
     vi.spyOn(api, 'getModels').mockRejectedValue(new Error('Network error'));
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const wrapper = createWrapper();
-    const user = userEvent.setup();
-
     render(<ModelSelector />, { wrapper });
 
-    // フォールバックモデルが表示される
+    // エラーメッセージが表示される
     await waitFor(() => {
-      expect(screen.getByText('DeepSeek R1T2 Chimera')).toBeInTheDocument();
+      expect(screen.getByText('Failed to load models')).toBeInTheDocument();
     });
 
-    // ドロップダウンを開く
+    // ボタンがdisabledであることを確認
     const button = screen.getByRole('button');
-    await user.click(button);
-
-    // フォールバックモデル一覧が表示される
-    await waitFor(() => {
-      expect(screen.getByText('MIMO v2 Flash')).toBeInTheDocument();
-      expect(screen.getByText('Grok 4.1 Fast')).toBeInTheDocument();
-      expect(screen.getByText('DeepSeek v3.2')).toBeInTheDocument();
-    });
+    expect(button).toBeDisabled();
   });
 
   it('モデルを選択するとストアが更新される', async () => {
