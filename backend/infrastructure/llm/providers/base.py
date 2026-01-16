@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from backend.infrastructure.llm.models import ChatResponse, Message
+from backend.domain.models.llm import ChatResponse, Message
 from backend.usecases.tools.base import Tool
 
 

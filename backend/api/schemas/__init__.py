@@ -28,7 +28,7 @@ __all__ = [
     # スレッドAPIスキーマ
     "ThreadListResponse",
     "ThreadMessagesResponse",
-    # ドメインモデル（便利のため）
+    # ドメインモデル
     "Thread",
     "ThreadMessage",
 ]

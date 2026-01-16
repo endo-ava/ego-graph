@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from backend.infrastructure.llm.models import ChatResponse, Message, ToolCall
+from backend.domain.models.llm import ChatResponse, Message, ToolCall
 from backend.infrastructure.llm.providers.base import BaseLLMProvider
 from backend.usecases.tools.base import Tool
 

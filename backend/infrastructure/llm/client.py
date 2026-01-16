@@ -5,7 +5,7 @@
 
 import logging
 
-from backend.infrastructure.llm.models import ChatResponse, Message
+from backend.domain.models.llm import ChatResponse, Message
 from backend.infrastructure.llm.providers import (
     AnthropicProvider,
     BaseLLMProvider,

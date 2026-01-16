@@ -4,4 +4,4 @@ from backend.infrastructure.llm.providers.anthropic import AnthropicProvider
 from backend.infrastructure.llm.providers.base import BaseLLMProvider
 from backend.infrastructure.llm.providers.openai import OpenAIProvider
 
-__all__ = ["BaseLLMProvider", "OpenAIProvider", "AnthropicProvider"]
+__all__ = ["AnthropicProvider", "BaseLLMProvider", "OpenAIProvider"]

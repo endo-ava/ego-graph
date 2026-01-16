@@ -4,8 +4,8 @@
 統一されたインターフェースを提供します。
 """
 
+from backend.domain.models.llm import ChatResponse, Message, ToolCall
 from backend.infrastructure.llm.client import LLMClient
-from backend.infrastructure.llm.models import ChatResponse, Message, ToolCall
 from backend.infrastructure.llm.providers import (
     AnthropicProvider,
     BaseLLMProvider,

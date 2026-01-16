@@ -5,7 +5,7 @@
 
 from dataclasses import dataclass, field
 
-from backend.infrastructure.llm import Message
+from backend.domain.models.llm import Message
 
 
 @dataclass

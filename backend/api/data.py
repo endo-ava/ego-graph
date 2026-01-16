@@ -11,8 +11,8 @@ import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from backend.dependencies import get_config, get_db_connection, verify_api_key
 from backend.config import BackendConfig
+from backend.dependencies import get_config, get_db_connection, verify_api_key
 from backend.usecases.spotify_stats import (
     fetch_listening_stats,
     fetch_top_tracks,

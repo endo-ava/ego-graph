@@ -4,6 +4,7 @@
 """
 
 from backend.domain.models.chat import ConversationContext
+from backend.domain.models.llm import ChatResponse, Message, ToolCall
 from backend.domain.models.thread import (
     THREAD_PREVIEW_MAX_LENGTH,
     THREAD_TITLE_MAX_LENGTH,
@@ -13,6 +14,9 @@ from backend.domain.models.thread import (
 
 __all__ = [
     "ConversationContext",
+    "Message",
+    "ToolCall",
+    "ChatResponse",
     "Thread",
     "ThreadMessage",
     "THREAD_TITLE_MAX_LENGTH",

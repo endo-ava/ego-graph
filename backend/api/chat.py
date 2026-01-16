@@ -11,9 +11,9 @@ import duckdb
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.dependencies import get_chat_db, get_config, verify_api_key
 from backend.api.schemas import DEFAULT_MODEL, get_all_models, get_model
 from backend.config import BackendConfig
+from backend.dependencies import get_chat_db, get_config, verify_api_key
 from backend.infrastructure.llm import Message
 from backend.infrastructure.repositories import DuckDBThreadRepository
 from backend.usecases.chat import (
@@ -75,7 +75,7 @@ async def chat(
     config: BackendConfig = Depends(get_config),
     _: None = Depends(verify_api_key),
 ):
-    """LLMエージェント向けチャットエンドポイント（薄いハンドラー）。
+    """LLMエージェント向けチャットエンドポイント。
 
     ユーザーのメッセージを受け取り、LLMがツールを使用して
     データにアクセスしながら応答を生成します。
@@ -84,18 +84,18 @@ async def chat(
         request: チャットリクエスト
         chat_db: チャットDB接続
         config: バックエンド設定
-        _: API Key検証結果（未使用）
+        _: API Key検証結果(未使用)
 
     Returns:
         ChatResponseModel: チャット応答
 
     Raises:
-        HTTPException: LLM設定が不足している場合（501）
-        HTTPException: モデル名が無効な場合（400）
-        HTTPException: スレッドが見つからない場合（404）
-        HTTPException: 最大イテレーション到達（500）
-        HTTPException: タイムアウト（504）
-        HTTPException: LLM APIエラー（502）
+        HTTPException: LLM設定が不足している場合(501)
+        HTTPException: モデル名が無効な場合(400)
+        HTTPException: スレッドが見つからない場合(404)
+        HTTPException: 最大イテレーション到達(500)
+        HTTPException: タイムアウト(504)
+        HTTPException: LLM APIエラー(502)
 
     Example:
         POST /v1/chat
@@ -119,7 +119,7 @@ async def chat(
     try:
         get_model(model_name)
     except ValueError as e:
-        logger.error("Invalid model name: %s", model_name)
+        logger.exception("Invalid model name: %s", model_name)
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     # 3. UseCase実行
@@ -131,7 +131,7 @@ async def chat(
             UseCaseChatRequest(
                 messages=request.messages,
                 thread_id=request.thread_id,
-                model_name=request.model_name,
+                model_name=model_name,
                 user_id=DEFAULT_USER_ID,
             )
         )

@@ -10,12 +10,12 @@ from typing import cast
 from backend.config import LLMConfig
 from backend.domain.repositories import IThreadRepository
 from backend.infrastructure.llm import LLMClient, Message
-from backend.usecases.tools import GetListeningStatsTool, GetTopTracksTool, ToolRegistry
 from backend.usecases.chat.system_prompt_builder import SystemPromptBuilder
 from backend.usecases.chat.tool_executor import (
     MaxIterationsExceeded,
     ToolExecutor,
 )
+from backend.usecases.tools import GetListeningStatsTool, GetTopTracksTool, ToolRegistry
 from shared.config import R2Config
 
 logger = logging.getLogger(__name__)

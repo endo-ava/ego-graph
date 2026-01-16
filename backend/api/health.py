@@ -4,8 +4,8 @@ import logging
 
 from fastapi import APIRouter, Depends
 
-from backend.dependencies import get_config, get_db_connection
 from backend.config import BackendConfig
+from backend.dependencies import get_config, get_db_connection
 from backend.infrastructure.database import DuckDBConnection, get_parquet_path
 
 logger = logging.getLogger(__name__)

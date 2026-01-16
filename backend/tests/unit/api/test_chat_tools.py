@@ -373,8 +373,7 @@ class TestChatEndpointToolLoop:
             message=Message(
                 role="assistant",
                 content=(
-                    "You listened to 500 plays total, "
-                    "with Track 1 being your favorite."
+                    "You listened to 500 plays total, with Track 1 being your favorite."
                 ),
             ),
             finish_reason="stop",
@@ -523,8 +522,7 @@ class TestChatEndpointToolLoop:
             message=Message(
                 role="assistant",
                 content=(
-                    "Sorry, the date format was invalid. "
-                    "Please provide a valid date."
+                    "Sorry, the date format was invalid. Please provide a valid date."
                 ),
             ),
             finish_reason="stop",
@@ -543,7 +541,7 @@ class TestChatEndpointToolLoop:
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            # ToolRegistryのモック（エラーを返す）
+            # ToolRegistryのモック(エラーを返す)
             mock_registry = MagicMock()
             mock_registry.get_all_schemas.return_value = []
             mock_registry.execute.side_effect = ValueError(

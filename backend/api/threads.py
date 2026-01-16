@@ -7,12 +7,12 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.dependencies import get_thread_repository, verify_api_key
 from backend.api.schemas import (
     Thread,
     ThreadListResponse,
     ThreadMessagesResponse,
 )
+from backend.dependencies import get_thread_repository, verify_api_key
 from backend.domain.repositories import IThreadRepository
 
 logger = logging.getLogger(__name__)

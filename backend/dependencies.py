@@ -11,8 +11,8 @@ import duckdb
 from fastapi import Depends, Header, HTTPException
 
 from backend.config import BackendConfig
-from backend.infrastructure.database import ChatDuckDBConnection, DuckDBConnection
 from backend.domain.repositories import IThreadRepository
+from backend.infrastructure.database import ChatDuckDBConnection, DuckDBConnection
 from backend.infrastructure.repositories import DuckDBThreadRepository
 
 logger = logging.getLogger(__name__)
