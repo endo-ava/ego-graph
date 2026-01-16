@@ -366,7 +366,7 @@ def test_get_messages_multiple_models(thread_service):
     models = [
         "gpt-4o-mini",
         "deepseek/deepseek-v3.2",
-        "tngtech/deepseek-r1t2-chimera:free",
+        "xiaomi/mimo-v2-flash:free",
     ]
 
     # 複数のモデルでアシスタントメッセージを追加

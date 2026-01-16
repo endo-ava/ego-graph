@@ -58,7 +58,7 @@ class TestGetModel:
     def test_get_model_with_valid_id(self):
         """有効なモデルIDでモデルが返される。"""
         # Arrange
-        model_id = "tngtech/deepseek-r1t2-chimera:free"
+        model_id = "xiaomi/mimo-v2-flash:free"
 
         # Act
         model = get_model(model_id)
@@ -66,7 +66,7 @@ class TestGetModel:
         # Assert
         assert isinstance(model, LLMModel)
         assert model.id == model_id
-        assert model.name == "DeepSeek R1T2 Chimera"
+        assert model.name == "MIMO v2 Flash"
         assert model.provider == "openrouter"
         assert model.is_free is True
 
