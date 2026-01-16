@@ -41,7 +41,7 @@ class ConversationContext:
         """最後のユーザーメッセージを取得します。
 
         Returns:
-            Message | None: 最後のユーザーメッセージ（存在しない場合はNone）
+            Message | None: 最後のユーザーメッセージ(存在しない場合はNone)
         """
         for msg in reversed(self.messages):
             if msg.role == "user":
@@ -52,7 +52,7 @@ class ConversationContext:
         """最初のユーザーメッセージを取得します。
 
         Returns:
-            Message | None: 最初のユーザーメッセージ（存在しない場合はNone）
+            Message | None: 最初のユーザーメッセージ(存在しない場合はNone)
         """
         for msg in self.messages:
             if msg.role == "user":

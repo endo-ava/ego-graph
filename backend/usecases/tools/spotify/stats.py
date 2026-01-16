@@ -4,10 +4,11 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from backend.infrastructure.database import DuckDBConnection
-from backend.usecases.spotify_stats import (
-    fetch_listening_stats,
-    fetch_top_tracks,
+from backend.infrastructure.database import (
+    DuckDBConnection,
+    get_listening_stats,
+    get_parquet_path,
+    get_top_tracks,
 )
 from backend.usecases.tools.base import ToolBase
 from backend.validators import (
@@ -91,18 +92,20 @@ class GetTopTracksTool(ToolBase):
 
         logger.info("Executing get_top_tracks: %s to %s, limit=%s", start, end, limit)
 
+        parquet_path = get_parquet_path(
+            self.r2_config.bucket_name, self.r2_config.events_path
+        )
+
         # テスト用のファクトリがある場合はそれを使用（モック注入用）
         if self._db_connection_factory:
             db_connection = self._db_connection_factory()
             # ファクトリから返されたオブジェクトをコンテキストマネージャーとして使用
             with db_connection as conn:
-                return fetch_top_tracks(
-                    conn, self.r2_config, start, end, validated_limit
-                )
+                return get_top_tracks(conn, parquet_path, start, end, validated_limit)
 
         # 通常の場合はDuckDBConnectionをコンテキストマネージャーとして使用
         with DuckDBConnection(self.r2_config) as conn:
-            return fetch_top_tracks(conn, self.r2_config, start, end, validated_limit)
+            return get_top_tracks(conn, parquet_path, start, end, validated_limit)
 
 
 class GetListeningStatsTool(ToolBase):
@@ -183,17 +186,21 @@ class GetListeningStatsTool(ToolBase):
             granularity,
         )
 
+        parquet_path = get_parquet_path(
+            self.r2_config.bucket_name, self.r2_config.events_path
+        )
+
         # テスト用のファクトリがある場合はそれを使用（モック注入用）
         if self._db_connection_factory:
             db_connection = self._db_connection_factory()
             # ファクトリから返されたオブジェクトをコンテキストマネージャーとして使用
             with db_connection as conn:
-                return fetch_listening_stats(
-                    conn, self.r2_config, start, end, validated_granularity
+                return get_listening_stats(
+                    conn, parquet_path, start, end, validated_granularity
                 )
 
         # 通常の場合はDuckDBConnectionをコンテキストマネージャーとして使用
         with DuckDBConnection(self.r2_config) as conn:
-            return fetch_listening_stats(
-                conn, self.r2_config, start, end, validated_granularity
+            return get_listening_stats(
+                conn, parquet_path, start, end, validated_granularity
             )

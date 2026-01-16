@@ -11,7 +11,6 @@ import duckdb
 from fastapi import Depends, Header, HTTPException
 
 from backend.config import BackendConfig
-from backend.domain.repositories import IThreadRepository
 from backend.infrastructure.database import ChatDuckDBConnection, DuckDBConnection
 from backend.infrastructure.repositories import DuckDBThreadRepository
 
@@ -107,13 +106,13 @@ async def verify_api_key(
 
 def get_thread_repository(
     chat_db: duckdb.DuckDBPyConnection = Depends(get_chat_db),
-) -> IThreadRepository:
+) -> DuckDBThreadRepository:
     """スレッドリポジトリを取得します。
 
     Args:
         chat_db: チャット履歴用DuckDB接続
 
     Returns:
-        IThreadRepository: スレッドリポジトリの実装
+        DuckDBThreadRepository: スレッドリポジトリの実装
     """
     return DuckDBThreadRepository(chat_db)

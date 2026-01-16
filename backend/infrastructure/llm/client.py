@@ -6,12 +6,12 @@
 import logging
 
 from backend.domain.models.llm import ChatResponse, Message
+from backend.domain.tools import Tool
 from backend.infrastructure.llm.providers import (
     AnthropicProvider,
     BaseLLMProvider,
     OpenAIProvider,
 )
-from backend.usecases.tools.base import Tool
 
 logger = logging.getLogger(__name__)
 

@@ -13,9 +13,10 @@ from pydantic import BaseModel
 
 from backend.config import BackendConfig
 from backend.dependencies import get_config, get_db_connection, verify_api_key
-from backend.usecases.spotify_stats import (
-    fetch_listening_stats,
-    fetch_top_tracks,
+from backend.infrastructure.database import (
+    get_listening_stats,
+    get_parquet_path,
+    get_top_tracks,
 )
 from backend.validators import (
     validate_date_range,
@@ -76,7 +77,8 @@ async def get_top_tracks_endpoint(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     logger.info("Getting top tracks: %s to %s, limit=%s", start_date, end_date, limit)
-    return fetch_top_tracks(db_connection, config.r2, start, end, validated_limit)
+    parquet_path = get_parquet_path(config.r2.bucket_name, config.r2.events_path)
+    return get_top_tracks(db_connection, parquet_path, start, end, validated_limit)
 
 
 @router.get("/stats/listening", response_model=list[ListeningStatsResponse])
@@ -116,6 +118,7 @@ async def get_listening_stats_endpoint(
         end_date,
         granularity,
     )
-    return fetch_listening_stats(
-        db_connection, config.r2, start, end, validated_granularity
+    parquet_path = get_parquet_path(config.r2.bucket_name, config.r2.events_path)
+    return get_listening_stats(
+        db_connection, parquet_path, start, end, validated_granularity
     )

@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from backend.domain.models.llm import ChatResponse, Message
-from backend.usecases.tools.base import Tool
+from backend.domain.tools import Tool
 
 
 class BaseLLMProvider(ABC):

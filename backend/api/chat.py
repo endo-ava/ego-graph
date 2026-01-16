@@ -150,7 +150,7 @@ async def chat(
     except MaxIterationsExceeded as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
     except asyncio.TimeoutError:
-        logger.error("Request timed out")
+        logger.exception("Request timed out")
         raise HTTPException(status_code=504, detail="Request timed out") from None
     except Exception as e:
         logger.exception("Chat request failed")

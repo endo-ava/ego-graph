@@ -15,12 +15,11 @@ from backend.domain.models.thread import (
     Thread,
     ThreadMessage,
 )
-from backend.domain.repositories.thread_repository import IThreadRepository
 
 logger = logging.getLogger(__name__)
 
 
-class DuckDBThreadRepository(IThreadRepository):
+class DuckDBThreadRepository:
     """DuckDBを使用したスレッドリポジトリの実装。
 
     チャット履歴のスレッドとメッセージに対するCRUD操作を提供します。

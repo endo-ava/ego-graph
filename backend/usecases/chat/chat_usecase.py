@@ -8,8 +8,8 @@ import logging
 from typing import cast
 
 from backend.config import LLMConfig
-from backend.domain.repositories import IThreadRepository
 from backend.infrastructure.llm import LLMClient, Message
+from backend.infrastructure.repositories import DuckDBThreadRepository
 from backend.usecases.chat.system_prompt_builder import SystemPromptBuilder
 from backend.usecases.chat.tool_executor import (
     MaxIterationsExceeded,
@@ -108,7 +108,7 @@ class ChatUseCase:
 
     def __init__(
         self,
-        thread_repository: IThreadRepository,
+        thread_repository: DuckDBThreadRepository,
         llm_config: LLMConfig,
         r2_config: R2Config | None,
     ):

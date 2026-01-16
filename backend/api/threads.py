@@ -13,7 +13,7 @@ from backend.api.schemas import (
     ThreadMessagesResponse,
 )
 from backend.dependencies import get_thread_repository, verify_api_key
-from backend.domain.repositories import IThreadRepository
+from backend.infrastructure.repositories import DuckDBThreadRepository
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ DEFAULT_USER_ID = "default_user"
 async def get_threads(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    thread_repository: IThreadRepository = Depends(get_thread_repository),
+    thread_repository: DuckDBThreadRepository = Depends(get_thread_repository),
     _: None = Depends(verify_api_key),
 ):
     """スレッド一覧を取得します。
@@ -66,7 +66,7 @@ async def get_threads(
 @router.get("/{thread_id}", response_model=Thread)
 async def get_thread(
     thread_id: str,
-    thread_repository: IThreadRepository = Depends(get_thread_repository),
+    thread_repository: DuckDBThreadRepository = Depends(get_thread_repository),
     _: None = Depends(verify_api_key),
 ):
     """スレッドの詳細を取得します。
@@ -99,7 +99,7 @@ async def get_thread(
 @router.get("/{thread_id}/messages", response_model=ThreadMessagesResponse)
 async def get_thread_messages(
     thread_id: str,
-    thread_repository: IThreadRepository = Depends(get_thread_repository),
+    thread_repository: DuckDBThreadRepository = Depends(get_thread_repository),
     _: None = Depends(verify_api_key),
 ):
     """スレッドのメッセージ一覧を取得します。

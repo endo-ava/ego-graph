@@ -33,7 +33,7 @@ class Message(BaseModel):
 
 
 class ToolCall(BaseModel):
-    """LLMからのツール呼び出しリクエスト（ドメインエンティティ）。"""
+    """LLMからのツール呼び出しリクエスト(ドメインエンティティ)。"""
 
     id: str
     name: str
@@ -41,7 +41,7 @@ class ToolCall(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    """統一されたチャットレスポンス（ドメインエンティティ）。
+    """統一されたチャットレスポンス(ドメインエンティティ)。
 
     各プロバイダーのレスポンスをこの形式に変換します。
     """
@@ -49,6 +49,6 @@ class ChatResponse(BaseModel):
     id: str
     message: Message
     tool_calls: list[ToolCall] | None = None
-    # tokens情報（プロバイダーによって構造が異なる）
+    # tokens情報(プロバイダーによって構造が異なる)
     usage: dict[str, Any] | None = None
     finish_reason: str

@@ -6,7 +6,8 @@
 import logging
 from typing import Any
 
-from backend.usecases.tools.base import Tool, ToolBase
+from backend.domain.tools import Tool
+from backend.usecases.tools.base import ToolBase
 
 logger = logging.getLogger(__name__)
 

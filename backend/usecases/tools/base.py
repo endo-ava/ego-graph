@@ -1,4 +1,4 @@
-"""ツール基底クラスとスキーマ定義（MCP風）。
+"""ツール基底クラス定義。
 
 Model Context Protocol (MCP)のツール設計を参考にしつつ、
 シンプルなPython関数として実装します。
@@ -7,18 +7,7 @@ Model Context Protocol (MCP)のツール設計を参考にしつつ、
 from abc import ABC, abstractmethod
 from typing import Any
 
-from pydantic import BaseModel
-
-
-class Tool(BaseModel):
-    """MCP風ツールスキーマ。
-
-    LLMプロバイダーに渡すためのツール定義です。
-    """
-
-    name: str
-    description: str
-    inputSchema: dict[str, Any]  # JSON Schema
+from backend.domain.tools import Tool
 
 
 class ToolBase(ABC):
