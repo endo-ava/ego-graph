@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from backend.tools.base import Tool, ToolBase
+from backend.usecases.tools import Tool, ToolBase
 
 
 class TestTool:

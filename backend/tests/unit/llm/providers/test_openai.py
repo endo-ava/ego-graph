@@ -4,9 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from backend.llm.models import Message, ToolCall
-from backend.llm.providers.openai import OpenAIProvider
-from backend.tools.base import Tool
+from backend.infrastructure.llm import Message, OpenAIProvider, ToolCall
+from backend.usecases.tools import Tool
 
 
 class TestOpenAIProvider:

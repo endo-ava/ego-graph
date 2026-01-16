@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api import chat, data, health, threads
 from backend.config import BackendConfig
-from backend.database.chat_connection import ChatDuckDBConnection, create_chat_tables
+from backend.infrastructure.database import ChatDuckDBConnection, create_chat_tables
 
 logger = logging.getLogger(__name__)
 

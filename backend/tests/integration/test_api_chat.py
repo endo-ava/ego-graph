@@ -5,8 +5,8 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
 
-from backend.api import deps
-from backend.llm.models import ChatResponse, Message, ToolCall
+import backend.dependencies as deps
+from backend.infrastructure.llm import ChatResponse, Message, ToolCall
 
 JST = ZoneInfo("Asia/Tokyo")
 
@@ -54,17 +54,20 @@ class TestChatEndpoint:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             # LLMクライアントのモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
             mock_llm_class.return_value = mock_llm_instance
 
-            # DB接続のモック
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
 
             response = test_client.post(
                 "/v1/chat",
@@ -125,8 +128,10 @@ class TestChatEndpoint:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             mock_llm_instance = MagicMock()
             # 1回目はツール呼び出し、2回目は最終回答
@@ -135,8 +140,11 @@ class TestChatEndpoint:
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry.execute.return_value = {"tracks": []}
+            mock_registry_class.return_value = mock_registry
 
             response = test_client.post(
                 "/v1/chat",
@@ -155,16 +163,19 @@ class TestChatEndpoint:
     def test_chat_handles_llm_error(self, test_client):
         """LLM APIエラーを502でハンドリング。"""
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             # LLMクライアントでエラーを発生させる
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(side_effect=Exception("LLM API error"))
             mock_llm_class.return_value = mock_llm_instance
 
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
 
             response = test_client.post(
                 "/v1/chat",
@@ -179,13 +190,16 @@ class TestChatEndpoint:
         """リクエストスキーマのバリデーション。"""
         # LLM/DBをモックして、バリデーションエラーのみをテスト
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             mock_llm_instance = MagicMock()
             mock_llm_class.return_value = mock_llm_instance
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
 
             # messagesが必須
             response = test_client.post(
@@ -205,15 +219,18 @@ class TestChatEndpoint:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
             mock_llm_class.return_value = mock_llm_instance
 
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
 
             response = test_client.post(
                 "/v1/chat",
@@ -255,15 +272,18 @@ class TestChatEndpoint:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
             mock_llm_class.return_value = mock_llm_instance
 
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
 
             # 既にsystemメッセージが含まれているリクエスト
             response = test_client.post(

@@ -2,7 +2,7 @@
 
 import pytest
 
-from backend.models.llm_model import (
+from backend.api.schemas import (
     DEFAULT_MODEL,
     MODELS_CONFIG,
     LLMModel,

@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from backend.llm.models import ChatResponse, Message, ToolCall
+from backend.infrastructure.llm import ChatResponse, Message, ToolCall
 
 
 class TestMessage:

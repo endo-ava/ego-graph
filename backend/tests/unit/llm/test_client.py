@@ -4,9 +4,13 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from backend.llm.client import LLMClient
-from backend.llm.models import ChatResponse, Message
-from backend.llm.providers import AnthropicProvider, OpenAIProvider
+from backend.infrastructure.llm import (
+    AnthropicProvider,
+    ChatResponse,
+    LLMClient,
+    Message,
+    OpenAIProvider,
+)
 
 
 class TestLLMClient:
@@ -86,7 +90,7 @@ class TestLLMClient:
 
         mock_chat_completion = AsyncMock(return_value=mock_response)
         monkeypatch.setattr(
-            "backend.llm.providers.openai.OpenAIProvider.chat_completion",
+            "backend.infrastructure.llm.providers.openai.OpenAIProvider.chat_completion",
             mock_chat_completion,
         )
 

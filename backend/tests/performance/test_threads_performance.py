@@ -8,8 +8,8 @@ import time
 import duckdb
 import pytest
 
-from backend.database.chat_connection import create_chat_tables
-from backend.services.thread_service import ThreadService
+from backend.infrastructure.database import create_chat_tables
+from backend.infrastructure.repositories import DuckDBThreadRepository
 
 
 @pytest.fixture
@@ -23,8 +23,8 @@ def in_memory_db():
 
 @pytest.fixture
 def thread_service(in_memory_db):
-    """ThreadServiceインスタンスを提供します。"""
-    return ThreadService(in_memory_db)
+    """DuckDBThreadRepositoryインスタンスを提供します。"""
+    return DuckDBThreadRepository(in_memory_db)
 
 
 def test_get_threads_performance_1000_threads(thread_service):
@@ -159,8 +159,8 @@ def test_query_count_for_threads_retrieval(in_memory_db):
     """
     user_id = "query_count_test_user"
 
-    # ThreadServiceを使ってスレッドを作成
-    service = ThreadService(in_memory_db)
+    # DuckDBThreadRepositoryを使ってスレッドを作成
+    service = DuckDBThreadRepository(in_memory_db)
 
     # 50件のスレッドを作成
     for i in range(50):

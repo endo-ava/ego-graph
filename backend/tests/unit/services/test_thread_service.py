@@ -1,4 +1,4 @@
-"""ThreadServiceのユニットテスト。
+"""DuckDBThreadRepositoryのユニットテスト。
 
 スレッド作成、メッセージ追加、取得操作をテストします。
 """
@@ -10,8 +10,8 @@ from unittest.mock import patch
 import duckdb
 import pytest
 
-from backend.database.chat_connection import create_chat_tables
-from backend.services.thread_service import ThreadService
+from backend.infrastructure.database import create_chat_tables
+from backend.infrastructure.repositories import DuckDBThreadRepository
 
 
 @pytest.fixture
@@ -25,8 +25,8 @@ def in_memory_db():
 
 @pytest.fixture
 def thread_service(in_memory_db):
-    """ThreadServiceインスタンスを提供します。"""
-    return ThreadService(in_memory_db)
+    """DuckDBThreadRepositoryインスタンスを提供します。"""
+    return DuckDBThreadRepository(in_memory_db)
 
 
 def test_create_thread(thread_service):
@@ -65,7 +65,7 @@ def test_add_message(thread_service):
     base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
     # スレッド作成時のタイムスタンプをモック
-    with patch("backend.services.thread_service.datetime") as mock_datetime:
+    with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
         mock_datetime.now.return_value = base_time
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
@@ -73,7 +73,7 @@ def test_add_message(thread_service):
         initial_last_message_at = thread.last_message_at
 
     # メッセージ追加時は1分後のタイムスタンプをモック
-    with patch("backend.services.thread_service.datetime") as mock_datetime:
+    with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
         later_time = base_time + timedelta(minutes=1)
         mock_datetime.now.return_value = later_time
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
@@ -112,7 +112,7 @@ def test_get_threads_pagination(thread_service):
     threads = []
     for i in range(5):
         # 各スレッドの作成時刻を1分ずつずらす
-        with patch("backend.services.thread_service.datetime") as mock_datetime:
+        with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
             current_time = base_time + timedelta(minutes=i)
             mock_datetime.now.return_value = current_time
             mock_datetime.side_effect = lambda *args, **kwargs: datetime(
@@ -157,7 +157,7 @@ def test_get_thread(thread_service):
     user_id = "test_user"
     base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
-    with patch("backend.services.thread_service.datetime") as mock_datetime:
+    with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
         mock_datetime.now.return_value = base_time
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
@@ -189,7 +189,7 @@ def test_get_messages(thread_service):
     base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
     # スレッドとメッセージを作成
-    with patch("backend.services.thread_service.datetime") as mock_datetime:
+    with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
         mock_datetime.now.return_value = base_time
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
@@ -198,7 +198,7 @@ def test_get_messages(thread_service):
     message_ids = []
     for i in range(3):
         # 各メッセージを1分ずつずらして作成
-        with patch("backend.services.thread_service.datetime") as mock_datetime:
+        with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
             current_time = base_time + timedelta(minutes=i + 1)
             mock_datetime.now.return_value = current_time
             mock_datetime.side_effect = lambda *args, **kwargs: datetime(

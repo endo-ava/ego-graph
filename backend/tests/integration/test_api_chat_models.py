@@ -2,8 +2,8 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from backend.llm.models import ChatResponse, Message
-from backend.models.llm_model import DEFAULT_MODEL
+from backend.api.schemas import DEFAULT_MODEL
+from backend.infrastructure.llm import ChatResponse, Message
 
 
 class TestChatModelsEndpoint:
@@ -70,17 +70,20 @@ class TestChatEndpointModelSelection:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             # LLMクライアントのモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
             mock_llm_class.return_value = mock_llm_instance
 
-            # DB接続のモック
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
 
             # Act
             response = test_client.post(
@@ -114,17 +117,20 @@ class TestChatEndpointModelSelection:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             # LLMクライアントのモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
             mock_llm_class.return_value = mock_llm_instance
 
-            # DB接続のモック
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
 
             # Act
             response = test_client.post(
@@ -152,12 +158,15 @@ class TestChatEndpointModelSelection:
         invalid_model = "nonexistent-model"
 
         with (
-            patch("backend.api.chat.LLMClient"),
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient"),
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
-            # DB接続のモック
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
 
             # Act
             response = test_client.post(
@@ -183,17 +192,20 @@ class TestChatEndpointModelSelection:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             # LLMクライアントのモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
             mock_llm_class.return_value = mock_llm_instance
 
-            # DB接続のモック
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
 
             # Act
             response = test_client.post(
@@ -219,18 +231,23 @@ class TestChatEndpointModelSelection:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
-            patch("backend.api.chat.ThreadService") as mock_thread_service_class,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
+            patch(
+                "backend.api.chat.DuckDBThreadRepository"
+            ) as mock_thread_service_class,
         ):
             # LLMクライアントのモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
             mock_llm_class.return_value = mock_llm_instance
 
-            # DB接続のモック
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
 
             # ThreadServiceのモック
             mock_thread_service = MagicMock()

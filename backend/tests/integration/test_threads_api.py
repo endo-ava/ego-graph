@@ -6,10 +6,13 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.database import chat_connection
-from backend.database.chat_connection import ChatDuckDBConnection, create_chat_tables
+from backend.infrastructure.database import (
+    ChatDuckDBConnection,
+    chat_connection,
+    create_chat_tables,
+)
+from backend.infrastructure.repositories import DuckDBThreadRepository
 from backend.main import create_app
-from backend.services.thread_service import ThreadService
 
 
 @pytest.fixture
@@ -50,7 +53,7 @@ def populated_threads(tmp_path, monkeypatch):
         create_chat_tables(conn)
 
         # テストデータを投入
-        service = ThreadService(conn)
+        service = DuckDBThreadRepository(conn)
         threads = []
         for i in range(5):
             thread = service.create_thread("default_user", f"Test message {i}")

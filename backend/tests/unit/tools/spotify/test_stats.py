@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from backend.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
+from backend.usecases.tools import GetListeningStatsTool, GetTopTracksTool
 from shared.config import R2Config
 
 
@@ -76,9 +76,12 @@ class TestGetTopTracksTool:
         mock_conn = MagicMock()
         mock_db.__enter__.return_value = mock_conn
 
-        # get_top_tracksのモック
+        # get_parquet_pathとget_top_tracksのモック
         with patch(
-            "backend.tools.spotify.stats.fetch_top_tracks",
+            "backend.usecases.tools.spotify.stats.get_parquet_path",
+            return_value="s3://bucket/events/*.parquet",
+        ), patch(
+            "backend.usecases.tools.spotify.stats.get_top_tracks",
             return_value=[
                 {
                     "track_name": "Song A",
@@ -125,7 +128,10 @@ class TestGetTopTracksTool:
         mock_db.__enter__.return_value = mock_conn
 
         with patch(
-            "backend.tools.spotify.stats.fetch_top_tracks", return_value=[]
+            "backend.usecases.tools.spotify.stats.get_parquet_path",
+            return_value="s3://bucket/events/*.parquet",
+        ), patch(
+            "backend.usecases.tools.spotify.stats.get_top_tracks", return_value=[]
         ) as mock_get_top_tracks:
             r2_config = R2Config.model_construct(
                 bucket_name="bucket", events_path="events/"
@@ -137,7 +143,7 @@ class TestGetTopTracksTool:
 
             # Assert: デフォルトのlimit=10で呼ばれることを検証
             call_args = mock_get_top_tracks.call_args
-            assert call_args[0][4] == 10  # 5番目の引数がlimit
+            assert call_args[0][4] == 10  # 5番目の引数がlimit (conn, parquet_path, start, end, limit)
 
 
 class TestGetListeningStatsTool:
@@ -208,7 +214,10 @@ class TestGetListeningStatsTool:
         mock_db.__enter__.return_value = mock_conn
 
         with patch(
-            "backend.tools.spotify.stats.fetch_listening_stats",
+            "backend.usecases.tools.spotify.stats.get_parquet_path",
+            return_value="s3://bucket/events/*.parquet",
+        ), patch(
+            "backend.usecases.tools.spotify.stats.get_listening_stats",
             return_value=[
                 {
                     "period": "2024-01-01",
@@ -259,7 +268,10 @@ class TestGetListeningStatsTool:
         mock_db.__enter__.return_value = mock_conn
 
         with patch(
-            "backend.tools.spotify.stats.fetch_listening_stats", return_value=[]
+            "backend.usecases.tools.spotify.stats.get_parquet_path",
+            return_value="s3://bucket/events/*.parquet",
+        ), patch(
+            "backend.usecases.tools.spotify.stats.get_listening_stats", return_value=[]
         ) as mock_get_listening_stats:
             r2_config = R2Config.model_construct(
                 bucket_name="bucket", events_path="events/"
@@ -273,4 +285,4 @@ class TestGetListeningStatsTool:
 
             # Assert: デフォルトのgranularity="day"で呼ばれることを検証
             call_args = mock_get_listening_stats.call_args
-            assert call_args[0][4] == "day"  # 5番目の引数がgranularity
+            assert call_args[0][4] == "day"  # 5番目の引数がgranularity (conn, parquet_path, start, end, granularity)

@@ -86,7 +86,11 @@ data/
 
 tmp/
 
+query_graph
+
 scripts/install-android.ps1
 scripts/install-lsp.sh
+scripts/debug-adb.ps1
+
 # Ignore git worktree checkout
 wt1/

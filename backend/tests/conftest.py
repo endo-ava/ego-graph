@@ -9,10 +9,13 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from backend.api import deps
+import backend.dependencies as deps
 from backend.config import BackendConfig, LLMConfig
-from backend.database import chat_connection
-from backend.database.chat_connection import ChatDuckDBConnection, create_chat_tables
+from backend.infrastructure.database import (
+    ChatDuckDBConnection,
+    chat_connection,
+    create_chat_tables,
+)
 from backend.main import create_app
 from shared.config import R2Config
 
