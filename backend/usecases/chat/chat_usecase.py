@@ -251,15 +251,19 @@ class ChatUseCase:
                 thread_id = thread.thread_id
                 logger.info("Created new thread: thread_id=%s", thread_id)
 
-            # 初回ユーザーメッセージを保存
-            content = cast(str, first_user_message.content or "")
-            self.thread_repository.add_message(
-                thread_id=thread_id,
-                user_id=request.user_id,
-                role="user",
-                content=content,
-                model_name=None,  # ユーザーメッセージにはmodel_nameなし
+            # 最新のユーザーメッセージを保存（既存スレッドと同じロジック）
+            last_user_message = next(
+                (msg for msg in reversed(request.messages) if msg.role == "user"), None
             )
+            if last_user_message:
+                content = cast(str, last_user_message.content or "")
+                self.thread_repository.add_message(
+                    thread_id=thread_id,
+                    user_id=request.user_id,
+                    role="user",
+                    content=content,
+                    model_name=None,  # ユーザーメッセージにはmodel_nameなし
+                )
             return thread_id
         else:
             # 既存スレッド: 存在確認
