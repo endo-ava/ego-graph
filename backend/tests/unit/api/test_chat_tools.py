@@ -6,22 +6,24 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from backend.api.chat import (
-    MAX_ITERATIONS,
-    _create_tool_result_message,
-    _execute_tools_parallel,
-)
-from backend.llm.models import ChatResponse, Message, ToolCall
+from backend.infrastructure.llm import ChatResponse, Message, ToolCall
+from backend.usecases.chat.tool_executor import ToolExecutor
 
 
 class TestExecuteToolsParallel:
-    """_execute_tools_parallel のテスト。"""
+    """ToolExecutor._execute_tools_parallel のテスト。"""
+
+    def _create_executor(self, mock_registry: MagicMock) -> ToolExecutor:
+        """テスト用のToolExecutorを作成する。"""
+        mock_llm = MagicMock()
+        return ToolExecutor(mock_llm, mock_registry)
 
     @pytest.mark.asyncio
     async def test_single_tool_success(self):
         """単一ツールの成功実行。"""
         mock_registry = MagicMock()
         mock_registry.execute.return_value = {"track_name": "Test Track", "plays": 100}
+        executor = self._create_executor(mock_registry)
 
         tool_calls = [
             ToolCall(
@@ -31,7 +33,7 @@ class TestExecuteToolsParallel:
             )
         ]
 
-        results = await _execute_tools_parallel(mock_registry, tool_calls)
+        results = await executor._execute_tools_parallel(tool_calls)
 
         assert len(results) == 1
         assert results[0]["success"] is True
@@ -49,6 +51,7 @@ class TestExecuteToolsParallel:
             {"top_tracks": ["Track 1", "Track 2"]},
             {"total_plays": 500, "avg_plays": 50},
         ]
+        executor = self._create_executor(mock_registry)
 
         tool_calls = [
             ToolCall(
@@ -63,7 +66,7 @@ class TestExecuteToolsParallel:
             ),
         ]
 
-        results = await _execute_tools_parallel(mock_registry, tool_calls)
+        results = await executor._execute_tools_parallel(tool_calls)
 
         assert len(results) == 2
         assert results[0]["success"] is True
@@ -76,6 +79,7 @@ class TestExecuteToolsParallel:
         """ツールが見つからない場合のエラーハンドリング。"""
         mock_registry = MagicMock()
         mock_registry.execute.side_effect = KeyError("Tool not found: unknown_tool")
+        executor = self._create_executor(mock_registry)
 
         tool_calls = [
             ToolCall(
@@ -85,7 +89,7 @@ class TestExecuteToolsParallel:
             )
         ]
 
-        results = await _execute_tools_parallel(mock_registry, tool_calls)
+        results = await executor._execute_tools_parallel(tool_calls)
 
         assert len(results) == 1
         assert results[0]["success"] is False
@@ -99,6 +103,7 @@ class TestExecuteToolsParallel:
         mock_registry.execute.side_effect = ValueError(
             "invalid_date_range: start_date must be before end_date"
         )
+        executor = self._create_executor(mock_registry)
 
         tool_calls = [
             ToolCall(
@@ -108,7 +113,7 @@ class TestExecuteToolsParallel:
             )
         ]
 
-        results = await _execute_tools_parallel(mock_registry, tool_calls)
+        results = await executor._execute_tools_parallel(tool_calls)
 
         assert len(results) == 1
         assert results[0]["success"] is False
@@ -120,6 +125,7 @@ class TestExecuteToolsParallel:
         """一般的な例外のエラーハンドリング。"""
         mock_registry = MagicMock()
         mock_registry.execute.side_effect = RuntimeError("Database connection failed")
+        executor = self._create_executor(mock_registry)
 
         tool_calls = [
             ToolCall(
@@ -129,7 +135,7 @@ class TestExecuteToolsParallel:
             )
         ]
 
-        results = await _execute_tools_parallel(mock_registry, tool_calls)
+        results = await executor._execute_tools_parallel(tool_calls)
 
         assert len(results) == 1
         assert results[0]["success"] is False
@@ -146,13 +152,14 @@ class TestExecuteToolsParallel:
             {"result": "success"},
             ValueError("Invalid parameter"),
         ]
+        executor = self._create_executor(mock_registry)
 
         tool_calls = [
             ToolCall(id="call_1", name="tool_1", parameters={}),
             ToolCall(id="call_2", name="tool_2", parameters={}),
         ]
 
-        results = await _execute_tools_parallel(mock_registry, tool_calls)
+        results = await executor._execute_tools_parallel(tool_calls)
 
         assert len(results) == 2
         assert results[0]["success"] is True
@@ -162,10 +169,17 @@ class TestExecuteToolsParallel:
 
 
 class TestCreateToolResultMessage:
-    """_create_tool_result_message のテスト。"""
+    """ToolExecutor._create_tool_result_message のテスト。"""
+
+    def _create_executor(self) -> ToolExecutor:
+        """テスト用のToolExecutorを作成する。"""
+        mock_llm = MagicMock()
+        mock_registry = MagicMock()
+        return ToolExecutor(mock_llm, mock_registry)
 
     def test_success_result_message(self):
         """成功結果のメッセージ生成。"""
+        executor = self._create_executor()
         tool_call = ToolCall(
             id="call_123",
             name="get_top_tracks",
@@ -179,7 +193,7 @@ class TestCreateToolResultMessage:
             ],
         }
 
-        message = _create_tool_result_message(tool_call, result)
+        message = executor._create_tool_result_message(tool_call, result)
 
         assert message.role == "tool"
         assert message.tool_call_id == "call_123"
@@ -191,6 +205,7 @@ class TestCreateToolResultMessage:
 
     def test_error_result_message(self):
         """エラー結果のメッセージ生成。"""
+        executor = self._create_executor()
         tool_call = ToolCall(
             id="call_456",
             name="get_listening_stats",
@@ -202,7 +217,7 @@ class TestCreateToolResultMessage:
             "error_type": "ValueError",
         }
 
-        message = _create_tool_result_message(tool_call, result)
+        message = executor._create_tool_result_message(tool_call, result)
 
         assert message.role == "tool"
         assert message.tool_call_id == "call_456"
@@ -215,13 +230,14 @@ class TestCreateToolResultMessage:
 
     def test_content_is_json_serialized(self):
         """contentが正しくJSONシリアライズされている。"""
+        executor = self._create_executor()
         tool_call = ToolCall(id="call_1", name="tool", parameters={})
         result = {
             "success": True,
             "result": {"japanese": "日本語", "emoji": "🎵"},
         }
 
-        message = _create_tool_result_message(tool_call, result)
+        message = executor._create_tool_result_message(tool_call, result)
 
         # ensure_ascii=Falseで日本語がそのまま保存される
         assert "日本語" in message.content
@@ -271,8 +287,10 @@ class TestChatEndpointToolLoop:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             # LLMクライアントのモック: 1回目はツール呼び出し、2回目は最終回答
             mock_llm_instance = MagicMock()
@@ -281,9 +299,14 @@ class TestChatEndpointToolLoop:
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            # DB/ツールのモック
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry.execute.return_value = {
+                "track_name": "Test Track",
+                "plays": 100,
+            }
+            mock_registry_class.return_value = mock_registry
 
             response = test_client.post(
                 "/v1/chat",
@@ -359,8 +382,10 @@ class TestChatEndpointToolLoop:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(
@@ -368,8 +393,11 @@ class TestChatEndpointToolLoop:
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry.execute.return_value = {}
+            mock_registry_class.return_value = mock_registry
 
             response = test_client.post(
                 "/v1/chat",
@@ -429,8 +457,10 @@ class TestChatEndpointToolLoop:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(
@@ -438,8 +468,11 @@ class TestChatEndpointToolLoop:
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry.execute.return_value = {}
+            mock_registry_class.return_value = mock_registry
 
             response = test_client.post(
                 "/v1/chat",
@@ -499,8 +532,10 @@ class TestChatEndpointToolLoop:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(
@@ -508,8 +543,13 @@ class TestChatEndpointToolLoop:
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック（エラーを返す）
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry.execute.side_effect = ValueError(
+                "invalid_date: invalid format"
+            )
+            mock_registry_class.return_value = mock_registry
 
             response = test_client.post(
                 "/v1/chat",
@@ -547,16 +587,21 @@ class TestChatEndpointToolLoop:
         )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             mock_llm_instance = MagicMock()
             # 常に同じツール呼び出しレスポンスを返す
             mock_llm_instance.chat = AsyncMock(return_value=tool_call_response)
             mock_llm_class.return_value = mock_llm_instance
 
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry.execute.return_value = {}
+            mock_registry_class.return_value = mock_registry
 
             response = test_client.post(
                 "/v1/chat",
@@ -567,7 +612,7 @@ class TestChatEndpointToolLoop:
             assert response.status_code == 500
             assert "maximum iterations" in response.json()["detail"]
             # MAX_ITERATIONS回呼ばれた
-            assert mock_llm_instance.chat.call_count == MAX_ITERATIONS
+            assert mock_llm_instance.chat.call_count == ToolExecutor.MAX_ITERATIONS
 
     @pytest.mark.asyncio
     async def test_timeout_error(self, test_client):
@@ -583,15 +628,19 @@ class TestChatEndpointToolLoop:
             )
 
         with (
-            patch("backend.api.chat.LLMClient") as mock_llm_class,
-            patch("backend.api.chat.get_db_connection") as mock_get_db,
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
         ):
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = slow_llm_call
             mock_llm_class.return_value = mock_llm_instance
 
-            mock_conn = MagicMock()
-            mock_get_db.return_value = mock_conn
+            # ToolRegistryのモック
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
 
             response = test_client.post(
                 "/v1/chat",

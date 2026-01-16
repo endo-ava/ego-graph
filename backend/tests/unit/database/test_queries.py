@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from backend.database.queries import (
+from backend.infrastructure.database import (
     execute_query,
     get_listening_stats,
     get_parquet_path,

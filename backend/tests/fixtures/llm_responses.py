@@ -3,7 +3,7 @@
 import json
 from typing import Any, Dict, List, Optional
 
-from backend.llm.models import ChatResponse, Message
+from backend.infrastructure.llm import ChatResponse, Message
 
 
 def get_mock_openai_response(

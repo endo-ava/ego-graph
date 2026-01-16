@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from backend.api import deps
+import backend.dependencies as deps
 
 
 class TestHealthEndpoint:

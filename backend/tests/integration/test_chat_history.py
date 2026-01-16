@@ -3,7 +3,7 @@
 /v1/chat エンドポイントでのthread_id処理をテストします。
 """
 
-from backend.llm import client as llm_client_module
+from backend.infrastructure.llm import client as llm_client_module
 from backend.tests.fixtures.llm_responses import mock_chat_response
 
 

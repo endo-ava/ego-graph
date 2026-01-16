@@ -4,7 +4,7 @@ from datetime import date
 
 import duckdb
 
-from backend.database.queries import (
+from backend.infrastructure.database import (
     get_listening_stats,
     get_parquet_path,
     get_top_tracks,

@@ -5,16 +5,15 @@
 
 import logging
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.api.deps import get_chat_db, verify_api_key
-from backend.models.thread import (
+from backend.dependencies import get_thread_repository, verify_api_key
+from backend.api.schemas import (
     Thread,
     ThreadListResponse,
     ThreadMessagesResponse,
 )
-from backend.services.thread_service import ThreadService
+from backend.domain.repositories import IThreadRepository
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ DEFAULT_USER_ID = "default_user"
 async def get_threads(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    chat_db: duckdb.DuckDBPyConnection = Depends(get_chat_db),
+    thread_repository: IThreadRepository = Depends(get_thread_repository),
     _: None = Depends(verify_api_key),
 ):
     """スレッド一覧を取得します。
@@ -52,8 +51,7 @@ async def get_threads(
         offset,
     )
 
-    thread_service = ThreadService(chat_db)
-    threads, total = thread_service.get_threads(
+    threads, total = thread_repository.get_threads(
         user_id=DEFAULT_USER_ID, limit=limit, offset=offset
     )
 
@@ -68,7 +66,7 @@ async def get_threads(
 @router.get("/{thread_id}", response_model=Thread)
 async def get_thread(
     thread_id: str,
-    chat_db: duckdb.DuckDBPyConnection = Depends(get_chat_db),
+    thread_repository: IThreadRepository = Depends(get_thread_repository),
     _: None = Depends(verify_api_key),
 ):
     """スレッドの詳細を取得します。
@@ -87,8 +85,7 @@ async def get_thread(
     """
     logger.info("Retrieving thread: thread_id=%s", thread_id)
 
-    thread_service = ThreadService(chat_db)
-    thread = thread_service.get_thread(thread_id)
+    thread = thread_repository.get_thread(thread_id)
 
     if thread is None:
         raise HTTPException(
@@ -102,7 +99,7 @@ async def get_thread(
 @router.get("/{thread_id}/messages", response_model=ThreadMessagesResponse)
 async def get_thread_messages(
     thread_id: str,
-    chat_db: duckdb.DuckDBPyConnection = Depends(get_chat_db),
+    thread_repository: IThreadRepository = Depends(get_thread_repository),
     _: None = Depends(verify_api_key),
 ):
     """スレッドのメッセージ一覧を取得します。
@@ -123,10 +120,8 @@ async def get_thread_messages(
     """
     logger.info("Retrieving messages for thread_id=%s", thread_id)
 
-    thread_service = ThreadService(chat_db)
-
     # スレッドの存在確認
-    thread = thread_service.get_thread(thread_id)
+    thread = thread_repository.get_thread(thread_id)
     if thread is None:
         raise HTTPException(
             status_code=404,
@@ -134,7 +129,7 @@ async def get_thread_messages(
         )
 
     # メッセージ取得
-    messages = thread_service.get_messages(thread_id)
+    messages = thread_repository.get_messages(thread_id)
 
     return ThreadMessagesResponse(
         thread_id=thread_id,

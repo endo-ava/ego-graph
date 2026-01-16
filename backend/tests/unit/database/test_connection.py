@@ -5,7 +5,7 @@ from unittest.mock import patch
 import duckdb
 import pytest
 
-from backend.database.connection import DuckDBConnection
+from backend.infrastructure.database import DuckDBConnection
 
 
 class TestDuckDBConnection:

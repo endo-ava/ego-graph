@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from backend.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
+from backend.usecases.tools import GetListeningStatsTool, GetTopTracksTool
 from shared.config import R2Config
 
 
@@ -78,7 +78,7 @@ class TestGetTopTracksTool:
 
         # get_top_tracksのモック
         with patch(
-            "backend.tools.spotify.stats.fetch_top_tracks",
+            "backend.usecases.tools.spotify.stats.fetch_top_tracks",
             return_value=[
                 {
                     "track_name": "Song A",
@@ -125,7 +125,7 @@ class TestGetTopTracksTool:
         mock_db.__enter__.return_value = mock_conn
 
         with patch(
-            "backend.tools.spotify.stats.fetch_top_tracks", return_value=[]
+            "backend.usecases.tools.spotify.stats.fetch_top_tracks", return_value=[]
         ) as mock_get_top_tracks:
             r2_config = R2Config.model_construct(
                 bucket_name="bucket", events_path="events/"
@@ -208,7 +208,7 @@ class TestGetListeningStatsTool:
         mock_db.__enter__.return_value = mock_conn
 
         with patch(
-            "backend.tools.spotify.stats.fetch_listening_stats",
+            "backend.usecases.tools.spotify.stats.fetch_listening_stats",
             return_value=[
                 {
                     "period": "2024-01-01",
@@ -259,7 +259,7 @@ class TestGetListeningStatsTool:
         mock_db.__enter__.return_value = mock_conn
 
         with patch(
-            "backend.tools.spotify.stats.fetch_listening_stats", return_value=[]
+            "backend.usecases.tools.spotify.stats.fetch_listening_stats", return_value=[]
         ) as mock_get_listening_stats:
             r2_config = R2Config.model_construct(
                 bucket_name="bucket", events_path="events/"

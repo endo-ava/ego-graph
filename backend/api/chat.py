@@ -5,35 +5,33 @@ LLMが必要に応じてツールを呼び出し、データにアクセスし�
 """
 
 import asyncio
-import json
 import logging
-from datetime import datetime
-from typing import Any
-from zoneinfo import ZoneInfo
 
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.api.deps import get_chat_db, get_config, get_db_connection, verify_api_key
+from backend.dependencies import get_chat_db, get_config, verify_api_key
+from backend.api.schemas import DEFAULT_MODEL, get_all_models, get_model
 from backend.config import BackendConfig
-from backend.database.connection import DuckDBConnection
-from backend.llm import LLMClient, Message, ToolCall
-from backend.models.llm_model import DEFAULT_MODEL, get_all_models, get_model
-from backend.services.thread_service import ThreadService
-from backend.tools import GetListeningStatsTool, GetTopTracksTool, ToolRegistry
+from backend.infrastructure.llm import Message
+from backend.infrastructure.repositories import DuckDBThreadRepository
+from backend.usecases.chat import (
+    ChatRequest as UseCaseChatRequest,
+)
+from backend.usecases.chat import (
+    ChatUseCase,
+    MaxIterationsExceeded,
+    NoUserMessageError,
+    ThreadNotFoundError,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/chat", tags=["chat"])
 
-# 定数
-MAX_ITERATIONS = 5
-TOTAL_TIMEOUT = 30.0
-JST = ZoneInfo("Asia/Tokyo")
-
-# スレッド作成の競合状態を防ぐためのロック
-_thread_creation_lock = asyncio.Lock()
+# MVP: ユーザーIDは固定値
+DEFAULT_USER_ID = "default_user"
 
 
 class ChatRequest(BaseModel):
@@ -73,24 +71,30 @@ async def get_models_endpoint(_: None = Depends(verify_api_key)):
 @router.post("", response_model=ChatResponseModel)
 async def chat(
     request: ChatRequest,
-    _db_connection: DuckDBConnection = Depends(get_db_connection),
     chat_db: duckdb.DuckDBPyConnection = Depends(get_chat_db),
     config: BackendConfig = Depends(get_config),
     _: None = Depends(verify_api_key),
 ):
-    """LLMエージェント向けチャットエンドポイント。
+    """LLMエージェント向けチャットエンドポイント（薄いハンドラー）。
 
     ユーザーのメッセージを受け取り、LLMがツールを使用して
     データにアクセスしながら応答を生成します。
 
     Args:
         request: チャットリクエスト
+        chat_db: チャットDB接続
+        config: バックエンド設定
+        _: API Key検証結果（未使用）
 
     Returns:
-        ChatResponseModel
+        ChatResponseModel: チャット応答
 
     Raises:
         HTTPException: LLM設定が不足している場合（501）
+        HTTPException: モデル名が無効な場合（400）
+        HTTPException: スレッドが見つからない場合（404）
+        HTTPException: 最大イテレーション到達（500）
+        HTTPException: タイムアウト（504）
         HTTPException: LLM APIエラー（502）
 
     Example:
@@ -101,7 +105,7 @@ async def chat(
             ]
         }
     """
-    # LLM設定の確認
+    # 1. LLM設定検証
     if not config.llm:
         raise HTTPException(
             status_code=501,
@@ -110,341 +114,44 @@ async def chat(
 
     logger.info("Received chat request with %s messages", len(request.messages))
 
-    # MVP: ユーザーIDは固定値
-    user_id = "default_user"
-
-    # スレッドサービスの初期化
-    thread_service = ThreadService(chat_db)
-
-    # スレッドID処理（新規 or 既存）
-    thread_id: str
+    # 2. モデル名検証
+    model_name = request.model_name or config.llm.model_name
     try:
-        if request.thread_id is None:
-            # 新規スレッド: 初回ユーザーメッセージから作成
-            first_user_message = next(
-                (msg for msg in request.messages if msg.role == "user"), None
-            )
-            if first_user_message is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="At least one user message is required for new thread",
-                )
+        get_model(model_name)
+    except ValueError as e:
+        logger.error("Invalid model name: %s", model_name)
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
-            # 複数リクエストが同時に到達した場合の重複スレッド作成を防ぐ
-            async with _thread_creation_lock:
-                thread = thread_service.create_thread(
-                    user_id, first_user_message.content or ""
-                )
-                thread_id = thread.thread_id
-                logger.info("Created new thread: thread_id=%s", thread_id)
-
-            # 初回ユーザーメッセージを保存
-            thread_service.add_message(
-                thread_id=thread_id,
-                user_id=user_id,
-                role="user",
-                content=first_user_message.content or "",
-                model_name=None,  # ユーザーメッセージにはmodel_nameなし
-            )
-        else:
-            # 既存スレッド: 存在確認
-            thread = thread_service.get_thread(request.thread_id)
-            if thread is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Thread not found: {request.thread_id}",
-                )
-            thread_id = request.thread_id
-            logger.info("Using existing thread: thread_id=%s", thread_id)
-
-            # 最新のユーザーメッセージを保存
-            last_user_message = next(
-                (msg for msg in reversed(request.messages) if msg.role == "user"), None
-            )
-            if last_user_message:
-                thread_service.add_message(
-                    thread_id=thread_id,
-                    user_id=user_id,
-                    role="user",
-                    content=last_user_message.content or "",
-                    model_name=None,  # ユーザーメッセージにはmodel_nameなし
-                )
-    except duckdb.Error as e:
-        logger.error(
-            "Database error during thread/message handling: %s", type(e).__name__
-        )
-        raise HTTPException(
-            status_code=500, detail=f"Database error: {type(e).__name__}"
-        ) from e
+    # 3. UseCase実行
+    thread_repository = DuckDBThreadRepository(chat_db)
+    use_case = ChatUseCase(thread_repository, config.llm, config.r2)
 
     try:
-        # モデル名の決定ロジックを明確化
-        if request.model_name is not None:
-            used_model_name = request.model_name
-        else:
-            used_model_name = config.llm.model_name
-
-        # モデル名のバリデーション
-        try:
-            get_model(used_model_name)
-        except ValueError as e:
-            logger.error("Invalid model name: %s", used_model_name)
-            raise HTTPException(status_code=400, detail=str(e)) from e
-
-        # LLMクライアントの初期化
-        llm = LLMClient(
-            provider_name=config.llm.provider,
-            api_key=config.llm.api_key.get_secret_value(),
-            model_name=used_model_name,
-            enable_web_search=config.llm.enable_web_search,
-        )
-
-        # ツールレジストリの準備
-        tool_registry = ToolRegistry()
-        if config.r2:
-            tool_registry.register(GetTopTracksTool(config.r2))
-            tool_registry.register(GetListeningStatsTool(config.r2))
-
-        tools = tool_registry.get_all_schemas()
-
-        # ツール実行ループ
-        conversation_history = request.messages.copy()
-
-        # システムメッセージに現在日を追加（まだ含まれていない場合）
-        if not any(msg.role == "system" for msg in conversation_history):
-            now = datetime.now(JST)
-            current_date = now.strftime("%Y-%m-%d")
-            current_time = now.strftime("%H:%M:%S")
-            weekday = ["月", "火", "水", "木", "金", "土", "日"][now.weekday()]
-
-            # 汎用アシスタント向けシステムプロンプト
-            system_prompt_content = f"""
-# Role & Identity
-あなたは個人のライフログ統合システム「EgoGraph」の専属AIアシスタントです。
-ユーザーの「第二の脳」として、データ分析から日常の雑談まで、包括的に生活をサポートします。
-
-# Core Guidelines
-1. **Tool Use Strategy**
-   - **データ関連**: 「最近よく聴いている曲は？」「先月の活動量は？」など、ユーザー個人の記録に基づく質問には、必ずツールを使用して事実に基づいた回答を行ってください。推測は禁止です。
-   - **一般会話**: 「こんにちは」「旅行の計画を手伝って」「元気？」などの一般的な会話や相談には、ツールを使わず、親しみやすく知的なアシスタントとして応答してください。
-   - **エラー処理**: ツール実行でエラーが出た場合は、専門用語を避け、ユーザーに分かりやすく状況を伝えてください。
-
-2. **Persona**
-   - 親切で、洞察力があり、かつ実務的です。
-   - ユーザーの文脈を汲み取り、単なるデータの羅列ではなく「それが何を意味するか」という視点を提供します。
-   - 必要に応じてMarkdown（表やリスト）を活用し、視認性を高めてください。
-
-# Context
-- 現在日時: {current_date} ({weekday}) {current_time} JST
-"""  # noqa: E501
-            # インデントや余分な改行を整理
-            system_message = Message(
-                role="system",
-                content=system_prompt_content.strip(),
+        result = await use_case.execute(
+            UseCaseChatRequest(
+                messages=request.messages,
+                thread_id=request.thread_id,
+                model_name=request.model_name,
+                user_id=DEFAULT_USER_ID,
             )
-            conversation_history.insert(0, system_message)
-            logger.debug("Added system message with context: %s", current_date)
-
-        iteration = 0
-        loop = asyncio.get_running_loop()
-        start_time = loop.time()
-
-        while iteration < MAX_ITERATIONS:
-            iteration += 1
-
-            # 残り時間計算
-            elapsed = loop.time() - start_time
-            remaining_timeout = TOTAL_TIMEOUT - elapsed
-
-            if remaining_timeout <= 0:
-                logger.error("Total timeout exceeded after %s seconds", TOTAL_TIMEOUT)
-                raise HTTPException(
-                    status_code=504,
-                    detail=f"Request timed out after {TOTAL_TIMEOUT} seconds",
-                )
-
-            # LLMリクエスト送信
-            try:
-                response = await asyncio.wait_for(
-                    llm.chat(
-                        messages=conversation_history,
-                        tools=tools,
-                        temperature=config.llm.temperature,
-                        max_tokens=config.llm.max_tokens,
-                    ),
-                    timeout=remaining_timeout,
-                )
-            except asyncio.TimeoutError:
-                logger.error("LLM request timed out")
-                raise HTTPException(
-                    status_code=504, detail="LLM request timed out"
-                ) from None
-
-            # ツール呼び出しがなければ終了
-            if not response.tool_calls:
-                logger.info("Chat completed after %s iteration(s)", iteration)
-
-                # アシスタント応答をDB保存
-                thread_service.add_message(
-                    thread_id=thread_id,
-                    user_id=user_id,
-                    role="assistant",
-                    content=response.message.content or "",
-                    model_name=used_model_name,  # 使用したモデル名を保存
-                )
-
-                return ChatResponseModel(
-                    id=response.id,
-                    message=response.message,
-                    tool_calls=None,
-                    usage=response.usage,
-                    thread_id=thread_id,
-                    model_name=used_model_name,
-                )
-
-            # assistant メッセージを履歴に追加
-            conversation_history.append(response.message)
-            logger.debug(
-                "Iteration %s: LLM requested %s tool call(s)",
-                iteration,
-                len(response.tool_calls),
-            )
-
-            # 残り時間を再計算（ツール実行にもタイムアウトを適用）
-            elapsed = loop.time() - start_time
-            remaining_timeout = TOTAL_TIMEOUT - elapsed
-
-            if remaining_timeout <= 0:
-                logger.error("Total timeout exceeded before tool execution")
-                raise HTTPException(
-                    status_code=504,
-                    detail=f"Request timed out after {TOTAL_TIMEOUT} seconds",
-                )
-
-            # ツールを並列実行（タイムアウト付き）
-            try:
-                tool_results = await asyncio.wait_for(
-                    _execute_tools_parallel(tool_registry, response.tool_calls),
-                    timeout=remaining_timeout,
-                )
-            except asyncio.TimeoutError:
-                logger.error("Tool execution timed out")
-                raise HTTPException(
-                    status_code=504, detail="Tool execution timed out"
-                ) from None
-
-            # ツール結果を履歴に追加
-            # 長さの不一致を検出するために strict=True を使用（Python 3.10+）
-            for tool_call, result in zip(
-                response.tool_calls, tool_results, strict=True
-            ):
-                tool_message = _create_tool_result_message(tool_call, result)
-                conversation_history.append(tool_message)
-
-        # 最大イテレーション到達
-        logger.error("Reached maximum iterations: %s", MAX_ITERATIONS)
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                f"Reached maximum iterations ({MAX_ITERATIONS}) without final answer"
-            ),
         )
-
-    except HTTPException:
-        raise
+        return ChatResponseModel(
+            id=result.response_id,
+            message=result.message,
+            tool_calls=None,
+            usage=result.usage,
+            thread_id=result.thread_id,
+            model_name=result.model_name,
+        )
+    except NoUserMessageError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except ThreadNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except MaxIterationsExceeded as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    except asyncio.TimeoutError:
+        logger.error("Request timed out")
+        raise HTTPException(status_code=504, detail="Request timed out") from None
     except Exception as e:
         logger.exception("Chat request failed")
         raise HTTPException(status_code=502, detail=f"LLM API error: {str(e)}") from e
-
-
-async def _execute_tools_parallel(
-    tool_registry: ToolRegistry, tool_calls: list[ToolCall]
-) -> list[dict[str, Any]]:
-    """複数ツールを並列実行する。
-
-    Args:
-        tool_registry: ツールレジストリ
-        tool_calls: ツール呼び出しリスト
-
-    Returns:
-        実行結果のリスト。成功時は {"success": True, "result": ...}、
-        失敗時は {"success": False, "error": ..., "error_type": ...} を含む。
-    """
-    loop = asyncio.get_running_loop()
-
-    async def execute_single_tool(tool_call: ToolCall) -> dict[str, Any]:
-        """単一ツールを実行する。
-
-        Args:
-            tool_call: ツール呼び出し
-
-        Returns:
-            実行結果の辞書
-        """
-        try:
-            # ToolRegistry.execute は同期関数なので run_in_executor を使用
-            result = await loop.run_in_executor(
-                None,
-                lambda: tool_registry.execute(tool_call.name, **tool_call.parameters),
-            )
-            return {"success": True, "result": result}
-        except (KeyError, ValueError) as e:
-            # 想定内のエラー: LLMに詳細を返す
-            logger.error(
-                "Expected error in tool %s (%s): %s",
-                tool_call.name,
-                type(e).__name__,
-                str(e),
-            )
-            return {
-                "success": False,
-                "error": str(e),
-                "error_type": type(e).__name__,
-            }
-        except Exception as e:
-            # 予期しないエラー: ログに記録し、汎用メッセージを返す（機密情報漏洩を防ぐ）
-            logger.exception(
-                "Unexpected error in tool %s: %s", tool_call.name, type(e).__name__
-            )
-            return {
-                "success": False,
-                "error": (
-                    "Internal tool execution error. Check server logs for details."
-                ),
-                "error_type": "InternalError",
-            }
-
-    # 並列実行
-    results = await asyncio.gather(*[execute_single_tool(tc) for tc in tool_calls])
-    return results
-
-
-def _create_tool_result_message(tool_call: ToolCall, result: dict[str, Any]) -> Message:
-    """ツール実行結果からメッセージを生成する。
-
-    Args:
-        tool_call: ツール呼び出し
-        result: 実行結果（success, result/error を含む辞書）
-
-    Returns:
-        tool role のメッセージ
-    """
-    if result["success"]:
-        # 成功時: result を JSON シリアライズ
-        content = json.dumps(result["result"], ensure_ascii=False)
-    else:
-        # 失敗時: error と error_type を JSON シリアライズ
-        content = json.dumps(
-            {
-                "error": result["error"],
-                "error_type": result["error_type"],
-            },
-            ensure_ascii=False,
-        )
-
-    return Message(
-        role="tool",
-        content=content,
-        tool_call_id=tool_call.id,
-        name=tool_call.name,
-    )
