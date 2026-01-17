@@ -21,7 +21,7 @@ from shared.config import R2Config
 logger = logging.getLogger(__name__)
 
 # 定数
-TOTAL_TIMEOUT = 30.0
+TOTAL_TIMEOUT = 90.0
 
 # スレッド作成の競合状態を防ぐためのロック
 _thread_creation_lock = asyncio.Lock()
