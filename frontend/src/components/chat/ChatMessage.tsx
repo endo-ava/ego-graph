@@ -13,12 +13,14 @@ import type { ChatMessage as ChatMessageType } from '@/types/chat';
 
 interface ChatMessageProps {
   message: ChatMessageType;
+  isStreaming?: boolean;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const isError = message.isError ?? false;
   const isLoading = message.isLoading ?? false;
+  const showCursor = !isUser && !isError && isStreaming && !isLoading;
 
   return (
     <div
@@ -65,33 +67,36 @@ export function ChatMessage({ message }: ChatMessageProps) {
             )}
           >
             {message.content ? (
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  code(props) {
-                    const { children, className, ...rest } = props;
-                    const match = /language-(\w+)/.exec(className || '');
-                    const language = match?.[1];
-                    const isInline = !className && !match;
+              <>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code(props) {
+                      const { children, className, ...rest } = props;
+                      const match = /language-(\w+)/.exec(className || '');
+                      const language = match?.[1];
+                      const isInline = !className && !match;
 
-                    return !isInline && language ? (
-                      <SyntaxHighlighter
-                        style={vscDarkPlus}
-                        language={language}
-                        PreTag="div"
-                      >
-                        {String(children).replace(/\n$/, '')}
-                      </SyntaxHighlighter>
-                    ) : (
-                      <code className={className} {...rest}>
-                        {children}
-                      </code>
-                    );
-                  },
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
+                      return !isInline && language ? (
+                        <SyntaxHighlighter
+                          style={vscDarkPlus}
+                          language={language}
+                          PreTag="div"
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      ) : (
+                        <code className={className} {...rest}>
+                          {children}
+                        </code>
+                      );
+                    },
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+                {showCursor && <span className="ml-1 animate-pulse">▋</span>}
+              </>
             ) : (
               <p className="text-muted-foreground italic">No content</p>
             )}

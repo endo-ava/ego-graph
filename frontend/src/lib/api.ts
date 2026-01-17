@@ -12,6 +12,7 @@ import type {
   ThreadListResponse,
   ThreadMessagesResponse,
   ModelsResponse,
+  StreamChunk,
 } from '@/types/chat';
 
 interface ApiConfig {
@@ -92,6 +93,134 @@ export async function sendChatMessage(
   }
 
   return data;
+}
+
+/**
+ * チャットAPIリクエスト（ストリーミング）
+ */
+export async function* sendChatMessageStream(
+  request: ChatRequest,
+): AsyncGenerator<StreamChunk, void> {
+  const { apiUrl, apiKey, debug } = getApiConfig();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // API Keyが設定されている場合のみヘッダーに追加
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+  }
+
+  if (debug) {
+    console.log('[API] Sending chat stream request:', request);
+  }
+
+  const response = await fetch(`${apiUrl}/v1/chat`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ ...request, stream: true }),
+    mode: 'cors',
+    credentials: 'omit',
+  });
+
+  if (!response.ok) {
+    let errorDetail = `HTTP ${response.status}`;
+    try {
+      const errorData = (await response.json()) as ApiError;
+      errorDetail = errorData.detail || errorDetail;
+    } catch {
+      // JSON parseに失敗した場合はHTTPステータスをそのまま使用
+    }
+
+    if (debug) {
+      console.error('[API] Request failed:', errorDetail);
+    }
+
+    throw new ApiRequestError(response.status, errorDetail);
+  }
+
+  // ReadableStream を読み取る
+  if (!response.body) {
+    throw new ApiRequestError(500, 'No response body');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+
+    if (done) {
+      // デコーダーをフラッシュして残りのバッファを処理
+      if (buffer.trim()) {
+        buffer += decoder.decode();
+        const lines = buffer.split('\n\n');
+        for (const line of lines) {
+          if (!line.trim()) {
+            continue;
+          }
+          const eventLines = line.split('\n');
+          const dataLine = eventLines.find((l) => l.startsWith('data: '));
+          if (dataLine) {
+            try {
+              const chunk = JSON.parse(dataLine.slice(6)) as StreamChunk;
+              yield chunk;
+            } catch (e) {
+              console.error('[API] Failed to parse final chunk:', e);
+            }
+          }
+        }
+      }
+      if (debug) {
+        console.log('[API] Stream completed');
+      }
+      break;
+    }
+
+    // チャンクをデコード
+    buffer += decoder.decode(value, { stream: true });
+
+  // SSE イベントをパース
+  const lines = buffer.split('\n\n');
+  buffer = lines.pop() || ''; // 最後の不完全な行をバッファに戻す
+
+  for (const line of lines) {
+    if (!line.trim()) {
+      continue;
+    }
+
+    // data: ... の形式
+    const dataMatch = line.match(/^data: (.+)$/m);
+
+    if (dataMatch && dataMatch[1]) {
+      try {
+        const data = JSON.parse(dataMatch[1]) as StreamChunk;
+        if (debug && data.type !== 'delta') {
+          console.log('[API] Stream chunk:', data);
+        }
+        yield data;
+
+        // エラーが発生した場合
+        if (data.type === 'error') {
+          const errorMsg = data.error || 'Unknown error';
+          if (debug) {
+            console.error('[API] Stream error:', errorMsg);
+          }
+          throw new ApiRequestError(500, errorMsg);
+        }
+      } catch (e) {
+        if (debug) {
+          console.error('[API] Failed to parse SSE data:', line, e);
+        }
+        // エラーが ApiRequestError の場合は再スロー
+        if (e instanceof ApiRequestError) {
+          throw e;
+        }
+      }
+    }
+  }
+}
 }
 
 /**

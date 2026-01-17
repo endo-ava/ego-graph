@@ -5,21 +5,48 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useChatStore } from '@/lib/store';
-import { sendChatMessage, ApiRequestError } from '@/lib/api';
+import { sendChatMessage, sendChatMessageStream, ApiRequestError } from '@/lib/api';
 import type { ChatMessage, Message } from '@/types/chat';
+
+/**
+ * エラーからユーザー向けメッセージを生成する
+ */
+function getErrorMessage(error: unknown): string {
+  let errorMessage = 'エラーが発生しました';
+  if (error instanceof ApiRequestError) {
+    if (error.status === 501) {
+      errorMessage = 'LLM設定が不足しています。バックエンドの設定を確認してください。';
+    } else if (error.status === 504) {
+      errorMessage = 'リクエストがタイムアウトしました。しばらく待ってから再試行してください。';
+    } else if (error.status === 502) {
+      errorMessage = `LLM APIエラー: ${error.detail}`;
+    } else if (error.status === 401) {
+      errorMessage = '認証に失敗しました。API Keyを確認してください。';
+    } else if (error.status === 400) {
+      errorMessage = error.detail.startsWith('invalid_model_name:')
+        ? '指定されたモデルは使用できません'
+        : error.detail;
+    } else {
+      errorMessage = error.detail;
+    }
+  } else if (error instanceof Error) {
+    errorMessage = error.message;
+  }
+  return errorMessage;
+}
 
 export function useChat() {
    const {
-     messages,
-     currentThreadId,
-     addMessage,
-     updateLastMessage,
-     updateLastMessageWithModel,
-     setLastMessageError,
-     clearMessages,
-     setCurrentThreadId,
-     selectedModel,
-   } = useChatStore();
+      messages,
+      currentThreadId,
+      addMessage,
+      updateLastMessage,
+      updateLastMessageWithModel,
+      setLastMessageError,
+      clearMessages,
+      setCurrentThreadId,
+      selectedModel,
+    } = useChatStore();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -37,35 +64,14 @@ export function useChat() {
       queryClient.invalidateQueries({ queryKey: ['threads'] });
     },
     onError: (error) => {
-      // エラーメッセージを設定
-      let errorMessage = 'エラーが発生しました';
-      if (error instanceof ApiRequestError) {
-        if (error.status === 501) {
-          errorMessage = 'LLM設定が不足しています。バックエンドの設定を確認してください。';
-        } else if (error.status === 504) {
-          errorMessage = 'リクエストがタイムアウトしました。しばらく待ってから再試行してください。';
-        } else if (error.status === 502) {
-          errorMessage = `LLM APIエラー: ${error.detail}`;
-        } else if (error.status === 401) {
-          errorMessage = '認証に失敗しました。API Keyを確認してください。';
-        } else if (error.status === 400) {
-          errorMessage = error.detail.startsWith('invalid_model_name:')
-            ? '指定されたモデルは使用できません'
-            : error.detail;
-        } else {
-          errorMessage = error.detail;
-        }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-
+      const errorMessage = getErrorMessage(error);
       // エラーメッセージを最後のメッセージとして設定
       updateLastMessage(errorMessage);
       setLastMessageError(true);
     },
   });
 
-  const sendMessage = (content: string) => {
+  const sendMessage = async (content: string) => {
     // APIリクエスト送信用のメッセージ配列を先に準備（楽観的更新前のmessagesを使用）
     const apiMessages: Message[] = [
       ...messages.map((m) => ({
@@ -98,13 +104,40 @@ export function useChat() {
     };
     addMessage(assistantMessage);
 
-    // APIリクエスト送信
-    mutation.mutate({
-      messages: apiMessages,
-      stream: false,
-      thread_id: currentThreadId,
-      model_name: selectedModel,
-    });
+    // ストリーミングで API リクエスト送信
+    let accumulatedContent = '';
+
+    try {
+      for await (const chunk of sendChatMessageStream({
+        messages: apiMessages,
+        stream: true,
+        thread_id: currentThreadId,
+        model_name: selectedModel,
+      })) {
+        if (chunk.type === 'delta' && chunk.delta) {
+          accumulatedContent += chunk.delta;
+          updateLastMessage(accumulatedContent);
+        } else if (chunk.type === 'done') {
+          // 完了
+          updateLastMessageWithModel(accumulatedContent, selectedModel || null);
+          setLastMessageError(false);
+          // スレッドIDをキャプチャ
+          if (chunk.thread_id) {
+            setCurrentThreadId(chunk.thread_id);
+          }
+          // スレッド一覧を無効化して再取得をトリガー
+          queryClient.invalidateQueries({ queryKey: ['threads'] });
+        } else if (chunk.type === 'error') {
+          setLastMessageError(true);
+          updateLastMessage(chunk.error || 'エラーが発生しました');
+        }
+      }
+    } catch (error) {
+      // エラーハンドリング
+      const errorMessage = getErrorMessage(error);
+      setLastMessageError(true);
+      updateLastMessage(errorMessage);
+    }
   };
 
   return {
