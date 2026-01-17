@@ -410,3 +410,207 @@ class TestAnthropicProvider:
         assert response.message.content is None
         assert response.message.tool_calls is not None
         assert len(response.message.tool_calls) == 1
+        assert response.message.tool_calls[0].id == "toolu_xyz"
+
+    @pytest.mark.asyncio
+    async def test_chat_completion_stream_success(self):
+        """ストリーミングチャット補完が成功する。"""
+        # Arrange: プロバイダーとメッセージを準備
+        provider = AnthropicProvider("test-key", "claude-3-5-sonnet-20241022")
+        messages = [Message(role="user", content="Tell me a story")]
+
+        # ストリーミングレスポンスをモック
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+
+        # Anthropicストリーミングイベントをモック
+        async def mock_iter_lines():
+            lines = [
+                # テキストチャンク（event: + data: の2行形式）
+                "event: content_block_delta",
+                'data: {"type": "content_block_delta", "index": 0, "content_block": {"type": "text"}, "delta": {"type": "text_delta", "text": "Once"}}',
+                "",
+                "event: content_block_delta",
+                'data: {"type": "content_block_delta", "index": 0, "content_block": {"type": "text"}, "delta": {"type": "text_delta", "text": " upon"}}',
+                "",
+                "event: content_block_delta",
+                'data: {"type": "content_block_delta", "index": 0, "content_block": {"type": "text"}, "delta": {"type": "text_delta", "text": " a time"}}',
+                "",
+                # 完了イベント
+                "event: message_delta",
+                'data: {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"input_tokens": 10, "output_tokens": 15}}',
+                "",
+                "event: message_stop",
+                'data: {"type": "message_stop", "stop_reason": "end_turn"}',
+                "",
+            ]
+            for line in lines:
+                yield line
+
+        mock_response.aiter_lines = mock_iter_lines
+
+        # AsyncMockContextManagerを使ってストリーミングレスポンスをモック
+        mock_async_context = MagicMock()
+        mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_async_context.__aexit__ = AsyncMock(return_value=None)
+
+        with patch.object(provider, "_get_client") as mock_get_client:
+            mock_client_instance = AsyncMock()
+            mock_get_client.return_value = mock_client_instance
+            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+
+            # Act: ストリーミングチャット補完を実行
+            chunks = []
+            async for chunk in provider.chat_completion_stream(messages):
+                chunks.append(chunk)
+
+            # Assert: 正しいチャンクが返されることを検証
+            assert len(chunks) == 4  # 3つのdelta + 1つのdone
+
+            # deltaチャンクの確認
+            assert chunks[0].type == "delta"
+            assert chunks[0].delta == "Once"
+            assert chunks[1].delta == " upon"
+            assert chunks[2].delta == " a time"
+
+            # doneチャンクの確認
+            assert chunks[3].type == "done"
+            assert chunks[3].finish_reason == "end_turn"
+            assert chunks[3].usage["prompt_tokens"] == 10
+            assert chunks[3].usage["completion_tokens"] == 15
+
+    @pytest.mark.asyncio
+    async def test_chat_completion_stream_with_tool_calls(self):
+        """ストリーミングでツール呼び出しを含む応答をテスト。"""
+        # Arrange: プロバイダーとメッセージを準備
+        provider = AnthropicProvider("test-key", "claude-3-5-sonnet-20241022")
+        messages = [Message(role="user", content="Get my stats")]
+
+        # ストリーミングレスポンスをモック
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+
+        async def mock_iter_lines():
+            lines = [
+                # 完了イベント（ツール使用の場合、stop_reasonがtool_useになる）
+                "event: message_delta",
+                'data: {"type": "message_delta", "delta": {"stop_reason": "tool_use"}, "usage": {"input_tokens": 10, "output_tokens": 20}}',
+                "",
+                "event: message_stop",
+                'data: {"type": "message_stop", "stop_reason": "tool_use"}',
+                "",
+            ]
+            for line in lines:
+                yield line
+
+        mock_response.aiter_lines = mock_iter_lines
+
+        mock_async_context = MagicMock()
+        mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_async_context.__aexit__ = AsyncMock(return_value=None)
+
+        with patch.object(provider, "_get_client") as mock_get_client:
+            mock_client_instance = AsyncMock()
+            mock_get_client.return_value = mock_client_instance
+            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+
+            # Act: ストリーミングチャット補完を実行
+            chunks = []
+            async for chunk in provider.chat_completion_stream(messages):
+                chunks.append(chunk)
+
+            # Assert: doneチャンクがtool_use finish_reasonを含むことを確認
+            assert len(chunks) == 1
+            assert chunks[0].type == "done"
+            assert chunks[0].finish_reason == "tool_use"
+
+    @pytest.mark.asyncio
+    async def test_chat_completion_stream_empty_response(self):
+        """ストリーミングで空の応答をテスト。"""
+        # Arrange: プロバイダーとメッセージを準備
+        provider = AnthropicProvider("test-key", "claude-3-5-sonnet-20241022")
+        messages = [Message(role="user", content="OK")]
+
+        # 空のストリーミングレスポンスをモック
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+
+        async def mock_iter_lines():
+            # 空の完了イベントのみ
+            lines = [
+                "event: message_delta",
+                'data: {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"input_tokens": 5, "output_tokens": 0}}',
+                "",
+                "event: message_stop",
+                'data: {"type": "message_stop", "stop_reason": "end_turn"}',
+                "",
+            ]
+            for line in lines:
+                yield line
+
+        mock_response.aiter_lines = mock_iter_lines
+
+        mock_async_context = MagicMock()
+        mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_async_context.__aexit__ = AsyncMock(return_value=None)
+
+        with patch.object(provider, "_get_client") as mock_get_client:
+            mock_client_instance = AsyncMock()
+            mock_get_client.return_value = mock_client_instance
+            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+
+            # Act: ストリーミングチャット補完を実行
+            chunks = []
+            async for chunk in provider.chat_completion_stream(messages):
+                chunks.append(chunk)
+
+            # Assert: doneチャンクのみが返されることを確認
+            assert len(chunks) == 1
+            assert chunks[0].type == "done"
+            assert chunks[0].delta is None
+            assert chunks[0].usage["completion_tokens"] == 0
+
+    @pytest.mark.asyncio
+    async def test_chat_completion_stream_error_event(self):
+        """ストリーミングでエラーイベントをテスト。"""
+        # Arrange: プロバイダーとメッセージを準備
+        provider = AnthropicProvider("test-key", "claude-3-5-sonnet-20241022")
+        messages = [Message(role="user", content="Hello")]
+
+        # エラーイベントを含むストリーミングレスポンスをモック
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+
+        async def mock_iter_lines():
+            lines = [
+                "event: error",
+                'data: {"type": "error", "error": {"type": "invalid_request", "message": "Invalid API key"}}',
+                "",
+            ]
+            for line in lines:
+                yield line
+
+        mock_response.aiter_lines = mock_iter_lines
+
+        mock_async_context = MagicMock()
+        mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_async_context.__aexit__ = AsyncMock(return_value=None)
+
+        with patch.object(provider, "_get_client") as mock_get_client:
+            mock_client_instance = AsyncMock()
+            mock_get_client.return_value = mock_client_instance
+            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+
+            # Act: ストリーミングチャット補完を実行
+            chunks = []
+            async for chunk in provider.chat_completion_stream(messages):
+                chunks.append(chunk)
+
+            # Assert: エラーチャンクが返されることを確認
+            assert len(chunks) == 1
+            assert chunks[0].type == "error"
+            assert "Invalid API key" in chunks[0].error

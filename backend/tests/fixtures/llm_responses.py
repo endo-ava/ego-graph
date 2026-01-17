@@ -3,7 +3,7 @@
 import json
 from typing import Any, Dict, List, Optional
 
-from backend.infrastructure.llm import ChatResponse, Message
+from backend.domain.models.llm import ChatResponse, Message, StreamChunk
 
 
 def get_mock_openai_response(
@@ -139,3 +139,110 @@ def mock_chat_response(content: str, tool_calls=None) -> ChatResponse:
         usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
         finish_reason="stop" if tool_calls is None else "tool_calls",
     )
+
+
+def get_mock_openai_stream_response(text_chunks: list[str], done: bool = True):
+    """モックOpenAIストリーミングレスポンス（SSE形式）を生成します。
+
+    Args:
+        text_chunks: テキストチャンクのリスト
+        done: 完了フラグ
+
+    Returns:
+        SSE形式の各行を返すジェネレータ
+    """
+    for i, chunk in enumerate(text_chunks):
+        json_data = {
+            "id": "chatcmpl-stream",
+            "object": "chat.completion.chunk",
+            "created": 1234567890,
+            "model": "gpt-4o-mini",
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {"content": chunk},
+                    "finish_reason": None,
+                }
+            ],
+        }
+        yield f"data: {json.dumps(json_data)}\n"
+
+    if done:
+        yield "data: [DONE]\n"
+
+
+def get_mock_anthropic_stream_events(events: list[dict]) -> list[dict]:
+    """モックAnthropicストリーミングイベントを生成します。
+
+    Args:
+        events: イベントのリスト（各イベントは辞書）
+
+    Returns:
+        イベント辞書のリスト
+    """
+    return events
+
+
+def mock_stream_chunk(
+    type: str,
+    delta: str | None = None,
+    tool_calls=None,
+    finish_reason: str | None = None,
+    usage: dict | None = None,
+    error: str | None = None,
+) -> "StreamChunk":
+    """モックStreamChunkオブジェクトを生成します。
+
+    Args:
+        type: チャンクタイプ ("delta", "tool_call", "tool_result", "done", "error")
+        delta: テキスト增量
+        tool_calls: ツール呼び出しリスト
+        finish_reason: 完了理由
+        usage: トークン使用量
+        error: エラーメッセージ
+
+    Returns:
+        StreamChunkオブジェクト
+    """
+    from backend.domain.models.llm import StreamChunk
+
+    return StreamChunk(
+        type=type,
+        delta=delta,
+        tool_calls=tool_calls,
+        finish_reason=finish_reason,
+        usage=usage,
+        error=error,
+    )
+
+
+def get_mock_anthropic_stream_lines(text_chunks: list[str]) -> list[str]:
+    """モックAnthropicストリーミングレスポンスの行を生成します。
+
+    Anthropicは改行区切りのJSONを返します。
+
+    Args:
+        text_chunks: テキストチャンクのリスト
+
+    Returns:
+        Anthropic SSE形式の行リスト
+    """
+    lines = []
+    for i, chunk in enumerate(text_chunks):
+        event = {
+            "type": "content_block_delta",
+            "index": 0,
+            "content_block": {"type": "text"},
+            "delta": {"type": "text_delta", "text": chunk},
+        }
+        lines.append(json.dumps(event))
+
+    # 完了イベント
+    done_event = {
+        "type": "message_stop",
+        "stop_reason": "end_turn",
+        "usage": {"input_tokens": 10, "output_tokens": len(" ".join(text_chunks))},
+    }
+    lines.append(json.dumps(done_event))
+
+    return lines
