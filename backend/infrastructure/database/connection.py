@@ -74,8 +74,8 @@ class DuckDBConnection:
             try:
                 self.conn.execute("LOAD httpfs;")
                 logger.debug("Loaded httpfs extension (already installed)")
-            except duckdb.CatalogException:
-                # 未インストールならINSTALL → LOAD
+            except (duckdb.CatalogException, duckdb.IOException):
+                # 未インストールまたはバイナリ破損ならINSTALL → LOAD
                 self.conn.execute("INSTALL httpfs;")
                 self.conn.execute("LOAD httpfs;")
                 logger.debug("Installed and loaded httpfs extension")

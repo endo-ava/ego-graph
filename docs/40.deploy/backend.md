@@ -105,6 +105,27 @@ cd /opt/egograph/repo
 uv sync --all-packages
 ```
 
+ ### 4.1 DuckDB 拡張のインストール
+
+ **httpfs拡張とは？**
+
+ DuckDBは標準ではローカルファイルしか読み込めません。
+ `httpfs`（HTTP File System）拡張を入れると、以下が可能になります：
+
+ - HTTP/HTTPS経由でリモートのファイルを読み込む
+ - S3互換ストレージ（R2、AWS S3、MinIOなど）に直接アクセスする
+ - 読み込んだファイルをローカルに保存せず、メモリ上でクエリできる
+
+```bash
+uv run python -c "import duckdb; conn = duckdb.connect(); conn.execute('INSTALL httpfs;'); conn.execute('LOAD httpfs;'); print('httpfs installed successfully')"
+```
+
+インストール済み拡張の確認:
+
+```bash
+uv run python -c "import duckdb; conn = duckdb.connect(); print(conn.execute(\"SELECT * FROM duckdb_extensions() WHERE extension_name = 'httpfs'\").fetchdf())"
+```
+
 ## 5. systemd 常駐
 
 systemdで常駐化し、障害時は自動復旧させる。
