@@ -5,9 +5,10 @@ LLMとの会話全体をオーケストレーションし、スレッド管理�
 
 import asyncio
 import logging
-from typing import cast
+from typing import AsyncGenerator, cast
 
 from backend.config import LLMConfig
+from backend.domain.models.llm import StreamChunk
 from backend.infrastructure.llm import LLMClient, Message
 from backend.infrastructure.repositories import DuckDBThreadRepository
 from backend.usecases.chat.system_prompt_builder import SystemPromptBuilder
@@ -327,3 +328,105 @@ class ChatUseCase:
             logger.debug("Registered Spotify tools")
 
         return tool_registry
+
+    async def execute_stream(
+        self, request: ChatRequest
+    ) -> AsyncGenerator[StreamChunk, None]:
+        """チャット会話をストリーミングで実行します。
+
+        ストリーミングモードでは、最終的な応答のみをストリーミングで返します。
+        ツール呼び出しはバックグラウンドで実行されます。
+
+        処理フロー:
+        1. スレッド管理（新規作成 or 既存取得）
+        2. モデル名解決
+        3. 会話準備（SystemPromptBuilder使用）
+        4. LLM初期化
+        5. ツールレジストリ構築
+        6. ToolExecutor.execute_loop_stream() 実行
+        7. アシスタント応答の永続化（完了時のみ）
+
+        Args:
+            request: チャットリクエスト
+
+        Yields:
+            StreamChunk: 各ストリーミングチャンク
+
+        Raises:
+            NoUserMessageError: 新規スレッド作成時にユーザーメッセージがない
+            ThreadNotFoundError: 既存スレッドが見つからない
+            MaxIterationsExceeded: 最大イテレーション数到達
+            asyncio.TimeoutError: タイムアウト発生
+        """
+        # 1. スレッド管理
+        thread_id = await self._handle_thread(request)
+        logger.info("Using thread_id=%s for user_id=%s", thread_id, request.user_id)
+
+        # 2. モデル名解決
+        used_model_name = (
+            request.model_name
+            if request.model_name is not None
+            else self.llm_config.model_name
+        )
+        logger.info("Using model_name=%s", used_model_name)
+
+        # 3. 会話準備（システムメッセージ追加）
+        conversation_history = self._prepare_conversation(request.messages)
+
+        # 4. LLM初期化
+        llm_client = LLMClient(
+            provider_name=self.llm_config.provider,
+            api_key=self.llm_config.api_key.get_secret_value(),
+            model_name=used_model_name,
+            enable_web_search=self.llm_config.enable_web_search,
+        )
+
+        # 5. ツールレジストリ構築
+        tool_registry = self._build_tool_registry()
+        tools = tool_registry.get_all_schemas()
+
+        # 6. ToolExecutor.execute_loop_stream() 実行
+        tool_executor = ToolExecutor(
+            llm_client=llm_client,
+            tool_registry=tool_registry,
+            max_iterations=5,
+        )
+
+        # 最終的な応答を蓄積
+        final_content = ""
+
+        try:
+            async for chunk in tool_executor.execute_loop_stream(
+                conversation_history=conversation_history,
+                tools=tools,
+                temperature=self.llm_config.temperature,
+                max_tokens=self.llm_config.max_tokens,
+                timeout=TOTAL_TIMEOUT,
+            ):
+                if chunk.type == "delta" and chunk.delta:
+                    final_content += chunk.delta
+                    yield chunk
+                elif chunk.type == "done":
+                    # doneチャンクにthread_idを追加
+                    yield chunk.model_copy(update={"thread_id": thread_id})
+                else:
+                    # ツール呼び出し/結果は yield しない
+                    pass
+        except (MaxIterationsExceeded, asyncio.TimeoutError):
+            # これらのエラーは呼び出し側で処理されるべき
+            raise
+
+        # 7. アシスタント応答の永続化（完了時のみ）
+        if final_content:
+            self.thread_repository.add_message(
+                thread_id=thread_id,
+                user_id=request.user_id,
+                role="assistant",
+                content=final_content,
+                model_name=used_model_name,
+            )
+            logger.info(
+                "Saved assistant message to thread_id=%s (length=%s)",
+                thread_id,
+                len(final_content),
+            )

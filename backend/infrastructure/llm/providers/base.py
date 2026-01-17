@@ -1,9 +1,9 @@
 """LLMプロバイダーの基底クラス。"""
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, AsyncGenerator
 
-from backend.domain.models.llm import ChatResponse, Message
+from backend.domain.models.llm import ChatResponse, Message, StreamChunk
 from backend.domain.tools import Tool
 
 
@@ -77,6 +77,30 @@ class BaseLLMProvider(ABC):
 
         Returns:
             統一されたChatResponse
+
+        Raises:
+            httpx.HTTPError: API呼び出しに失敗した場合
+        """
+        pass
+
+    @abstractmethod
+    async def chat_completion_stream(
+        self,
+        messages: list[Message],
+        tools: list[Tool] | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ) -> AsyncGenerator[StreamChunk, None]:
+        """チャット補完リクエストをストリーミングで送信します。
+
+        Args:
+            messages: チャットメッセージ履歴
+            tools: 利用可能なツールのリスト
+            temperature: 生成の多様性（0.0-2.0）
+            max_tokens: 最大トークン数
+
+        Yields:
+            StreamChunk: 各ストリーミングチャンク
 
         Raises:
             httpx.HTTPError: API呼び出しに失敗した場合
