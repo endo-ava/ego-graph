@@ -32,7 +32,10 @@
       "Bash(npm view:*)",
       "Bash(uv run mypy:*)",
       "mcp__serena__think_about_task_adherence",
-      "Bash(npm run test:run:*)"
+      "Bash(npm run test:run:*)",
+      "Bash(uv run python3:*)",
+      "Bash(eza:*)",
+      "Bash(fd:*)"
     ],
     "deny": [
       "Read(.env)",
