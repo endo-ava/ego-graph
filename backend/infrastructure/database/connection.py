@@ -69,10 +69,16 @@ class DuckDBConnection:
         self.conn = duckdb.connect(":memory:")
 
         try:
-            # httpfs拡張のインストールとロード
-            self.conn.execute("INSTALL httpfs;")
-            self.conn.execute("LOAD httpfs;")
-            logger.debug("Loaded httpfs extension")
+            # httpfs拡張のインストールとロード（最適化版）
+            # 既にインストール済みならLOADのみ実行して高速化
+            try:
+                self.conn.execute("LOAD httpfs;")
+                logger.debug("Loaded httpfs extension (already installed)")
+            except duckdb.CatalogException:
+                # 未インストールならINSTALL → LOAD
+                self.conn.execute("INSTALL httpfs;")
+                self.conn.execute("LOAD httpfs;")
+                logger.debug("Installed and loaded httpfs extension")
 
             # R2認証情報の設定（CREATE SECRET）
             parsed = urlparse(self.r2_config.endpoint_url)
