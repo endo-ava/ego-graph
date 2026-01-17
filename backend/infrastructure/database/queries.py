@@ -53,7 +53,7 @@ def _generate_partition_paths(
             bucket=bucket,
             events_path=events_path,
             year=current.year,
-            month=current.month,
+            month=f"{current.month:02d}",
         )
         paths.append(path)
 

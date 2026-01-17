@@ -31,7 +31,10 @@ class TestGeneratePartitionPaths:
 
         # Assert: 1ヶ月分のパスが生成されることを検証
         assert len(paths) == 1
-        assert paths[0] == "s3://my-bucket/events/spotify/plays/year=2024/month=1/**/*.parquet"
+        assert (
+            paths[0]
+            == "s3://my-bucket/events/spotify/plays/year=2024/month=01/**/*.parquet"
+        )
 
     def test_generates_multiple_month_paths(self):
         """複数月のパスを生成。"""
@@ -46,9 +49,18 @@ class TestGeneratePartitionPaths:
 
         # Assert: 3ヶ月分のパスが生成されることを検証
         assert len(paths) == 3
-        assert paths[0] == "s3://test-bucket/data/spotify/plays/year=2024/month=11/**/*.parquet"
-        assert paths[1] == "s3://test-bucket/data/spotify/plays/year=2024/month=12/**/*.parquet"
-        assert paths[2] == "s3://test-bucket/data/spotify/plays/year=2025/month=1/**/*.parquet"
+        assert (
+            paths[0]
+            == "s3://test-bucket/data/spotify/plays/year=2024/month=11/**/*.parquet"
+        )
+        assert (
+            paths[1]
+            == "s3://test-bucket/data/spotify/plays/year=2024/month=12/**/*.parquet"
+        )
+        assert (
+            paths[2]
+            == "s3://test-bucket/data/spotify/plays/year=2025/month=01/**/*.parquet"
+        )
 
     def test_handles_year_boundary(self):
         """年をまたぐ期間を正しく処理。"""
@@ -64,7 +76,7 @@ class TestGeneratePartitionPaths:
         # Assert: 年をまたぐ2ヶ月分のパスが生成されることを検証
         assert len(paths) == 2
         assert "year=2023/month=12" in paths[0]
-        assert "year=2024/month=1" in paths[1]
+        assert "year=2024/month=01" in paths[1]
 
 
 class TestGetParquetPath:
