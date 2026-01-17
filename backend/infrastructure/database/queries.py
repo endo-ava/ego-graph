@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 # Parquetパスパターン
 SPOTIFY_PLAYS_PATH = "s3://{bucket}/{events_path}spotify/plays/**/*.parquet"
+SPOTIFY_PLAYS_PARTITION_PATH = (
+    "s3://{bucket}/{events_path}spotify/plays/year={year}/month={month}/**/*.parquet"
+)
 
 
 def get_parquet_path(bucket: str, events_path: str) -> str:
@@ -23,6 +26,50 @@ def get_parquet_path(bucket: str, events_path: str) -> str:
         S3パスパターン（例: s3://egograph/events/spotify/plays/**/*.parquet）
     """
     return SPOTIFY_PLAYS_PATH.format(bucket=bucket, events_path=events_path)
+
+
+def _generate_partition_paths(
+    bucket: str, events_path: str, start_date: date, end_date: date
+) -> list[str]:
+    """指定期間の月パーティションに対応するParquetパスリストを生成します。
+
+    Args:
+        bucket: R2バケット名
+        events_path: イベントデータのパスプレフィックス
+        start_date: 開始日
+        end_date: 終了日
+
+    Returns:
+        月パーティションごとのS3パスリスト
+        （例: ["s3://bucket/events/spotify/plays/year=2024/month=11/**/*.parquet",
+              ...]）
+    """
+    paths: list[str] = []
+    current = start_date.replace(day=1)  # 月初に正規化
+    end_month = end_date.replace(day=1)
+
+    while current <= end_month:
+        path = SPOTIFY_PLAYS_PARTITION_PATH.format(
+            bucket=bucket,
+            events_path=events_path,
+            year=current.year,
+            month=f"{current.month:02d}",
+        )
+        paths.append(path)
+
+        # 次の月へ
+        if current.month == 12:
+            current = current.replace(year=current.year + 1, month=1)
+        else:
+            current = current.replace(month=current.month + 1)
+
+    logger.debug(
+        "Generated %d partition paths for period %s to %s",
+        len(paths),
+        start_date,
+        end_date,
+    )
+    return paths
 
 
 def execute_query(
@@ -48,7 +95,8 @@ def execute_query(
 
 def get_top_tracks(
     conn: duckdb.DuckDBPyConnection,
-    parquet_path: str,
+    bucket: str,
+    events_path: str,
     start_date: date,
     end_date: date,
     limit: int = 10,
@@ -57,7 +105,8 @@ def get_top_tracks(
 
     Args:
         conn: DuckDBコネクション
-        parquet_path: ParquetファイルのS3パス
+        bucket: R2バケット名
+        events_path: イベントデータのパスプレフィックス
         start_date: 開始日
         end_date: 終了日
         limit: 取得する曲数（デフォルト: 10）
@@ -74,6 +123,10 @@ def get_top_tracks(
             ...
         ]
     """
+    partition_paths = _generate_partition_paths(
+        bucket, events_path, start_date, end_date
+    )
+
     query = """
         SELECT
             track_name,
@@ -91,12 +144,13 @@ def get_top_tracks(
     logger.debug(
         "Executing get_top_tracks: %s to %s, limit=%s", start_date, end_date, limit
     )
-    return execute_query(conn, query, [parquet_path, start_date, end_date, limit])
+    return execute_query(conn, query, [partition_paths, start_date, end_date, limit])
 
 
 def get_listening_stats(
     conn: duckdb.DuckDBPyConnection,
-    parquet_path: str,
+    bucket: str,
+    events_path: str,
     start_date: date,
     end_date: date,
     granularity: str = "day",
@@ -105,7 +159,8 @@ def get_listening_stats(
 
     Args:
         conn: DuckDBコネクション
-        parquet_path: ParquetファイルのS3パス
+        bucket: R2バケット名
+        events_path: イベントデータのパスプレフィックス
         start_date: 開始日
         end_date: 終了日
         granularity: 集計単位（"day", "week", "month"）
@@ -125,6 +180,10 @@ def get_listening_stats(
     Raises:
         ValueError: granularityが無効な場合
     """
+    partition_paths = _generate_partition_paths(
+        bucket, events_path, start_date, end_date
+    )
+
     # 粒度に応じた期間フォーマットを選択
     date_format_map = {
         "day": "%Y-%m-%d",
@@ -160,12 +219,13 @@ def get_listening_stats(
         end_date,
         granularity,
     )
-    return execute_query(conn, query, [parquet_path, start_date, end_date])
+    return execute_query(conn, query, [partition_paths, start_date, end_date])
 
 
 def search_tracks_by_name(
     conn: duckdb.DuckDBPyConnection,
-    parquet_path: str,
+    bucket: str,
+    events_path: str,
     query: str,
     limit: int = 20,
 ) -> list[dict[str, Any]]:
@@ -173,7 +233,8 @@ def search_tracks_by_name(
 
     Args:
         conn: DuckDBコネクション
-        parquet_path: ParquetファイルのS3パス
+        bucket: R2バケット名
+        events_path: イベントデータのパスプレフィックス
         query: 検索クエリ（部分一致）
         limit: 取得する結果数（デフォルト: 20）
 
@@ -189,6 +250,9 @@ def search_tracks_by_name(
             ...
         ]
     """
+    # 全期間を対象とするため、ワイルドカードパスを使用
+    parquet_path = get_parquet_path(bucket, events_path)
+
     search_pattern = f"%{query}%"
     sql = """
         SELECT
