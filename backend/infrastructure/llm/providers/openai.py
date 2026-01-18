@@ -412,3 +412,30 @@ class OpenAIProvider(BaseLLMProvider):
                                     tool_args_buffer.clear()
                                     tool_id_buffer.clear()
                                     tool_name_buffer.clear()
+
+                # ストリームが[DONE]なしで終了した場合のバッファ処理
+                if tool_args_buffer:
+                    logger.warning(
+                        "Stream ended without [DONE] marker, flushing buffered tool calls"
+                    )
+                    tool_calls = []
+                    for idx in sorted(tool_args_buffer.keys()):
+                        try:
+                            params = json.loads(tool_args_buffer[idx])
+                            tool_calls.append(
+                                ToolCall(
+                                    id=tool_id_buffer.get(idx, ""),
+                                    name=tool_name_buffer.get(idx, ""),
+                                    parameters=params,
+                                )
+                            )
+                        except json.JSONDecodeError as e:
+                            logger.warning(
+                                "Failed to parse buffered tool arguments at index %s: %s",
+                                idx,
+                                e,
+                            )
+                    if tool_calls:
+                        yield StreamChunk(type="tool_call", tool_calls=tool_calls)
+                    # 完了扱いにする
+                    yield StreamChunk(type="done", finish_reason="stop")
