@@ -3,9 +3,10 @@
  * TanStack Query と Zustand を組み合わせて使用します
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useChatStore } from '@/lib/store';
-import { sendChatMessage, sendChatMessageStream, ApiRequestError } from '@/lib/api';
+import { sendChatMessageStream, ApiRequestError } from '@/lib/api';
 import type { ChatMessage, Message } from '@/types/chat';
 
 /**
@@ -49,29 +50,10 @@ export function useChat() {
     } = useChatStore();
   const queryClient = useQueryClient();
 
-  const mutation = useMutation({
-    mutationFn: sendChatMessage,
-    onSuccess: (data) => {
-      // アシスタントのメッセージを更新（model_nameも含めて更新）
-      if (data.message.content) {
-        updateLastMessageWithModel(data.message.content, data.model_name || null);
-      }
-      // スレッドIDを保存
-      if (data.thread_id) {
-        setCurrentThreadId(data.thread_id);
-      }
-      // スレッド一覧を無効化して再取得をトリガー
-      queryClient.invalidateQueries({ queryKey: ['threads'] });
-    },
-    onError: (error) => {
-      const errorMessage = getErrorMessage(error);
-      // エラーメッセージを最後のメッセージとして設定
-      updateLastMessage(errorMessage);
-      setLastMessageError(true);
-    },
-  });
+  // ローカルのローディング状態を管理
+  const [isLoading, setIsLoading] = useState(false);
 
-  const sendMessage = async (content: string) => {
+  const sendMessage = useCallback(async (content: string) => {
     // APIリクエスト送信用のメッセージ配列を先に準備（楽観的更新前のmessagesを使用）
     const apiMessages: Message[] = [
       ...messages.map((m) => ({
@@ -103,6 +85,9 @@ export function useChat() {
       model_name: selectedModel,
     };
     addMessage(assistantMessage);
+
+    // ローディング状態を開始
+    setIsLoading(true);
 
     // ストリーミングで API リクエスト送信
     let accumulatedContent = '';
@@ -137,13 +122,16 @@ export function useChat() {
       const errorMessage = getErrorMessage(error);
       setLastMessageError(true);
       updateLastMessage(errorMessage);
+    } finally {
+      // ローディング状態を終了
+      setIsLoading(false);
     }
-  };
+  }, [messages, currentThreadId, selectedModel, addMessage, updateLastMessage, updateLastMessageWithModel, setLastMessageError, setCurrentThreadId, queryClient]);
 
   return {
     messages,
     sendMessage,
     clearMessages,
-    isLoading: mutation.isPending,
+    isLoading,
   };
 }

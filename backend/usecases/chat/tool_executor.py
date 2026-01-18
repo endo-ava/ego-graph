@@ -131,8 +131,6 @@ class ToolExecutor:
                 )
             except asyncio.TimeoutError:
                 logger.error("LLM request timed out")
-                # クライアントにエラーを通知
-                yield StreamChunk(type="error", error="Request timed out")
                 raise
 
             # ツール呼び出しがなければ終了

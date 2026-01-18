@@ -148,11 +148,10 @@ class TestAnthropicProvider:
             Message(role="user", content="Hello"),
         ]
 
-        # _get_client()をモックして共有クライアントを返す
-        with patch.object(provider, "_get_client") as mock_get_client:
-            mock_client_instance = AsyncMock()
-            mock_get_client.return_value = mock_client_instance
-
+        # httpx.AsyncClientをモック
+        with patch(
+            "backend.infrastructure.llm.providers.anthropic.httpx.AsyncClient"
+        ) as mock_client_class:
             # レスポンスモック
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -168,7 +167,13 @@ class TestAnthropicProvider:
                 }
             )
             mock_response.raise_for_status = MagicMock()
+            mock_client_instance = AsyncMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
+            mock_client_instance.__aenter__ = AsyncMock(
+                return_value=mock_client_instance
+            )
+            mock_client_instance.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client_instance
 
             # Act: チャット補完を実行
             response = await provider.chat_completion(messages)
@@ -195,11 +200,10 @@ class TestAnthropicProvider:
 
         messages = [Message(role="user", content="Hello")]
 
-        # _get_client()をモックして共有クライアントを返す
-        with patch.object(provider, "_get_client") as mock_get_client:
-            mock_client_instance = AsyncMock()
-            mock_get_client.return_value = mock_client_instance
-
+        # httpx.AsyncClientをモック
+        with patch(
+            "backend.infrastructure.llm.providers.anthropic.httpx.AsyncClient"
+        ) as mock_client_class:
             # レスポンスモック
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -215,7 +219,13 @@ class TestAnthropicProvider:
                 }
             )
             mock_response.raise_for_status = MagicMock()
+            mock_client_instance = AsyncMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
+            mock_client_instance.__aenter__ = AsyncMock(
+                return_value=mock_client_instance
+            )
+            mock_client_instance.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client_instance
 
             # Act: チャット補完を実行
             response = await provider.chat_completion(messages)
@@ -455,10 +465,17 @@ class TestAnthropicProvider:
         mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
         mock_async_context.__aexit__ = AsyncMock(return_value=None)
 
-        with patch.object(provider, "_get_client") as mock_get_client:
+        # httpx.AsyncClientをモック
+        with patch(
+            "backend.infrastructure.llm.providers.anthropic.httpx.AsyncClient"
+        ) as mock_client_class:
             mock_client_instance = AsyncMock()
-            mock_get_client.return_value = mock_client_instance
             mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+            mock_client_instance.__aenter__ = AsyncMock(
+                return_value=mock_client_instance
+            )
+            mock_client_instance.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client_instance
 
             # Act: ストリーミングチャット補完を実行
             chunks = []
@@ -511,10 +528,17 @@ class TestAnthropicProvider:
         mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
         mock_async_context.__aexit__ = AsyncMock(return_value=None)
 
-        with patch.object(provider, "_get_client") as mock_get_client:
+        # httpx.AsyncClientをモック
+        with patch(
+            "backend.infrastructure.llm.providers.anthropic.httpx.AsyncClient"
+        ) as mock_client_class:
             mock_client_instance = AsyncMock()
-            mock_get_client.return_value = mock_client_instance
             mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+            mock_client_instance.__aenter__ = AsyncMock(
+                return_value=mock_client_instance
+            )
+            mock_client_instance.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client_instance
 
             # Act: ストリーミングチャット補完を実行
             chunks = []
@@ -557,10 +581,17 @@ class TestAnthropicProvider:
         mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
         mock_async_context.__aexit__ = AsyncMock(return_value=None)
 
-        with patch.object(provider, "_get_client") as mock_get_client:
+        # httpx.AsyncClientをモック
+        with patch(
+            "backend.infrastructure.llm.providers.anthropic.httpx.AsyncClient"
+        ) as mock_client_class:
             mock_client_instance = AsyncMock()
-            mock_get_client.return_value = mock_client_instance
             mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+            mock_client_instance.__aenter__ = AsyncMock(
+                return_value=mock_client_instance
+            )
+            mock_client_instance.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client_instance
 
             # Act: ストリーミングチャット補完を実行
             chunks = []
@@ -600,10 +631,17 @@ class TestAnthropicProvider:
         mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
         mock_async_context.__aexit__ = AsyncMock(return_value=None)
 
-        with patch.object(provider, "_get_client") as mock_get_client:
+        # httpx.AsyncClientをモック
+        with patch(
+            "backend.infrastructure.llm.providers.anthropic.httpx.AsyncClient"
+        ) as mock_client_class:
             mock_client_instance = AsyncMock()
-            mock_get_client.return_value = mock_client_instance
             mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+            mock_client_instance.__aenter__ = AsyncMock(
+                return_value=mock_client_instance
+            )
+            mock_client_instance.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client_instance
 
             # Act: ストリーミングチャット補完を実行
             chunks = []
