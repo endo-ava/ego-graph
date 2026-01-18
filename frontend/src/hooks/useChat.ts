@@ -7,6 +7,7 @@ import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useChatStore } from '@/lib/store';
 import { sendChatMessageStream, ApiRequestError } from '@/lib/api';
+import { toast } from 'sonner';
 import type { ChatMessage, Message } from '@/types/chat';
 
 /**
@@ -16,9 +17,11 @@ function getErrorMessage(error: unknown): string {
   let errorMessage = 'エラーが発生しました';
   if (error instanceof ApiRequestError) {
     if (error.status === 501) {
-      errorMessage = 'LLM設定が不足しています。バックエンドの設定を確認してください。';
+      errorMessage =
+        'LLM設定が不足しています。バックエンドの設定を確認してください。';
     } else if (error.status === 504) {
-      errorMessage = 'リクエストがタイムアウトしました。しばらく待ってから再試行してください。';
+      errorMessage =
+        'リクエストがタイムアウトしました。しばらく待ってから再試行してください。';
     } else if (error.status === 502) {
       errorMessage = `LLM APIエラー: ${error.detail}`;
     } else if (error.status === 401) {
@@ -37,96 +40,118 @@ function getErrorMessage(error: unknown): string {
 }
 
 export function useChat() {
-   const {
-      messages,
-      currentThreadId,
-      addMessage,
-      updateLastMessage,
-      updateLastMessageWithModel,
-      setLastMessageError,
-      clearMessages,
-      setCurrentThreadId,
-      selectedModel,
-    } = useChatStore();
+  const {
+    messages,
+    currentThreadId,
+    addMessage,
+    updateLastMessage,
+    updateLastMessageWithModel,
+    setLastMessageError,
+    clearMessages,
+    setCurrentThreadId,
+    selectedModel,
+  } = useChatStore();
   const queryClient = useQueryClient();
 
   // ローカルのローディング状態を管理
   const [isLoading, setIsLoading] = useState(false);
 
-  const sendMessage = useCallback(async (content: string) => {
-    // APIリクエスト送信用のメッセージ配列を先に準備（楽観的更新前のmessagesを使用）
-    const apiMessages: Message[] = [
-      ...messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-      {
-        role: 'user' as const,
+  const sendMessage = useCallback(
+    async (content: string) => {
+      // APIリクエスト送信用のメッセージ配列を先に準備（楽観的更新前のmessagesを使用）
+      const apiMessages: Message[] = [
+        ...messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        {
+          role: 'user' as const,
+          content,
+        },
+      ];
+
+      // ユーザーメッセージを即座に追加（楽観的更新）
+      const userMessage: ChatMessage = {
+        id: `user-${Date.now()}`,
+        role: 'user',
         content,
-      },
-    ];
+        timestamp: new Date(),
+      };
+      addMessage(userMessage);
 
-    // ユーザーメッセージを即座に追加（楽観的更新）
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content,
-      timestamp: new Date(),
-    };
-    addMessage(userMessage);
-
-    // アシスタントメッセージのプレースホルダーを追加
-    const assistantMessage: ChatMessage = {
-      id: `assistant-${Date.now()}`,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date(),
-      isLoading: true,
-      model_name: selectedModel,
-    };
-    addMessage(assistantMessage);
-
-    // ローディング状態を開始
-    setIsLoading(true);
-
-    // ストリーミングで API リクエスト送信
-    let accumulatedContent = '';
-
-    try {
-      for await (const chunk of sendChatMessageStream({
-        messages: apiMessages,
-        stream: true,
-        thread_id: currentThreadId,
+      // アシスタントメッセージのプレースホルダーを追加
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+        isLoading: true,
         model_name: selectedModel,
-      })) {
-        if (chunk.type === 'delta' && chunk.delta) {
-          accumulatedContent += chunk.delta;
-          updateLastMessage(accumulatedContent);
-        } else if (chunk.type === 'done') {
-          // 完了
-          updateLastMessageWithModel(accumulatedContent, selectedModel || null);
-          setLastMessageError(false);
-          // スレッドIDをキャプチャ
-          if (chunk.thread_id) {
-            setCurrentThreadId(chunk.thread_id);
+      };
+      addMessage(assistantMessage);
+
+      // ローディング状態を開始
+      setIsLoading(true);
+
+      // ストリーミングで API リクエスト送信
+      let accumulatedContent = '';
+
+      try {
+        for await (const chunk of sendChatMessageStream({
+          messages: apiMessages,
+          stream: true,
+          thread_id: currentThreadId,
+          model_name: selectedModel,
+        })) {
+          if (chunk.type === 'delta' && chunk.delta) {
+            accumulatedContent += chunk.delta;
+            updateLastMessage(accumulatedContent);
+          } else if (chunk.type === 'done') {
+            // 完了
+            updateLastMessageWithModel(
+              accumulatedContent,
+              selectedModel || null,
+            );
+            setLastMessageError(false);
+            // スレッドIDをキャプチャ
+            if (chunk.thread_id) {
+              setCurrentThreadId(chunk.thread_id);
+            }
+            // スレッド一覧を無効化して再取得をトリガー
+            queryClient.invalidateQueries({ queryKey: ['threads'] });
+          } else if (chunk.type === 'error') {
+            setLastMessageError(true);
+            updateLastMessage(chunk.error || 'エラーが発生しました');
           }
-          // スレッド一覧を無効化して再取得をトリガー
-          queryClient.invalidateQueries({ queryKey: ['threads'] });
-        } else if (chunk.type === 'error') {
-          setLastMessageError(true);
-          updateLastMessage(chunk.error || 'エラーが発生しました');
         }
+      } catch (error) {
+        // エラーハンドリング
+        const errorMessage = getErrorMessage(error);
+        toast.error(errorMessage);
+        setLastMessageError(true);
+
+        if (accumulatedContent) {
+          updateLastMessage(accumulatedContent);
+        } else {
+          updateLastMessage(errorMessage);
+        }
+      } finally {
+        // ローディング状態を終了
+        setIsLoading(false);
       }
-    } catch (error) {
-      // エラーハンドリング
-      const errorMessage = getErrorMessage(error);
-      setLastMessageError(true);
-      updateLastMessage(errorMessage);
-    } finally {
-      // ローディング状態を終了
-      setIsLoading(false);
-    }
-  }, [messages, currentThreadId, selectedModel, addMessage, updateLastMessage, updateLastMessageWithModel, setLastMessageError, setCurrentThreadId, queryClient]);
+    },
+    [
+      messages,
+      currentThreadId,
+      selectedModel,
+      addMessage,
+      updateLastMessage,
+      updateLastMessageWithModel,
+      setLastMessageError,
+      setCurrentThreadId,
+      queryClient,
+    ],
+  );
 
   return {
     messages,

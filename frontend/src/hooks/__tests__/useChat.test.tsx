@@ -90,6 +90,7 @@ describe('useChat', () => {
 
     // 501エラー（LLM設定不足）をモック
     async function* mockStream() {
+      yield* [];
       throw new api.ApiRequestError(501, 'LLM provider not configured');
     }
     vi.spyOn(api, 'sendChatMessageStream').mockReturnValue(mockStream());
@@ -110,7 +111,8 @@ describe('useChat', () => {
     await waitFor(() => {
       expect(result.current.messages[1]).toMatchObject({
         role: 'assistant',
-        content: 'LLM設定が不足しています。バックエンドの設定を確認してください。',
+        content:
+          'LLM設定が不足しています。バックエンドの設定を確認してください。',
         isError: true,
         isLoading: false,
       });
@@ -123,6 +125,7 @@ describe('useChat', () => {
 
     // 504エラー（タイムアウト）をモック
     async function* mockStream() {
+      yield* [];
       throw new api.ApiRequestError(504, 'Request timeout');
     }
     vi.spyOn(api, 'sendChatMessageStream').mockReturnValue(mockStream());
@@ -141,7 +144,8 @@ describe('useChat', () => {
 
     await waitFor(() => {
       expect(result.current.messages[1]).toMatchObject({
-        content: 'リクエストがタイムアウトしました。しばらく待ってから再試行してください。',
+        content:
+          'リクエストがタイムアウトしました。しばらく待ってから再試行してください。',
         isError: true,
       });
     });
@@ -153,6 +157,7 @@ describe('useChat', () => {
 
     // 502エラー（LLM APIエラー）をモック
     async function* mockStream() {
+      yield* [];
       throw new api.ApiRequestError(502, 'OpenAI API rate limit exceeded');
     }
     vi.spyOn(api, 'sendChatMessageStream').mockReturnValue(mockStream());
@@ -184,6 +189,7 @@ describe('useChat', () => {
 
     // 401エラー（認証失敗）をモック
     async function* mockStream() {
+      yield* [];
       throw new api.ApiRequestError(401, 'Unauthorized');
     }
     vi.spyOn(api, 'sendChatMessageStream').mockReturnValue(mockStream());
@@ -214,6 +220,7 @@ describe('useChat', () => {
 
     // 一般的なエラーをモック
     async function* mockStream() {
+      yield* [];
       throw new Error('Network error');
     }
     vi.spyOn(api, 'sendChatMessageStream').mockReturnValue(mockStream());
@@ -377,7 +384,9 @@ describe('useChat', () => {
       yield { type: 'delta' as const, delta: 'Response' };
       yield { type: 'done' as const, thread_id: 'thread-1' };
     }
-    const sendChatMessageSpy = vi.spyOn(api, 'sendChatMessageStream').mockReturnValue(mockStream());
+    const sendChatMessageSpy = vi
+      .spyOn(api, 'sendChatMessageStream')
+      .mockReturnValue(mockStream());
 
     const { result } = renderHook(() => useChat(), { wrapper });
 
