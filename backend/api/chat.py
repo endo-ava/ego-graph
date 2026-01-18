@@ -5,10 +5,13 @@ LLMが必要に応じてツールを呼び出し、データにアクセスし�
 """
 
 import asyncio
+import json
 import logging
+from typing import AsyncGenerator
 
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.api.schemas import DEFAULT_MODEL, get_all_models, get_model
@@ -80,6 +83,9 @@ async def chat(
     ユーザーのメッセージを受け取り、LLMがツールを使用して
     データにアクセスしながら応答を生成します。
 
+    ストリーミングモード (stream=True) の場合は Server-Sent Events (SSE) で
+    テキストチャンクを逐次返します。
+
     Args:
         request: チャットリクエスト
         chat_db: チャットDB接続
@@ -87,7 +93,8 @@ async def chat(
         _: API Key検証結果(未使用)
 
     Returns:
-        ChatResponseModel: チャット応答
+        ChatResponseModel: チャット応答 (stream=Falseの場合)
+        StreamingResponse: ストリーミングレスポンス (stream=Trueの場合)
 
     Raises:
         HTTPException: LLM設定が不足している場合(501)
@@ -112,7 +119,11 @@ async def chat(
             detail="LLM configuration is missing. Chat endpoint is unavailable.",
         )
 
-    logger.info("Received chat request with %s messages", len(request.messages))
+    logger.info(
+        "Received chat request with %s messages (stream=%s)",
+        len(request.messages),
+        request.stream,
+    )
 
     # 2. モデル名検証
     model_name = request.model_name or config.llm.model_name
@@ -122,7 +133,38 @@ async def chat(
         logger.exception("Invalid model name: %s", model_name)
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    # 3. UseCase実行
+    # 3. ストリーミングモードか非ストリーミングモードか
+    if request.stream:
+        # ストリーミングレスポンス
+        return StreamingResponse(
+            _stream_chat(request, chat_db, config),
+            media_type="text/event-stream",
+        )
+    else:
+        # 非ストリーミングモード（既存のロジック）
+        return await _chat_non_streaming(request, chat_db, config, model_name)
+
+
+async def _chat_non_streaming(
+    request: ChatRequest,
+    chat_db: duckdb.DuckDBPyConnection,
+    config: BackendConfig,
+    model_name: str,
+) -> ChatResponseModel:
+    """非ストリーミングモードでチャットを実行します。
+
+    Args:
+        request: チャットリクエスト
+        chat_db: チャットDB接続
+        config: バックエンド設定
+        model_name: 使用するモデル名
+
+    Returns:
+        ChatResponseModel: チャット応答
+
+    Raises:
+        HTTPException: 各種エラー
+    """
     thread_repository = DuckDBThreadRepository(chat_db)
     use_case = ChatUseCase(thread_repository, config.llm, config.r2)
 
@@ -155,3 +197,57 @@ async def chat(
     except Exception as e:
         logger.exception("Chat request failed")
         raise HTTPException(status_code=502, detail=f"LLM API error: {str(e)}") from e
+
+
+async def _stream_chat(
+    request: ChatRequest,
+    chat_db: duckdb.DuckDBPyConnection,
+    config: BackendConfig,
+) -> AsyncGenerator[str, None]:
+    """ストリーミングモードでチャットを実行します。
+
+    SSE 形式でチャンクを yield します。
+
+    Args:
+        request: チャットリクエスト
+        chat_db: チャットDB接続
+        config: バックエンド設定
+
+    Yields:
+        str: SSE 形式のチャンク
+
+    Raises:
+        HTTPException: 各種エラー
+    """
+    thread_repository = DuckDBThreadRepository(chat_db)
+    use_case = ChatUseCase(thread_repository, config.llm, config.r2)
+
+    try:
+        async for chunk in use_case.execute_stream(
+            UseCaseChatRequest(
+                messages=request.messages,
+                thread_id=request.thread_id,
+                model_name=request.model_name or config.llm.model_name,
+                user_id=DEFAULT_USER_ID,
+            )
+        ):
+            # SSE 形式で yield
+            yield f"event: {chunk.type}\n"
+            yield f"data: {chunk.model_dump_json()}\n\n"
+    except NoUserMessageError as e:
+        yield "event: error\n"
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    except ThreadNotFoundError as e:
+        yield "event: error\n"
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    except MaxIterationsExceeded as e:
+        yield "event: error\n"
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    except asyncio.TimeoutError:
+        logger.exception("Request timed out")
+        yield "event: error\n"
+        yield f"data: {json.dumps({'error': 'Request timed out'})}\n\n"
+    except Exception as e:
+        logger.exception("Chat request failed")
+        yield "event: error\n"
+        yield f"data: {json.dumps({'error': f'LLM API error: {str(e)}'})}\n\n"

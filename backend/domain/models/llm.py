@@ -52,3 +52,21 @@ class ChatResponse(BaseModel):
     # tokens情報(プロバイダーによって構造が異なる)
     usage: dict[str, Any] | None = None
     finish_reason: str
+
+
+class StreamChunk(BaseModel):
+    """ストリーミングチャンク(ドメインエンティティ)。
+
+    LLMレスポンスの各チャンクを表現します。
+    ツール呼び出しと最終テキスト生成の両方をサポートします。
+    """
+
+    type: Literal["delta", "tool_call", "tool_result", "done", "error"]
+    delta: str | None = None
+    tool_calls: list[ToolCall] | None = None
+    tool_name: str | None = None
+    tool_result: dict[str, Any] | None = None
+    finish_reason: str | None = None
+    usage: dict[str, Any] | None = None
+    error: str | None = None
+    thread_id: str | None = None

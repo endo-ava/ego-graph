@@ -267,3 +267,200 @@ class TestOpenAIProvider:
         # Act & Assert: nameが必須であることを検証
         with pytest.raises(ValueError, match=r"invalid_tool_message.*name"):
             provider._convert_messages_to_provider_format(messages)
+
+    @pytest.mark.asyncio
+    async def test_chat_completion_stream_success(self):
+        """ストリーミングチャット補完が成功する。"""
+        # Arrange: プロバイダーとメッセージを準備
+        provider = OpenAIProvider("test-key", "gpt-4o-mini")
+        messages = [Message(role="user", content="Tell me a story")]
+
+        # httpx.AsyncClientのストリーミングレスポンスをモック
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+
+        # ストリーミング-linesをモック
+        async def mock_iter_lines():
+            # テキストチャンクと[DONE]をyield
+            lines = [
+                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"content":"Once"},"finish_reason":null}]}',
+                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567891,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"content":" upon"},"finish_reason":null}]}',
+                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567892,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"content":" a time"},"finish_reason":null}]}',
+                "data: [DONE]",
+            ]
+            for line in lines:
+                yield line
+
+        mock_response.aiter_lines = mock_iter_lines
+
+        # AsyncMockContextManagerを使ってストリーミングレスポンスをモック
+        mock_async_context = MagicMock()
+        mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_async_context.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client_instance = MagicMock()
+            mock_client_class.return_value.__aenter__.return_value = (
+                mock_client_instance
+            )
+            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+
+            # Act: ストリーミングチャット補完を実行
+            chunks = []
+            async for chunk in provider.chat_completion_stream(messages):
+                chunks.append(chunk)
+
+            # Assert: 正しいチャンクが返されることを検証
+            assert len(chunks) == 4  # 3つのdelta + 1つのdone
+
+            # deltaチャンクの確認
+            assert chunks[0].type == "delta"
+            assert chunks[0].delta == "Once"
+            assert chunks[1].delta == " upon"
+            assert chunks[2].delta == " a time"
+
+            # doneチャンクの確認
+            assert chunks[3].type == "done"
+
+    @pytest.mark.asyncio
+    async def test_chat_completion_stream_with_tool_calls(self):
+        """ストリーミングでツール呼び出しを含む応答をテスト。"""
+        # Arrange: プロバイダーとメッセージを準備
+        provider = OpenAIProvider("test-key", "gpt-4o-mini")
+        messages = [Message(role="user", content="Get my stats")]
+
+        # ストリーミングレスポンスをモック（ツール呼び出しを含む）
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+
+        async def mock_iter_lines():
+            lines = [
+                # ツール呼び出しを含むチャンク
+                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_001","type":"function","function":{"name":"get_stats","arguments":"{\\"limit\\":10}"},"index":0}]},"finish_reason":null}]}',
+                "data: [DONE]",
+            ]
+            for line in lines:
+                yield line
+
+        mock_response.aiter_lines = mock_iter_lines
+
+        mock_async_context = MagicMock()
+        mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_async_context.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client_instance = MagicMock()
+            mock_client_class.return_value.__aenter__.return_value = (
+                mock_client_instance
+            )
+            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+
+            # Act: ストリーミングチャット補完を実行
+            chunks = []
+            async for chunk in provider.chat_completion_stream(messages):
+                chunks.append(chunk)
+
+            # Assert: ツール呼び出しチャンクが含まれることを確認
+            assert len(chunks) == 2
+
+            # ツール呼び出しチャンクの確認
+            tool_call_chunk = chunks[0]
+            assert tool_call_chunk.type == "tool_call"
+            assert tool_call_chunk.tool_calls is not None
+            assert len(tool_call_chunk.tool_calls) == 1
+            assert tool_call_chunk.tool_calls[0].name == "get_stats"
+            assert tool_call_chunk.tool_calls[0].parameters == {"limit": 10}
+
+    @pytest.mark.asyncio
+    async def test_chat_completion_stream_handles_done_marker(self):
+        """ストリーミングで[DONE]マーカーを正しく処理する。"""
+        # Arrange: プロバイダーとメッセージを準備
+        provider = OpenAIProvider("test-key", "gpt-4o-mini")
+        messages = [Message(role="user", content="Hello")]
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+
+        async def mock_iter_lines():
+            # [DONE]マーカーのみ（テキストなし）
+            lines = ["data: [DONE]"]
+            for line in lines:
+                yield line
+
+        mock_response.aiter_lines = mock_iter_lines
+
+        mock_async_context = MagicMock()
+        mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_async_context.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client_instance = MagicMock()
+            mock_client_class.return_value.__aenter__.return_value = (
+                mock_client_instance
+            )
+            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+
+            # Act: ストリーミングチャット補完を実行
+            chunks = []
+            async for chunk in provider.chat_completion_stream(messages):
+                chunks.append(chunk)
+
+            # Assert: doneチャンクのみが返されることを確認
+            assert len(chunks) == 1
+            assert chunks[0].type == "done"
+
+    @pytest.mark.asyncio
+    async def test_chat_completion_stream_with_usage(self):
+        """ストリーミングでusage情報が返される。"""
+        # Arrange: プロバイダーとメッセージを準備
+        provider = OpenAIProvider("test-key", "gpt-4o-mini")
+        messages = [Message(role="user", content="Hello")]
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+
+        async def mock_iter_lines():
+            lines = [
+                # テキスト増量チャンク
+                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"content":"Hi"},"finish_reason":null}]}',
+                # 完了チャンク（finish_reasonとusage）
+                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567891,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5}}',
+                "data: [DONE]",
+            ]
+            for line in lines:
+                yield line
+
+        mock_response.aiter_lines = mock_iter_lines
+
+        mock_async_context = MagicMock()
+        mock_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_async_context.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client_instance = MagicMock()
+            mock_client_class.return_value.__aenter__.return_value = (
+                mock_client_instance
+            )
+            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+
+            # Act: ストリーミングチャット補完を実行
+            chunks = []
+            async for chunk in provider.chat_completion_stream(messages):
+                chunks.append(chunk)
+
+            # Assert: deltaチャンクとdoneチャンクが返されることを確認
+            assert len(chunks) == 2
+
+            # deltaチャンクの確認
+            assert chunks[0].type == "delta"
+            assert chunks[0].delta == "Hi"
+
+            # doneチャンクの確認
+            done_chunk = chunks[1]
+            assert done_chunk.type == "done"
+            assert done_chunk.usage == {"prompt_tokens": 10, "completion_tokens": 5}
+            assert done_chunk.finish_reason == "stop"
