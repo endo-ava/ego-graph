@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator
 
 from backend.domain.models.llm import ChatResponse, Message, StreamChunk
-from backend.domain.tools import Tool
+from backend.domain.models.tool import Tool
 
 
 class BaseLLMProvider(ABC):
