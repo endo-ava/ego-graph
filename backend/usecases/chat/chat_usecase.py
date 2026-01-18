@@ -409,9 +409,9 @@ class ChatUseCase:
                 elif chunk.type == "done":
                     # doneチャンクにthread_idを追加
                     yield chunk.model_copy(update={"thread_id": thread_id})
-                else:
-                    # ツール呼び出し/結果は yield しない
-                    pass
+                elif chunk.type in ("tool_call", "tool_result", "error"):
+                    # ツール呼び出し/結果/エラーもパススルー
+                    yield chunk
         except (MaxIterationsExceeded, asyncio.TimeoutError):
             # これらのエラーは呼び出し側で処理されるべき
             raise
