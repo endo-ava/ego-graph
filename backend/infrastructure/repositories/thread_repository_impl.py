@@ -4,11 +4,13 @@
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import uuid4
 
 import duckdb
 
+from backend.constants import DEFAULT_THREAD_LIST_LIMIT
 from backend.domain.models.thread import (
     THREAD_PREVIEW_MAX_LENGTH,
     THREAD_TITLE_MAX_LENGTH,
@@ -17,6 +19,17 @@ from backend.domain.models.thread import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class AddMessageParams:
+    """メッセージ追加用のパラメータ。"""
+
+    thread_id: str
+    user_id: str
+    role: str
+    content: str
+    model_name: str | None = None
 
 
 class DuckDBThreadRepository:
@@ -36,6 +49,28 @@ class DuckDBThreadRepository:
             conn: DuckDBコネクション
         """
         self._conn = conn
+
+    _GET_THREADS_QUERY = """
+        SELECT
+            threads.thread_id,
+            threads.user_id,
+            threads.title,
+            arg_max(messages.content, messages.created_at) AS preview,
+            COUNT(messages.message_id) AS message_count,
+            threads.created_at,
+            threads.last_message_at
+        FROM threads
+        LEFT JOIN messages ON messages.thread_id = threads.thread_id
+        WHERE threads.user_id = ?
+        GROUP BY
+            threads.thread_id,
+            threads.user_id,
+            threads.title,
+            threads.created_at,
+            threads.last_message_at
+        ORDER BY threads.last_message_at DESC
+        LIMIT ? OFFSET ?
+        """
 
     def create_thread(self, user_id: str, first_message_content: str) -> Thread:
         """新規スレッドを作成する。
@@ -85,24 +120,13 @@ class DuckDBThreadRepository:
             last_message_at=now,
         )
 
-    def add_message(
-        self,
-        thread_id: str,
-        user_id: str,
-        role: str,
-        content: str,
-        model_name: str | None = None,
-    ) -> ThreadMessage:
+    def add_message(self, params: AddMessageParams) -> ThreadMessage:
         """スレッドにメッセージを追加する。
 
         メッセージを追加し、スレッドのlast_message_atを更新します。
 
         Args:
-            thread_id: スレッドのUUID
-            user_id: ユーザーID
-            role: メッセージの送信者（'user' | 'assistant'）
-            content: メッセージ本文
-            model_name: 使用したLLMモデル名（assistantメッセージのみ）
+            params: メッセージ追加パラメータ
 
         Returns:
             ThreadMessage: 追加されたメッセージオブジェクト
@@ -123,7 +147,15 @@ class DuckDBThreadRepository:
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (message_id, thread_id, user_id, role, content, now, model_name),
+                (
+                    message_id,
+                    params.thread_id,
+                    params.user_id,
+                    params.role,
+                    params.content,
+                    now,
+                    params.model_name,
+                ),
             )
 
             # スレッドのlast_message_atを更新
@@ -133,7 +165,7 @@ class DuckDBThreadRepository:
                 SET last_message_at = ?
                 WHERE thread_id = ?
                 """,
-                (now, thread_id),
+                (now, params.thread_id),
             )
 
             self._conn.commit()
@@ -144,18 +176,18 @@ class DuckDBThreadRepository:
         logger.info(
             "Added message message_id=%s to thread_id=%s, role=%s",
             message_id,
-            thread_id,
-            role,
+            params.thread_id,
+            params.role,
         )
 
         return ThreadMessage(
             message_id=message_id,
-            thread_id=thread_id,
-            user_id=user_id,
-            role=role,
-            content=content,
+            thread_id=params.thread_id,
+            user_id=params.user_id,
+            role=params.role,
+            content=params.content,
             created_at=now,
-            model_name=model_name,
+            model_name=params.model_name,
         )
 
     def get_thread(self, thread_id: str) -> Thread | None:
@@ -210,7 +242,7 @@ class DuckDBThreadRepository:
         )
 
     def get_threads(
-        self, user_id: str, limit: int = 50, offset: int = 0
+        self, user_id: str, limit: int = DEFAULT_THREAD_LIST_LIMIT, offset: int = 0
     ) -> tuple[list[Thread], int]:
         """ユーザーのスレッド一覧を取得する。
 
@@ -237,53 +269,12 @@ class DuckDBThreadRepository:
             必要があり、実装の複雑さとトレードオフになります。
             現時点（MVP段階）では、この実装で十分な性能が得られています。
         """
-        # 総件数を取得
+        total = self._get_thread_count(user_id)
         result = self._conn.execute(
-            """
-            SELECT COUNT(*) FROM threads WHERE user_id = ?
-            """,
-            (user_id,),
-        )
-        total = result.fetchone()[0]
-
-        # スレッド一覧を取得（last_message_at降順）
-        result = self._conn.execute(
-            """
-            SELECT
-                threads.thread_id,
-                threads.user_id,
-                threads.title,
-                arg_max(messages.content, messages.created_at) AS preview,
-                COUNT(messages.message_id) AS message_count,
-                threads.created_at,
-                threads.last_message_at
-            FROM threads
-            LEFT JOIN messages ON messages.thread_id = threads.thread_id
-            WHERE threads.user_id = ?
-            GROUP BY
-                threads.thread_id,
-                threads.user_id,
-                threads.title,
-                threads.created_at,
-                threads.last_message_at
-            ORDER BY threads.last_message_at DESC
-            LIMIT ? OFFSET ?
-            """,
+            self._GET_THREADS_QUERY,
             (user_id, limit, offset),
         )
-
-        threads = [
-            Thread(
-                thread_id=row[0],
-                user_id=row[1],
-                title=row[2],
-                preview=row[3][:THREAD_PREVIEW_MAX_LENGTH] if row[3] else None,
-                message_count=row[4],
-                created_at=row[5].replace(tzinfo=timezone.utc),
-                last_message_at=row[6].replace(tzinfo=timezone.utc),
-            )
-            for row in result.fetchall()
-        ]
+        threads = [self._map_row_to_thread(row) for row in result.fetchall()]
 
         logger.debug(
             "Retrieved threads for user_id=%s, count=%s, total=%s",
@@ -293,6 +284,40 @@ class DuckDBThreadRepository:
         )
 
         return threads, total
+
+    def _get_thread_count(self, user_id: str) -> int:
+        """ユーザーのスレッド総件数を取得する。
+
+        Args:
+            user_id: ユーザーID
+
+        Returns:
+            int: スレッド総件数
+        """
+        result = self._conn.execute(
+            "SELECT COUNT(*) FROM threads WHERE user_id = ?",
+            (user_id,),
+        )
+        return result.fetchone()[0]
+
+    def _map_row_to_thread(self, row: tuple) -> Thread:
+        """データベース行からThreadオブジェクトを構築する。
+
+        Args:
+            row: データベースの行タプル
+
+        Returns:
+            Thread: Threadオブジェクト
+        """
+        return Thread(
+            thread_id=row[0],
+            user_id=row[1],
+            title=row[2],
+            preview=row[3][:THREAD_PREVIEW_MAX_LENGTH] if row[3] else None,
+            message_count=row[4],
+            created_at=row[5].replace(tzinfo=timezone.utc),
+            last_message_at=row[6].replace(tzinfo=timezone.utc),
+        )
 
     def get_messages(self, thread_id: str) -> list[ThreadMessage]:
         """スレッドのメッセージ一覧を取得する。

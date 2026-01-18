@@ -4,8 +4,10 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
+from backend.constants import DEFAULT_TOP_TRACKS_LIMIT, MAX_LIMIT
 from backend.infrastructure.database import (
     DuckDBConnection,
+    QueryParams,
     get_listening_stats,
     get_top_tracks,
 )
@@ -64,14 +66,14 @@ class GetTopTracksTool(ToolBase):
                 "limit": {
                     "type": "integer",
                     "description": "取得する曲数",
-                    "default": 10,
+                    "default": DEFAULT_TOP_TRACKS_LIMIT,
                 },
             },
             "required": ["start_date", "end_date"],
         }
 
     def execute(
-        self, start_date: str, end_date: str, limit: int = 10
+        self, start_date: str, end_date: str, limit: int = DEFAULT_TOP_TRACKS_LIMIT
     ) -> list[dict[str, Any]]:
         """トップトラックを取得します。
 
@@ -87,34 +89,36 @@ class GetTopTracksTool(ToolBase):
             ValueError: 日付形式が不正な場合
         """
         start, end = validate_date_range(start_date, end_date)
-        validated_limit = validate_limit(limit, max_value=100)
+        validated_limit = validate_limit(limit, max_value=MAX_LIMIT)
 
-        logger.info("Executing get_top_tracks: %s to %s, limit=%s", start, end, limit)
+        logger.info(
+            "Executing get_top_tracks: %s to %s, limit=%s", start, end, validated_limit
+        )
 
         # テスト用のファクトリがある場合はそれを使用（モック注入用）
         if self._db_connection_factory:
             db_connection = self._db_connection_factory()
             # ファクトリから返されたオブジェクトをコンテキストマネージャーとして使用
             with db_connection as conn:
-                return get_top_tracks(
-                    conn,
-                    self.r2_config.bucket_name,
-                    self.r2_config.events_path,
-                    start,
-                    end,
-                    validated_limit,
+                params = QueryParams(
+                    conn=conn,
+                    bucket=self.r2_config.bucket_name,
+                    events_path=self.r2_config.events_path,
+                    start_date=start,
+                    end_date=end,
                 )
+                return get_top_tracks(params, validated_limit)
 
         # 通常の場合はDuckDBConnectionをコンテキストマネージャーとして使用
         with DuckDBConnection(self.r2_config) as conn:
-            return get_top_tracks(
-                conn,
-                self.r2_config.bucket_name,
-                self.r2_config.events_path,
-                start,
-                end,
-                validated_limit,
+            params = QueryParams(
+                conn=conn,
+                bucket=self.r2_config.bucket_name,
+                events_path=self.r2_config.events_path,
+                start_date=start,
+                end_date=end,
             )
+            return get_top_tracks(params, validated_limit)
 
 
 class GetListeningStatsTool(ToolBase):
@@ -200,22 +204,22 @@ class GetListeningStatsTool(ToolBase):
             db_connection = self._db_connection_factory()
             # ファクトリから返されたオブジェクトをコンテキストマネージャーとして使用
             with db_connection as conn:
-                return get_listening_stats(
-                    conn,
-                    self.r2_config.bucket_name,
-                    self.r2_config.events_path,
-                    start,
-                    end,
-                    validated_granularity,
+                params = QueryParams(
+                    conn=conn,
+                    bucket=self.r2_config.bucket_name,
+                    events_path=self.r2_config.events_path,
+                    start_date=start,
+                    end_date=end,
                 )
+                return get_listening_stats(params, validated_granularity)
 
         # 通常の場合はDuckDBConnectionをコンテキストマネージャーとして使用
         with DuckDBConnection(self.r2_config) as conn:
-            return get_listening_stats(
-                conn,
-                self.r2_config.bucket_name,
-                self.r2_config.events_path,
-                start,
-                end,
-                validated_granularity,
+            params = QueryParams(
+                conn=conn,
+                bucket=self.r2_config.bucket_name,
+                events_path=self.r2_config.events_path,
+                start_date=start,
+                end_date=end,
             )
+            return get_listening_stats(params, validated_granularity)
