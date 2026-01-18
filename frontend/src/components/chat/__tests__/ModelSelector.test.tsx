@@ -299,15 +299,23 @@ describe('ModelSelector', () => {
     const mockResponse: ModelsResponse = {
       models: [
         {
-          id: 'model-1',
+          id: 'model-7',
           name: 'Test Model 1',
           provider: 'openrouter',
           input_cost_per_1m: 0.0,
           output_cost_per_1m: 0.0,
           is_free: true,
         },
+        {
+          id: 'model-2',
+          name: 'Test Model 2',
+          provider: 'openrouter',
+          input_cost_per_1m: 0.25,
+          output_cost_per_1m: 0.5,
+          is_free: false,
+        },
       ],
-      default_model: 'model-1',
+      default_model: 'model-7',
     };
 
     vi.spyOn(api, 'getModels').mockResolvedValue(mockResponse);
@@ -322,7 +330,7 @@ describe('ModelSelector', () => {
 
     // 最初のモデルが自動選択される
     await waitFor(() => {
-      expect(useChatStore.getState().selectedModel).toBe('model-1');
+      expect(useChatStore.getState().selectedModel).toBe('model-7');
     });
 
     // 画面にも反映される

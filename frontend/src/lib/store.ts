@@ -24,6 +24,7 @@ interface ChatStore {
   currentThreadId: string | null;
   sidebarOpen: boolean;
   selectedModel: string;
+  onSidebarClose: (() => void) | null;
   addMessage: (message: ChatMessage) => void;
   updateLastMessage: (content: string) => void;
   updateLastMessageWithModel: (content: string, modelName: string | null) => void;
@@ -34,6 +35,7 @@ interface ChatStore {
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
   setSelectedModel: (modelName: string) => void;
+  setOnSidebarClose: (callback: (() => void) | null) => void;
 }
 
 export const useChatStore = create<ChatStore>((set) => ({
@@ -41,6 +43,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   currentThreadId: null,
   sidebarOpen: false,
   selectedModel: loadSelectedModel(),
+  onSidebarClose: null,
 
   addMessage: (message) =>
     set((state) => ({
@@ -108,4 +111,6 @@ export const useChatStore = create<ChatStore>((set) => ({
     }
     set({ selectedModel: modelName });
   },
+
+  setOnSidebarClose: (callback) => set({ onSidebarClose: callback }),
 }));

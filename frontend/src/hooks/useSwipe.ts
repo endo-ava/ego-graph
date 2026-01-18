@@ -3,7 +3,7 @@
  * 右スワイプでサイドバーを開く機能を提供します
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type TouchEvent } from 'react';
 
 interface SwipeHandlers {
   onSwipeRight?: () => void;

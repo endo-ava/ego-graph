@@ -4,6 +4,7 @@
  */
 
 import { ReactNode, useEffect } from 'react';
+import { useShallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useSwipe } from '@/hooks/useSwipe';
 import { Sidebar } from '@/components/sidebar/Sidebar';
@@ -13,7 +14,13 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { sidebarOpen, setSidebarOpen } = useChatStore();
+  const { sidebarOpen, setSidebarOpen, onSidebarClose } = useChatStore(
+    useShallow((state) => ({
+      sidebarOpen: state.sidebarOpen,
+      setSidebarOpen: state.setSidebarOpen,
+      onSidebarClose: state.onSidebarClose,
+    })),
+  );
 
   useEffect(() => {
     const handleResize = () => {
@@ -28,17 +35,16 @@ export function AppLayout({ children }: AppLayoutProps) {
     };
   }, [setSidebarOpen]);
 
-  // スワイプジェスチャーでサイドバー開閉
   useSwipe({
     onSwipeRight: () => {
-      // モバイルでのみ右スワイプでサイドバーを開く
       if (window.innerWidth < 768) {
+        onSidebarClose?.();
         setSidebarOpen(true);
       }
     },
     onSwipeLeft: () => {
-      // モバイルでサイドバーが開いている場合、左スワイプで閉じる
       if (window.innerWidth < 768 && sidebarOpen) {
+        onSidebarClose?.();
         setSidebarOpen(false);
       }
     },
@@ -46,10 +52,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="flex h-[100dvh] overflow-hidden">
-      {/* サイドバー */}
       <Sidebar />
-
-      {/* メインコンテンツエリア */}
       <div className="flex-1 flex flex-col min-w-0">{children}</div>
     </div>
   );

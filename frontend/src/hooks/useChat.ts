@@ -3,16 +3,14 @@
  * TanStack Query と Zustand を組み合わせて使用します
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useOptimistic } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useShallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { sendChatMessageStream, ApiRequestError } from '@/lib/api';
 import { toast } from 'sonner';
 import type { ChatMessage, Message } from '@/types/chat';
 
-/**
- * エラーからユーザー向けメッセージを生成する
- */
 function getErrorMessage(error: unknown): string {
   let errorMessage = 'エラーが発生しました';
   if (error instanceof ApiRequestError) {
@@ -50,17 +48,41 @@ export function useChat() {
     clearMessages,
     setCurrentThreadId,
     selectedModel,
-  } = useChatStore();
+  } = useChatStore(
+    useShallow((state) => ({
+      messages: state.messages,
+      currentThreadId: state.currentThreadId,
+      addMessage: state.addMessage,
+      updateLastMessage: state.updateLastMessage,
+      updateLastMessageWithModel: state.updateLastMessageWithModel,
+      setLastMessageError: state.setLastMessageError,
+      clearMessages: state.clearMessages,
+      setCurrentThreadId: state.setCurrentThreadId,
+      selectedModel: state.selectedModel,
+    })),
+  );
   const queryClient = useQueryClient();
 
-  // ローカルのローディング状態を管理
   const [isLoading, setIsLoading] = useState(false);
+
+  const [optimisticMessages, addOptimisticMessage] = useOptimistic(
+    messages,
+    (state, newMessage: ChatMessage) => [...state, newMessage],
+  );
 
   const sendMessage = useCallback(
     async (content: string) => {
-      // APIリクエスト送信用のメッセージ配列を先に準備（楽観的更新前のmessagesを使用）
+      const userMessage: ChatMessage = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content,
+        timestamp: new Date(),
+      };
+
+      addMessage(userMessage);
+
       const apiMessages: Message[] = [
-        ...messages.map((m) => ({
+        ...messages.map((m: ChatMessage) => ({
           role: m.role,
           content: m.content,
         })),
@@ -70,16 +92,6 @@ export function useChat() {
         },
       ];
 
-      // ユーザーメッセージを即座に追加（楽観的更新）
-      const userMessage: ChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content,
-        timestamp: new Date(),
-      };
-      addMessage(userMessage);
-
-      // アシスタントメッセージのプレースホルダーを追加
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -90,10 +102,8 @@ export function useChat() {
       };
       addMessage(assistantMessage);
 
-      // ローディング状態を開始
       setIsLoading(true);
 
-      // ストリーミングで API リクエスト送信
       let accumulatedContent = '';
 
       try {
@@ -107,17 +117,14 @@ export function useChat() {
             accumulatedContent += chunk.delta;
             updateLastMessage(accumulatedContent);
           } else if (chunk.type === 'done') {
-            // 完了
             updateLastMessageWithModel(
               accumulatedContent,
               selectedModel || null,
             );
             setLastMessageError(false);
-            // スレッドIDをキャプチャ
             if (chunk.thread_id) {
               setCurrentThreadId(chunk.thread_id);
             }
-            // スレッド一覧を無効化して再取得をトリガー
             queryClient.invalidateQueries({ queryKey: ['threads'] });
           } else if (chunk.type === 'error') {
             setLastMessageError(true);
@@ -125,7 +132,6 @@ export function useChat() {
           }
         }
       } catch (error) {
-        // エラーハンドリング
         const errorMessage = getErrorMessage(error);
         toast.error(errorMessage);
         setLastMessageError(true);
@@ -136,7 +142,6 @@ export function useChat() {
           updateLastMessage(errorMessage);
         }
       } finally {
-        // ローディング状態を終了
         setIsLoading(false);
       }
     },
@@ -144,6 +149,7 @@ export function useChat() {
       messages,
       currentThreadId,
       selectedModel,
+      addOptimisticMessage,
       addMessage,
       updateLastMessage,
       updateLastMessageWithModel,
@@ -154,7 +160,7 @@ export function useChat() {
   );
 
   return {
-    messages,
+    messages: optimisticMessages,
     sendMessage,
     clearMessages,
     isLoading,
