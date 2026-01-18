@@ -9,8 +9,8 @@ from datetime import date
 
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 
+from backend.api.schemas import ListeningStatsResponse, TopTrackResponse
 from backend.config import BackendConfig
 from backend.constants import (
     DEFAULT_TOP_TRACKS_LIMIT,
@@ -32,24 +32,6 @@ from backend.validators import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/data/spotify", tags=["data"])
-
-
-class TopTrackResponse(BaseModel):
-    """トップトラックのレスポンス。"""
-
-    track_name: str
-    artist: str
-    play_count: int
-    total_minutes: float
-
-
-class ListeningStatsResponse(BaseModel):
-    """視聴統計のレスポンス。"""
-
-    period: str
-    total_ms: int
-    track_count: int
-    unique_tracks: int
 
 
 @router.get("/stats/top-tracks", response_model=list[TopTrackResponse])

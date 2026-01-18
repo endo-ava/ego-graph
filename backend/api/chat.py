@@ -14,16 +14,21 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from backend.api.schemas import DEFAULT_MODEL, get_all_models, get_model
+from backend.api.schemas import (
+    ChatRequest,
+    ChatResponse,
+    DEFAULT_MODEL,
+    ModelsResponse,
+    get_all_models,
+    get_model,
+)
 from backend.config import BackendConfig
 from backend.dependencies import get_chat_db, get_config, verify_api_key
-from backend.infrastructure.llm import Message
+from backend.domain.models.llm import Message
 from backend.infrastructure.repositories import DuckDBThreadRepository
 from backend.usecases.chat import (
-    ChatRequest as UseCaseChatRequest,
-)
-from backend.usecases.chat import (
     ChatUseCase,
+    ChatUseCaseRequest,
     MaxIterationsExceeded,
     NoUserMessageError,
     ThreadNotFoundError,
@@ -37,27 +42,7 @@ router = APIRouter(prefix="/v1/chat", tags=["chat"])
 DEFAULT_USER_ID = "default_user"
 
 
-class ChatRequest(BaseModel):
-    """チャットリクエスト。"""
-
-    messages: list[Message]
-    stream: bool = False  # 将来のストリーミング対応用
-    thread_id: str | None = None  # 既存スレッドの場合はUUID、新規の場合はNone
-    model_name: str | None = None  # 追加: モデル名
-
-
-class ChatResponseModel(BaseModel):
-    """チャットレスポンス。"""
-
-    id: str
-    message: Message
-    tool_calls: list[dict] | None = None
-    usage: dict | None = None
-    thread_id: str  # スレッドのUUID（新規作成時も含む）
-    model_name: str | None = None  # 追加: 使用したモデル名
-
-
-@router.get("/models")
+@router.get("/models", response_model=ModelsResponse)
 async def get_models_endpoint(_: None = Depends(verify_api_key)):
     """利用可能なモデル一覧を取得する。
 
@@ -71,7 +56,7 @@ async def get_models_endpoint(_: None = Depends(verify_api_key)):
     }
 
 
-@router.post("", response_model=ChatResponseModel)
+@router.post("", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
     chat_db: duckdb.DuckDBPyConnection = Depends(get_chat_db),
@@ -93,7 +78,7 @@ async def chat(
         _: API Key検証結果(未使用)
 
     Returns:
-        ChatResponseModel: チャット応答 (stream=Falseの場合)
+        ChatResponse: チャット応答 (stream=Falseの場合)
         StreamingResponse: ストリーミングレスポンス (stream=Trueの場合)
 
     Raises:
@@ -150,7 +135,7 @@ async def _chat_non_streaming(
     chat_db: duckdb.DuckDBPyConnection,
     config: BackendConfig,
     model_name: str,
-) -> ChatResponseModel:
+) -> ChatResponse:
     """非ストリーミングモードでチャットを実行します。
 
     Args:
@@ -160,7 +145,7 @@ async def _chat_non_streaming(
         model_name: 使用するモデル名
 
     Returns:
-        ChatResponseModel: チャット応答
+        ChatResponse: チャット応答
 
     Raises:
         HTTPException: 各種エラー
@@ -170,14 +155,14 @@ async def _chat_non_streaming(
 
     try:
         result = await use_case.execute(
-            UseCaseChatRequest(
+            ChatUseCaseRequest(
                 messages=request.messages,
                 thread_id=request.thread_id,
                 model_name=model_name,
                 user_id=DEFAULT_USER_ID,
             )
         )
-        return ChatResponseModel(
+        return ChatResponse(
             id=result.response_id,
             message=result.message,
             tool_calls=None,
@@ -224,7 +209,7 @@ async def _stream_chat(
 
     try:
         async for chunk in use_case.execute_stream(
-            UseCaseChatRequest(
+            ChatUseCaseRequest(
                 messages=request.messages,
                 thread_id=request.thread_id,
                 model_name=request.model_name or config.llm.model_name,
