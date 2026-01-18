@@ -1,4 +1,4 @@
-import { useEffect, type RefObject, type MouseEvent, type TouchEvent } from 'react';
+import { useEffect, type RefObject } from 'react';
 
 type Handler = (event: MouseEvent | TouchEvent) => void;
 
