@@ -10,6 +10,7 @@ from typing import Any
 
 import httpx
 
+from backend.constants import LLM_REQUEST_TIMEOUT
 from backend.domain.models.llm import ChatResponse, Message, ToolCall
 from backend.domain.tools import Tool
 from backend.infrastructure.llm.providers.base import BaseLLMProvider
@@ -90,7 +91,7 @@ class OpenAIProvider(BaseLLMProvider):
                     "Content-Type": "application/json",
                 },
                 json=payload,
-                timeout=60.0,
+                timeout=LLM_REQUEST_TIMEOUT,
             )
             response.raise_for_status()
 
@@ -135,18 +136,17 @@ class OpenAIProvider(BaseLLMProvider):
             elif msg.role == "assistant" and msg.tool_calls:
                 # assistantメッセージでtool_callsがある場合
                 # ToolCallオブジェクトをOpenAI形式に変換
-                converted_tool_calls = []
-                for tc in msg.tool_calls:
-                    converted_tool_calls.append(
-                        {
-                            "id": tc.id,
-                            "type": "function",
-                            "function": {
-                                "name": tc.name,
-                                "arguments": json.dumps(tc.parameters),
-                            },
-                        }
-                    )
+                converted_tool_calls = [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.name,
+                            "arguments": json.dumps(tc.parameters),
+                        },
+                    }
+                    for tc in msg.tool_calls
+                ]
                 message_dict = {
                     "role": "assistant",
                     "content": msg.content or "",

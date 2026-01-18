@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 
+from backend.constants import LLM_REQUEST_TIMEOUT
 from backend.domain.models.llm import ChatResponse, Message, ToolCall
 from backend.domain.tools import Tool
 from backend.infrastructure.llm.providers.base import BaseLLMProvider
@@ -35,7 +36,7 @@ class AnthropicProvider(BaseLLMProvider):
             httpx.AsyncClient
         """
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=60.0)
+            self._client = httpx.AsyncClient(timeout=LLM_REQUEST_TIMEOUT)
         return self._client
 
     async def aclose(self) -> None:

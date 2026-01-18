@@ -8,6 +8,7 @@ import json
 import logging
 from typing import Any
 
+from backend.constants import MAX_TOOL_ITERATIONS
 from backend.infrastructure.llm import LLMClient, Message, ToolCall
 from backend.usecases.tools import Tool, ToolRegistry
 
@@ -56,13 +57,11 @@ class ToolExecutor:
     LLMとツール実行の繰り返しを管理し、最大イテレーション数とタイムアウトを制御します。
     """
 
-    MAX_ITERATIONS = 5
-
     def __init__(
         self,
         llm_client: LLMClient,
         tool_registry: ToolRegistry,
-        max_iterations: int = 5,
+        max_iterations: int = MAX_TOOL_ITERATIONS,
     ):
         """ToolExecutorを初期化します。
 

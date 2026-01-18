@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, Depends
 
 from backend.config import BackendConfig
+from backend.constants import HEALTH_CHECK_LIMIT
 from backend.dependencies import get_config, get_db_connection
 from backend.infrastructure.database import DuckDBConnection, get_parquet_path
 
@@ -41,7 +42,8 @@ async def health_check(
         with db_connection as conn:
             # COUNT(*)の代わりにLIMIT 1で存在確認のみ実施（高速）
             result = conn.execute(
-                "SELECT 1 FROM read_parquet(?) LIMIT 1", [parquet_path]
+                "SELECT 1 FROM read_parquet(?) LIMIT ?",
+                [parquet_path, HEALTH_CHECK_LIMIT],
             ).fetchone()
             # データが存在するか確認
             data_exists = result is not None
