@@ -231,6 +231,7 @@ class ToolExecutor:
                 # ツール呼び出しの完全な情報を収集するためのフラグ
                 has_tool_calls = False
                 final_tool_calls: list[ToolCall] = []
+                last_done_chunk: StreamChunk | None = None
 
                 # ストリーミングリクエストを実行（タイムアウト付き）
                 async with asyncio.timeout(remaining_timeout):
@@ -248,8 +249,8 @@ class ToolExecutor:
                             has_tool_calls = True
                             final_tool_calls.extend(chunk.tool_calls)
                         elif chunk.type == "done":
-                            # 完了通知を yield しない（ループ制御）
-                            pass
+                            # doneチャンクを保存（usage/finish_reason保持）
+                            last_done_chunk = chunk
 
             except asyncio.TimeoutError:
                 logger.error("LLM request timed out")
@@ -260,8 +261,11 @@ class ToolExecutor:
             # ツール呼び出しなければ終了
             if not has_tool_calls:
                 logger.info("Stream completed after %s iteration(s)", iteration)
-                # done チャンクを yield
-                yield StreamChunk(type="done")
+                # LLMからのdoneチャンクを優先、なければ新規作成
+                if last_done_chunk:
+                    yield last_done_chunk
+                else:
+                    yield StreamChunk(type="done")
                 return
 
             # assistant メッセージを履歴に追加

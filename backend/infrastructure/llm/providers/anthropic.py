@@ -315,6 +315,12 @@ class AnthropicProvider(BaseLLMProvider):
                 usage_buffer: dict[str, int] = {}
                 stop_reason_buffer: str | None = None
 
+                # ツール呼び出しの蓄積用バッファ
+                tool_use_meta: dict[str, str] | None = (
+                    None  # {"id": "...", "name": "..."}
+                )
+                json_parts: list[str] = []  # input_json_delta の蓄積
+
                 async for line in response.aiter_lines():
                     line = line.strip()
 
@@ -346,28 +352,70 @@ class AnthropicProvider(BaseLLMProvider):
 
                                     # ツール呼び出しのパラメータデルタ
                                     elif delta.get("type") == "input_json_delta":
-                                        # パラメータの一部が受信された
-                                        logger.warning(
-                                            "Tool call parameters are streamed but not fully accumulated. "
-                                            "Tool execution may not work correctly."
-                                        )
+                                        # パラメータの一部を受信、バッファに蓄積
+                                        partial_json = delta.get("partial_json", "")
+                                        if partial_json:
+                                            json_parts.append(partial_json)
 
                                 # ツール呼び出しの開始
                                 elif event_type == "content_block_start":
                                     block = event.get("content_block", {})
                                     if block.get("type") == "tool_use":
-                                        # ツール呼び出しの開始
-                                        pass  # パラメータ収集のために何もしない
+                                        # ツール呼び出しのメタデータを保存
+                                        tool_use_meta = {
+                                            "id": block.get("id", ""),
+                                            "name": block.get("name", ""),
+                                        }
+                                        json_parts = []  # JSONバッファをリセット
 
                                 # ツール呼び出しの完了
                                 elif event_type == "content_block_stop":
                                     # ツール呼び出しが完了したら、完全な情報を yield
-                                    # ここでは簡易実装として、完全なツール呼び出しは yield しない
-                                    pass
+                                    if tool_use_meta and json_parts:
+                                        # JSONパーツを結合してパース
+                                        try:
+                                            full_json = "".join(json_parts)
+                                            parameters = json.loads(full_json)
+
+                                            # tool_call チャンクを発行
+                                            yield StreamChunk(
+                                                type="tool_call",
+                                                tool_calls=[
+                                                    ToolCall(
+                                                        id=tool_use_meta["id"],
+                                                        name=tool_use_meta["name"],
+                                                        parameters=parameters,
+                                                    )
+                                                ],
+                                            )
+
+                                            # バッファをクリア
+                                            tool_use_meta = None
+                                            json_parts = []
+                                        except json.JSONDecodeError:
+                                            logger.warning(
+                                                "Failed to parse tool input JSON"
+                                            )
+                                    elif tool_use_meta:
+                                        # JSONがない場合も処理（空のパラメータ）
+                                        yield StreamChunk(
+                                            type="tool_call",
+                                            tool_calls=[
+                                                ToolCall(
+                                                    id=tool_use_meta["id"],
+                                                    name=tool_use_meta["name"],
+                                                    parameters={},
+                                                )
+                                            ],
+                                        )
+                                        tool_use_meta = None
 
                                 # メッセージ開始（prompt tokens を収集）
                                 elif event_type == "message_start":
-                                    if "message" in event and "usage" in event["message"]:
+                                    if (
+                                        "message" in event
+                                        and "usage" in event["message"]
+                                    ):
                                         # message_start の usage（input_tokens）を収集
                                         usage_buffer.update(event["message"]["usage"])
 
@@ -377,19 +425,21 @@ class AnthropicProvider(BaseLLMProvider):
                                     if "stop_reason" in delta:
                                         stop_reason_buffer = delta["stop_reason"]
                                     if "usage" in event:
-                                        # message_delta の usage（output_tokens）をマージ
+                                        # message_delta の usage をマージ
                                         usage_buffer.update(event["usage"])
 
                                 # メッセージの完了
                                 elif event_type == "message_stop":
-                                    # message_delta で蓄積した usage と stop_reason を使用
+                                    # message_delta で蓄積した情報を使用
                                     finish_reason = stop_reason_buffer or "end_turn"
                                     usage = usage_buffer
                                     yield StreamChunk(
                                         type="done",
                                         finish_reason=finish_reason,
                                         usage={
-                                            "prompt_tokens": usage.get("input_tokens", 0),
+                                            "prompt_tokens": usage.get(
+                                                "input_tokens", 0
+                                            ),
                                             "completion_tokens": usage.get(
                                                 "output_tokens", 0
                                             ),
@@ -400,7 +450,9 @@ class AnthropicProvider(BaseLLMProvider):
                                     return
 
                             except json.JSONDecodeError:
-                                logger.warning("Failed to parse SSE data: %s", current_data)
+                                logger.warning(
+                                    "Failed to parse SSE data: %s", current_data
+                                )
 
                             # イベントをリセット
                             current_event_type = None

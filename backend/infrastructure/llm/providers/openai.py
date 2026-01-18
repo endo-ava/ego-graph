@@ -383,11 +383,14 @@ class OpenAIProvider(BaseLLMProvider):
 
                             # バッファされたツール呼び出しをチェックして、完全ならyield
                             if tool_args_buffer:
-                                complete_tool_calls = []
+                                # 一時リストを使用して重複を防止
+                                temp_parsed = []
+                                all_complete = True
+
                                 for idx in sorted(tool_args_buffer.keys()):
                                     try:
                                         params = json.loads(tool_args_buffer[idx])
-                                        complete_tool_calls.append(
+                                        temp_parsed.append(
                                             ToolCall(
                                                 id=tool_id_buffer.get(idx, ""),
                                                 name=tool_name_buffer.get(idx, ""),
@@ -396,15 +399,16 @@ class OpenAIProvider(BaseLLMProvider):
                                         )
                                     except json.JSONDecodeError:
                                         # まだ不完全、次のチャンクを待つ
+                                        all_complete = False
                                         break
-                                else:
-                                    # 全てのツール呼び出しが完全ならyield
-                                    if complete_tool_calls:
-                                        yield StreamChunk(
-                                            type="tool_call",
-                                            tool_calls=complete_tool_calls,
-                                        )
-                                        # バッファをクリア
-                                        tool_args_buffer.clear()
-                                        tool_id_buffer.clear()
-                                        tool_name_buffer.clear()
+
+                                # 全てのツール呼び出しが完全ならyield
+                                if all_complete and temp_parsed:
+                                    yield StreamChunk(
+                                        type="tool_call",
+                                        tool_calls=temp_parsed,
+                                    )
+                                    # バッファをクリア
+                                    tool_args_buffer.clear()
+                                    tool_id_buffer.clear()
+                                    tool_name_buffer.clear()
