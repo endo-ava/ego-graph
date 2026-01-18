@@ -325,25 +325,33 @@ class TestChatStreamingEndpoint:
         assert response.status_code == 401
 
     def test_chat_streaming_returns_sse_content_type(
-        self, test_client, mock_backend_config
+        self, test_client, mock_backend_config  # noqa: ARG002
     ):
         """ストリーミングレスポンスがtext/event-streamを返す。"""
+
+        # 非同期ジェネレータを作成
+        async def mock_execute_loop_stream(*args, **kwargs):
+            yield StreamChunk(type="done", finish_reason="stop")
+
         with (
             patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
             patch(
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolExecutor"
+            ) as mock_executor_class,
         ):
             mock_llm_instance = MagicMock()
-            # execute_streamメソッドをモック
-            mock_llm_instance.execute_stream = AsyncMock(
-                return_value=iter([StreamChunk(type="done", finish_reason="stop")])
-            )
             mock_llm_class.return_value = mock_llm_instance
 
             mock_registry = MagicMock()
             mock_registry.get_all_schemas.return_value = []
             mock_registry_class.return_value = mock_registry
+
+            mock_executor_instance = MagicMock()
+            mock_executor_instance.execute_loop_stream = mock_execute_loop_stream
+            mock_executor_class.return_value = mock_executor_instance
 
             response = test_client.post(
                 "/v1/chat",

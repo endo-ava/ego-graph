@@ -439,17 +439,17 @@ class TestAnthropicProvider:
             lines = [
                 # テキストチャンク（event: + data: の2行形式）
                 "event: content_block_delta",
-                'data: {"type": "content_block_delta", "index": 0, "content_block": {"type": "text"}, "delta": {"type": "text_delta", "text": "Once"}}',
+                'data: {"type": "content_block_delta", "index": 0, "content_block": {"type": "text"}, "delta": {"type": "text_delta", "text": "Once"}}',  # noqa: E501
                 "",
                 "event: content_block_delta",
-                'data: {"type": "content_block_delta", "index": 0, "content_block": {"type": "text"}, "delta": {"type": "text_delta", "text": " upon"}}',
+                'data: {"type": "content_block_delta", "index": 0, "content_block": {"type": "text"}, "delta": {"type": "text_delta", "text": " upon"}}',  # noqa: E501
                 "",
                 "event: content_block_delta",
-                'data: {"type": "content_block_delta", "index": 0, "content_block": {"type": "text"}, "delta": {"type": "text_delta", "text": " a time"}}',
+                'data: {"type": "content_block_delta", "index": 0, "content_block": {"type": "text"}, "delta": {"type": "text_delta", "text": " a time"}}',  # noqa: E501
                 "",
                 # 完了イベント
                 "event: message_delta",
-                'data: {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"input_tokens": 10, "output_tokens": 15}}',
+                'data: {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"input_tokens": 10, "output_tokens": 15}}',  # noqa: E501
                 "",
                 "event: message_stop",
                 'data: {"type": "message_stop", "stop_reason": "end_turn"}',
@@ -511,9 +511,24 @@ class TestAnthropicProvider:
 
         async def mock_iter_lines():
             lines = [
+                # ツール呼び出し開始
+                "event: content_block_start",
+                'data: {"type": "content_block_start", "index": 0, "content_block": {"type": "tool_use", "id": "toolu_123", "name": "get_stats"}}',  # noqa: E501
+                "",
+                # ツール呼び出しパラメータ（複数のデルタに分割）
+                "event: content_block_delta",
+                'data: {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": "{\\"limit\\": "}}',  # noqa: E501
+                "",
+                "event: content_block_delta",
+                'data: {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": "10}"}}',  # noqa: E501
+                "",
+                # ツール呼び出し完了
+                "event: content_block_stop",
+                'data: {"type": "content_block_stop", "index": 0}',
+                "",
                 # 完了イベント（ツール使用の場合、stop_reasonがtool_useになる）
                 "event: message_delta",
-                'data: {"type": "message_delta", "delta": {"stop_reason": "tool_use"}, "usage": {"input_tokens": 10, "output_tokens": 20}}',
+                'data: {"type": "message_delta", "delta": {"stop_reason": "tool_use"}, "usage": {"input_tokens": 10, "output_tokens": 20}}',  # noqa: E501
                 "",
                 "event: message_stop",
                 'data: {"type": "message_stop", "stop_reason": "tool_use"}',
@@ -545,10 +560,20 @@ class TestAnthropicProvider:
             async for chunk in provider.chat_completion_stream(messages):
                 chunks.append(chunk)
 
-            # Assert: doneチャンクがtool_use finish_reasonを含むことを確認
-            assert len(chunks) == 1
-            assert chunks[0].type == "done"
-            assert chunks[0].finish_reason == "tool_use"
+            # Assert: tool_callチャンクとdoneチャンクが返されることを確認
+            assert len(chunks) == 2
+
+            # tool_callチャンクの確認
+            assert chunks[0].type == "tool_call"
+            assert chunks[0].tool_calls is not None
+            assert len(chunks[0].tool_calls) == 1
+            assert chunks[0].tool_calls[0].id == "toolu_123"
+            assert chunks[0].tool_calls[0].name == "get_stats"
+            assert chunks[0].tool_calls[0].parameters == {"limit": 10}
+
+            # doneチャンクの確認
+            assert chunks[1].type == "done"
+            assert chunks[1].finish_reason == "tool_use"
 
     @pytest.mark.asyncio
     async def test_chat_completion_stream_empty_response(self):
@@ -566,7 +591,7 @@ class TestAnthropicProvider:
             # 空の完了イベントのみ
             lines = [
                 "event: message_delta",
-                'data: {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"input_tokens": 5, "output_tokens": 0}}',
+                'data: {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"input_tokens": 5, "output_tokens": 0}}',  # noqa: E501
                 "",
                 "event: message_stop",
                 'data: {"type": "message_stop", "stop_reason": "end_turn"}',
@@ -619,7 +644,7 @@ class TestAnthropicProvider:
         async def mock_iter_lines():
             lines = [
                 "event: error",
-                'data: {"type": "error", "error": {"type": "invalid_request", "message": "Invalid API key"}}',
+                'data: {"type": "error", "error": {"type": "invalid_request", "message": "Invalid API key"}}',  # noqa: E501
                 "",
             ]
             for line in lines:

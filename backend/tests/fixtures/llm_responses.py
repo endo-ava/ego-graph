@@ -151,7 +151,7 @@ def get_mock_openai_stream_response(text_chunks: list[str], done: bool = True):
     Returns:
         SSE形式の各行を返すジェネレータ
     """
-    for i, chunk in enumerate(text_chunks):
+    for chunk in text_chunks:
         json_data = {
             "id": "chatcmpl-stream",
             "object": "chat.completion.chunk",
@@ -219,7 +219,7 @@ def mock_stream_chunk(
 def get_mock_anthropic_stream_lines(text_chunks: list[str]) -> list[str]:
     """モックAnthropicストリーミングレスポンスの行を生成します。
 
-    Anthropicは改行区切りのJSONを返します。
+    AnthropicはSSE形式（event: <type>\ndata: <json>\n\n）を返します。
 
     Args:
         text_chunks: テキストチャンクのリスト
@@ -228,14 +228,17 @@ def get_mock_anthropic_stream_lines(text_chunks: list[str]) -> list[str]:
         Anthropic SSE形式の行リスト
     """
     lines = []
-    for i, chunk in enumerate(text_chunks):
+    for chunk in text_chunks:
         event = {
             "type": "content_block_delta",
             "index": 0,
             "content_block": {"type": "text"},
             "delta": {"type": "text_delta", "text": chunk},
         }
-        lines.append(json.dumps(event))
+        # SSE形式: event行、data行、空行
+        lines.append(f"event: {event['type']}")
+        lines.append(f"data: {json.dumps(event)}")
+        lines.append("")
 
     # 完了イベント
     done_event = {
@@ -243,6 +246,8 @@ def get_mock_anthropic_stream_lines(text_chunks: list[str]) -> list[str]:
         "stop_reason": "end_turn",
         "usage": {"input_tokens": 10, "output_tokens": len(" ".join(text_chunks))},
     }
-    lines.append(json.dumps(done_event))
+    lines.append(f"event: {done_event['type']}")
+    lines.append(f"data: {json.dumps(done_event)}")
+    lines.append("")
 
     return lines
