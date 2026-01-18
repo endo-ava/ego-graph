@@ -12,8 +12,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.config import BackendConfig
+from backend.constants import (
+    DEFAULT_TOP_TRACKS_LIMIT,
+    MAX_LIMIT,
+    MIN_LIMIT,
+)
 from backend.dependencies import get_config, get_db_connection, verify_api_key
 from backend.infrastructure.database import (
+    QueryParams,
     get_listening_stats,
     get_top_tracks,
 )
@@ -50,7 +56,9 @@ class ListeningStatsResponse(BaseModel):
 async def get_top_tracks_endpoint(
     start_date: date = Query(..., description="開始日（YYYY-MM-DD）"),
     end_date: date = Query(..., description="終了日（YYYY-MM-DD）"),
-    limit: int = Query(10, ge=1, le=100, description="取得する曲数"),
+    limit: int = Query(
+        DEFAULT_TOP_TRACKS_LIMIT, ge=MIN_LIMIT, le=MAX_LIMIT, description="取得する曲数"
+    ),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
     _: None = Depends(verify_api_key),
@@ -71,19 +79,19 @@ async def get_top_tracks_endpoint(
     """
     try:
         start, end = validate_date_range(start_date, end_date)
-        validated_limit = validate_limit(limit, max_value=100)
+        validated_limit = validate_limit(limit, max_value=MAX_LIMIT)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     logger.info("Getting top tracks: %s to %s, limit=%s", start_date, end_date, limit)
-    return get_top_tracks(
-        db_connection,
-        config.r2.bucket_name,
-        config.r2.events_path,
-        start,
-        end,
-        validated_limit,
+    params = QueryParams(
+        conn=db_connection,
+        bucket=config.r2.bucket_name,
+        events_path=config.r2.events_path,
+        start_date=start,
+        end_date=end,
     )
+    return get_top_tracks(params, validated_limit)
 
 
 @router.get("/stats/listening", response_model=list[ListeningStatsResponse])
@@ -123,11 +131,11 @@ async def get_listening_stats_endpoint(
         end_date,
         granularity,
     )
-    return get_listening_stats(
-        db_connection,
-        config.r2.bucket_name,
-        config.r2.events_path,
-        start,
-        end,
-        validated_granularity,
+    params = QueryParams(
+        conn=db_connection,
+        bucket=config.r2.bucket_name,
+        events_path=config.r2.events_path,
+        start_date=start,
+        end_date=end,
     )
+    return get_listening_stats(params, validated_granularity)

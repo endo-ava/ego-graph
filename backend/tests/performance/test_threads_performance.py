@@ -9,7 +9,10 @@ import duckdb
 import pytest
 
 from backend.infrastructure.database import create_chat_tables
-from backend.infrastructure.repositories import DuckDBThreadRepository
+from backend.infrastructure.repositories import (
+    AddMessageParams,
+    DuckDBThreadRepository,
+)
 
 
 @pytest.fixture
@@ -41,10 +44,12 @@ def test_get_threads_performance_1000_threads(thread_service):
         thread = thread_service.create_thread(user_id, f"Performance test message {i}")
         # 各スレッドにメッセージを追加（message_countとpreviewテスト用）
         thread_service.add_message(
-            thread_id=thread.thread_id,
-            user_id=user_id,
-            role="user",
-            content=f"First message in thread {i}",
+            AddMessageParams(
+                thread_id=thread.thread_id,
+                user_id=user_id,
+                role="user",
+                content=f"First message in thread {i}",
+            )
         )
 
     # パフォーマンス測定
@@ -85,10 +90,12 @@ def test_get_threads_performance_with_many_messages(thread_service):
         for j in range(messages_per_thread):
             role = "user" if j % 2 == 0 else "assistant"
             thread_service.add_message(
-                thread_id=thread.thread_id,
-                user_id=user_id,
-                role=role,
-                content=f"Message {j} in thread {i}",
+                AddMessageParams(
+                    thread_id=thread.thread_id,
+                    user_id=user_id,
+                    role=role,
+                    content=f"Message {j} in thread {i}",
+                )
             )
 
     # パフォーマンス測定
@@ -126,10 +133,12 @@ def test_get_threads_pagination_performance(thread_service):
     for i in range(num_threads):
         thread = thread_service.create_thread(user_id, f"Pagination test {i}")
         thread_service.add_message(
-            thread_id=thread.thread_id,
-            user_id=user_id,
-            role="user",
-            content=f"Message {i}",
+            AddMessageParams(
+                thread_id=thread.thread_id,
+                user_id=user_id,
+                role="user",
+                content=f"Message {i}",
+            )
         )
 
     # 最後のページ取得（OFFSET=480, LIMIT=20）
@@ -166,10 +175,12 @@ def test_query_count_for_threads_retrieval(in_memory_db):
     for i in range(50):
         thread = service.create_thread(user_id, f"Query count test {i}")
         service.add_message(
-            thread_id=thread.thread_id,
-            user_id=user_id,
-            role="user",
-            content=f"Message {i}",
+            AddMessageParams(
+                thread_id=thread.thread_id,
+                user_id=user_id,
+                role="user",
+                content=f"Message {i}",
+            )
         )
 
     # クエリログを有効化（DuckDBの場合はプロファイリング使用）

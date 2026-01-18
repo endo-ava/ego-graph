@@ -1,0 +1,24 @@
+"""バックエンド全体で使用する定数。
+
+SQLクエリ、API制限、タイムアウト値などのマジックナンバーを管理します。
+"""
+
+# SQL/Query Limits
+DEFAULT_TOP_TRACKS_LIMIT = 10
+DEFAULT_SEARCH_TRACKS_LIMIT = 20
+HEALTH_CHECK_LIMIT = 1
+DEFAULT_THREAD_LIST_LIMIT = 50
+
+# API/Validation Limits
+MIN_LIMIT = 1
+MAX_LIMIT = 100
+
+# Timeouts (seconds)
+LLM_REQUEST_TIMEOUT = 60.0
+TOTAL_CHAT_TIMEOUT = 90.0
+
+# Conversion Factors
+MS_TO_MINUTES_FACTOR = 60000.0
+
+# Tool Execution
+MAX_TOOL_ITERATIONS = 5

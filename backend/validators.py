@@ -3,6 +3,8 @@
 from datetime import date
 from typing import Any
 
+from backend.constants import MAX_LIMIT, MIN_LIMIT
+
 
 def parse_date(value: date | str, field_name: str) -> date:
     """ISO日付またはdateを正規化する。"""
@@ -25,7 +27,9 @@ def validate_date_range(
     return start, end
 
 
-def validate_limit(limit: Any, *, min_value: int = 1, max_value: int = 100) -> int:
+def validate_limit(
+    limit: Any, *, min_value: int = MIN_LIMIT, max_value: int = MAX_LIMIT
+) -> int:
     """limitの範囲を検証する。"""
     if not isinstance(limit, int):
         raise ValueError("invalid_limit: must be a positive integer")

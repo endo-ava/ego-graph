@@ -9,6 +9,7 @@ from backend.infrastructure.database.chat_connection import (
 )
 from backend.infrastructure.database.connection import DuckDBConnection
 from backend.infrastructure.database.queries import (
+    QueryParams,
     execute_query,
     get_listening_stats,
     get_parquet_path,
@@ -20,6 +21,7 @@ __all__ = [
     "DuckDBConnection",
     "ChatDuckDBConnection",
     "create_chat_tables",
+    "QueryParams",
     "execute_query",
     "get_parquet_path",
     "get_top_tracks",

@@ -7,10 +7,12 @@ import asyncio
 import logging
 from typing import AsyncGenerator, cast
 
+from pydantic import BaseModel
+
 from backend.config import LLMConfig
 from backend.domain.models.llm import StreamChunk
 from backend.infrastructure.llm import LLMClient, Message
-from backend.infrastructure.repositories import DuckDBThreadRepository
+from backend.infrastructure.repositories import AddMessageParams, DuckDBThreadRepository
 from backend.usecases.chat.system_prompt_builder import SystemPromptBuilder
 from backend.usecases.chat.tool_executor import (
     MaxIterationsExceeded,
@@ -20,9 +22,6 @@ from backend.usecases.tools import GetListeningStatsTool, GetTopTracksTool, Tool
 from shared.config import R2Config
 
 logger = logging.getLogger(__name__)
-
-# 定数
-TOTAL_TIMEOUT = 90.0
 
 # スレッド作成の競合状態を防ぐためのロック
 _thread_creation_lock = asyncio.Lock()
@@ -46,58 +45,26 @@ class ThreadNotFoundError(ChatUseCaseError):
     pass
 
 
-class ChatRequest:
+class ChatRequest(BaseModel):
     """内部用チャットリクエスト。
 
     API層から受け取ったリクエストを内部処理用に変換したもの。
     """
 
-    def __init__(
-        self,
-        messages: list[Message],
-        thread_id: str | None,
-        model_name: str | None,
-        user_id: str,
-    ):
-        """ChatRequestを初期化します。
-
-        Args:
-            messages: チャットメッセージのリスト
-            thread_id: 既存スレッドID（新規の場合はNone）
-            model_name: 使用するモデル名（Noneの場合はデフォルト使用）
-            user_id: ユーザーID
-        """
-        self.messages = messages
-        self.thread_id = thread_id
-        self.model_name = model_name
-        self.user_id = user_id
+    messages: list[Message]
+    thread_id: str | None
+    model_name: str | None
+    user_id: str
 
 
-class ChatResult:
+class ChatResult(BaseModel):
     """チャットユースケースの実行結果。"""
 
-    def __init__(
-        self,
-        response_id: str,
-        message: Message,
-        thread_id: str,
-        model_name: str,
-        usage: dict | None = None,
-    ):
-        """ChatResultを初期化します。
-
-        Args:
-            response_id: レスポンスID
-            message: 最終的なアシスタントメッセージ
-            thread_id: スレッドID
-            model_name: 使用したモデル名
-            usage: トークン使用量情報
-        """
-        self.response_id = response_id
-        self.message = message
-        self.thread_id = thread_id
-        self.model_name = model_name
-        self.usage = usage
+    response_id: str
+    message: Message
+    thread_id: str
+    model_name: str
+    usage: dict | None = None
 
 
 class ChatUseCase:
@@ -188,7 +155,7 @@ class ChatUseCase:
                 tools=tools,
                 temperature=self.llm_config.temperature,
                 max_tokens=self.llm_config.max_tokens,
-                timeout=TOTAL_TIMEOUT,
+                timeout=90.0,
             )
         except (MaxIterationsExceeded, asyncio.TimeoutError):
             # これらのエラーは呼び出し側で処理されるべき
@@ -197,11 +164,13 @@ class ChatUseCase:
         # 7. アシスタント応答の永続化
         assistant_content = cast(str, result.final_message.content or "")
         self.thread_repository.add_message(
-            thread_id=thread_id,
-            user_id=request.user_id,
-            role="assistant",
-            content=assistant_content,
-            model_name=used_model_name,
+            AddMessageParams(
+                thread_id=thread_id,
+                user_id=request.user_id,
+                role="assistant",
+                content=assistant_content,
+                model_name=used_model_name,
+            )
         )
         logger.info(
             "Saved assistant message to thread_id=%s after %s iterations",
@@ -259,11 +228,13 @@ class ChatUseCase:
             if last_user_message:
                 content = cast(str, last_user_message.content or "")
                 self.thread_repository.add_message(
-                    thread_id=thread_id,
-                    user_id=request.user_id,
-                    role="user",
-                    content=content,
-                    model_name=None,  # ユーザーメッセージにはmodel_nameなし
+                    AddMessageParams(
+                        thread_id=thread_id,
+                        user_id=request.user_id,
+                        role="user",
+                        content=content,
+                        model_name=None,  # ユーザーメッセージにはmodel_nameなし
+                    )
                 )
             return thread_id
         else:
@@ -282,11 +253,13 @@ class ChatUseCase:
             if last_user_message:
                 content = cast(str, last_user_message.content or "")
                 self.thread_repository.add_message(
-                    thread_id=thread_id,
-                    user_id=request.user_id,
-                    role="user",
-                    content=content,
-                    model_name=None,  # ユーザーメッセージにはmodel_nameなし
+                    AddMessageParams(
+                        thread_id=thread_id,
+                        user_id=request.user_id,
+                        role="user",
+                        content=content,
+                        model_name=None,  # ユーザーメッセージにはmodel_nameなし
+                    )
                 )
             return thread_id
 
@@ -401,7 +374,7 @@ class ChatUseCase:
                 tools=tools,
                 temperature=self.llm_config.temperature,
                 max_tokens=self.llm_config.max_tokens,
-                timeout=TOTAL_TIMEOUT,
+                timeout=90.0,
             ):
                 if chunk.type == "delta" and chunk.delta:
                     final_content += chunk.delta

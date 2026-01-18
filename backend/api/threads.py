@@ -12,6 +12,11 @@ from backend.api.schemas import (
     ThreadListResponse,
     ThreadMessagesResponse,
 )
+from backend.constants import (
+    DEFAULT_THREAD_LIST_LIMIT,
+    MAX_LIMIT,
+    MIN_LIMIT,
+)
 from backend.dependencies import get_thread_repository, verify_api_key
 from backend.infrastructure.repositories import DuckDBThreadRepository
 
@@ -25,7 +30,7 @@ DEFAULT_USER_ID = "default_user"
 
 @router.get("", response_model=ThreadListResponse)
 async def get_threads(
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(DEFAULT_THREAD_LIST_LIMIT, ge=MIN_LIMIT, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
     thread_repository: DuckDBThreadRepository = Depends(get_thread_repository),
     _: None = Depends(verify_api_key),

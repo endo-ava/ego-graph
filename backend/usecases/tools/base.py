@@ -45,7 +45,7 @@ class ToolBase(ABC):
                 "type": "object",
                 "properties": {
                     "start_date": {"type": "string", "description": "..."},
-                    "limit": {"type": "integer", "default": 10}
+                    "limit": {"type": "integer", "default": DEFAULT_TOP_TRACKS_LIMIT}
                 },
                 "required": ["start_date"]
             }

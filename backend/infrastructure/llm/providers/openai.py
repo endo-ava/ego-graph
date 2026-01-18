@@ -135,18 +135,17 @@ class OpenAIProvider(BaseLLMProvider):
             elif msg.role == "assistant" and msg.tool_calls:
                 # assistantメッセージでtool_callsがある場合
                 # ToolCallオブジェクトをOpenAI形式に変換
-                converted_tool_calls = []
-                for tc in msg.tool_calls:
-                    converted_tool_calls.append(
-                        {
-                            "id": tc.id,
-                            "type": "function",
-                            "function": {
-                                "name": tc.name,
-                                "arguments": json.dumps(tc.parameters),
-                            },
-                        }
-                    )
+                converted_tool_calls = [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.name,
+                            "arguments": json.dumps(tc.parameters),
+                        },
+                    }
+                    for tc in msg.tool_calls
+                ]
                 message_dict = {
                     "role": "assistant",
                     "content": msg.content or "",

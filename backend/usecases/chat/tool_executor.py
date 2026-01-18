@@ -57,8 +57,6 @@ class ToolExecutor:
     LLMとツール実行の繰り返しを管理し、最大イテレーション数とタイムアウトを制御します。
     """
 
-    MAX_ITERATIONS = 5
-
     def __init__(
         self,
         llm_client: LLMClient,

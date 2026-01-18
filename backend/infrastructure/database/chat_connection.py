@@ -65,6 +65,71 @@ class ChatDuckDBConnection:
             logger.debug("Closed chat database connection")
 
 
+def _create_threads_table(conn: duckdb.DuckDBPyConnection):
+    """threadsテーブルとインデックスを作成します。
+
+    Args:
+        conn: DuckDBコネクション
+    """
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS threads (
+            thread_id VARCHAR PRIMARY KEY,
+            user_id VARCHAR NOT NULL,
+            title VARCHAR NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL,
+            last_message_at TIMESTAMPTZ NOT NULL
+        )
+    """)
+
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_user_last_message
+        ON threads(user_id, last_message_at DESC)
+    """)
+
+
+def _ensure_model_name_column(conn: duckdb.DuckDBPyConnection) -> None:
+    """model_nameカラムが存在することを保証します。"""
+    result = conn.execute("""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'messages' AND column_name = 'model_name'
+    """).fetchall()
+
+    if not result:
+        conn.execute("ALTER TABLE messages ADD COLUMN model_name VARCHAR")
+        logger.info("Added model_name column to messages table")
+
+
+def _create_messages_table(conn: duckdb.DuckDBPyConnection):
+    """messagesテーブルとインデックスを作成します。
+
+    Args:
+        conn: DuckDBコネクション
+
+    Note:
+        DuckDB 1.1.0以降は外部キー制約をサポートしていますが、
+        現時点では設定していません。将来的に外部キー制約を追加する場合は、
+        既存データのマイグレーションを考慮する必要があります。
+        現在は参照整合性をアプリケーションロジックで保証しています。
+    """
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            message_id VARCHAR PRIMARY KEY,
+            thread_id VARCHAR NOT NULL,
+            user_id VARCHAR NOT NULL,
+            role VARCHAR NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL,
+            model_name VARCHAR
+        )
+    """)
+
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_thread_created
+        ON messages(thread_id, created_at)
+    """)
+
+
 def create_chat_tables(conn: duckdb.DuckDBPyConnection):
     """チャット履歴用のテーブルを作成します。
 
@@ -79,63 +144,9 @@ def create_chat_tables(conn: duckdb.DuckDBPyConnection):
     """
     logger.info("Creating chat tables if they do not exist")
 
-    # threads テーブル
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS threads (
-            thread_id VARCHAR PRIMARY KEY,
-            user_id VARCHAR NOT NULL,
-            title VARCHAR NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL,
-            last_message_at TIMESTAMPTZ NOT NULL
-        )
-    """)
-
-    # threads テーブルのインデックス
-    # ユーザーIDと最終メッセージ日時でソートするため
-    conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_user_last_message
-        ON threads(user_id, last_message_at DESC)
-    """)
-
-    # messages テーブル
-    # NOTE: DuckDB 1.1.0以降は外部キー制約をサポートしていますが、
-    # 現時点では設定していません。将来的に外部キー制約を追加する場合は、
-    # 既存データのマイグレーションを考慮する必要があります。
-    # 現在は参照整合性をアプリケーションロジックで保証しています。
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS messages (
-            message_id VARCHAR PRIMARY KEY,
-            thread_id VARCHAR NOT NULL,
-            user_id VARCHAR NOT NULL,
-            role VARCHAR NOT NULL,
-            content TEXT NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL
-        )
-    """)
-
-    # messages テーブルのインデックス
-    # スレッド内のメッセージを作成日時順で取得するため
-    conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_thread_created
-        ON messages(thread_id, created_at)
-    """)
-
-    # マイグレーション: model_name カラムの追加
-    # 既存のDBに対してmodel_nameカラムを追加する
-    # カラムの存在を確認してから追加する
-    result = conn.execute("""
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'messages' AND column_name = 'model_name'
-    """).fetchall()
-
-    if not result:
-        conn.execute("""
-            ALTER TABLE messages ADD COLUMN model_name VARCHAR
-        """)
-        logger.info("Added model_name column to messages table")
-    else:
-        logger.debug("model_name column already exists, skipping migration")
+    _create_threads_table(conn)
+    _create_messages_table(conn)
+    _ensure_model_name_column(conn)
 
     conn.commit()
     logger.info("Chat tables created successfully")

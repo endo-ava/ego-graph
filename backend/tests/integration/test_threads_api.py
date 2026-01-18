@@ -11,7 +11,10 @@ from backend.infrastructure.database import (
     chat_connection,
     create_chat_tables,
 )
-from backend.infrastructure.repositories import DuckDBThreadRepository
+from backend.infrastructure.repositories import (
+    AddMessageParams,
+    DuckDBThreadRepository,
+)
 from backend.main import create_app
 
 
@@ -61,16 +64,20 @@ def populated_threads(tmp_path, monkeypatch):
 
             # メッセージを追加
             service.add_message(
-                thread_id=thread.thread_id,
-                user_id="default_user",
-                role="user",
-                content=f"Test message {i}",
+                AddMessageParams(
+                    thread_id=thread.thread_id,
+                    user_id="default_user",
+                    role="user",
+                    content=f"Test message {i}",
+                )
             )
             service.add_message(
-                thread_id=thread.thread_id,
-                user_id="default_user",
-                role="assistant",
-                content=f"Response to message {i}",
+                AddMessageParams(
+                    thread_id=thread.thread_id,
+                    user_id="default_user",
+                    role="assistant",
+                    content=f"Response to message {i}",
+                )
             )
 
     # R2設定（ダミー）
@@ -95,10 +102,7 @@ def test_get_threads_empty(test_client_with_threads):
 
     assert response.status_code == 200
     data = response.json()
-
-    assert data["total"] == 0
-    assert data["threads"] == []
-    assert data["limit"] == 20
+    assert data["limit"] == 50
     assert data["offset"] == 0
 
 

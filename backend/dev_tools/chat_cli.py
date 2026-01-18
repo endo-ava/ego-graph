@@ -28,6 +28,8 @@ from rich.spinner import Spinner
 from rich.table import Table
 from rich.tree import Tree
 
+from backend.constants import LLM_REQUEST_TIMEOUT
+
 
 class ChatSession:
     """チャットセッション管理クラス。
@@ -89,7 +91,7 @@ class ChatSession:
             console=self.console,
             transient=True,
         ):
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=LLM_REQUEST_TIMEOUT) as client:
                 # 現在の履歴 + 新しいユーザーメッセージでリクエスト
                 response = await client.post(
                     f"{self.base_url}/v1/chat",

@@ -1,12 +1,31 @@
 """Spotify データ用のSQLクエリテンプレートとヘルパー関数。"""
 
 import logging
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 import duckdb
 
+from backend.constants import (
+    DEFAULT_SEARCH_TRACKS_LIMIT,
+    DEFAULT_TOP_TRACKS_LIMIT,
+    MS_TO_MINUTES_FACTOR,
+)
+
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class QueryParams:
+    """Spotifyデータクエリ用の共通パラメータ。"""
+
+    conn: duckdb.DuckDBPyConnection
+    bucket: str
+    events_path: str
+    start_date: date
+    end_date: date
+
 
 # Parquetパスパターン
 SPOTIFY_PLAYS_PATH = "s3://{bucket}/{events_path}spotify/plays/**/*.parquet"
@@ -94,21 +113,12 @@ def execute_query(
 
 
 def get_top_tracks(
-    conn: duckdb.DuckDBPyConnection,
-    bucket: str,
-    events_path: str,
-    start_date: date,
-    end_date: date,
-    limit: int = 10,
+    params: QueryParams, limit: int = DEFAULT_TOP_TRACKS_LIMIT
 ) -> list[dict[str, Any]]:
     """指定期間で最も再生された曲を取得します。
 
     Args:
-        conn: DuckDBコネクション
-        bucket: R2バケット名
-        events_path: イベントデータのパスプレフィックス
-        start_date: 開始日
-        end_date: 終了日
+        params: クエリパラメータ（コネクション、バケット、パス、日付範囲）
         limit: 取得する曲数（デフォルト: 10）
 
     Returns:
@@ -124,7 +134,7 @@ def get_top_tracks(
         ]
     """
     partition_paths = _generate_partition_paths(
-        bucket, events_path, start_date, end_date
+        params.bucket, params.events_path, params.start_date, params.end_date
     )
 
     query = """
@@ -134,7 +144,7 @@ def get_top_tracks(
                 WHEN len(artist_names) >= 1 THEN artist_names[1] ELSE NULL
             END as artist,
             COUNT(*) as play_count,
-            SUM(ms_played) / 60000.0 as total_minutes
+            SUM(ms_played) / ? as total_minutes
         FROM read_parquet(?)
         WHERE played_at_utc::DATE BETWEEN ? AND ?
         GROUP BY track_name, artist
@@ -142,27 +152,31 @@ def get_top_tracks(
         LIMIT ?
     """
     logger.debug(
-        "Executing get_top_tracks: %s to %s, limit=%s", start_date, end_date, limit
+        "Executing get_top_tracks: %s to %s, limit=%s",
+        params.start_date,
+        params.end_date,
+        limit,
     )
-    return execute_query(conn, query, [partition_paths, start_date, end_date, limit])
+    return execute_query(
+        params.conn,
+        query,
+        [
+            MS_TO_MINUTES_FACTOR,
+            partition_paths,
+            params.start_date,
+            params.end_date,
+            limit,
+        ],
+    )
 
 
 def get_listening_stats(
-    conn: duckdb.DuckDBPyConnection,
-    bucket: str,
-    events_path: str,
-    start_date: date,
-    end_date: date,
-    granularity: str = "day",
+    params: QueryParams, granularity: str = "day"
 ) -> list[dict[str, Any]]:
     """期間別の視聴統計を取得します。
 
     Args:
-        conn: DuckDBコネクション
-        bucket: R2バケット名
-        events_path: イベントデータのパスプレフィックス
-        start_date: 開始日
-        end_date: 終了日
+        params: クエリパラメータ（コネクション、バケット、パス、日付範囲）
         granularity: 集計単位（"day", "week", "month"）
 
     Returns:
@@ -181,7 +195,7 @@ def get_listening_stats(
         ValueError: granularityが無効な場合
     """
     partition_paths = _generate_partition_paths(
-        bucket, events_path, start_date, end_date
+        params.bucket, params.events_path, params.start_date, params.end_date
     )
 
     # 粒度に応じた期間フォーマットを選択
@@ -215,26 +229,22 @@ def get_listening_stats(
 
     logger.debug(
         "Executing get_listening_stats: %s to %s, granularity=%s",
-        start_date,
-        end_date,
+        params.start_date,
+        params.end_date,
         granularity,
     )
-    return execute_query(conn, query, [partition_paths, start_date, end_date])
+    return execute_query(
+        params.conn, query, [partition_paths, params.start_date, params.end_date]
+    )
 
 
 def search_tracks_by_name(
-    conn: duckdb.DuckDBPyConnection,
-    bucket: str,
-    events_path: str,
-    query: str,
-    limit: int = 20,
+    params: QueryParams, query: str, limit: int = DEFAULT_SEARCH_TRACKS_LIMIT
 ) -> list[dict[str, Any]]:
     """トラック名またはアーティスト名で検索します。
 
     Args:
-        conn: DuckDBコネクション
-        bucket: R2バケット名
-        events_path: イベントデータのパスプレフィックス
+        params: クエリパラメータ（コネクション、バケット、パス）
         query: 検索クエリ（部分一致）
         limit: 取得する結果数（デフォルト: 20）
 
@@ -251,7 +261,7 @@ def search_tracks_by_name(
         ]
     """
     # 全期間を対象とするため、ワイルドカードパスを使用
-    parquet_path = get_parquet_path(bucket, events_path)
+    parquet_path = get_parquet_path(params.bucket, params.events_path)
 
     search_pattern = f"%{query}%"
     sql = """
@@ -272,5 +282,5 @@ def search_tracks_by_name(
 
     logger.debug("Searching tracks with query: %s, limit=%s", query, limit)
     return execute_query(
-        conn, sql, [parquet_path, search_pattern, search_pattern, limit]
+        params.conn, sql, [parquet_path, search_pattern, search_pattern, limit]
     )

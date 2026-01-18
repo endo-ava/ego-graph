@@ -4,7 +4,8 @@
 """
 
 from backend.infrastructure.repositories.thread_repository_impl import (
+    AddMessageParams,
     DuckDBThreadRepository,
 )
 
-__all__ = ["DuckDBThreadRepository"]
+__all__ = ["AddMessageParams", "DuckDBThreadRepository"]

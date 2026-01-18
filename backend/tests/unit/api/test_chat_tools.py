@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from backend.constants import MAX_TOOL_ITERATIONS
 from backend.infrastructure.llm import ChatResponse, Message, ToolCall
 from backend.usecases.chat.tool_executor import ToolExecutor
 
@@ -610,7 +611,7 @@ class TestChatEndpointToolLoop:
             assert response.status_code == 500
             assert "maximum iterations" in response.json()["detail"]
             # MAX_ITERATIONS回呼ばれた
-            assert mock_llm_instance.chat.call_count == ToolExecutor.MAX_ITERATIONS
+            assert mock_llm_instance.chat.call_count == MAX_TOOL_ITERATIONS
 
     @pytest.mark.asyncio
     async def test_timeout_error(self, test_client):

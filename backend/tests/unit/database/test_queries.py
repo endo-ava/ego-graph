@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from backend.infrastructure.database import (
+    QueryParams,
     execute_query,
     get_listening_stats,
     get_parquet_path,
@@ -173,14 +174,14 @@ class TestGetTopTracks:
             return_value=[parquet_path],
         ):
             # Act: get_top_tracks関数を直接呼び出す
-            result = get_top_tracks(
-                duckdb_with_sample_data,
-                bucket,
-                events_path,
+            params = QueryParams(
+                conn=duckdb_with_sample_data,
+                bucket=bucket,
+                events_path=events_path,
                 start_date=date(2024, 1, 1),
                 end_date=date(2024, 1, 3),
-                limit=5,
             )
+            result = get_top_tracks(params, limit=5)
 
         # Assert: トップトラックが正しく取得されることを検証
         assert len(result) > 0
@@ -202,14 +203,14 @@ class TestGetTopTracks:
             return_value=[parquet_path],
         ):
             # Act: limit=2でトップトラックを取得
-            result = get_top_tracks(
-                duckdb_with_sample_data,
-                bucket,
-                events_path,
+            params = QueryParams(
+                conn=duckdb_with_sample_data,
+                bucket=bucket,
+                events_path=events_path,
                 start_date=date(2024, 1, 1),
                 end_date=date(2024, 1, 3),
-                limit=2,
             )
+            result = get_top_tracks(params, limit=2)
 
         # Assert: 最大2件までしか返されないことを検証
         assert len(result) <= 2
@@ -227,14 +228,14 @@ class TestGetTopTracks:
             return_value=[parquet_path],
         ):
             # Act: 2024-01-01のデータのみ取得
-            result = get_top_tracks(
-                duckdb_with_sample_data,
-                bucket,
-                events_path,
+            params = QueryParams(
+                conn=duckdb_with_sample_data,
+                bucket=bucket,
+                events_path=events_path,
                 start_date=date(2024, 1, 1),
                 end_date=date(2024, 1, 1),
-                limit=10,
             )
+            result = get_top_tracks(params, limit=10)
 
         # Assert: 2024-01-01には2件のレコードがあることを検証
         assert len(result) == 2
@@ -256,14 +257,14 @@ class TestGetListeningStats:
             return_value=[parquet_path],
         ):
             # Act: 日単位で統計情報を取得
-            result = get_listening_stats(
-                duckdb_with_sample_data,
-                bucket,
-                events_path,
+            params = QueryParams(
+                conn=duckdb_with_sample_data,
+                bucket=bucket,
+                events_path=events_path,
                 start_date=date(2024, 1, 1),
                 end_date=date(2024, 1, 3),
-                granularity="day",
             )
+            result = get_listening_stats(params, granularity="day")
 
         # Assert: 3日分のデータが正しく集計されることを検証
         assert len(result) == 3  # 3日分
@@ -283,14 +284,14 @@ class TestGetListeningStats:
             return_value=[parquet_path],
         ):
             # Act: 月単位で統計情報を取得
-            result = get_listening_stats(
-                duckdb_with_sample_data,
-                bucket,
-                events_path,
+            params = QueryParams(
+                conn=duckdb_with_sample_data,
+                bucket=bucket,
+                events_path=events_path,
                 start_date=date(2024, 1, 1),
                 end_date=date(2024, 1, 3),
-                granularity="month",
             )
+            result = get_listening_stats(params, granularity="month")
 
         # Assert: 1ヶ月分のデータが正しく集計されることを検証
         assert len(result) == 1  # 1ヶ月分
@@ -310,15 +311,15 @@ class TestGetListeningStats:
             return_value=[parquet_path],
         ):
             # Act & Assert: 無効なgranularityでValueErrorが発生することを検証
+            params = QueryParams(
+                conn=duckdb_with_sample_data,
+                bucket=bucket,
+                events_path=events_path,
+                start_date=date(2024, 1, 1),
+                end_date=date(2024, 1, 3),
+            )
             with pytest.raises(ValueError, match="Invalid granularity"):
-                get_listening_stats(
-                    duckdb_with_sample_data,
-                    bucket,
-                    events_path,
-                    start_date=date(2024, 1, 1),
-                    end_date=date(2024, 1, 3),
-                    granularity="invalid",
-                )
+                get_listening_stats(params, granularity="invalid")
 
 
 class TestSearchTracksByName:
@@ -334,13 +335,14 @@ class TestSearchTracksByName:
         )
 
         # Act: トラック名で検索
-        result = search_tracks_by_name(
-            duckdb_with_sample_data,
+        params = QueryParams(
+            conn=duckdb_with_sample_data,
             bucket="test_bucket",
             events_path="events/",
-            query="Song A",
-            limit=20,
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 12, 31),
         )
+        result = search_tracks_by_name(params, query="Song A", limit=20)
 
         # Assert: "Song A"が見つかることを検証
         assert len(result) > 0
@@ -356,13 +358,14 @@ class TestSearchTracksByName:
         )
 
         # Act: アーティスト名で検索
-        result = search_tracks_by_name(
-            duckdb_with_sample_data,
+        params = QueryParams(
+            conn=duckdb_with_sample_data,
             bucket="test_bucket",
             events_path="events/",
-            query="Artist X",
-            limit=20,
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 12, 31),
         )
+        result = search_tracks_by_name(params, query="Artist X", limit=20)
 
         # Assert: Artist XはSong Aなので見つかることを検証
         assert len(result) > 0
@@ -378,20 +381,15 @@ class TestSearchTracksByName:
         )
 
         # Act: 小文字と大文字の両方で検索
-        result_lower = search_tracks_by_name(
-            duckdb_with_sample_data,
+        params = QueryParams(
+            conn=duckdb_with_sample_data,
             bucket="test_bucket",
             events_path="events/",
-            query="song a",
-            limit=20,
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 12, 31),
         )
-        result_upper = search_tracks_by_name(
-            duckdb_with_sample_data,
-            bucket="test_bucket",
-            events_path="events/",
-            query="SONG A",
-            limit=20,
-        )
+        result_lower = search_tracks_by_name(params, query="song a", limit=20)
+        result_upper = search_tracks_by_name(params, query="SONG A", limit=20)
 
         # Assert: 大文字小文字に関わらず同じ結果が返されることを検証
         assert len(result_lower) == len(result_upper)
