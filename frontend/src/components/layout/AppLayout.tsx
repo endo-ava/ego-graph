@@ -6,7 +6,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { useSwipe } from '@/hooks/useSwipe';
+import { useSwipe } from '@/hooks/ui/useSwipe';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 
 interface AppLayoutProps {

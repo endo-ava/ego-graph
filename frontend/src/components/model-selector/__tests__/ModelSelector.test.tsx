@@ -8,7 +8,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type React from 'react';
-import { ModelSelector } from '../ModelSelector';
+import { ModelSelector } from '@/components/model-selector';
 import { useChatStore } from '@/lib/store';
 import * as api from '@/lib/api';
 import type { ModelsResponse } from '@/types/chat';

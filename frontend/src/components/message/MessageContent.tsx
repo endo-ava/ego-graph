@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { MarkdownContent } from './MarkdownContent';
+import { MarkdownContent } from '@/components/content/MarkdownContent';
 
 export function MessageContent({
   isUser, modelName, timestamp, isError, isLoading, content, showCursor

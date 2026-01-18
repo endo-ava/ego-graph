@@ -1,5 +1,5 @@
-import { useThreads } from '@/hooks/useThreads';
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { useThreads } from '@/hooks/chat/useThreads';
+import { useInfiniteScroll } from '@/hooks/ui/useInfiniteScroll';
 import { ThreadItem } from './ThreadItem';
 import { ThreadListLoading } from './ThreadListLoading';
 import { ThreadListError } from './ThreadListError';

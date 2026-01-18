@@ -1,7 +1,7 @@
 import { useState, useCallback, type KeyboardEvent, useRef, useImperativeHandle, forwardRef } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { Capacitor } from '@capacitor/core';
-import { ChatControls } from './ChatControls';
+import { ChatControls } from '@/components/chat/ChatControls';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;

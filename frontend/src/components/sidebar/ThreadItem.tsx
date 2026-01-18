@@ -6,7 +6,7 @@
 import { useCallback, memo } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { useThreadSelection } from '@/hooks/useThreadSelection';
+import { useThreadSelection } from '@/hooks/thread/useThreadSelection';
 import type { Thread } from '@/types/chat';
 
 interface ThreadItemProps {

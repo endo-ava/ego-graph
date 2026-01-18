@@ -6,9 +6,9 @@
 import { lazy, Suspense, useRef } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import type { ChatMessage as ChatMessageType } from '@/types/chat';
-import { MessageSkeleton } from './MessageSkeleton';
+import { MessageSkeleton } from '@/components/message/MessageSkeleton';
 
-const ChatMessage = lazy(() => import('./ChatMessage'));
+const ChatMessage = lazy(() => import('@/components/message/ChatMessage'));
 
 interface MessageListProps {
   messages: ChatMessageType[];

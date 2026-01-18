@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useChat } from '@/hooks/useChat';
+import { useChat } from '@/hooks/chat/useChat';
 import { useChatStore } from '@/lib/store';
 import { MessageList } from '@/components/chat/MessageList';
 import { ChatInput, type ChatInputRef } from '@/components/chat/ChatInput';

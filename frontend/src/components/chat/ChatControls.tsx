@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { ModelSelector } from './ModelSelector';
+import { ModelSelector } from '@/components/model-selector';
 
 interface ChatControlsProps {
   canSubmit: boolean;

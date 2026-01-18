@@ -1,8 +1,8 @@
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import type { ChatMessage as ChatMessageType } from '@/types/chat';
-import { MessageAvatar } from './MessageAvatar';
-import { MessageContent } from './MessageContent';
+import { MessageAvatar } from '@/components/message/MessageAvatar';
+import { MessageContent } from '@/components/message/MessageContent';
 
 interface ChatMessageProps {
   message: ChatMessageType;

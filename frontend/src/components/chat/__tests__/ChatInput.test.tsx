@@ -22,7 +22,7 @@ vi.mock('@capacitor/core', () => ({
 }));
 
 // ModelSelectorをモック
-vi.mock('../ModelSelector', () => ({
+vi.mock('@/components/model-selector', () => ({
   ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
 }));
 
