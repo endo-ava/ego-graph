@@ -1,10 +1,5 @@
 """Domain Tools.
 
-ツールに関するドメインモデルを定義します。
+具体的なツール実装（ビジネスロジック）を提供します。
+各データソース（Spotify など）のツールクラスを格納します。
 """
-
-from backend.domain.tools.base import Tool
-
-__all__ = [
-    "Tool",
-]
