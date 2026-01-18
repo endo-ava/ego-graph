@@ -11,7 +11,7 @@ import duckdb
 import pytest
 
 from backend.infrastructure.database import create_chat_tables
-from backend.infrastructure.repositories import DuckDBThreadRepository
+from backend.infrastructure.repositories import AddMessageParams, DuckDBThreadRepository
 
 
 @pytest.fixture
@@ -65,7 +65,9 @@ def test_add_message(thread_service):
     base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
     # スレッド作成時のタイムスタンプをモック
-    with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
+    with patch(
+        "backend.infrastructure.repositories.thread_repository_impl.datetime"
+    ) as mock_datetime:
         mock_datetime.now.return_value = base_time
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
@@ -73,17 +75,21 @@ def test_add_message(thread_service):
         initial_last_message_at = thread.last_message_at
 
     # メッセージ追加時は1分後のタイムスタンプをモック
-    with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
+    with patch(
+        "backend.infrastructure.repositories.thread_repository_impl.datetime"
+    ) as mock_datetime:
         later_time = base_time + timedelta(minutes=1)
         mock_datetime.now.return_value = later_time
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
         message_content = "Follow-up message"
         message = thread_service.add_message(
-            thread_id=thread.thread_id,
-            user_id=user_id,
-            role="user",
-            content=message_content,
+            AddMessageParams(
+                thread_id=thread.thread_id,
+                user_id=user_id,
+                role="user",
+                content=message_content,
+            )
         )
 
     # メッセージ検証
@@ -112,7 +118,9 @@ def test_get_threads_pagination(thread_service):
     threads = []
     for i in range(5):
         # 各スレッドの作成時刻を1分ずつずらす
-        with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
+        with patch(
+            "backend.infrastructure.repositories.thread_repository_impl.datetime"
+        ) as mock_datetime:
             current_time = base_time + timedelta(minutes=i)
             mock_datetime.now.return_value = current_time
             mock_datetime.side_effect = lambda *args, **kwargs: datetime(
@@ -157,7 +165,9 @@ def test_get_thread(thread_service):
     user_id = "test_user"
     base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
-    with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
+    with patch(
+        "backend.infrastructure.repositories.thread_repository_impl.datetime"
+    ) as mock_datetime:
         mock_datetime.now.return_value = base_time
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
@@ -189,7 +199,9 @@ def test_get_messages(thread_service):
     base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
     # スレッドとメッセージを作成
-    with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
+    with patch(
+        "backend.infrastructure.repositories.thread_repository_impl.datetime"
+    ) as mock_datetime:
         mock_datetime.now.return_value = base_time
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
@@ -198,7 +210,9 @@ def test_get_messages(thread_service):
     message_ids = []
     for i in range(3):
         # 各メッセージを1分ずつずらして作成
-        with patch("backend.infrastructure.repositories.thread_repository_impl.datetime") as mock_datetime:
+        with patch(
+            "backend.infrastructure.repositories.thread_repository_impl.datetime"
+        ) as mock_datetime:
             current_time = base_time + timedelta(minutes=i + 1)
             mock_datetime.now.return_value = current_time
             mock_datetime.side_effect = lambda *args, **kwargs: datetime(
@@ -206,10 +220,12 @@ def test_get_messages(thread_service):
             )
 
             msg = thread_service.add_message(
-                thread_id=thread.thread_id,
-                user_id=user_id,
-                role="user" if i % 2 == 0 else "assistant",
-                content=f"Message {i}",
+                AddMessageParams(
+                    thread_id=thread.thread_id,
+                    user_id=user_id,
+                    role="user" if i % 2 == 0 else "assistant",
+                    content=f"Message {i}",
+                )
             )
             message_ids.append(msg.message_id)
 
@@ -249,10 +265,12 @@ def test_timezone_utc(thread_service):
 
     # メッセージ追加
     message = thread_service.add_message(
-        thread_id=thread.thread_id,
-        user_id=user_id,
-        role="user",
-        content="Follow-up",
+        AddMessageParams(
+            thread_id=thread.thread_id,
+            user_id=user_id,
+            role="user",
+            content="Follow-up",
+        )
     )
 
     assert message.created_at.tzinfo == timezone.utc
@@ -267,11 +285,13 @@ def test_add_message_with_model_name(thread_service):
 
     # Act
     message = thread_service.add_message(
-        thread_id=thread.thread_id,
-        user_id=user_id,
-        role="assistant",
-        content="Test response",
-        model_name=model_name,
+        AddMessageParams(
+            thread_id=thread.thread_id,
+            user_id=user_id,
+            role="assistant",
+            content="Test response",
+            model_name=model_name,
+        )
     )
 
     # Assert
@@ -287,11 +307,13 @@ def test_add_message_without_model_name(thread_service):
 
     # Act
     message = thread_service.add_message(
-        thread_id=thread.thread_id,
-        user_id=user_id,
-        role="user",
-        content="User message",
-        model_name=None,
+        AddMessageParams(
+            thread_id=thread.thread_id,
+            user_id=user_id,
+            role="user",
+            content="User message",
+            model_name=None,
+        )
     )
 
     # Assert
@@ -307,10 +329,12 @@ def test_add_message_model_name_default_value(thread_service):
 
     # Act: model_name引数を省略
     message = thread_service.add_message(
-        thread_id=thread.thread_id,
-        user_id=user_id,
-        role="user",
-        content="User message",
+        AddMessageParams(
+            thread_id=thread.thread_id,
+            user_id=user_id,
+            role="user",
+            content="User message",
+        )
     )
 
     # Assert
@@ -325,21 +349,25 @@ def test_get_messages_includes_model_name(thread_service):
 
     # ユーザーメッセージ（model_nameなし）
     thread_service.add_message(
-        thread_id=thread.thread_id,
-        user_id=user_id,
-        role="user",
-        content="User question",
-        model_name=None,
+        AddMessageParams(
+            thread_id=thread.thread_id,
+            user_id=user_id,
+            role="user",
+            content="User question",
+            model_name=None,
+        )
     )
 
     # アシスタントメッセージ（model_nameあり）
     model_name = "gpt-4o-mini"
     thread_service.add_message(
-        thread_id=thread.thread_id,
-        user_id=user_id,
-        role="assistant",
-        content="Assistant response",
-        model_name=model_name,
+        AddMessageParams(
+            thread_id=thread.thread_id,
+            user_id=user_id,
+            role="assistant",
+            content="Assistant response",
+            model_name=model_name,
+        )
     )
 
     # Act
@@ -373,18 +401,22 @@ def test_get_messages_multiple_models(thread_service):
     for i, model in enumerate(models):
         # ユーザーメッセージ
         thread_service.add_message(
-            thread_id=thread.thread_id,
-            user_id=user_id,
-            role="user",
-            content=f"Question {i}",
+            AddMessageParams(
+                thread_id=thread.thread_id,
+                user_id=user_id,
+                role="user",
+                content=f"Question {i}",
+            )
         )
         # アシスタントメッセージ
         thread_service.add_message(
-            thread_id=thread.thread_id,
-            user_id=user_id,
-            role="assistant",
-            content=f"Response {i}",
-            model_name=model,
+            AddMessageParams(
+                thread_id=thread.thread_id,
+                user_id=user_id,
+                role="assistant",
+                content=f"Response {i}",
+                model_name=model,
+            )
         )
 
     # Act

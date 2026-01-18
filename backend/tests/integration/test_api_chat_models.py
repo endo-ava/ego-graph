@@ -274,5 +274,5 @@ class TestChatEndpointModelSelection:
 
             # 2回目（assistantメッセージ）の呼び出しでmodel_nameが渡されていることを確認
             assistant_call = mock_thread_service.add_message.call_args_list[1]
-            assert assistant_call.kwargs["model_name"] == specified_model
-            assert assistant_call.kwargs["role"] == "assistant"
+            assert assistant_call.args[0].model_name == specified_model
+            assert assistant_call.args[0].role == "assistant"

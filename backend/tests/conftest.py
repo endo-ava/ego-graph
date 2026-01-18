@@ -25,41 +25,6 @@ from shared.config import R2Config
 
 
 @pytest.fixture(autouse=True)
-def clear_env_vars(monkeypatch):
-    """テスト用に環境変数をクリア。
-
-    Pydantic Settingsが環境変数を読み取らないようにする。
-    """
-    # R2関連
-    monkeypatch.delenv("R2_ENDPOINT_URL", raising=False)
-    monkeypatch.delenv("R2_ACCESS_KEY_ID", raising=False)
-    monkeypatch.delenv("R2_SECRET_ACCESS_KEY", raising=False)
-    monkeypatch.delenv("R2_BUCKET_NAME", raising=False)
-    monkeypatch.delenv("R2_RAW_PATH", raising=False)
-    monkeypatch.delenv("R2_EVENTS_PATH", raising=False)
-
-    # LLM関連
-    monkeypatch.delenv("LLM_PROVIDER", raising=False)
-    monkeypatch.delenv("LLM_API_KEY", raising=False)
-    monkeypatch.delenv("LLM_MODEL_NAME", raising=False)
-    monkeypatch.delenv("LLM_TEMPERATURE", raising=False)
-    monkeypatch.delenv("LLM_MAX_TOKENS", raising=False)
-
-    # Backend関連
-    monkeypatch.delenv("BACKEND_HOST", raising=False)
-    monkeypatch.delenv("BACKEND_PORT", raising=False)
-    monkeypatch.delenv("BACKEND_RELOAD", raising=False)
-    monkeypatch.delenv("BACKEND_API_KEY", raising=False)
-    monkeypatch.delenv("LOG_LEVEL", raising=False)
-
-
-@pytest.fixture(autouse=True)
-def reset_backend_config_cache():
-    """BackendConfigのキャッシュを毎回リセットする。"""
-    deps._config = None
-
-
-@pytest.fixture(autouse=True)
 def disable_env_files():
     """Pydantic Settingsの.env読み込みを無効化する。"""
     original_llm_env_file = LLMConfig.model_config.get("env_file")

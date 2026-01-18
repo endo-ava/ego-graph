@@ -103,11 +103,12 @@ class TestGetTopTracksTool:
             assert result[0]["track_name"] == "Song A"
 
             # get_top_tracksが正しい引数で呼ばれたことを確認
-            # 引数: conn, bucket, events_path, start, end, limit
+            # 引数: (QueryParams, limit)
             mock_get_top_tracks.assert_called_once()
             call_args = mock_get_top_tracks.call_args[0]
-            assert call_args[1] == "bucket"  # bucket
-            assert call_args[2] == "events/"  # events_path
+            params = call_args[0]
+            assert params.bucket == "bucket"  # bucket
+            assert params.events_path == "events/"  # events_path
 
     def test_execute_with_invalid_date_format_raises_error(self):
         """不正な日付形式でエラー。"""
@@ -141,7 +142,7 @@ class TestGetTopTracksTool:
 
             # Assert: デフォルトのlimit=10で呼ばれることを検証
             call_args = mock_get_top_tracks.call_args
-            assert call_args[0][5] == 10  # 6番目の引数がlimit (conn, bucket, events_path, start, end, limit)
+            assert call_args[0][1] == 10  # 2番目の引数がlimit (QueryParams, limit)
 
 
 class TestGetListeningStatsTool:
@@ -239,11 +240,12 @@ class TestGetListeningStatsTool:
             assert result[0]["period"] == "2024-01-01"
 
             # get_listening_statsが正しい引数で呼ばれたことを確認
-            # 引数: conn, bucket, events_path, start, end, granularity
+            # 引数: (QueryParams, granularity)
             mock_get_listening_stats.assert_called_once()
             call_args = mock_get_listening_stats.call_args[0]
-            assert call_args[1] == "bucket"  # bucket
-            assert call_args[2] == "events/"  # events_path
+            params = call_args[0]
+            assert params.bucket == "bucket"  # bucket
+            assert params.events_path == "events/"  # events_path
 
     def test_execute_with_invalid_date_format_raises_error(self):
         """不正な日付形式でエラー。"""
@@ -281,4 +283,6 @@ class TestGetListeningStatsTool:
 
             # Assert: デフォルトのgranularity="day"で呼ばれることを検証
             call_args = mock_get_listening_stats.call_args
-            assert call_args[0][5] == "day"  # 6番目の引数がgranularity (conn, bucket, events_path, start, end, granularity)
+            assert (
+                call_args[0][1] == "day"
+            )  # 2番目の引数がgranularity (QueryParams, granularity)
