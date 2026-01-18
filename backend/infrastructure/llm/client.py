@@ -4,8 +4,9 @@
 """
 
 import logging
+from typing import AsyncGenerator
 
-from backend.domain.models.llm import ChatResponse, Message
+from backend.domain.models.llm import ChatResponse, Message, StreamChunk
 from backend.domain.tools import Tool
 from backend.infrastructure.llm.providers import (
     AnthropicProvider,
@@ -119,3 +120,36 @@ class LLMClient:
             temperature=temperature,
             max_tokens=max_tokens,
         )
+
+    async def chat_stream(
+        self,
+        messages: list[Message],
+        tools: list[Tool] | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ) -> AsyncGenerator[StreamChunk, None]:
+        """チャット補完リクエストをストリーミングで送信します。
+
+        Args:
+            messages: チャットメッセージ履歴
+            tools: 利用可能なツール
+            temperature: 生成の多様性
+            max_tokens: 最大トークン数
+
+        Yields:
+            StreamChunk: 各ストリーミングチャンク
+
+        Raises:
+            httpx.HTTPError: API呼び出しに失敗した場合
+        """
+        logger.debug("Sending chat stream request with %s messages", len(messages))
+        if tools:
+            logger.debug("Available tools: %s", [t.name for t in tools])
+
+        async for chunk in self.provider.chat_completion_stream(
+            messages=messages,
+            tools=tools,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        ):
+            yield chunk

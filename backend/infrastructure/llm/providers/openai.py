@@ -6,11 +6,11 @@ base_urlを変更するだけで両方をサポートできます。
 
 import json
 import logging
-from typing import Any
+from typing import Any, AsyncGenerator
 
 import httpx
 
-from backend.domain.models.llm import ChatResponse, Message, ToolCall
+from backend.domain.models.llm import ChatResponse, Message, StreamChunk, ToolCall
 from backend.domain.tools import Tool
 from backend.infrastructure.llm.providers.base import BaseLLMProvider
 
@@ -216,3 +216,226 @@ class OpenAIProvider(BaseLLMProvider):
             usage=raw.get("usage"),
             finish_reason=choice["finish_reason"],
         )
+
+    async def chat_completion_stream(
+        self,
+        messages: list[Message],
+        tools: list[Tool] | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ) -> AsyncGenerator[StreamChunk, None]:
+        """OpenAI Chat Completion APIをストリーミングで呼び出します。
+
+        Args:
+            messages: チャットメッセージ履歴
+            tools: 利用可能なツール
+            temperature: 生成の多様性
+            max_tokens: 最大トークン数
+
+        Yields:
+            StreamChunk: 各ストリーミングチャンク
+
+        Raises:
+            httpx.HTTPError: API呼び出しに失敗した場合
+        """
+        payload: dict[str, Any] = {
+            "model": self.model_name,
+            "messages": self._convert_messages_to_provider_format(messages),
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,  # ストリーミング有効化
+        }
+
+        if tools:
+            payload["tools"] = self._convert_tools_to_provider_format(tools)
+
+        # OpenRouter固有の設定
+        if self.is_openrouter and not self.enable_web_search:
+            payload["plugins"] = [{"id": "web", "enabled": False}]
+            logger.debug("OpenRouter: Web search disabled (plugins: web=false)")
+
+        logger.debug("Sending streaming request to %s/chat/completions", self.base_url)
+
+        # ツール呼び出しの引数バッファ: {index: partial_arguments}
+        tool_args_buffer: dict[int, str] = {}
+        # ツール呼び出しのIDバッファ: {index: tool_call_id}
+        tool_id_buffer: dict[int, str] = {}
+        # ツール呼び出しの名前バッファ: {index: tool_name}
+        tool_name_buffer: dict[int, str] = {}
+
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST",
+                f"{self.base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=60.0,
+            ) as response:
+                response.raise_for_status()
+
+                # SSE パース
+                async for line in response.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+
+                    data_str = line[6:].strip()
+
+                    # [DONE] マーカー
+                    if data_str == "[DONE]":
+                        yield StreamChunk(type="done")
+                        return
+
+                    try:
+                        data = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        logger.warning("Failed to parse SSE line: %s", data_str)
+                        continue
+
+                    # チョイスを取得
+                    choices = data.get("choices", [])
+                    if not choices:
+                        continue
+
+                    choice = choices[0]
+                    delta = choice.get("delta", {})
+                    finish_reason = choice.get("finish_reason")
+
+                    # finish_reason があれば完了
+                    if finish_reason:
+                        # テキストデルタがある場合は先に yield
+                        if "content" in delta and delta["content"]:
+                            yield StreamChunk(type="delta", delta=delta["content"])
+
+                        # バッファされたツール呼び出しを yield
+                        if tool_args_buffer:
+                            tool_calls = []
+                            for idx in sorted(tool_args_buffer.keys()):
+                                try:
+                                    params = json.loads(tool_args_buffer[idx])
+                                    tool_calls.append(
+                                        ToolCall(
+                                            id=tool_id_buffer.get(idx, ""),
+                                            name=tool_name_buffer.get(idx, ""),
+                                            parameters=params,
+                                        )
+                                    )
+                                except json.JSONDecodeError as e:
+                                    logger.warning(
+                                        "Failed to parse buffered tool arguments at index %s: %s",
+                                        idx,
+                                        e,
+                                    )
+                            if tool_calls:
+                                yield StreamChunk(
+                                    type="tool_call", tool_calls=tool_calls
+                                )
+
+                        yield StreamChunk(
+                            type="done",
+                            finish_reason=finish_reason,
+                            usage=data.get("usage"),
+                        )
+                        return
+
+                    # テキストデルタ
+                    if "content" in delta and delta["content"]:
+                        yield StreamChunk(type="delta", delta=delta["content"])
+
+                    # ツール呼び出しのデルタを蓄積（finish_reasonがない場合でもバッファリングして完了したらyield）
+                    if "tool_calls" in delta:
+                        tool_calls_delta = delta["tool_calls"]
+                        if tool_calls_delta:
+                            # OpenAI のストリーミングでは tool_calls は複数のチャンクに分割される
+                            for tc_delta in tool_calls_delta:
+                                tc_index = tc_delta.get("index")
+                                if tc_index is None:
+                                    logger.warning(
+                                        "Tool call missing index: %s", tc_delta
+                                    )
+                                    continue
+
+                                # ツール呼び出しIDを収集
+                                if "id" in tc_delta:
+                                    tool_id_buffer[tc_index] = tc_delta["id"]
+
+                                # ツール名を収集
+                                if (
+                                    "function" in tc_delta
+                                    and "name" in tc_delta["function"]
+                                ):
+                                    tool_name_buffer[tc_index] = tc_delta["function"][
+                                        "name"
+                                    ]
+
+                                # 引数をバッファリング
+                                if (
+                                    "function" in tc_delta
+                                    and "arguments" in tc_delta["function"]
+                                ):
+                                    args_chunk = tc_delta["function"]["arguments"]
+                                    if tc_index not in tool_args_buffer:
+                                        tool_args_buffer[tc_index] = args_chunk
+                                    else:
+                                        tool_args_buffer[tc_index] += args_chunk
+
+                            # バッファされたツール呼び出しをチェックして、完全ならyield
+                            if tool_args_buffer:
+                                # 一時リストを使用して重複を防止
+                                temp_parsed = []
+                                all_complete = True
+
+                                for idx in sorted(tool_args_buffer.keys()):
+                                    try:
+                                        params = json.loads(tool_args_buffer[idx])
+                                        temp_parsed.append(
+                                            ToolCall(
+                                                id=tool_id_buffer.get(idx, ""),
+                                                name=tool_name_buffer.get(idx, ""),
+                                                parameters=params,
+                                            )
+                                        )
+                                    except json.JSONDecodeError:
+                                        # まだ不完全、次のチャンクを待つ
+                                        all_complete = False
+                                        break
+
+                                # 全てのツール呼び出しが完全ならyield
+                                if all_complete and temp_parsed:
+                                    yield StreamChunk(
+                                        type="tool_call",
+                                        tool_calls=temp_parsed,
+                                    )
+                                    # バッファをクリア
+                                    tool_args_buffer.clear()
+                                    tool_id_buffer.clear()
+                                    tool_name_buffer.clear()
+
+                # ストリームが[DONE]なしで終了した場合のバッファ処理
+                if tool_args_buffer:
+                    logger.warning(
+                        "Stream ended without [DONE] marker, flushing buffered tool calls"
+                    )
+                    tool_calls = []
+                    for idx in sorted(tool_args_buffer.keys()):
+                        try:
+                            params = json.loads(tool_args_buffer[idx])
+                            tool_calls.append(
+                                ToolCall(
+                                    id=tool_id_buffer.get(idx, ""),
+                                    name=tool_name_buffer.get(idx, ""),
+                                    parameters=params,
+                                )
+                            )
+                        except json.JSONDecodeError as e:
+                            logger.warning(
+                                "Failed to parse buffered tool arguments at index %s: %s",
+                                idx,
+                                e,
+                            )
+                    if tool_calls:
+                        yield StreamChunk(type="tool_call", tool_calls=tool_calls)
+                    # 完了扱いにする
+                    yield StreamChunk(type="done", finish_reason="stop")

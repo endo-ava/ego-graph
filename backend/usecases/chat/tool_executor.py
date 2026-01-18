@@ -6,8 +6,9 @@ LLMツール呼び出しの管理と並列実行を行います。
 import asyncio
 import json
 import logging
-from typing import Any
+from typing import Any, AsyncGenerator
 
+from backend.domain.models.llm import StreamChunk
 from backend.infrastructure.llm import LLMClient, Message, ToolCall
 from backend.usecases.tools import Tool, ToolRegistry
 
@@ -173,6 +174,144 @@ class ToolExecutor:
             for tool_call, result in zip(
                 response.tool_calls, tool_results, strict=True
             ):
+                tool_message = self._create_tool_result_message(tool_call, result)
+                conversation_history.append(tool_message)
+
+        # 最大イテレーション到達
+        logger.error("Reached maximum iterations: %s", self.max_iterations)
+        raise MaxIterationsExceeded(
+            f"Reached maximum iterations ({self.max_iterations}) without final answer"
+        )
+
+    async def execute_loop_stream(
+        self,
+        conversation_history: list[Message],
+        tools: list[Tool] | None,
+        temperature: float,
+        max_tokens: int,
+        timeout: float,
+    ) -> AsyncGenerator[StreamChunk, None]:
+        """ツール実行ループをストリーミングで実行します。
+
+        LLMがツール呼び出しを返す限り、ツールを実行して結果をLLMに返すループを実行します。
+        最終的なテキスト応答はストリーミングで yield されます。
+        ツール呼び出し自体は非ストリーミングで実行されます。
+
+        Args:
+            conversation_history: チャットメッセージ履歴
+            tools: 利用可能なツールのスキーマ
+            temperature: 生成の多様性
+            max_tokens: 最大トークン数
+            timeout: 全体のタイムアウト秒数
+
+        Yields:
+            StreamChunk: 各ストリーミングチャンク
+
+        Raises:
+            MaxIterationsExceeded: 最大イテレーション数に到達した場合
+            asyncio.TimeoutError: タイムアウトした場合
+        """
+        iteration = 0
+        loop = asyncio.get_running_loop()
+        start_time = loop.time()
+
+        while iteration < self.max_iterations:
+            iteration += 1
+
+            # 残り時間計算
+            elapsed = loop.time() - start_time
+            remaining_timeout = timeout - elapsed
+
+            if remaining_timeout <= 0:
+                logger.error("Total timeout exceeded after %s seconds", timeout)
+                raise asyncio.TimeoutError(f"Request timed out after {timeout} seconds")
+
+            # LLMストリーミングリクエスト
+            try:
+                # ツール呼び出しの完全な情報を収集するためのフラグ
+                has_tool_calls = False
+                final_tool_calls: list[ToolCall] = []
+                last_done_chunk: StreamChunk | None = None
+
+                # ストリーミングリクエストを実行（タイムアウト付き）
+                async with asyncio.timeout(remaining_timeout):
+                    async for chunk in self.llm_client.chat_stream(
+                        messages=conversation_history,
+                        tools=tools,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                    ):
+                        if chunk.type == "delta":
+                            # テキストデルタを yield
+                            yield chunk
+                        elif chunk.type == "tool_call" and chunk.tool_calls:
+                            # ツール呼び出しを蓄積
+                            has_tool_calls = True
+                            final_tool_calls.extend(chunk.tool_calls)
+                        elif chunk.type == "done":
+                            # doneチャンクを保存（usage/finish_reason保持）
+                            last_done_chunk = chunk
+
+            except asyncio.TimeoutError:
+                logger.error("LLM request timed out")
+                # クライアントにエラーを通知
+                yield StreamChunk(type="error", error="Request timed out")
+                raise
+
+            # ツール呼び出しなければ終了
+            if not has_tool_calls:
+                logger.info("Stream completed after %s iteration(s)", iteration)
+                # LLMからのdoneチャンクを優先、なければ新規作成
+                if last_done_chunk:
+                    yield last_done_chunk
+                else:
+                    yield StreamChunk(type="done")
+                return
+
+            # assistant メッセージを履歴に追加
+            # ストリーミングでは完全なメッセージが取得できないため、
+            # ツール呼び出しだけを含むメッセージを作成
+            assistant_message = Message(
+                role="assistant",
+                content=None,
+                tool_calls=final_tool_calls,
+            )
+            conversation_history.append(assistant_message)
+            logger.debug(
+                "Iteration %s: LLM requested %s tool call(s)",
+                iteration,
+                len(final_tool_calls),
+            )
+
+            # 残り時間を再計算（ツール実行にもタイムアウトを適用）
+            elapsed = loop.time() - start_time
+            remaining_timeout = timeout - elapsed
+
+            if remaining_timeout <= 0:
+                logger.error("Total timeout exceeded before tool execution")
+                raise asyncio.TimeoutError(f"Request timed out after {timeout} seconds")
+
+            # ツールを並列実行（タイムアウト付き）
+            try:
+                tool_results = await asyncio.wait_for(
+                    self._execute_tools_parallel(final_tool_calls),
+                    timeout=remaining_timeout,
+                )
+            except asyncio.TimeoutError:
+                logger.error("Tool execution timed out")
+                raise
+
+            # ツール結果を yield（オプション：デバッグ用）
+            for tool_call, result in zip(final_tool_calls, tool_results, strict=True):
+                yield StreamChunk(
+                    type="tool_result",
+                    tool_name=tool_call.name,
+                    tool_result=result,
+                )
+
+            # ツール結果を履歴に追加
+            # 長さの不一致を検出するために strict=True を使用（Python 3.10+）
+            for tool_call, result in zip(final_tool_calls, tool_results, strict=True):
                 tool_message = self._create_tool_result_message(tool_call, result)
                 conversation_history.append(tool_message)
 

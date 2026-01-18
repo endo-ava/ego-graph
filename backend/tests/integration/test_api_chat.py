@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
 
 import backend.dependencies as deps
-from backend.infrastructure.llm import ChatResponse, Message, ToolCall
+from backend.domain.models.llm import ChatResponse, Message, StreamChunk, ToolCall
 
 JST = ZoneInfo("Asia/Tokyo")
 
@@ -310,3 +310,93 @@ class TestChatEndpoint:
             system_messages = [m for m in messages if m.role == "system"]
             assert len(system_messages) == 1
             assert system_messages[0].content == "Custom system message"
+
+
+class TestChatStreamingEndpoint:
+    """Chatストリーミングエンドポイントのテスト。"""
+
+    def test_chat_streaming_requires_api_key(self, test_client):
+        """ストリーミングもAPI Keyが必要。"""
+        response = test_client.post(
+            "/v1/chat",
+            json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
+        )
+
+        assert response.status_code == 401
+
+    def test_chat_streaming_returns_sse_content_type(
+        self, test_client, mock_backend_config  # noqa: ARG002
+    ):
+        """ストリーミングレスポンスがtext/event-streamを返す。"""
+
+        # 非同期ジェネレータを作成
+        async def mock_execute_loop_stream(*args, **kwargs):
+            yield StreamChunk(type="done", finish_reason="stop")
+
+        with (
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolExecutor"
+            ) as mock_executor_class,
+        ):
+            mock_llm_instance = MagicMock()
+            mock_llm_class.return_value = mock_llm_instance
+
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
+
+            mock_executor_instance = MagicMock()
+            mock_executor_instance.execute_loop_stream = mock_execute_loop_stream
+            mock_executor_class.return_value = mock_executor_instance
+
+            response = test_client.post(
+                "/v1/chat",
+                json={
+                    "messages": [{"role": "user", "content": "Hello"}],
+                    "stream": True,
+                },
+                headers={"X-API-Key": "test-backend-key"},
+            )
+
+            assert response.status_code == 200
+            assert (
+                response.headers["content-type"] == "text/event-stream; charset=utf-8"
+            )
+
+    def test_chat_streaming_requires_llm_config(self, test_client, mock_backend_config):
+        """LLM設定がない場合はストリーミングも501エラー。"""
+        # LLM設定を削除
+        config_without_llm = deepcopy(mock_backend_config)
+        config_without_llm.llm = None
+
+        test_client.app.dependency_overrides[deps.get_config] = (
+            lambda: config_without_llm
+        )
+
+        response = test_client.post(
+            "/v1/chat",
+            json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
+            headers={"X-API-Key": "test-backend-key"},
+        )
+
+        assert response.status_code == 501
+
+    def test_chat_streaming_validates_model_name(
+        self, test_client, mock_backend_config
+    ):
+        """ストリーミングでもモデル名のバリデーションが機能する。"""
+        response = test_client.post(
+            "/v1/chat",
+            json={
+                "messages": [{"role": "user", "content": "Hello"}],
+                "stream": True,
+                "model_name": "invalid-model-name",
+            },
+            headers={"X-API-Key": "test-backend-key"},
+        )
+
+        assert response.status_code == 400

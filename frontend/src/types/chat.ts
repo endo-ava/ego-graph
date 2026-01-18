@@ -42,9 +42,38 @@ export interface ChatResponse {
   id: string;
   message: Message;
   tool_calls?: ToolCall[] | null;
-  usage?: Record<string, unknown> | null;
+  usage?: Usage | null;
   thread_id: string;
   model_name?: string;
+}
+
+/**
+ * ストリーミングチャンクの種類
+ */
+export type StreamChunkType = 'delta' | 'tool_call' | 'tool_result' | 'done' | 'error';
+
+/**
+ * ストリーミングチャンク
+ */
+export interface StreamChunk {
+  type: StreamChunkType;
+  delta?: string;
+  tool_calls?: ToolCall[];
+  tool_name?: string;
+  tool_result?: unknown;
+  finish_reason?: string;
+  usage?: Usage;
+  error?: string;
+  thread_id?: string;
+}
+
+/**
+ * トークン使用量情報
+ */
+export interface Usage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
 }
 
 /**
