@@ -4,9 +4,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ChatInput } from '../ChatInput';
+import { useState } from 'react';
+import { ChatInput, type ChatInputRef } from '../ChatInput';
 
 // useChatStoreをモック
 vi.mock('@/lib/store', () => ({
@@ -21,7 +22,7 @@ vi.mock('@capacitor/core', () => ({
 }));
 
 // ModelSelectorをモック
-vi.mock('../ModelSelector', () => ({
+vi.mock('@/components/model-selector', () => ({
   ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
 }));
 
@@ -147,50 +148,20 @@ describe('ChatInput', () => {
     expect(textarea).toHaveValue('Test\nmessage');
   });
 
-  // サイドバーが開いたときにフォーカスが外れる（今回の新機能）
-  it('blurs textarea when sidebar is opened', async () => {
-    let sidebarOpen = false;
-    (useChatStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector) =>
-      selector({ sidebarOpen })
-    );
-
-    const { rerender } = render(<ChatInput onSendMessage={mockOnSendMessage} />);
+  it('exposes blur method via ref', () => {
+    const inputRef = { current: null as ChatInputRef | null };
+    const TestWrapper = () => {
+      const [ref] = useState<typeof inputRef>(inputRef);
+      return <ChatInput ref={ref} onSendMessage={mockOnSendMessage} />;
+    };
+    render(<TestWrapper />);
 
     const textarea = screen.getByPlaceholderText('メッセージを入力...') as HTMLTextAreaElement;
-
-    // テキストエリアにフォーカスを当てる
     textarea.focus();
     expect(textarea).toHaveFocus();
 
-    // サイドバーを開く
-    sidebarOpen = true;
-    (useChatStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector) =>
-      selector({ sidebarOpen })
-    );
-    rerender(<ChatInput onSendMessage={mockOnSendMessage} />);
-
-    // フォーカスが外れることを確認
-    await waitFor(() => {
-      expect(textarea).not.toHaveFocus();
-    });
-  });
-
-  // サイドバーが閉じている状態ではフォーカスは維持される
-  it('maintains focus when sidebar remains closed', () => {
-    (useChatStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector) =>
-      selector({ sidebarOpen: false })
-    );
-
-    render(<ChatInput onSendMessage={mockOnSendMessage} />);
-
-    const textarea = screen.getByPlaceholderText('メッセージを入力...') as HTMLTextAreaElement;
-
-    // テキストエリアにフォーカスを当てる
-    textarea.focus();
-    expect(textarea).toHaveFocus();
-
-    // サイドバーは閉じたままなので、フォーカスは維持される
-    expect(textarea).toHaveFocus();
+    inputRef.current?.blur();
+    expect(textarea).not.toHaveFocus();
   });
 
   // 前後の空白をトリムして送信

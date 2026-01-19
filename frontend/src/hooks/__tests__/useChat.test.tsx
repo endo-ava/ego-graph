@@ -7,7 +7,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useChat } from '../useChat';
+import { useChat } from '../chat/useChat';
 import { useChatStore } from '@/lib/store';
 import * as api from '@/lib/api';
 

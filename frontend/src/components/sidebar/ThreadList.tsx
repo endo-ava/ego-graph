@@ -1,86 +1,51 @@
-/**
- * スレッド一覧コンポーネント
- * 無限スクロール対応のスレッド一覧を表示します
- */
-
-import { useEffect, useRef } from 'react';
-import { useThreads } from '@/hooks/useThreads';
+import { useThreads } from '@/hooks/chat/useThreads';
+import { useInfiniteScroll } from '@/hooks/ui/useInfiniteScroll';
 import { ThreadItem } from './ThreadItem';
+import { ThreadListLoading } from './ThreadListLoading';
+import { ThreadListError } from './ThreadListError';
+import { ThreadListEmpty } from './ThreadListEmpty';
 
 export function ThreadList() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } =
     useThreads();
 
-  const observerTarget = useRef<HTMLDivElement>(null);
+  const observerTarget = useInfiniteScroll({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  });
 
-  // IntersectionObserverで無限スクロール実装
-  useEffect(() => {
-    const target = observerTarget.current;
-    if (!target) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1 },
-    );
-
-    observer.observe(target);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
-
-  // ローディング状態
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-32">
-        <div className="text-sm text-muted-foreground">読み込み中...</div>
-      </div>
-    );
+    return <ThreadListLoading />;
   }
 
-  // エラー状態
   if (isError) {
-    return (
-      <div className="flex items-center justify-center h-32">
-        <div className="text-sm text-destructive">スレッドの読み込みに失敗しました</div>
-      </div>
-    );
+    return <ThreadListError />;
   }
 
-  // スレッドを全ページから取得
   const threads = data?.pages.flatMap((page) => page.threads) ?? [];
 
-  // 空状態
   if (threads.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-32">
-        <div className="text-sm text-muted-foreground">
-          まだ会話がありません。新規チャットを始めましょう
-        </div>
-      </div>
-    );
+    return <ThreadListEmpty />;
   }
 
   return (
-    <div className="flex flex-col">
-      {threads.map((thread) => (
-        <ThreadItem key={thread.thread_id} thread={thread} />
-      ))}
+    <nav aria-label="スレッド一覧" className="flex flex-col">
+      <ul role="list" className="flex flex-col">
+        {threads.map((thread) => (
+          <li key={thread.thread_id}>
+            <ThreadItem thread={thread} />
+          </li>
+        ))}
+      </ul>
 
-      {/* 無限スクロール用の監視要素 */}
       <div ref={observerTarget} className="h-4" aria-hidden="true" />
 
-      {/* 次ページ読み込み中表示 */}
       {isFetchingNextPage && (
-        <div className="flex items-center justify-center py-4">
-          <div className="text-sm text-muted-foreground">読み込み中...</div>
+        <div className="flex items-center justify-center py-4" role="status" aria-live="polite">
+          <span className="text-sm text-muted-foreground">読み込み中...</span>
         </div>
       )}
-    </div>
+    </nav>
   );
 }

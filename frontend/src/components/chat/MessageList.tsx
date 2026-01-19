@@ -3,10 +3,12 @@
  * react-virtuosoで仮想スクロールを実装
  */
 
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useRef } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
-import { ChatMessage } from './ChatMessage';
 import type { ChatMessage as ChatMessageType } from '@/types/chat';
+import { MessageSkeleton } from '@/components/message/MessageSkeleton';
+
+const ChatMessage = lazy(() => import('@/components/message/ChatMessage'));
 
 interface MessageListProps {
   messages: ChatMessageType[];
@@ -16,28 +18,17 @@ export function MessageList({ messages }: MessageListProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const buildTime = import.meta.env.VITE_BUILD_TIME;
 
-  // 新規メッセージ追加時に自動スクロール
-  useEffect(() => {
-    if (messages.length > 0) {
-      virtuosoRef.current?.scrollToIndex({
-        index: messages.length - 1,
-        behavior: 'smooth',
-      });
-    }
-  }, [messages.length]);
-
-  // メッセージがない場合は空状態を表示
   if (messages.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center">
+      <section className="flex h-full items-center justify-center" aria-live="polite">
         <div className="text-center text-muted-foreground">
-          <p className="text-lg font-semibold">Start a conversation</p>
+          <h2 className="text-lg font-semibold">Start a conversation</h2>
           <p className="text-sm">Send a message to get started</p>
           {buildTime ? (
             <p className="mt-2 text-xs">Last updated: {buildTime}</p>
           ) : null}
         </div>
-      </div>
+      </section>
     );
   }
 
@@ -49,7 +40,9 @@ export function MessageList({ messages }: MessageListProps) {
         style={{ height: '100%' }}
         data={messages}
         itemContent={(_index, message) => (
-          <ChatMessage key={message.id} message={message} />
+          <Suspense fallback={<MessageSkeleton />}>
+            <ChatMessage key={message.id} message={message} />
+          </Suspense>
         )}
         followOutput="smooth"
       />
