@@ -27,7 +27,6 @@ export function Sidebar() {
           transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
-        aria-label="スレッド一覧"
       >
         <SidebarHeader />
         <NewChatButton />

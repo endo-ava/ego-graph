@@ -11,5 +11,7 @@ export function formatCost(model: LLMModel): string {
   if (model.is_free) {
     return 'Free';
   }
-  return `In: $${model.input_cost_per_1m} / 1M  Out: $${model.output_cost_per_1m} / 1M`;
+  const inputCost = model.input_cost_per_1m.toFixed(2);
+  const outputCost = model.output_cost_per_1m.toFixed(2);
+  return `In: $${inputCost} / 1M  Out: $${outputCost} / 1M`;
 }

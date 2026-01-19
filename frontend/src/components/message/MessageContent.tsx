@@ -16,7 +16,10 @@ export function MessageContent({
       </div>
       <div className={cn('prose prose-sm max-w-none dark:prose-invert', isError && 'text-destructive')}>
         {isLoading ? (
-          <LoadingDots />
+          <>
+            <span className="sr-only">読み込み中...</span>
+            <LoadingDots />
+          </>
         ) : content ? (
           <>
             <MarkdownContent content={content} />

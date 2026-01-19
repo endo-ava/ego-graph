@@ -32,7 +32,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
     const handleKeyDown = useCallback(
       (e: KeyboardEvent<HTMLTextAreaElement>) => {
         const isNative = Capacitor.isNativePlatform();
-        if (e.key === 'Enter' && !e.shiftKey && !isNative) {
+        if (e.key === 'Enter' && !e.shiftKey && !isNative && !e.nativeEvent.isComposing) {
           e.preventDefault();
           handleSubmit();
         }

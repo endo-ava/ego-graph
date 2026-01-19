@@ -21,7 +21,7 @@ function ChatMessage({ message, isStreaming = false }: ChatMessageProps) {
         'flex w-full gap-3 px-4 py-6',
         isUser ? 'bg-background' : 'bg-muted/30',
       )}
-      aria-labelledby={`message-${message.id}-content`}
+      aria-label={`Message from ${isUser ? 'you' : 'assistant'}`}
     >
       <MessageAvatar isUser={isUser} />
       <MessageContent

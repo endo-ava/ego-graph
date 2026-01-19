@@ -38,7 +38,6 @@ export function AppLayout({ children }: AppLayoutProps) {
   useSwipe({
     onSwipeRight: () => {
       if (window.innerWidth < 768) {
-        onSidebarClose?.();
         setSidebarOpen(true);
       }
     },

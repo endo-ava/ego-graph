@@ -3,7 +3,7 @@
  * TanStack Query と Zustand を組み合わせて使用します
  */
 
-import { useState, useCallback, useOptimistic } from 'react';
+import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useShallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
@@ -64,11 +64,6 @@ export function useChat() {
   const queryClient = useQueryClient();
 
   const [isLoading, setIsLoading] = useState(false);
-
-  const [optimisticMessages, addOptimisticMessage] = useOptimistic(
-    messages,
-    (state, newMessage: ChatMessage) => [...state, newMessage],
-  );
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -149,7 +144,6 @@ export function useChat() {
       messages,
       currentThreadId,
       selectedModel,
-      addOptimisticMessage,
       addMessage,
       updateLastMessage,
       updateLastMessageWithModel,
@@ -160,7 +154,7 @@ export function useChat() {
   );
 
   return {
-    messages: optimisticMessages,
+    messages,
     sendMessage,
     clearMessages,
     isLoading,

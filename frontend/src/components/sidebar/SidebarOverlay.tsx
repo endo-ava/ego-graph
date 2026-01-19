@@ -6,8 +6,11 @@ export function SidebarOverlay() {
   if (!sidebarOpen) return null;
 
   const handleClose = () => {
-    onSidebarClose?.();
-    setSidebarOpen(false);
+    try {
+      onSidebarClose?.();
+    } finally {
+      setSidebarOpen(false);
+    }
   };
 
   return (

@@ -20,9 +20,9 @@ function ModelSelectorInner() {
 
   const currentModel = models.find((m) => m.id === selectedModel) || models[0];
 
-  useClickOutside(containerRef, () => setIsOpen(false));
-
   const [isOpen, setIsOpen] = useState(false);
+
+  useClickOutside(containerRef, () => setIsOpen(false));
 
   const handleToggle = useCallback(() => {
     setIsOpen((prev) => !prev);

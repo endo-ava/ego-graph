@@ -5,8 +5,11 @@ export function SidebarHeader() {
   const { setSidebarOpen, onSidebarClose } = useChatStore();
 
   const handleClose = () => {
-    onSidebarClose?.();
-    setSidebarOpen(false);
+    try {
+      onSidebarClose?.();
+    } finally {
+      setSidebarOpen(false);
+    }
   };
 
   return (

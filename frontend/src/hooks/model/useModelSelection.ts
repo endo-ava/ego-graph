@@ -14,7 +14,7 @@ export function useModelSelection() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const models = data?.models ?? [];
+  const models = useMemo(() => data?.models ?? [], [data?.models]);
 
   const derivedSelectedModel = useMemo(() => {
     if (models.length === 0) return null;

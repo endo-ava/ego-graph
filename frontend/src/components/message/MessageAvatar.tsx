@@ -13,6 +13,8 @@ export function MessageAvatar({ isUser }: MessageAvatarProps) {
           ? 'bg-primary text-primary-foreground'
           : 'bg-secondary text-secondary-foreground',
       )}
+      aria-label={isUser ? 'ユーザー' : 'アシスタント'}
+      role="img"
     >
       {isUser ? 'U' : 'A'}
     </div>
