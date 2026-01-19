@@ -41,6 +41,11 @@ export default memo(ChatMessage, (prevProps, nextProps) => {
   return (
     prevProps.message.id === nextProps.message.id &&
     prevProps.message.content === nextProps.message.content &&
+    prevProps.message.isError === nextProps.message.isError &&
+    prevProps.message.isLoading === nextProps.message.isLoading &&
+    prevProps.message.model_name === nextProps.message.model_name &&
+    prevProps.message.timestamp === nextProps.message.timestamp &&
+    prevProps.message.role === nextProps.message.role &&
     prevProps.isStreaming === nextProps.isStreaming
   );
 });

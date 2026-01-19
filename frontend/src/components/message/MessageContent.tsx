@@ -17,7 +17,7 @@ export function MessageContent({
       <div className={cn('prose prose-sm max-w-none dark:prose-invert', isError && 'text-destructive')}>
         {isLoading ? (
           <>
-            <span className="sr-only">読み込み中...</span>
+            <span className="sr-only">Loading...</span>
             <LoadingDots />
           </>
         ) : content ? (

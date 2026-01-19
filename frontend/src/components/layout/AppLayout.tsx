@@ -43,8 +43,11 @@ export function AppLayout({ children }: AppLayoutProps) {
     },
     onSwipeLeft: () => {
       if (window.innerWidth < 768 && sidebarOpen) {
-        onSidebarClose?.();
-        setSidebarOpen(false);
+        try {
+          onSidebarClose?.();
+        } finally {
+          setSidebarOpen(false);
+        }
       }
     },
   });
