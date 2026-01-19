@@ -2,8 +2,7 @@
 
 import pytest
 
-from backend.configs.llm_models import DEFAULT_MODEL, MODELS_CONFIG
-from backend.domain.models.llm_model import LLMModel
+from backend.domain.models.llm_model import DEFAULT_MODEL, MODELS_CONFIG, LLMModel
 from backend.usecases.llm_model import get_all_models, get_model
 
 

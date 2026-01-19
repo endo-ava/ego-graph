@@ -108,10 +108,8 @@ class GetTopTracksTool(ToolBase):
 ```
 backend/
 ├── main.py                  # FastAPI アプリケーション
-├── config.py                # 設定管理（BackendConfig）
+├── config.py                # 設定管理（BackendConfig、環境変数ベース）
 ├── dependencies.py          # 依存性注入
-├── configs/                 # 設定データ
-│   └── llm_models.py        # LLM モデル定義
 ├── api/                     # Presentation Layer
 │   ├── schemas/             # API スキーマ（統一配置）
 │   │   ├── chat.py          # ChatRequest, ChatResponse
@@ -134,7 +132,7 @@ backend/
 ├── domain/                  # Domain Layer
 │   ├── models/              # ドメインエンティティ
 │   │   ├── tool.py          # Tool, ToolBase
-│   │   ├── llm_model.py     # LLMModel
+│   │   ├── llm_model.py     # LLMModel, MODELS_CONFIG, DEFAULT_MODEL
 │   │   ├── llm.py           # Message, ToolCall, ChatResponse
 │   │   ├── chat.py          # ConversationContext
 │   │   └── thread.py        # Thread, ThreadMessage
@@ -175,11 +173,12 @@ backend/
 
 - **API スキーマ** (`api/schemas/`): 外部との境界。HTTP リクエスト/レスポンスの形式を定義
 - **Domain モデル** (`domain/models/`): 内部のビジネスロジック。純粋なドメイン概念を表現
+  - エンティティ定義（例: `LLMModel`）とドメインデータ（例: `MODELS_CONFIG`）を統合管理
 
-### 設定 vs ビジネスロジック
+### 設定管理
 
-- **設定データ** (`configs/`): 静的な設定値（例: MODELS_CONFIG）
-- **ビジネスロジック** (`usecases/`, `domain/`): 動的な処理（例: get_model()）
+- **環境変数設定** (`config.py`): 実行時に環境変数から読み込む動的設定（例: `BackendConfig`, `LLMConfig`）
+- **ドメインデータ** (`domain/models/`): アプリケーション定義のマスターデータ（例: `MODELS_CONFIG`）
 
 ### ツール実装の責務分離
 

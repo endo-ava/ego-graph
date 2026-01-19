@@ -325,7 +325,9 @@ class TestChatStreamingEndpoint:
         assert response.status_code == 401
 
     def test_chat_streaming_returns_sse_content_type(
-        self, test_client, mock_backend_config  # noqa: ARG002
+        self,
+        test_client,
+        mock_backend_config,  # noqa: ARG002
     ):
         """ストリーミングレスポンスがtext/event-streamを返す。"""
 

@@ -10,8 +10,7 @@ from backend.api.schemas.thread import (
     ThreadListResponse,
     ThreadMessagesResponse,
 )
-from backend.configs.llm_models import DEFAULT_MODEL
-from backend.domain.models.llm_model import LLMModel
+from backend.domain.models.llm_model import DEFAULT_MODEL, LLMModel
 
 # ドメインモデルも便利のため再エクスポート
 from backend.domain.models.thread import Thread, ThreadMessage

@@ -11,15 +11,18 @@ from pydantic import BaseModel
 
 from backend.config import LLMConfig
 from backend.domain.models.llm import StreamChunk
+from backend.domain.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
 from backend.infrastructure.llm import LLMClient, Message
-from backend.infrastructure.repositories import AddMessageParams, DuckDBThreadRepository
+from backend.infrastructure.repositories import (
+    AddMessageParams,
+    DuckDBThreadRepository,
+    SpotifyRepository,
+)
 from backend.usecases.chat.system_prompt_builder import SystemPromptBuilder
 from backend.usecases.chat.tool_executor import (
     MaxIterationsExceeded,
     ToolExecutor,
 )
-from backend.domain.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
-from backend.infrastructure.repositories import SpotifyRepository
 from backend.usecases.tools import ToolRegistry
 from shared.config import R2Config
 

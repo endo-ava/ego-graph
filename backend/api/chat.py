@@ -15,9 +15,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.api.schemas import (
+    DEFAULT_MODEL,
     ChatRequest,
     ChatResponse,
-    DEFAULT_MODEL,
     ModelsResponse,
     get_all_models,
     get_model,

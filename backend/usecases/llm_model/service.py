@@ -3,8 +3,7 @@
 LLM モデル情報の取得ロジックを提供します。
 """
 
-from backend.configs.llm_models import MODELS_CONFIG
-from backend.domain.models.llm_model import LLMModel
+from backend.domain.models.llm_model import MODELS_CONFIG, LLMModel
 
 
 def get_model(model_id: str) -> LLMModel:
