@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { ModelSelector } from '@/components/model-selector';
 
 interface ChatControlsProps {
   canSubmit: boolean;
@@ -10,7 +9,6 @@ interface ChatControlsProps {
 export function ChatControls({ canSubmit, onSubmit, disabled }: ChatControlsProps) {
   return (
     <>
-      <ModelSelector />
       <Button onClick={onSubmit} disabled={!canSubmit || disabled} size="icon" className="shrink-0">
         <svg
           xmlns="http://www.w3.org/2000/svg"

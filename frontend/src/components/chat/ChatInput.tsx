@@ -2,6 +2,7 @@ import { useState, useCallback, type KeyboardEvent, useRef, useImperativeHandle,
 import TextareaAutosize from 'react-textarea-autosize';
 import { Capacitor } from '@capacitor/core';
 import { ChatControls } from '@/components/chat/ChatControls';
+import { ModelSelector } from '@/components/model-selector';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -43,6 +44,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
     return (
       <div className="border-t bg-background p-4">
         <div className="mx-auto flex max-w-3xl flex-col gap-4">
+          <ModelSelector />
           <div className="flex gap-2">
             <TextareaAutosize
               ref={textAreaRef}

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from 'sonner';
 
 export default function App() {
-  const { clearMessages, setOnSidebarClose } = useChatStore();
+  const { clearMessages, setOnSidebarClose, sidebarOpen, toggleSidebar } = useChatStore();
   const chatInputRef = useRef<ChatInputRef>(null);
   const { messages, sendMessage, isLoading } = useChat();
 
@@ -29,8 +29,6 @@ export default function App() {
     };
   }, [setOnSidebarClose]);
 
-  const { sidebarOpen } = useChatStore((state) => ({ sidebarOpen: state.sidebarOpen }));
-
   useEffect(() => {
     if (sidebarOpen) {
       chatInputRef.current?.blur();
@@ -39,7 +37,7 @@ export default function App() {
 
   const handleToggleSidebar = () => {
     chatInputRef.current?.blur();
-    useChatStore.getState().toggleSidebar();
+    toggleSidebar();
   };
 
   return (
