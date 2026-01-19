@@ -2,8 +2,9 @@
 
 import pytest
 
-from backend.api.schemas import DEFAULT_MODEL, LLMModel, get_all_models, get_model
-from backend.configs.llm_models import MODELS_CONFIG
+from backend.configs.llm_models import DEFAULT_MODEL, MODELS_CONFIG
+from backend.domain.models.llm_model import LLMModel
+from backend.usecases.llm_model import get_all_models, get_model
 
 
 class TestLLMModel:
@@ -186,4 +187,4 @@ class TestModelsConfig:
         # Act & Assert
         for model in MODELS_CONFIG.values():
             if not model.is_free:
-                assert model.input_cost_per_1m > 0.0 or model.output_cost_per_1m > 0.0
+                assert model.input_cost_per_1m > 0.0 and model.output_cost_per_1m > 0.0
