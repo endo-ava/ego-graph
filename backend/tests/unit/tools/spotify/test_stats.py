@@ -1,11 +1,10 @@
 """Tools/Spotify/Stats層のテスト。"""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from backend.usecases.tools import GetListeningStatsTool, GetTopTracksTool
-from shared.config import R2Config
+from backend.domain.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
 
 
 class TestGetTopTracksTool:
@@ -13,22 +12,18 @@ class TestGetTopTracksTool:
 
     def test_name_property(self):
         """nameプロパティが正しい。"""
-        # Arrange: ツールを準備
-        r2_config = R2Config.model_construct(
-            bucket_name="bucket", events_path="events/"
-        )
-        tool = GetTopTracksTool(r2_config)
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        tool = GetTopTracksTool(mock_repository)
 
         # Assert: nameプロパティを検証
         assert tool.name == "get_top_tracks"
 
     def test_description_property(self):
         """descriptionプロパティが正しい。"""
-        # Arrange: ツールを準備
-        r2_config = R2Config.model_construct(
-            bucket_name="bucket", events_path="events/"
-        )
-        tool = GetTopTracksTool(r2_config)
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        tool = GetTopTracksTool(mock_repository)
 
         # Assert: descriptionプロパティを検証
         assert isinstance(tool.description, str)
@@ -36,11 +31,9 @@ class TestGetTopTracksTool:
 
     def test_input_schema_structure(self):
         """input_schemaが正しい構造を持つ。"""
-        # Arrange: ツールを準備
-        r2_config = R2Config.model_construct(
-            bucket_name="bucket", events_path="events/"
-        )
-        tool = GetTopTracksTool(r2_config)
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        tool = GetTopTracksTool(mock_repository)
 
         # Act: input_schemaを取得
         schema = tool.input_schema
@@ -55,11 +48,9 @@ class TestGetTopTracksTool:
 
     def test_to_schema_generates_tool(self):
         """to_schema()がToolスキーマを生成。"""
-        # Arrange: ツールを準備
-        r2_config = R2Config.model_construct(
-            bucket_name="bucket", events_path="events/"
-        )
-        tool = GetTopTracksTool(r2_config)
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        tool = GetTopTracksTool(mock_repository)
 
         # Act: to_schema()でスキーマを生成
         schema = tool.to_schema()
@@ -71,52 +62,36 @@ class TestGetTopTracksTool:
 
     def test_execute_with_valid_dates(self):
         """正しい日付でexecute()を実行。"""
-        # Arrange: モックDBと get_top_tracks関数のモックを準備
-        mock_db = MagicMock()
-        mock_conn = MagicMock()
-        mock_db.__enter__.return_value = mock_conn
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        mock_repository.get_top_tracks.return_value = [
+            {
+                "track_name": "Song A",
+                "artist": "Artist X",
+                "play_count": 10,
+                "total_minutes": 30.0,
+            }
+        ]
+        tool = GetTopTracksTool(mock_repository)
 
-        # get_top_tracksのモック
-        with patch(
-            "backend.usecases.tools.spotify.stats.get_top_tracks",
-            return_value=[
-                {
-                    "track_name": "Song A",
-                    "artist": "Artist X",
-                    "play_count": 10,
-                    "total_minutes": 30.0,
-                }
-            ],
-        ) as mock_get_top_tracks:
-            r2_config = R2Config.model_construct(
-                bucket_name="bucket", events_path="events/"
-            )
-            tool = GetTopTracksTool(r2_config, db_connection_factory=lambda: mock_db)
+        # Act: ツールを実行
+        result = tool.execute(start_date="2024-01-01", end_date="2024-01-31", limit=10)
 
-            # Act: ツールを実行
-            result = tool.execute(
-                start_date="2024-01-01", end_date="2024-01-31", limit=10
-            )
+        # Assert: 実行結果とリポジトリ呼び出しを検証
+        assert len(result) == 1
+        assert result[0]["track_name"] == "Song A"
 
-            # Assert: 実行結果と関数呼び出しを検証
-            assert len(result) == 1
-            assert result[0]["track_name"] == "Song A"
-
-            # get_top_tracksが正しい引数で呼ばれたことを確認
-            # 引数: (QueryParams, limit)
-            mock_get_top_tracks.assert_called_once()
-            call_args = mock_get_top_tracks.call_args[0]
-            params = call_args[0]
-            assert params.bucket == "bucket"  # bucket
-            assert params.events_path == "events/"  # events_path
+        # repository.get_top_tracks が正しい引数で呼ばれたことを確認
+        mock_repository.get_top_tracks.assert_called_once()
+        call_args = mock_repository.get_top_tracks.call_args
+        # 引数: (start_date, end_date, limit) - date オブジェクトとして渡される
+        assert call_args[0][2] == 10  # limit
 
     def test_execute_with_invalid_date_format_raises_error(self):
         """不正な日付形式でエラー。"""
-        # Arrange: ツールを準備
-        r2_config = R2Config.model_construct(
-            bucket_name="bucket", events_path="events/"
-        )
-        tool = GetTopTracksTool(r2_config)
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        tool = GetTopTracksTool(mock_repository)
 
         # Act & Assert: 不正な日付形式でValueErrorが発生することを検証
         with pytest.raises(ValueError, match="invalid_start_date"):
@@ -124,25 +99,17 @@ class TestGetTopTracksTool:
 
     def test_execute_with_default_limit(self):
         """limitのデフォルト値で実行。"""
-        # Arrange: モックDBとget_top_tracks関数のモックを準備
-        mock_db = MagicMock()
-        mock_conn = MagicMock()
-        mock_db.__enter__.return_value = mock_conn
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        mock_repository.get_top_tracks.return_value = []
+        tool = GetTopTracksTool(mock_repository)
 
-        with patch(
-            "backend.usecases.tools.spotify.stats.get_top_tracks", return_value=[]
-        ) as mock_get_top_tracks:
-            r2_config = R2Config.model_construct(
-                bucket_name="bucket", events_path="events/"
-            )
-            tool = GetTopTracksTool(r2_config, db_connection_factory=lambda: mock_db)
+        # Act: limitパラメータを省略して実行
+        tool.execute(start_date="2024-01-01", end_date="2024-01-31")
 
-            # Act: limitパラメータを省略して実行
-            tool.execute(start_date="2024-01-01", end_date="2024-01-31")
-
-            # Assert: デフォルトのlimit=10で呼ばれることを検証
-            call_args = mock_get_top_tracks.call_args
-            assert call_args[0][1] == 10  # 2番目の引数がlimit (QueryParams, limit)
+        # Assert: デフォルトのlimit=10で呼ばれることを検証
+        call_args = mock_repository.get_top_tracks.call_args
+        assert call_args[0][2] == 10  # 3番目の引数がlimit
 
 
 class TestGetListeningStatsTool:
@@ -150,22 +117,18 @@ class TestGetListeningStatsTool:
 
     def test_name_property(self):
         """nameプロパティが正しい。"""
-        # Arrange: ツールを準備
-        r2_config = R2Config.model_construct(
-            bucket_name="bucket", events_path="events/"
-        )
-        tool = GetListeningStatsTool(r2_config)
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        tool = GetListeningStatsTool(mock_repository)
 
         # Assert: nameプロパティを検証
         assert tool.name == "get_listening_stats"
 
     def test_description_property(self):
         """descriptionプロパティが正しい。"""
-        # Arrange: ツールを準備
-        r2_config = R2Config.model_construct(
-            bucket_name="bucket", events_path="events/"
-        )
-        tool = GetListeningStatsTool(r2_config)
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        tool = GetListeningStatsTool(mock_repository)
 
         # Assert: descriptionプロパティを検証
         assert isinstance(tool.description, str)
@@ -173,11 +136,9 @@ class TestGetListeningStatsTool:
 
     def test_input_schema_structure(self):
         """input_schemaが正しい構造を持つ。"""
-        # Arrange: ツールを準備
-        r2_config = R2Config.model_construct(
-            bucket_name="bucket", events_path="events/"
-        )
-        tool = GetListeningStatsTool(r2_config)
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        tool = GetListeningStatsTool(mock_repository)
 
         # Act: input_schemaを取得
         schema = tool.input_schema
@@ -191,11 +152,9 @@ class TestGetListeningStatsTool:
 
     def test_to_schema_generates_tool(self):
         """to_schema()がToolスキーマを生成。"""
-        # Arrange: ツールを準備
-        r2_config = R2Config.model_construct(
-            bucket_name="bucket", events_path="events/"
-        )
-        tool = GetListeningStatsTool(r2_config)
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        tool = GetListeningStatsTool(mock_repository)
 
         # Act: to_schema()でスキーマを生成
         schema = tool.to_schema()
@@ -207,53 +166,38 @@ class TestGetListeningStatsTool:
 
     def test_execute_with_valid_parameters(self):
         """正しいパラメータでexecute()を実行。"""
-        # Arrange: モックDBとget_listening_stats関数のモックを準備
-        mock_db = MagicMock()
-        mock_conn = MagicMock()
-        mock_db.__enter__.return_value = mock_conn
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        mock_repository.get_listening_stats.return_value = [
+            {
+                "period": "2024-01-01",
+                "total_ms": 3600000,
+                "track_count": 20,
+                "unique_tracks": 15,
+            }
+        ]
+        tool = GetListeningStatsTool(mock_repository)
 
-        with patch(
-            "backend.usecases.tools.spotify.stats.get_listening_stats",
-            return_value=[
-                {
-                    "period": "2024-01-01",
-                    "total_ms": 3600000,
-                    "track_count": 20,
-                    "unique_tracks": 15,
-                }
-            ],
-        ) as mock_get_listening_stats:
-            r2_config = R2Config.model_construct(
-                bucket_name="bucket", events_path="events/"
-            )
-            tool = GetListeningStatsTool(
-                r2_config, db_connection_factory=lambda: mock_db
-            )
+        # Act: ツールを実行
+        result = tool.execute(
+            start_date="2024-01-01", end_date="2024-01-31", granularity="day"
+        )
 
-            # Act: ツールを実行
-            result = tool.execute(
-                start_date="2024-01-01", end_date="2024-01-31", granularity="day"
-            )
+        # Assert: 実行結果とリポジトリ呼び出しを検証
+        assert len(result) == 1
+        assert result[0]["period"] == "2024-01-01"
 
-            # Assert: 実行結果と関数呼び出しを検証
-            assert len(result) == 1
-            assert result[0]["period"] == "2024-01-01"
-
-            # get_listening_statsが正しい引数で呼ばれたことを確認
-            # 引数: (QueryParams, granularity)
-            mock_get_listening_stats.assert_called_once()
-            call_args = mock_get_listening_stats.call_args[0]
-            params = call_args[0]
-            assert params.bucket == "bucket"  # bucket
-            assert params.events_path == "events/"  # events_path
+        # repository.get_listening_stats が正しい引数で呼ばれたことを確認
+        mock_repository.get_listening_stats.assert_called_once()
+        call_args = mock_repository.get_listening_stats.call_args
+        # 引数: (start_date, end_date, granularity)
+        assert call_args[0][2] == "day"  # granularity
 
     def test_execute_with_invalid_date_format_raises_error(self):
         """不正な日付形式でエラー。"""
-        # Arrange: ツールを準備
-        r2_config = R2Config.model_construct(
-            bucket_name="bucket", events_path="events/"
-        )
-        tool = GetListeningStatsTool(r2_config)
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        tool = GetListeningStatsTool(mock_repository)
 
         # Act & Assert: 不正な日付形式でValueErrorが発生することを検証
         with pytest.raises(ValueError, match="invalid_start_date"):
@@ -263,26 +207,14 @@ class TestGetListeningStatsTool:
 
     def test_execute_with_default_granularity(self):
         """granularityのデフォルト値で実行。"""
-        # Arrange: モックDBとget_listening_stats関数のモックを準備
-        mock_db = MagicMock()
-        mock_conn = MagicMock()
-        mock_db.__enter__.return_value = mock_conn
+        # Arrange: モックリポジトリとツールを準備
+        mock_repository = MagicMock()
+        mock_repository.get_listening_stats.return_value = []
+        tool = GetListeningStatsTool(mock_repository)
 
-        with patch(
-            "backend.usecases.tools.spotify.stats.get_listening_stats", return_value=[]
-        ) as mock_get_listening_stats:
-            r2_config = R2Config.model_construct(
-                bucket_name="bucket", events_path="events/"
-            )
-            tool = GetListeningStatsTool(
-                r2_config, db_connection_factory=lambda: mock_db
-            )
+        # Act: granularityパラメータを省略して実行
+        tool.execute(start_date="2024-01-01", end_date="2024-01-31")
 
-            # Act: granularityパラメータを省略して実行
-            tool.execute(start_date="2024-01-01", end_date="2024-01-31")
-
-            # Assert: デフォルトのgranularity="day"で呼ばれることを検証
-            call_args = mock_get_listening_stats.call_args
-            assert (
-                call_args[0][1] == "day"
-            )  # 2番目の引数がgranularity (QueryParams, granularity)
+        # Assert: デフォルトのgranularity="day"で呼ばれることを検証
+        call_args = mock_repository.get_listening_stats.call_args
+        assert call_args[0][2] == "day"  # 3番目の引数がgranularity

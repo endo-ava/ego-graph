@@ -1,10 +1,22 @@
-"""LLMモデル情報の管理。"""
+"""LLM モデルのドメインモデル。
+
+LLM モデルの情報を表現するエンティティと、利用可能なモデルの定義を管理します。
+"""
 
 from pydantic import BaseModel
 
 
 class LLMModel(BaseModel):
-    """LLMモデル情報。"""
+    """LLM モデル情報エンティティ。
+
+    Attributes:
+        id: モデル ID（例: "openai/gpt-oss-120b:free"）
+        name: モデルの表示名
+        provider: プロバイダー名（例: "openrouter"）
+        input_cost_per_1m: 入力 100万トークンあたりのコスト（USD）
+        output_cost_per_1m: 出力 100万トークンあたりのコスト（USD）
+        is_free: 無料モデルかどうか
+    """
 
     id: str
     name: str
@@ -14,15 +26,8 @@ class LLMModel(BaseModel):
     is_free: bool
 
 
-MODELS_CONFIG = {
-    "openai/gpt-oss-120b:free": LLMModel(
-        id="openai/gpt-oss-120b:free",
-        name="GPT-OSS-120B",
-        provider="openrouter",
-        input_cost_per_1m=0.0,
-        output_cost_per_1m=0.0,
-        is_free=True,
-    ),
+# 利用可能な LLM モデルの定義
+MODELS_CONFIG: dict[str, LLMModel] = {
     "xiaomi/mimo-v2-flash:free": LLMModel(
         id="xiaomi/mimo-v2-flash:free",
         name="MIMO v2 Flash",
@@ -58,29 +63,3 @@ MODELS_CONFIG = {
 }
 
 DEFAULT_MODEL = "xiaomi/mimo-v2-flash:free"
-
-
-def get_model(model_id: str) -> LLMModel:
-    """モデルIDからモデル情報を取得する。
-
-    Args:
-        model_id: モデルID
-
-    Returns:
-        LLMModel: モデル情報
-
-    Raises:
-        ValueError: モデルIDがプリセットに含まれない場合
-    """
-    if model_id not in MODELS_CONFIG:
-        raise ValueError(f"invalid_model_name: unknown model '{model_id}'")
-    return MODELS_CONFIG[model_id]
-
-
-def get_all_models() -> list[LLMModel]:
-    """全モデルを取得する。
-
-    Returns:
-        モデル情報のリスト
-    """
-    return list(MODELS_CONFIG.values())

@@ -1,23 +1,19 @@
-"""Spotify再生統計ツール。"""
+"""Spotify 再生統計ツール。
+
+指定期間の再生統計とトップトラックを取得するツールを提供します。
+"""
 
 import logging
-from collections.abc import Callable
 from typing import Any
 
 from backend.constants import DEFAULT_TOP_TRACKS_LIMIT, MAX_LIMIT
-from backend.infrastructure.database import (
-    DuckDBConnection,
-    QueryParams,
-    get_listening_stats,
-    get_top_tracks,
-)
-from backend.usecases.tools.base import ToolBase
+from backend.domain.models.tool import ToolBase
+from backend.infrastructure.repositories import SpotifyRepository
 from backend.validators import (
     validate_date_range,
     validate_granularity,
     validate_limit,
 )
-from shared.config import R2Config
 
 logger = logging.getLogger(__name__)
 
@@ -25,19 +21,13 @@ logger = logging.getLogger(__name__)
 class GetTopTracksTool(ToolBase):
     """指定期間で最も再生された曲を取得するツール。"""
 
-    def __init__(
-        self,
-        r2_config: R2Config,
-        db_connection_factory: Callable[[], DuckDBConnection] | None = None,
-    ):
-        """GetTopTracksToolを初期化します。
+    def __init__(self, repository: SpotifyRepository):
+        """GetTopTracksTool を初期化します。
 
         Args:
-            r2_config: R2設定
-            db_connection_factory: DuckDB接続ファクトリ（未指定なら都度生成）
+            repository: Spotify データリポジトリ
         """
-        self.r2_config = r2_config
-        self._db_connection_factory = db_connection_factory
+        self.repository = repository
 
     @property
     def name(self) -> str:
@@ -46,7 +36,7 @@ class GetTopTracksTool(ToolBase):
     @property
     def description(self) -> str:
         return (
-            "指定した期間（start_dateからend_date）で最も再生された曲を取得します。"
+            "指定した期間（start_date から end_date）で最も再生された曲を取得します。"
             "再生回数の多い順にソートされます。"
         )
 
@@ -88,6 +78,7 @@ class GetTopTracksTool(ToolBase):
         Raises:
             ValueError: 日付形式が不正な場合
         """
+        # バリデーション（ビジネスロジック）
         start, end = validate_date_range(start_date, end_date)
         validated_limit = validate_limit(limit, max_value=MAX_LIMIT)
 
@@ -95,48 +86,20 @@ class GetTopTracksTool(ToolBase):
             "Executing get_top_tracks: %s to %s, limit=%s", start, end, validated_limit
         )
 
-        # テスト用のファクトリがある場合はそれを使用（モック注入用）
-        if self._db_connection_factory:
-            db_connection = self._db_connection_factory()
-            # ファクトリから返されたオブジェクトをコンテキストマネージャーとして使用
-            with db_connection as conn:
-                params = QueryParams(
-                    conn=conn,
-                    bucket=self.r2_config.bucket_name,
-                    events_path=self.r2_config.events_path,
-                    start_date=start,
-                    end_date=end,
-                )
-                return get_top_tracks(params, validated_limit)
-
-        # 通常の場合はDuckDBConnectionをコンテキストマネージャーとして使用
-        with DuckDBConnection(self.r2_config) as conn:
-            params = QueryParams(
-                conn=conn,
-                bucket=self.r2_config.bucket_name,
-                events_path=self.r2_config.events_path,
-                start_date=start,
-                end_date=end,
-            )
-            return get_top_tracks(params, validated_limit)
+        # データ取得は repository に委譲
+        return self.repository.get_top_tracks(start, end, validated_limit)
 
 
 class GetListeningStatsTool(ToolBase):
     """期間別の視聴統計を取得するツール。"""
 
-    def __init__(
-        self,
-        r2_config: R2Config,
-        db_connection_factory: Callable[[], DuckDBConnection] | None = None,
-    ):
-        """GetListeningStatsToolを初期化します。
+    def __init__(self, repository: SpotifyRepository):
+        """GetListeningStatsTool を初期化します。
 
         Args:
-            r2_config: R2設定
-            db_connection_factory: DuckDB接続ファクトリ（未指定なら都度生成）
+            repository: Spotify データリポジトリ
         """
-        self.r2_config = r2_config
-        self._db_connection_factory = db_connection_factory
+        self.repository = repository
 
     @property
     def name(self) -> str:
@@ -187,8 +150,9 @@ class GetListeningStatsTool(ToolBase):
             期間別統計のリスト
 
         Raises:
-            ValueError: 日付形式またはgranularityが不正な場合
+            ValueError: 日付形式または granularity が不正な場合
         """
+        # バリデーション（ビジネスロジック）
         start, end = validate_date_range(start_date, end_date)
         validated_granularity = validate_granularity(granularity)
 
@@ -199,27 +163,5 @@ class GetListeningStatsTool(ToolBase):
             granularity,
         )
 
-        # テスト用のファクトリがある場合はそれを使用（モック注入用）
-        if self._db_connection_factory:
-            db_connection = self._db_connection_factory()
-            # ファクトリから返されたオブジェクトをコンテキストマネージャーとして使用
-            with db_connection as conn:
-                params = QueryParams(
-                    conn=conn,
-                    bucket=self.r2_config.bucket_name,
-                    events_path=self.r2_config.events_path,
-                    start_date=start,
-                    end_date=end,
-                )
-                return get_listening_stats(params, validated_granularity)
-
-        # 通常の場合はDuckDBConnectionをコンテキストマネージャーとして使用
-        with DuckDBConnection(self.r2_config) as conn:
-            params = QueryParams(
-                conn=conn,
-                bucket=self.r2_config.bucket_name,
-                events_path=self.r2_config.events_path,
-                start_date=start,
-                end_date=end,
-            )
-            return get_listening_stats(params, validated_granularity)
+        # データ取得は repository に委譲
+        return self.repository.get_listening_stats(start, end, validated_granularity)

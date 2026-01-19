@@ -7,7 +7,7 @@ import logging
 from typing import AsyncGenerator
 
 from backend.domain.models.llm import ChatResponse, Message, StreamChunk
-from backend.domain.tools import Tool
+from backend.domain.models.tool import Tool
 from backend.infrastructure.llm.providers import (
     AnthropicProvider,
     BaseLLMProvider,

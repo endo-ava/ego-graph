@@ -1,10 +1,10 @@
 """Chat usecases - Orchestration logic for chat conversations."""
 
 from backend.usecases.chat.chat_usecase import (
-    ChatRequest,
     ChatResult,
     ChatUseCase,
     ChatUseCaseError,
+    ChatUseCaseRequest,
     NoUserMessageError,
     ThreadNotFoundError,
 )
@@ -18,7 +18,7 @@ from backend.usecases.chat.tool_executor import (
 
 __all__ = [
     # chat_usecase
-    "ChatRequest",
+    "ChatUseCaseRequest",
     "ChatResult",
     "ChatUseCase",
     "ChatUseCaseError",

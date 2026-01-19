@@ -11,7 +11,7 @@ from typing import Any, AsyncGenerator
 import httpx
 
 from backend.domain.models.llm import ChatResponse, Message, StreamChunk, ToolCall
-from backend.domain.tools import Tool
+from backend.domain.models.tool import Tool
 from backend.infrastructure.llm.providers.base import BaseLLMProvider
 
 logger = logging.getLogger(__name__)

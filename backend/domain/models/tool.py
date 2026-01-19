@@ -1,5 +1,6 @@
-"""ツール基底クラス定義。
+"""ツールのドメインモデル。
 
+LLMに提供するツールのスキーマ定義と基底クラスを提供します。
 Model Context Protocol (MCP)のツール設計を参考にしつつ、
 シンプルなPython関数として実装します。
 """
@@ -7,7 +8,24 @@ Model Context Protocol (MCP)のツール設計を参考にしつつ、
 from abc import ABC, abstractmethod
 from typing import Any
 
-from backend.domain.tools import Tool
+from pydantic import BaseModel
+
+
+class Tool(BaseModel):
+    """ツールスキーマ(ドメインエンティティ)。
+
+    LLMプロバイダーに渡すためのツール定義です。
+    プロバイダーに依存しない抽象的なツールの概念を表現します。
+
+    Attributes:
+        name: ツール名
+        description: ツールの説明(LLMが読む)
+        inputSchema: 入力パラメータのJSON Schema
+    """
+
+    name: str
+    description: str
+    inputSchema: dict[str, Any]  # JSON Schema
 
 
 class ToolBase(ABC):
@@ -45,7 +63,7 @@ class ToolBase(ABC):
                 "type": "object",
                 "properties": {
                     "start_date": {"type": "string", "description": "..."},
-                    "limit": {"type": "integer", "default": DEFAULT_TOP_TRACKS_LIMIT}
+                    "limit": {"type": "integer", "default": 10}
                 },
                 "required": ["start_date"]
             }

@@ -11,14 +11,19 @@ from pydantic import BaseModel
 
 from backend.config import LLMConfig
 from backend.domain.models.llm import StreamChunk
+from backend.domain.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
 from backend.infrastructure.llm import LLMClient, Message
-from backend.infrastructure.repositories import AddMessageParams, DuckDBThreadRepository
+from backend.infrastructure.repositories import (
+    AddMessageParams,
+    DuckDBThreadRepository,
+    SpotifyRepository,
+)
 from backend.usecases.chat.system_prompt_builder import SystemPromptBuilder
 from backend.usecases.chat.tool_executor import (
     MaxIterationsExceeded,
     ToolExecutor,
 )
-from backend.usecases.tools import GetListeningStatsTool, GetTopTracksTool, ToolRegistry
+from backend.usecases.tools import ToolRegistry
 from shared.config import R2Config
 
 logger = logging.getLogger(__name__)
@@ -45,7 +50,7 @@ class ThreadNotFoundError(ChatUseCaseError):
     pass
 
 
-class ChatRequest(BaseModel):
+class ChatUseCaseRequest(BaseModel):
     """内部用チャットリクエスト。
 
     API層から受け取ったリクエストを内部処理用に変換したもの。
@@ -91,7 +96,7 @@ class ChatUseCase:
         self.llm_config = llm_config
         self.r2_config = r2_config
 
-    async def execute(self, request: ChatRequest) -> ChatResult:
+    async def execute(self, request: ChatUseCaseRequest) -> ChatResult:
         """チャット会話を実行します。
 
         処理フロー:
@@ -186,7 +191,7 @@ class ChatUseCase:
             usage=result.usage,
         )
 
-    async def _handle_thread(self, request: ChatRequest) -> str:
+    async def _handle_thread(self, request: ChatUseCaseRequest) -> str:
         """スレッド新規作成または既存取得を処理します。
 
         新規の場合は初回ユーザーメッセージでスレッドを作成し、
@@ -296,14 +301,16 @@ class ChatUseCase:
         tool_registry = ToolRegistry()
 
         if self.r2_config:
-            tool_registry.register(GetTopTracksTool(self.r2_config))
-            tool_registry.register(GetListeningStatsTool(self.r2_config))
+            # SpotifyRepository を作成してツールに渡す
+            spotify_repository = SpotifyRepository(self.r2_config)
+            tool_registry.register(GetTopTracksTool(spotify_repository))
+            tool_registry.register(GetListeningStatsTool(spotify_repository))
             logger.debug("Registered Spotify tools")
 
         return tool_registry
 
     async def execute_stream(
-        self, request: ChatRequest
+        self, request: ChatUseCaseRequest
     ) -> AsyncGenerator[StreamChunk, None]:
         """チャット会話をストリーミングで実行します。
 

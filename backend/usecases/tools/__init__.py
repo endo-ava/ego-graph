@@ -4,10 +4,9 @@ MCP風のツール設計を採用し、LLMエージェントがDuckDBデータ�
 アクセスできるようにします。
 """
 
-from backend.domain.tools import Tool
-from backend.usecases.tools.base import ToolBase
+from backend.domain.models.tool import Tool, ToolBase
+from backend.domain.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
 from backend.usecases.tools.registry import ToolRegistry
-from backend.usecases.tools.spotify import GetListeningStatsTool, GetTopTracksTool
 
 __all__ = [
     "Tool",
