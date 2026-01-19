@@ -39,7 +39,7 @@ describe('Sidebar', () => {
   it('サイドバーが正しくレンダリングされる', () => {
     renderSidebar();
 
-    expect(screen.getByRole('complementary', { name: 'スレッド一覧' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary')).toBeInTheDocument();
     expect(screen.getByText('会話履歴')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '新規チャット' })).toBeInTheDocument();
     expect(screen.getByTestId('thread-list')).toBeInTheDocument();

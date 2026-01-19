@@ -291,7 +291,7 @@ describe('ModelSelector', () => {
     // コスト情報が表示される
     await waitFor(() => {
       expect(screen.getByText(/In: \$0\.25 \/ 1M/)).toBeInTheDocument();
-      expect(screen.getByText(/Out: \$0\.5 \/ 1M/)).toBeInTheDocument();
+      expect(screen.getByText(/Out: \$0\.50 \/ 1M/)).toBeInTheDocument();
     });
   });
 
