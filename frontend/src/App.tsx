@@ -45,22 +45,46 @@ export default function App() {
       <Toaster />
       <AppLayout>
         {/* ヘッダー */}
-        <header className="flex shrink-0 items-center justify-between border-b bg-background px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-          <div className="flex items-center gap-2">
-            {/* ハンバーガーメニューボタン */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleToggleSidebar}
-              className="md:hidden"
-              aria-label="メニューを開く"
+        <header className="relative flex shrink-0 items-center justify-between border-b bg-background px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+          {/* ハンバーガーメニューボタン */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToggleSidebar}
+            className="md:hidden"
+            aria-label="Open menu"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              ☰
-            </Button>
-            <h1 className="text-lg font-semibold">EgoGraph Chat</h1>
-          </div>
-          <Button variant="outline" size="sm" onClick={clearMessages}>
-            新規チャット
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </Button>
+
+          {/* タイトル（中央配置） */}
+          <h1 className="absolute left-1/2 -translate-x-1/2 text-lg font-semibold tracking-tight">
+            EgoGraph Chat
+          </h1>
+
+          {/* 新規チャットボタン */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearMessages}
+            className="h-8 px-3"
+            aria-label="New chat"
+          >
+            New
           </Button>
         </header>
 
