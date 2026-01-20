@@ -23,7 +23,7 @@ export function ChatControls({ canSubmit, onSubmit, disabled }: ChatControlsProp
           <path d="m22 2-7 20-4-9-9-4Z" />
           <path d="M22 2 11 13" />
         </svg>
-        <span className="sr-only">送信</span>
+        <span className="sr-only">Send</span>
       </Button>
     </>
   );
