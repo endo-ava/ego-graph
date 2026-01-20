@@ -2,27 +2,26 @@ import { useChatStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 
 export function SidebarHeader() {
-  const { setSidebarOpen, onSidebarClose } = useChatStore();
+  const { clearMessages, setSidebarOpen } = useChatStore();
 
-  const handleClose = () => {
-    try {
-      onSidebarClose?.();
-    } finally {
+  const handleNewChat = () => {
+    clearMessages();
+    if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
   };
 
   return (
-    <header className="flex items-center justify-between px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] border-b shrink-0">
-      <h2 className="font-semibold text-lg">会話履歴</h2>
+    <header className="flex shrink-0 items-center justify-between border-b border-border px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <h2 className="text-base font-semibold">History</h2>
       <Button
-        variant="ghost"
+        variant="outline"
         size="sm"
-        onClick={handleClose}
-        className="md:hidden"
-        aria-label="サイドバーを閉じる"
+        onClick={handleNewChat}
+        className="border-border h-8 px-3"
+        aria-label="New chat"
       >
-        ✕
+        New
       </Button>
     </header>
   );

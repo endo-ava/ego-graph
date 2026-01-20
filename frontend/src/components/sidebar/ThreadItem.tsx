@@ -28,13 +28,21 @@ function ThreadItemComponent({ thread }: ThreadItemProps) {
   return (
     <button
       onClick={handleClick}
-      className={`w-full text-left px-4 py-3 hover:bg-accent transition-colors ${
-        isActive ? 'bg-accent' : ''
+      className={`flex w-full flex-col gap-1 rounded-md border border-border bg-background px-3 py-3 text-left transition-all active:border-accent active:shadow-[0_0_0_1px_var(--color-accent)] ${
+        isActive ? 'border-accent bg-accent text-accent-foreground' : ''
       }`}
-      aria-label={`スレッド: ${thread.title}`}
+      aria-label={`Thread: ${thread.title}`}
       aria-current={isActive ? 'page' : undefined}
     >
-      <div className="font-bold text-sm line-clamp-2 mb-1">{thread.title}</div>
+      <div className="line-clamp-2 text-sm font-medium">{thread.title}</div>
+      <div className="font-mono text-xs opacity-70">
+        {new Date(thread.created_at).toLocaleDateString(navigator.language, {
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+      </div>
     </button>
   );
 }

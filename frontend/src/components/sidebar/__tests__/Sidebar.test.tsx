@@ -40,8 +40,8 @@ describe('Sidebar', () => {
     renderSidebar();
 
     expect(screen.getByRole('complementary')).toBeInTheDocument();
-    expect(screen.getByText('会話履歴')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '新規チャット' })).toBeInTheDocument();
+    expect(screen.getByText('History')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New chat' })).toBeInTheDocument();
     expect(screen.getByTestId('thread-list')).toBeInTheDocument();
   });
 
@@ -69,11 +69,4 @@ describe('Sidebar', () => {
     expect(overlays.length).toBeGreaterThan(0);
   });
 
-  it('閉じるボタンが存在する', () => {
-    useChatStore.setState({ sidebarOpen: true });
-    renderSidebar();
-
-    const closeButton = screen.getByRole('button', { name: 'サイドバーを閉じる' });
-    expect(closeButton).toBeInTheDocument();
-  });
 });

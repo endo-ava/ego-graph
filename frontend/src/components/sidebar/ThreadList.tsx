@@ -30,8 +30,8 @@ export function ThreadList() {
   }
 
   return (
-    <nav aria-label="スレッド一覧" className="flex flex-col">
-      <ul role="list" className="flex flex-col">
+    <nav aria-label="Thread list" className="flex flex-col px-4 py-2">
+      <ul role="list" className="flex flex-col gap-2">
         {threads.map((thread) => (
           <li key={thread.thread_id}>
             <ThreadItem thread={thread} />
@@ -43,7 +43,7 @@ export function ThreadList() {
 
       {isFetchingNextPage && (
         <div className="flex items-center justify-center py-4" role="status" aria-live="polite">
-          <span className="text-sm text-muted-foreground">読み込み中...</span>
+          <span className="text-sm text-muted-foreground">Loading...</span>
         </div>
       )}
     </nav>
