@@ -11,6 +11,8 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { queryClient } from '@/lib/api';
+import '@fontsource/dm-sans';
+import '@fontsource/jetbrains-mono';
 import App from './App';
 import './index.css';
 
