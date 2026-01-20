@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, memo } from 'react';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { SparklesIcon, AlertCircleIcon, ChevronDownIcon } from '@/components/ui/icons';
 import { useModelSelection } from '@/hooks/model/useModelSelection';
 import { useClickOutside } from '@/hooks/ui/useClickOutside';
 import { formatCost } from '@/lib/model';
@@ -23,6 +24,12 @@ function ModelSelectorInner() {
   const [isOpen, setIsOpen] = useState(false);
 
   useClickOutside(containerRef, () => setIsOpen(false));
+
+  useEffect(() => {
+    if (error || (!isLoading && models.length === 0)) {
+      console.error('Failed to load models:', error);
+    }
+  }, [error, isLoading, models.length]);
 
   const handleToggle = useCallback(() => {
     setIsOpen((prev) => !prev);
@@ -91,37 +98,41 @@ function ModelSelectorInner() {
 
   if (isLoading) {
     return (
-      <Button variant="outline" className="w-full justify-between h-auto py-2" disabled>
-        <span className="text-sm">Loading models...</span>
-      </Button>
+      <Badge variant="default" className="cursor-default">
+        <SparklesIcon className="h-3 w-3" />
+        <span>Loading...</span>
+      </Badge>
     );
   }
 
   if (error || models.length === 0) {
-    console.error('Failed to load models:', error);
     return (
-      <Button variant="destructive" className="w-full justify-between h-auto py-2" disabled>
-        <span className="text-sm">Failed to load models</span>
-      </Button>
+      <Badge variant="destructive" className="cursor-default">
+        <AlertCircleIcon className="h-3 w-3" />
+        <span>Error</span>
+      </Badge>
     );
   }
 
   if (!currentModel) return null;
 
   return (
-    <div ref={containerRef} className="relative">
-      <Button
+    <div ref={containerRef} className="relative inline-block">
+      <button
         ref={triggerRef}
-        variant="outline"
+        type="button"
         onClick={handleToggle}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-controls="model-listbox"
-        className="w-full justify-between h-auto py-2"
+        className="group"
       >
-        <span className="text-sm">{currentModel.name}</span>
-        <span className="text-xs text-muted-foreground ml-2">{formatCost(currentModel)}</span>
-      </Button>
+        <Badge variant="primary" className="cursor-pointer transition-all active:scale-95">
+          <SparklesIcon className="h-3 w-3" />
+          <span>{currentModel.name}</span>
+          <ChevronDownIcon className="h-3 w-3 opacity-50 group-active:opacity-100" />
+        </Badge>
+      </button>
 
       {isOpen && (
         <div
@@ -129,7 +140,7 @@ function ModelSelectorInner() {
           id="model-listbox"
           role="listbox"
           aria-label="Model selection"
-          className="absolute bottom-full z-10 mb-2 w-full rounded-md border bg-popover p-1 shadow-md"
+          className="absolute bottom-full left-0 z-10 mb-2 w-[300px] max-h-80 overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-md animate-slide-up"
         >
           {models.map((model) => (
             <button
@@ -138,13 +149,13 @@ function ModelSelectorInner() {
               role="option"
               aria-selected={selectedModel === model.id}
               onClick={() => handleSelect(model.id)}
-              className={`w-full rounded px-3 py-2 text-left text-sm hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
-                selectedModel === model.id ? 'bg-accent' : ''
+              className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors active:bg-accent active:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
+                selectedModel === model.id ? 'bg-accent text-accent-foreground' : ''
               }`}
             >
               <div className="flex flex-col gap-1">
                 <span className="font-medium">{model.name}</span>
-                <span className="text-xs text-muted-foreground">{formatCost(model)}</span>
+                <span className="font-mono text-xs opacity-70">{formatCost(model)}</span>
               </div>
             </button>
           ))}
