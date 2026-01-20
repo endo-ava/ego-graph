@@ -36,7 +36,7 @@ function ThreadItemComponent({ thread }: ThreadItemProps) {
     >
       <div className="line-clamp-2 text-sm font-medium">{thread.title}</div>
       <div className="font-mono text-xs opacity-70">
-        {new Date(thread.created_at).toLocaleDateString(navigator.language, {
+        {new Date(thread.created_at).toLocaleString(navigator.language, {
           month: '2-digit',
           day: '2-digit',
           hour: '2-digit',

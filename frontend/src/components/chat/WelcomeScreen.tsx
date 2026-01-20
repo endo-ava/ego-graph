@@ -52,7 +52,7 @@ export function PatternHexagon({ buildTime }: { buildTime?: string }) {
       </div>
 
       <div className="flex flex-col items-center gap-3 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70">
+        <h2 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70">
           EgoGraph
         </h2>
         <p className="text-base text-muted-foreground flex items-center gap-2">

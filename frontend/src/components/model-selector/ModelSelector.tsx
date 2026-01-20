@@ -140,7 +140,7 @@ function ModelSelectorInner() {
           id="model-listbox"
           role="listbox"
           aria-label="Model selection"
-          className="absolute bottom-full left-0 z-10 mb-2 w-[300px] max-h-80 overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-md animate-slide-up"
+          className="absolute bottom-full left-0 z-10 mb-2 w-[300px] max-w-[calc(100vw-2rem)] max-h-80 overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-md animate-slide-up"
         >
           {models.map((model) => (
             <button

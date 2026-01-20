@@ -72,7 +72,7 @@ export default function App() {
           </Button>
 
           {/* タイトル（中央配置） */}
-          <h1 className="absolute left-1/2 -translate-x-1/2 text-lg font-semibold tracking-tight">
+          <h1 className="absolute left-1/2 -translate-x-1/2 max-w-[calc(100%-8rem)] truncate text-lg font-semibold tracking-tight">
             EgoGraph Chat
           </h1>
 
