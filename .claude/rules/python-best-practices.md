@@ -1,3 +1,8 @@
+---
+paths:
+  - **/*.py
+---
+
 # Python Best Practices & Style Guide (2025.12)
 
 本ドキュメントは、Python 3.12+ 時代における「Pythonic」なコードを書くためのベストプラクティスと、PEP 8 の要約をまとめたものです。
