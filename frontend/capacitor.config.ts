@@ -10,7 +10,7 @@ const updaterUrl = process.env.CAPACITOR_UPDATER_URL;
 const plugins: CapacitorConfig['plugins'] = {
   SplashScreen: {
     // launchShowDurationを削除し、main.tsxで明示的にhide()を呼び出して制御
-    backgroundColor: '#ffffff',
+    backgroundColor: '#000000',
     showSpinner: false,
   },
   StatusBar: {
@@ -20,7 +20,11 @@ const plugins: CapacitorConfig['plugins'] = {
 };
 
 if (updaterUrl) {
-  (plugins as CapacitorConfig['plugins'] & { CapacitorUpdater?: CapacitorUpdaterConfig }).CapacitorUpdater = {
+  (
+    plugins as CapacitorConfig['plugins'] & {
+      CapacitorUpdater?: CapacitorUpdaterConfig;
+    }
+  ).CapacitorUpdater = {
     autoUpdate: true,
     updateUrl: updaterUrl,
   };
