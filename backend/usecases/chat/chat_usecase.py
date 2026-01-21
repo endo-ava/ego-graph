@@ -399,11 +399,13 @@ class ChatUseCase:
         # 7. アシスタント応答の永続化（完了時のみ）
         if final_content:
             self.thread_repository.add_message(
-                thread_id=thread_id,
-                user_id=request.user_id,
-                role="assistant",
-                content=final_content,
-                model_name=used_model_name,
+                AddMessageParams(
+                    thread_id=thread_id,
+                    user_id=request.user_id,
+                    role="assistant",
+                    content=final_content,
+                    model_name=used_model_name,
+                )
             )
             logger.info(
                 "Saved assistant message to thread_id=%s (length=%s)",

@@ -1,5 +1,6 @@
 """API/Chat統合テスト。"""
 
+import json
 from copy import deepcopy
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -7,6 +8,8 @@ from zoneinfo import ZoneInfo
 
 import backend.dependencies as deps
 from backend.domain.models.llm import ChatResponse, Message, StreamChunk, ToolCall
+from backend.infrastructure.database import ChatDuckDBConnection
+from backend.infrastructure.repositories import DuckDBThreadRepository
 
 JST = ZoneInfo("Asia/Tokyo")
 
@@ -402,3 +405,274 @@ class TestChatStreamingEndpoint:
         )
 
         assert response.status_code == 400
+
+    def test_chat_streaming_saves_messages_to_db(
+        self, test_client, mock_backend_config
+    ):
+        """ストリーミングモードでユーザー・アシスタント両方のメッセージがDBに保存される。"""
+
+        # 非同期ジェネレータを作成（実際のストリーミング応答をシミュレート）
+        async def mock_execute_loop_stream(*args, **kwargs):
+            yield StreamChunk(type="delta", delta="Hello, ")
+            yield StreamChunk(type="delta", delta="how can I ")
+            yield StreamChunk(type="delta", delta="help you?")
+            yield StreamChunk(type="done", finish_reason="stop")
+
+        with (
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolExecutor"
+            ) as mock_executor_class,
+        ):
+            mock_llm_instance = MagicMock()
+            mock_llm_class.return_value = mock_llm_instance
+
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
+
+            mock_executor_instance = MagicMock()
+            mock_executor_instance.execute_loop_stream = mock_execute_loop_stream
+            mock_executor_class.return_value = mock_executor_instance
+
+            # チャット実行
+            response = test_client.post(
+                "/v1/chat",
+                json={
+                    "messages": [{"role": "user", "content": "Test question"}],
+                    "stream": True,
+                },
+                headers={"X-API-Key": "test-backend-key"},
+            )
+
+            assert response.status_code == 200
+
+            # レスポンスからthread_idを取得
+            thread_id = None
+            response_text = response.text
+            for line in response_text.split("\n"):
+                if line.startswith("data: "):
+                    data = json.loads(line[6:])
+                    if data.get("thread_id"):
+                        thread_id = data["thread_id"]
+
+            assert thread_id is not None
+
+            # DBからメッセージを取得して検証
+            with ChatDuckDBConnection() as conn:
+                messages = conn.execute(
+                    """
+                    SELECT role, content, model_name
+                    FROM messages
+                    WHERE thread_id = ?
+                    ORDER BY created_at
+                    """,
+                    (thread_id,),
+                ).fetchall()
+
+                # ユーザーメッセージとアシスタントメッセージが保存されていることを確認
+                assert len(messages) == 2
+
+                # ユーザーメッセージ
+                assert messages[0][0] == "user"
+                assert messages[0][1] == "Test question"
+                assert messages[0][2] is None  # model_nameはNone
+
+                # アシスタントメッセージ（全チャンクが結合されている）
+                assert messages[1][0] == "assistant"
+                assert messages[1][1] == "Hello, how can I help you?"
+                assert messages[1][2] == mock_backend_config.llm.model_name
+
+    def test_chat_streaming_creates_new_thread(self, test_client, mock_backend_config):
+        """ストリーミングモードで新規スレッドが作成される。"""
+
+        async def mock_execute_loop_stream(*args, **kwargs):
+            yield StreamChunk(type="delta", delta="Response text")
+            yield StreamChunk(type="done", finish_reason="stop")
+
+        with (
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolExecutor"
+            ) as mock_executor_class,
+        ):
+            mock_llm_instance = MagicMock()
+            mock_llm_class.return_value = mock_llm_instance
+
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
+
+            mock_executor_instance = MagicMock()
+            mock_executor_instance.execute_loop_stream = mock_execute_loop_stream
+            mock_executor_class.return_value = mock_executor_instance
+
+            # thread_idを指定しない（新規作成）
+            response = test_client.post(
+                "/v1/chat",
+                json={
+                    "messages": [{"role": "user", "content": "New thread message"}],
+                    "stream": True,
+                },
+                headers={"X-API-Key": "test-backend-key"},
+            )
+
+            assert response.status_code == 200
+
+            # thread_idがレスポンスに含まれる
+            thread_id = None
+            response_text = response.text
+            for line in response_text.split("\n"):
+                if line.startswith("data: "):
+                    data = json.loads(line[6:])
+                    if data.get("thread_id"):
+                        thread_id = data["thread_id"]
+
+            assert thread_id is not None
+
+            # スレッドがDBに作成されている
+            with ChatDuckDBConnection() as conn:
+                thread = conn.execute(
+                    "SELECT thread_id, title, user_id FROM threads WHERE thread_id = ?",
+                    (thread_id,),
+                ).fetchone()
+
+                assert thread is not None
+                assert thread[0] == thread_id
+                assert thread[1] == "New thread message"  # タイトルは初回メッセージ
+                assert thread[2] == "default_user"
+
+    def test_chat_streaming_appends_to_existing_thread(
+        self, test_client, mock_backend_config
+    ):
+        """ストリーミングモードで既存スレッドにメッセージが追加される。"""
+
+        # 事前に既存スレッドを作成
+        with ChatDuckDBConnection() as conn:
+            repo = DuckDBThreadRepository(conn)
+            thread = repo.create_thread("default_user", "Existing thread")
+            existing_thread_id = thread.thread_id
+
+        async def mock_execute_loop_stream(*args, **kwargs):
+            yield StreamChunk(type="delta", delta="Follow-up response")
+            yield StreamChunk(type="done", finish_reason="stop")
+
+        with (
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolExecutor"
+            ) as mock_executor_class,
+        ):
+            mock_llm_instance = MagicMock()
+            mock_llm_class.return_value = mock_llm_instance
+
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
+
+            mock_executor_instance = MagicMock()
+            mock_executor_instance.execute_loop_stream = mock_execute_loop_stream
+            mock_executor_class.return_value = mock_executor_instance
+
+            # 既存thread_idを指定
+            response = test_client.post(
+                "/v1/chat",
+                json={
+                    "messages": [{"role": "user", "content": "Follow-up question"}],
+                    "stream": True,
+                    "thread_id": existing_thread_id,
+                },
+                headers={"X-API-Key": "test-backend-key"},
+            )
+
+            assert response.status_code == 200
+
+            # メッセージが既存スレッドに追加されている
+            with ChatDuckDBConnection() as conn:
+                messages = conn.execute(
+                    """
+                    SELECT role, content
+                    FROM messages
+                    WHERE thread_id = ?
+                    ORDER BY created_at
+                    """,
+                    (existing_thread_id,),
+                ).fetchall()
+
+                # ユーザーメッセージとアシスタントメッセージが追加されている
+                assert len(messages) == 2
+                assert messages[0][0] == "user"
+                assert messages[0][1] == "Follow-up question"
+                assert messages[1][0] == "assistant"
+                assert messages[1][1] == "Follow-up response"
+
+    def test_chat_streaming_handles_empty_response(
+        self, test_client, mock_backend_config
+    ):
+        """ストリーミングで空のアシスタント応答の場合、メッセージを保存しない。"""
+
+        # 空のストリーミング（deltaがない）
+        async def mock_execute_loop_stream(*args, **kwargs):
+            yield StreamChunk(type="done", finish_reason="stop")
+
+        with (
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolRegistry"
+            ) as mock_registry_class,
+            patch(
+                "backend.usecases.chat.chat_usecase.ToolExecutor"
+            ) as mock_executor_class,
+        ):
+            mock_llm_instance = MagicMock()
+            mock_llm_class.return_value = mock_llm_instance
+
+            mock_registry = MagicMock()
+            mock_registry.get_all_schemas.return_value = []
+            mock_registry_class.return_value = mock_registry
+
+            mock_executor_instance = MagicMock()
+            mock_executor_instance.execute_loop_stream = mock_execute_loop_stream
+            mock_executor_class.return_value = mock_executor_instance
+
+            response = test_client.post(
+                "/v1/chat",
+                json={
+                    "messages": [{"role": "user", "content": "Test"}],
+                    "stream": True,
+                },
+                headers={"X-API-Key": "test-backend-key"},
+            )
+
+            assert response.status_code == 200
+
+            # thread_idを取得
+            thread_id = None
+            response_text = response.text
+            for line in response_text.split("\n"):
+                if line.startswith("data: "):
+                    data = json.loads(line[6:])
+                    if data.get("thread_id"):
+                        thread_id = data["thread_id"]
+
+            # DBを確認（ユーザーメッセージのみ保存、
+            # アシスタントメッセージは保存されない）
+            with ChatDuckDBConnection() as conn:
+                messages = conn.execute(
+                    "SELECT role, content FROM messages WHERE thread_id = ?",
+                    (thread_id,),
+                ).fetchall()
+
+                # ユーザーメッセージのみ
+                assert len(messages) == 1
+                assert messages[0][0] == "user"
+                assert messages[0][1] == "Test"
