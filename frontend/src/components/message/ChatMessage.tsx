@@ -18,8 +18,8 @@ function ChatMessage({ message, isStreaming = false }: ChatMessageProps) {
   return (
     <article
       className={cn(
-        'flex w-full gap-3 px-4 py-6',
-        isUser ? 'bg-background' : 'bg-muted/30',
+        'flex w-full gap-4 px-4 py-6',
+        isUser ? 'bg-muted' : 'bg-transparent',
       )}
       aria-label={`Message from ${isUser ? 'you' : 'assistant'}`}
     >

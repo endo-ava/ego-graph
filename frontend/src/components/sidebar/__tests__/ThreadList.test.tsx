@@ -71,7 +71,7 @@ describe('ThreadList', () => {
 
     renderThreadList();
 
-    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
   it('スレッド一覧を正しく表示する', async () => {
@@ -99,7 +99,7 @@ describe('ThreadList', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('まだ会話がありません。新規チャットを始めましょう'),
+        screen.getByText('No conversations yet. Start a new chat'),
       ).toBeInTheDocument();
     });
   });
@@ -110,7 +110,7 @@ describe('ThreadList', () => {
     renderThreadList();
 
     await waitFor(() => {
-      expect(screen.getByText('スレッドの読み込みに失敗しました')).toBeInTheDocument();
+      expect(screen.getByText('Failed to load threads')).toBeInTheDocument();
     });
   });
 

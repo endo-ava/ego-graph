@@ -20,17 +20,15 @@ describe('ChatMessage', () => {
 
     render(<ChatMessage message={message} />);
 
-    // ユーザーラベルとメッセージ内容を確認
-    expect(screen.getByText('You')).toBeInTheDocument();
+    // メッセージ内容を確認
     expect(screen.getByText('Hello, world!')).toBeInTheDocument();
 
     // タイムスタンプの確認（HH:mm形式）
     expect(screen.getByText(/\d{2}:\d{2}/)).toBeInTheDocument();
 
-    // ユーザーアバター（背景色クラス）の確認
-    const avatar = screen.getByText('U');
+    // ユーザーアバターの確認（aria-label）
+    const avatar = screen.getByLabelText('User');
     expect(avatar).toBeInTheDocument();
-    expect(avatar).toHaveClass('bg-primary');
   });
 
   // アシスタントメッセージ
@@ -44,14 +42,12 @@ describe('ChatMessage', () => {
 
     render(<ChatMessage message={message} />);
 
-    // アシスタントラベルとメッセージ内容を確認
-    expect(screen.getByText('Assistant')).toBeInTheDocument();
+    // メッセージ内容を確認
     expect(screen.getByText('Hi there!')).toBeInTheDocument();
 
-    // アシスタントアバター（背景色クラス）の確認
-    const avatar = screen.getByText('A');
+    // アシスタントアバターの確認（aria-label）
+    const avatar = screen.getByLabelText('Assistant');
     expect(avatar).toBeInTheDocument();
-    expect(avatar).toHaveClass('bg-secondary');
   });
 
   // Markdownレンダリング（太字）

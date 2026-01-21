@@ -1,4 +1,11 @@
-import { useState, useCallback, type KeyboardEvent, useRef, useImperativeHandle, forwardRef } from 'react';
+import {
+  useState,
+  useCallback,
+  type KeyboardEvent,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+} from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { Capacitor } from '@capacitor/core';
 import { ChatControls } from '@/components/chat/ChatControls';
@@ -33,7 +40,12 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
     const handleKeyDown = useCallback(
       (e: KeyboardEvent<HTMLTextAreaElement>) => {
         const isNative = Capacitor.isNativePlatform();
-        if (e.key === 'Enter' && !e.shiftKey && !isNative && !e.nativeEvent.isComposing) {
+        if (
+          e.key === 'Enter' &&
+          !e.shiftKey &&
+          !isNative &&
+          !e.nativeEvent.isComposing
+        ) {
           e.preventDefault();
           handleSubmit();
         }
@@ -42,22 +54,30 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
     );
 
     return (
-      <div className="border-t bg-background p-4">
-        <div className="mx-auto flex max-w-3xl flex-col gap-4">
-          <ModelSelector />
-          <div className="flex gap-2">
+      <div className="bg-background px-4 py-3">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="relative">
             <TextareaAutosize
               ref={textAreaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="メッセージを入力..."
+              placeholder="Type a message..."
               disabled={disabled}
               minRows={1}
               maxRows={5}
-              className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full resize-none rounded-lg bg-secondary px-4 pt-4 pb-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
             />
-            <ChatControls canSubmit={!!input.trim()} onSubmit={handleSubmit} disabled={disabled} />
+            <div className="absolute bottom-2.5 left-3">
+              <ModelSelector />
+            </div>
+            <div className="absolute bottom-2.5 right-3">
+              <ChatControls
+                canSubmit={!!input.trim()}
+                onSubmit={handleSubmit}
+                disabled={disabled}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -1,18 +1,22 @@
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { MarkdownContent } from '@/components/content/MarkdownContent';
 
 export function MessageContent({
   isUser, modelName, timestamp, isError, isLoading, content, showCursor
 }: MessageContentProps) {
+  const timeLabel = isValid(timestamp) ? format(timestamp, 'HH:mm') : '--';
   return (
     <div className="flex-1 space-y-2 overflow-hidden">
       <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold">
-          {isUser ? 'You' : 'Assistant'}
-          {!isUser && modelName && <span className="ml-2 text-xs text-muted-foreground">({modelName})</span>}
+        {!isUser && modelName && (
+          <span className="font-mono text-xs font-medium text-muted-foreground">
+            {modelName}
+          </span>
+        )}
+        <span className="font-mono text-xs text-muted-foreground">
+          {timeLabel}
         </span>
-        <span className="text-xs text-muted-foreground">{format(timestamp, 'HH:mm')}</span>
       </div>
       <div className={cn('prose prose-sm max-w-none dark:prose-invert', isError && 'text-destructive')}>
         {isLoading ? (

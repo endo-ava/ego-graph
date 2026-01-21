@@ -45,10 +45,10 @@ describe('ChatInput', () => {
   it('renders input field and submit button', () => {
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...');
+    const textarea = screen.getByPlaceholderText('Type a message...');
     expect(textarea).toBeInTheDocument();
 
-    const submitButton = screen.getByRole('button', { name: '送信' });
+    const submitButton = screen.getByRole('button', { name: 'Send' });
     expect(submitButton).toBeInTheDocument();
   });
 
@@ -57,7 +57,7 @@ describe('ChatInput', () => {
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...');
+    const textarea = screen.getByPlaceholderText('Type a message...');
     await user.type(textarea, 'Hello, world!');
 
     expect(textarea).toHaveValue('Hello, world!');
@@ -68,8 +68,8 @@ describe('ChatInput', () => {
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...');
-    const submitButton = screen.getByRole('button', { name: '送信' });
+    const textarea = screen.getByPlaceholderText('Type a message...');
+    const submitButton = screen.getByRole('button', { name: 'Send' });
 
     await user.type(textarea, 'Test message');
     await user.click(submitButton);
@@ -83,8 +83,8 @@ describe('ChatInput', () => {
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...');
-    const submitButton = screen.getByRole('button', { name: '送信' });
+    const textarea = screen.getByPlaceholderText('Type a message...');
+    const submitButton = screen.getByRole('button', { name: 'Send' });
 
     await user.type(textarea, '   ');
     await user.click(submitButton);
@@ -97,8 +97,8 @@ describe('ChatInput', () => {
   it('disables input and button when disabled prop is true', () => {
     render(<ChatInput onSendMessage={mockOnSendMessage} disabled={true} />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...');
-    const submitButton = screen.getByRole('button', { name: '送信' });
+    const textarea = screen.getByPlaceholderText('Type a message...');
+    const submitButton = screen.getByRole('button', { name: 'Send' });
 
     expect(textarea).toBeDisabled();
     expect(submitButton).toBeDisabled();
@@ -111,7 +111,7 @@ describe('ChatInput', () => {
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...');
+    const textarea = screen.getByPlaceholderText('Type a message...');
     await user.type(textarea, 'Test message');
     await user.keyboard('{Enter}');
 
@@ -126,7 +126,7 @@ describe('ChatInput', () => {
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...');
+    const textarea = screen.getByPlaceholderText('Type a message...');
     await user.type(textarea, 'First line{Shift>}{Enter}{/Shift}Second line');
 
     expect(textarea).toHaveValue('First line\nSecond line');
@@ -140,7 +140,7 @@ describe('ChatInput', () => {
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...');
+    const textarea = screen.getByPlaceholderText('Type a message...');
     await user.type(textarea, 'Test{Enter}message');
 
     // モバイルではEnterで送信せず、改行が入る
@@ -156,7 +156,7 @@ describe('ChatInput', () => {
     };
     render(<TestWrapper />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...') as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText('Type a message...') as HTMLTextAreaElement;
     textarea.focus();
     expect(textarea).toHaveFocus();
 
@@ -169,8 +169,8 @@ describe('ChatInput', () => {
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...');
-    const submitButton = screen.getByRole('button', { name: '送信' });
+    const textarea = screen.getByPlaceholderText('Type a message...');
+    const submitButton = screen.getByRole('button', { name: 'Send' });
 
     await user.type(textarea, '  Test message  ');
     await user.click(submitButton);
@@ -183,8 +183,8 @@ describe('ChatInput', () => {
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...');
-    const submitButton = screen.getByRole('button', { name: '送信' });
+    const textarea = screen.getByPlaceholderText('Type a message...');
+    const submitButton = screen.getByRole('button', { name: 'Send' });
 
     await user.type(textarea, 'Test message');
     expect(textarea).toHaveValue('Test message');
@@ -197,7 +197,7 @@ describe('ChatInput', () => {
   it('disables submit button when input is empty', () => {
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
 
-    const submitButton = screen.getByRole('button', { name: '送信' });
+    const submitButton = screen.getByRole('button', { name: 'Send' });
     expect(submitButton).toBeDisabled();
   });
 
@@ -206,8 +206,8 @@ describe('ChatInput', () => {
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
 
-    const textarea = screen.getByPlaceholderText('メッセージを入力...');
-    const submitButton = screen.getByRole('button', { name: '送信' });
+    const textarea = screen.getByPlaceholderText('Type a message...');
+    const submitButton = screen.getByRole('button', { name: 'Send' });
 
     expect(submitButton).toBeDisabled();
 
