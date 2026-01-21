@@ -38,16 +38,17 @@ uv run pytest ingest/tests --cov=ingest
 
 ### Backend（API サーバー）
 ```bash
-uv run uvicorn backend.main:app --reload
+uv run python -m backend.main
 uv run pytest backend/tests --cov=backend
 open http://localhost:8000/docs
+uv run python -m backend.dev_tools.chat_cli # デバッグ用LLM CLIツール
 ```
 
 ### Frontend（モバイル/Web）
 ```bash
-cd frontend
-npm install && npm run dev        # Web 開発
+cd frontend && npm run dev        # Web 開発
 npm run test:run                  # テスト
+npm run lint
 npm run android:sync              # モバイル同期
 ```
 
@@ -157,19 +158,6 @@ cursor.execute("SELECT * FROM events WHERE user_id = ?", (user_id,))
 ### Docstring/コメント
 - **言語**: 日本語統一
 
-```python
-def fetch_plays(user_id: str) -> list[SpotifyPlayEvent]:
-    """指定されたユーザーの再生履歴を取得する。
-
-    Args:
-        user_id: Spotify ユーザーID
-
-    Returns:
-        再生履歴のリスト
-    """
-    ...
-```
-
 ---
 
 ## テスト
@@ -187,6 +175,8 @@ def fetch_plays(user_id: str) -> list[SpotifyPlayEvent]:
 
 ## CodeRabbit レビュー
 
+CodeRabbitは、コードレビューのためのAIツールです。以下のコマンドで使用できます。
+
 ```bash
 # Commit 前
 coderabbit --prompt-only -t uncommitted
@@ -202,4 +192,8 @@ gh pr view <PR_NUMBER> --json reviews,comments > pr_data.json
 
 ## その他
 
-ユーザーの要望が曖昧な場合は、必ずまとめて質問すること。
+- ユーザーの要望が曖昧な場合は、必ずまとめて質問すること。Claude Codeの場合は`AskUserQuestion`を活用すること。
+
+- 積極的にサブエージェントを活用し、メインコンテキストをクリーンに保つこと。
+
+- コードを変更した後は、テストが通ることを確認すること。
