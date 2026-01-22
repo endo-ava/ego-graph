@@ -229,9 +229,7 @@ def enrich_master_data(
             failed_targets.append("tracks")
         if not artist_ok:
             failed_targets.append("artists")
-        raise RuntimeError(
-            "Failed to enrich master data: " + ", ".join(failed_targets)
-        )
+        raise RuntimeError("Failed to enrich master data: " + ", ".join(failed_targets))
 
 
 def _group_events_by_month(

@@ -345,6 +345,7 @@ class TestChatStreamingEndpoint:
         mock_backend_config,  # noqa: ARG002
     ):
         """ストリーミングレスポンスがtext/event-streamを返す。"""
+
         # Arrange
         async def mock_execute_loop_stream(*args, **kwargs):
             yield StreamChunk(type="done", finish_reason="stop")
@@ -432,6 +433,7 @@ class TestChatStreamingEndpoint:
         self, test_client, mock_backend_config
     ):
         """ストリーミングモードでユーザー・アシスタント両方のメッセージがDBに保存される。"""
+
         # Arrange
         async def mock_execute_loop_stream(*args, **kwargs):
             yield StreamChunk(type="delta", delta="Hello, ")
@@ -507,6 +509,7 @@ class TestChatStreamingEndpoint:
 
     def test_chat_streaming_creates_new_thread(self, test_client, mock_backend_config):
         """ストリーミングモードで新規スレッドが作成される。"""
+
         # Arrange
         async def mock_execute_loop_stream(*args, **kwargs):
             yield StreamChunk(type="delta", delta="Response text")
@@ -639,6 +642,7 @@ class TestChatStreamingEndpoint:
         self, test_client, mock_backend_config
     ):
         """ストリーミングで空のアシスタント応答の場合、メッセージを保存しない。"""
+
         # Arrange
         async def mock_execute_loop_stream(*args, **kwargs):
             yield StreamChunk(type="done", finish_reason="stop")
