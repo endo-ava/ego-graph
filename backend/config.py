@@ -60,6 +60,9 @@ class BackendConfig(BaseSettings):
     # ロギング
     log_level: str = Field("INFO", alias="LOG_LEVEL")
 
+    # コンテキストディレクトリ（オプション: 未設定時はデフォルトパスを使用）
+    context_dir: str | None = Field(None, alias="CONTEXT_DIR")
+
     # サブ設定
     llm: LLMConfig | None = None
     r2: R2Config | None = None
