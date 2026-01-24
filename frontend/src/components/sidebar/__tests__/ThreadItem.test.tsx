@@ -26,6 +26,22 @@ const localStorageMock = (() => {
   };
 })();
 
+const mockMatchMedia = (matches: boolean) => {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+    }),
+  });
+};
+
 describe('ThreadItem', () => {
   const mockThread: Thread = {
     thread_id: 'thread-1',
@@ -50,11 +66,15 @@ describe('ThreadItem', () => {
       messages: [],
       currentThreadId: null,
       sidebarOpen: false,
+      activeView: 'chat',
       selectedModel: 'tngtech/deepseek-r1t2-chimera:free',
     });
 
     // モックをリセット
     vi.restoreAllMocks();
+
+    // matchMediaをデスクトップモードに設定
+    mockMatchMedia(false);
 
     // window.innerWidthをデスクトップサイズに設定
     Object.defineProperty(window, 'innerWidth', {
@@ -106,6 +126,29 @@ describe('ThreadItem', () => {
       expect(getThreadMessagesSpy).toHaveBeenCalledWith('thread-1', expect.objectContaining({
         signal: expect.any(AbortSignal),
       }));
+    });
+  });
+
+  it('スレッド選択時にチャット画面へ戻る', async () => {
+    const mockResponse: ThreadMessagesResponse = {
+      thread_id: 'thread-1',
+      messages: [],
+    };
+
+    vi.spyOn(api, 'getThreadMessages').mockResolvedValue(mockResponse);
+
+    useChatStore.setState({
+      activeView: 'system_prompt',
+    });
+
+    const user = userEvent.setup();
+    render(<ThreadItem thread={mockThread} />);
+
+    const button = screen.getByRole('button');
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(useChatStore.getState().activeView).toBe('chat');
     });
   });
 
@@ -349,12 +392,8 @@ describe('ThreadItem', () => {
 
     vi.spyOn(api, 'getThreadMessages').mockResolvedValue(mockResponse);
 
-    // モバイルサイズに設定
-    Object.defineProperty(window, 'innerWidth', {
-      writable: true,
-      configurable: true,
-      value: 500,
-    });
+    // matchMediaをモバイルモードに設定
+    mockMatchMedia(true);
 
     // サイドバーを開く
     useChatStore.setState({
@@ -408,11 +447,8 @@ describe('ThreadItem', () => {
     expect(useChatStore.getState().sidebarOpen).toBe(true);
   });
 
-  it('エラー時にアラートを表示する', async () => {
+  it('エラー時にtoastを表示する', async () => {
     vi.spyOn(api, 'getThreadMessages').mockRejectedValue(new Error('Network error'));
-
-    // alertのモック
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     const user = userEvent.setup();
     render(<ThreadItem thread={mockThread} />);
@@ -420,12 +456,9 @@ describe('ThreadItem', () => {
     const button = screen.getByRole('button');
     await user.click(button);
 
-    // アラートが表示される
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith('スレッドの読み込みに失敗しました。もう一度試してください。');
+      expect(useChatStore.getState().activeView).toBe('chat');
     });
-
-    alertSpy.mockRestore();
   });
 
   it('AbortErrorは無視される', async () => {
