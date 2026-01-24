@@ -81,9 +81,9 @@ data/
 *.db
 *.sqlite
 
-backend/context/*
-!backend/context/templates/
-!backend/context/templates/**
+backend/infrastructure/context/*
+!backend/infrastructure/context/templates/
+!backend/infrastructure/context/templates/**
 
 .vscode/
 .serena/
