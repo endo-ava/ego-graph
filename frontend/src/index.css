@@ -141,6 +141,10 @@ body::before {
   animation: slide-up 250ms ease-out;
 }
 
+.animate-slide-down {
+  animation: slide-down 200ms ease-out;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -154,6 +158,17 @@ body::before {
   from {
     opacity: 0;
     transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
