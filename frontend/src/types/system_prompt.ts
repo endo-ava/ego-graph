@@ -6,10 +6,7 @@ export type SystemPromptName =
   | 'user'
   | 'identity'
   | 'soul'
-  | 'tools'
-  | 'agents'
-  | 'heartbeat'
-  | 'bootstrap';
+  | 'tools';
 
 export interface SystemPromptResponse {
   name: SystemPromptName;

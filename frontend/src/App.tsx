@@ -44,7 +44,22 @@ export default function App() {
 
   return (
     <>
-      <Toaster />
+      <Toaster
+        position="bottom-center"
+        expand={false}
+        richColors
+        toastOptions={{
+          style: {
+            fontFamily: 'var(--font-family-sans)',
+            maxWidth: 'min(50vw, 400px)',
+            padding: '0.5rem 0.75rem',
+            fontSize: '0.8125rem',
+            minHeight: 'auto',
+          },
+          className:
+            'font-sans bg-secondary/90 text-foreground border border-border shadow-sm backdrop-blur',
+        }}
+      />
       <AppLayout>
         {activeView === 'system_prompt' ? (
           <>

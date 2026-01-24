@@ -87,7 +87,6 @@ describe('SystemPromptEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Toggle guide' }));
 
     expect(screen.getByText('GUIDE: System Prompt Files')).toBeInTheDocument();
-    expect(screen.getByText('AGENTS.md')).toBeInTheDocument();
-    expect(screen.getByText('BOOTSTRAP.md')).toBeInTheDocument();
+    expect(screen.getByText('TOOLS.md')).toBeInTheDocument();
   });
 });

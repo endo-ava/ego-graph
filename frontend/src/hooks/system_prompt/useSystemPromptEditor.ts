@@ -19,9 +19,6 @@ const SYSTEM_PROMPT_TABS: SystemPromptTab[] = [
   { key: 'identity', label: 'IDENTITY', filename: 'IDENTITY.md' },
   { key: 'soul', label: 'SOUL', filename: 'SOUL.md' },
   { key: 'tools', label: 'TOOLS', filename: 'TOOLS.md' },
-  { key: 'agents', label: 'AGENTS', filename: 'AGENTS.md' },
-  { key: 'heartbeat', label: 'HEARTBEAT', filename: 'HEARTBEAT.md' },
-  { key: 'bootstrap', label: 'BOOTSTRAP', filename: 'BOOTSTRAP.md' },
 ];
 
 type Drafts = Partial<Record<SystemPromptName, string>>;
@@ -56,10 +53,14 @@ export function useSystemPromptEditor() {
     onSuccess: (data) => {
       queryClient.setQueryData(['system-prompt', activeTab], data);
       setDrafts((prev) => ({ ...prev, [activeTab]: data.content }));
-      toast.success('Saved');
+      toast.success('Saved successfully', {
+        duration: 2000,
+      });
     },
     onError: () => {
-      toast.error('Save failed');
+      toast.error('Failed to save changes', {
+        duration: 3000,
+      });
     },
   });
 

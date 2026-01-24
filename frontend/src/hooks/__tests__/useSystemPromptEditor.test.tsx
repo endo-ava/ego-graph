@@ -100,7 +100,9 @@ describe('useSystemPromptEditor', () => {
       expect(mockUpdateSystemPrompt).toHaveBeenCalledWith('user', {
         content: 'updated',
       });
-      expect(toastSuccess).toHaveBeenCalledWith('Saved');
+      expect(toastSuccess).toHaveBeenCalledWith('Saved successfully', {
+        duration: 2000,
+      });
     });
   });
 
