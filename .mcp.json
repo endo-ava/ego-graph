@@ -10,7 +10,7 @@
         "--context",
         "ide-assistant",
         "--project",
-        "${workspaceRoot}",
+        "/root/workspace/ego-graph",
         "--enable-web-dashboard=false"
       ]
     },
