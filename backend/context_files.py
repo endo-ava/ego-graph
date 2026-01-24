@@ -2,37 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from backend.config import BackendConfig
 
 CONTEXT_FILE_MAX_CHARS = 20000
-
-
-def get_context_dir_from_config(config: BackendConfig | None = None) -> Path:
-    """設定からコンテキストディレクトリを取得します。
-
-    Args:
-        config: BackendConfig インスタンス（任意）
-
-    Returns:
-        コンテキストディレクトリのパス
-    """
-    # 1. 引数の config から取得
-    if config is not None and config.context_dir is not None:
-        return Path(config.context_dir)
-
-    # 2. 環境変数から直接取得（config 未渡し時のフォールバック）
-    env_dir = os.getenv("CONTEXT_DIR")
-    if env_dir is not None:
-        return Path(env_dir)
-
-    # 3. デフォルト: このファイルの親ディレクトリ配下の context/
-    return Path(__file__).resolve().parent / "context"
+CONTEXT_DIR = Path(__file__).resolve().parent / "context"
 
 
 @dataclass(frozen=True)
@@ -66,12 +40,11 @@ def get_context_dir(base_dir: Path | None = None) -> Path:
         コンテキストディレクトリのパス
 
     Note:
-        本番環境では CONTEXT_DIR 環境変数または BackendConfig.context_dir を使用。
         設定がない場合は backend/context/ をデフォルトとして使用します。
     """
     if base_dir is not None:
         return base_dir
-    return get_context_dir_from_config()
+    return CONTEXT_DIR
 
 
 def get_templates_dir(base_dir: Path | None = None) -> Path:
@@ -155,7 +128,9 @@ def build_bootstrap_context(base_dir: Path | None = None) -> str:
     sections: list[str] = []
     for entry in CONTEXT_FILES:
         content = read_context_file(
-            entry.key, base_dir=base_dir, max_chars=CONTEXT_FILE_MAX_CHARS
+            entry.key,
+            base_dir=base_dir,
+            max_chars=CONTEXT_FILE_MAX_CHARS,
         )
         if content is None:
             continue

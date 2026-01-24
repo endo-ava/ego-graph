@@ -31,7 +31,7 @@ class SystemPromptBuilder:
 - **非使用指針**: 一般会話や相談はツールなしで自然に応答する。
 - **失敗時**: ツールエラーは専門用語を避けて要点のみ伝える。
 
-"""  # noqa: E501
+"""
 
         sections = [base_prompt.strip()]
 

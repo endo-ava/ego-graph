@@ -104,7 +104,6 @@ export function SystemPromptHeader({ onBack }: SystemPromptHeaderProps) {
               ref={panelRef}
               role="dialog"
               aria-labelledby="guide-popover-title"
-              aria-modal="true"
               className="
                 absolute top-full right-0 mt-2 z-50
                 w-[min(380px,calc(100vw-2rem))]
