@@ -6,6 +6,10 @@ API用のリクエスト/レスポンススキーマを定義します。
 from backend.api.schemas.chat import ChatRequest, ChatResponse
 from backend.api.schemas.data import ListeningStatsResponse, TopTrackResponse
 from backend.api.schemas.models import ModelsResponse
+from backend.api.schemas.system_prompt import (
+    SystemPromptResponse,
+    SystemPromptUpdateRequest,
+)
 from backend.api.schemas.thread import (
     ThreadListResponse,
     ThreadMessagesResponse,
@@ -32,6 +36,9 @@ __all__ = [
     # Thread API スキーマ
     "ThreadListResponse",
     "ThreadMessagesResponse",
+    # System Prompt API スキーマ
+    "SystemPromptResponse",
+    "SystemPromptUpdateRequest",
     # ドメインモデル
     "Thread",
     "ThreadMessage",

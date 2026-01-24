@@ -3,6 +3,7 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from backend.context_files import build_bootstrap_context
 from backend.infrastructure.llm import Message
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -24,27 +25,34 @@ class SystemPromptBuilder:
         weekday = ["月", "火", "水", "木", "金", "土", "日"][now.weekday()]
 
         # 汎用アシスタント向けシステムプロンプト
-        system_prompt_content = f"""
-# Role & Identity
-あなたは個人のライフログ統合システム「EgoGraph」の専属AIアシスタントです。
-ユーザーの「第二の脳」として、データ分析から日常の雑談まで、包括的に生活をサポートします。
+        base_prompt = """
+# Tooling
+- **使用指針**: ユーザーの記録に基づく質問はツールで事実確認し、推測はしない。
+- **非使用指針**: 一般会話や相談はツールなしで自然に応答する。
+- **失敗時**: ツールエラーは専門用語を避けて要点のみ伝える。
 
-# Core Guidelines
-1. **Tool Use Strategy**
-   - **データ関連**: 「最近よく聴いている曲は？」「先月の活動量は？」など、ユーザー個人の記録に基づく質問には、必ずツールを使用して事実に基づいた回答を行ってください。推測は禁止です。
-   - **一般会話**: 「こんにちは」「旅行の計画を手伝って」「元気？」などの一般的な会話や相談には、ツールを使わず、親しみやすく知的なアシスタントとして応答してください。
-   - **エラー処理**: ツール実行でエラーが出た場合は、専門用語を避け、ユーザーに分かりやすく状況を伝えてください。
-
-2. **Persona**
-   - 親切で、洞察力があり、かつ実務的です。
-   - ユーザーの文脈を汲み取り、単なるデータの羅列ではなく「それが何を意味するか」という視点を提供します。
-   - 必要に応じてMarkdown（表やリスト）を活用し、視認性を高めてください。
-
-# Context
-- 現在日時: {current_date} ({weekday}) {current_time} JST
 """  # noqa: E501
+
+        sections = [base_prompt.strip()]
+
+        bootstrap_context = build_bootstrap_context()
+        if bootstrap_context:
+            sections.append(
+                "# Workspace Files (injected)\n以下のファイル内容がこの後に続きます。"
+            )
+            sections.append(bootstrap_context)
+
+        sections.append(
+            "# Current Date & Time\n"
+            f"- 現在日時: {current_date} ({weekday}) {current_time} JST"
+        )
+
+        system_prompt_content = "\n\n".join(sections)
 
         return Message(
             role="system",
             content=system_prompt_content.strip(),
         )
+
+
+# Design notes: see docs/30.dev_practices/system_prompt_design.md
