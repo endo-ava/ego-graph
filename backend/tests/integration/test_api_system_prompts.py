@@ -11,7 +11,7 @@ def test_get_system_prompt_creates_from_template(test_client, tmp_path, monkeypa
 
     monkeypatch.setattr(
         "backend.infrastructure.context_files.get_context_dir",
-        lambda base_dir=None: context_dir,
+        lambda: context_dir,
     )
 
     response = test_client.get(
@@ -34,7 +34,7 @@ def test_update_system_prompt_persists_content(test_client, tmp_path, monkeypatc
 
     monkeypatch.setattr(
         "backend.infrastructure.context_files.get_context_dir",
-        lambda base_dir=None: context_dir,
+        lambda: context_dir,
     )
 
     response = test_client.put(

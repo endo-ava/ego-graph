@@ -30,11 +30,8 @@ CONTEXT_FILES: list[ContextFile] = [
 CONTEXT_FILE_MAP = {entry.key: entry for entry in CONTEXT_FILES}
 
 
-def get_context_dir(base_dir: Path | None = None) -> Path:
+def get_context_dir() -> Path:
     """コンテキストファイルのディレクトリを返します。
-
-    Args:
-        base_dir: 明示的なディレクトリ指定（テスト用途など）
 
     Returns:
         コンテキストディレクトリのパス
@@ -42,15 +39,13 @@ def get_context_dir(base_dir: Path | None = None) -> Path:
     Note:
         設定がない場合は backend/context/ をデフォルトとして使用します。
     """
-    if base_dir is not None:
-        return base_dir
     return CONTEXT_DIR
 
 
-def get_templates_dir(base_dir: Path | None = None) -> Path:
+def get_templates_dir() -> Path:
     """テンプレートディレクトリを返します。"""
 
-    return get_context_dir(base_dir) / "templates"
+    return get_context_dir() / "templates"
 
 
 def resolve_context_file(name: str) -> ContextFile:
@@ -67,13 +62,12 @@ def resolve_context_file(name: str) -> ContextFile:
 def read_context_file(
     name: str,
     *,
-    base_dir: Path | None = None,
     max_chars: int | None = CONTEXT_FILE_MAX_CHARS,
 ) -> str | None:
     """コンテキストファイルを読み込みます。"""
 
     entry = resolve_context_file(name)
-    context_path = get_context_dir(base_dir) / entry.filename
+    context_path = get_context_dir() / entry.filename
     if not context_path.exists():
         return None
 
@@ -83,16 +77,16 @@ def read_context_file(
     return content
 
 
-def ensure_context_file(name: str, *, base_dir: Path | None = None) -> str:
+def ensure_context_file(name: str) -> str:
     """コンテキストファイルを確実に用意します。"""
 
     entry = resolve_context_file(name)
-    context_dir = get_context_dir(base_dir)
+    context_dir = get_context_dir()
     context_path = context_dir / entry.filename
     if context_path.exists():
         return context_path.read_text(encoding="utf-8")
 
-    template_path = get_templates_dir(base_dir) / entry.filename
+    template_path = get_templates_dir() / entry.filename
     if template_path.exists():
         content = template_path.read_text(encoding="utf-8")
     else:
@@ -106,8 +100,6 @@ def ensure_context_file(name: str, *, base_dir: Path | None = None) -> str:
 def write_context_file(
     name: str,
     content: str,
-    *,
-    base_dir: Path | None = None,
 ) -> None:
     """コンテキストファイルに書き込みます。"""
 
@@ -116,22 +108,18 @@ def write_context_file(
             f"invalid_content: content must be <= {CONTEXT_FILE_MAX_CHARS} characters"
         )
     entry = resolve_context_file(name)
-    context_dir = get_context_dir(base_dir)
+    context_dir = get_context_dir()
     context_dir.mkdir(parents=True, exist_ok=True)
     context_path = context_dir / entry.filename
     context_path.write_text(content, encoding="utf-8")
 
 
-def build_bootstrap_context(base_dir: Path | None = None) -> str:
+def build_bootstrap_context() -> str:
     """ブートストラップコンテキストを構築します。"""
 
     sections: list[str] = []
     for entry in CONTEXT_FILES:
-        content = read_context_file(
-            entry.key,
-            base_dir=base_dir,
-            max_chars=CONTEXT_FILE_MAX_CHARS,
-        )
+        content = read_context_file(entry.key, max_chars=CONTEXT_FILE_MAX_CHARS)
         if content is None:
             continue
         body = content.strip()

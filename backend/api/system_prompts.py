@@ -19,7 +19,7 @@ router = APIRouter(prefix="/v1/system-prompts", tags=["system-prompts"])
 
 
 @router.get("/{name}", response_model=SystemPromptResponse)
-async def get_system_prompt(
+def get_system_prompt(
     name: str,
     _: None = Depends(verify_api_key),
 ):
@@ -39,7 +39,7 @@ async def get_system_prompt(
 
 
 @router.put("/{name}", response_model=SystemPromptResponse)
-async def update_system_prompt(
+def update_system_prompt(
     name: str,
     request: SystemPromptUpdateRequest,
     _: None = Depends(verify_api_key),

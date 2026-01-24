@@ -20,7 +20,7 @@ def test_system_prompt_includes_bootstrap_when_context_exists(tmp_path, monkeypa
 
     monkeypatch.setattr(
         "backend.infrastructure.context_files.get_context_dir",
-        lambda base_dir=None: tmp_path,
+        lambda: tmp_path,
     )
 
     message = SystemPromptBuilder.build_with_current_date()
@@ -35,7 +35,7 @@ def test_system_prompt_omits_bootstrap_when_missing(tmp_path, monkeypatch):
 
     monkeypatch.setattr(
         "backend.infrastructure.context_files.get_context_dir",
-        lambda base_dir=None: tmp_path,
+        lambda: tmp_path,
     )
 
     message = SystemPromptBuilder.build_with_current_date()
