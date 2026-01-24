@@ -23,6 +23,7 @@ interface ChatStore {
   messages: ChatMessage[];
   currentThreadId: string | null;
   sidebarOpen: boolean;
+  activeView: 'chat' | 'system_prompt';
   selectedModel: string;
   onSidebarClose: (() => void) | null;
   addMessage: (message: ChatMessage) => void;
@@ -34,6 +35,7 @@ interface ChatStore {
   setCurrentThreadId: (threadId: string | null) => void;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
+  setActiveView: (view: 'chat' | 'system_prompt') => void;
   setSelectedModel: (modelName: string) => void;
   setOnSidebarClose: (callback: (() => void) | null) => void;
 }
@@ -42,6 +44,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   messages: [],
   currentThreadId: null,
   sidebarOpen: false,
+  activeView: 'chat',
   selectedModel: loadSelectedModel(),
   onSidebarClose: null,
 
@@ -102,6 +105,8 @@ export const useChatStore = create<ChatStore>((set) => ({
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
 
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+
+  setActiveView: (view) => set({ activeView: view }),
 
   setSelectedModel: (modelName) => {
     try {

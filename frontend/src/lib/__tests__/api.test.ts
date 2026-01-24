@@ -4,8 +4,14 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { sendChatMessage, ApiRequestError } from '../api';
+import {
+  sendChatMessage,
+  ApiRequestError,
+  getSystemPrompt,
+  updateSystemPrompt,
+} from '../api';
 import type { ChatRequest, ChatResponse } from '@/types/chat';
+import type { SystemPromptResponse } from '@/types/system_prompt';
 
 // グローバルfetchのモック型定義
 const mockFetch = vi.fn();
@@ -406,5 +412,140 @@ describe('sendChatMessage', () => {
         }),
       }),
     );
+  });
+});
+
+describe('system prompt API', () => {
+  beforeEach(() => {
+    global.fetch = mockFetch;
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
+    vi.stubEnv('VITE_API_KEY', 'test-key');
+    vi.stubEnv('VITE_DEBUG', 'false');
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it('gets system prompt successfully', async () => {
+    const response: SystemPromptResponse = {
+      name: 'user',
+      content: 'content',
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => response,
+    });
+
+    const result = await getSystemPrompt('user');
+
+    expect(result).toEqual(response);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:8000/v1/system-prompts/user',
+      expect.objectContaining({
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'test-key',
+        },
+      }),
+    );
+  });
+
+  it('updates system prompt successfully', async () => {
+    const response: SystemPromptResponse = {
+      name: 'user',
+      content: 'updated',
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => response,
+    });
+
+    const result = await updateSystemPrompt('user', { content: 'updated' });
+
+    expect(result).toEqual(response);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:8000/v1/system-prompts/user',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'test-key',
+        },
+        body: JSON.stringify({ content: 'updated' }),
+      }),
+    );
+  });
+
+  it('throws ApiRequestError when system prompt request fails', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        detail: 'invalid_name: name must be one of user',
+      }),
+    });
+
+    await expect(getSystemPrompt('user')).rejects.toThrow(ApiRequestError);
+
+    try {
+      await getSystemPrompt('user');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiRequestError);
+      expect((error as ApiRequestError).status).toBe(400);
+      expect((error as ApiRequestError).detail).toBe(
+        'invalid_name: name must be one of user',
+      );
+    }
+  });
+
+  it('throws ApiRequestError when updateSystemPrompt fails with 400', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        detail: 'invalid_content: content must be <= 20000 characters',
+      }),
+    });
+
+    await expect(
+      updateSystemPrompt('user', { content: 'x'.repeat(30000) }),
+    ).rejects.toThrow(ApiRequestError);
+
+    try {
+      await updateSystemPrompt('user', { content: 'x'.repeat(30000) });
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiRequestError);
+      expect((error as ApiRequestError).status).toBe(400);
+      expect((error as ApiRequestError).detail).toBe(
+        'invalid_content: content must be <= 20000 characters',
+      );
+    }
+  });
+
+  it('throws ApiRequestError when updateSystemPrompt fails with 500', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({
+        detail: 'Internal server error',
+      }),
+    });
+
+    await expect(
+      updateSystemPrompt('user', { content: 'test' }),
+    ).rejects.toThrow(ApiRequestError);
+
+    try {
+      await updateSystemPrompt('user', { content: 'test' });
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiRequestError);
+      expect((error as ApiRequestError).status).toBe(500);
+      expect((error as ApiRequestError).detail).toBe('Internal server error');
+    }
   });
 });

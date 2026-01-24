@@ -14,6 +14,11 @@ import type {
   ModelsResponse,
   StreamChunk,
 } from '@/types/chat';
+import type {
+  SystemPromptName,
+  SystemPromptResponse,
+  SystemPromptUpdateRequest,
+} from '@/types/system_prompt';
 
 interface ApiConfig {
   apiUrl: string;
@@ -430,6 +435,110 @@ export async function getThreadMessages(
 
   if (debug) {
     console.log('[API] Thread messages response:', data);
+  }
+
+  return data;
+}
+
+/**
+ * System Prompt取得
+ */
+export async function getSystemPrompt(
+  name: SystemPromptName,
+): Promise<SystemPromptResponse> {
+  const { apiUrl, apiKey, debug } = getApiConfig();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+  }
+
+  if (debug) {
+    console.log('[API] Fetching system prompt:', name);
+  }
+
+  const response = await fetch(`${apiUrl}/v1/system-prompts/${name}`, {
+    method: 'GET',
+    headers,
+    mode: 'cors',
+    credentials: 'omit',
+  });
+
+  if (!response.ok) {
+    let errorDetail = `HTTP ${response.status}`;
+    try {
+      const errorData = (await response.json()) as ApiError;
+      errorDetail = errorData.detail || errorDetail;
+    } catch {
+      // JSON parseに失敗した場合はHTTPステータスをそのまま使用
+    }
+
+    if (debug) {
+      console.error('[API] Get system prompt failed:', errorDetail);
+    }
+
+    throw new ApiRequestError(response.status, errorDetail);
+  }
+
+  const data = (await response.json()) as SystemPromptResponse;
+
+  if (debug) {
+    console.log('[API] System prompt response:', data);
+  }
+
+  return data;
+}
+
+/**
+ * System Prompt更新
+ */
+export async function updateSystemPrompt(
+  name: SystemPromptName,
+  request: SystemPromptUpdateRequest,
+): Promise<SystemPromptResponse> {
+  const { apiUrl, apiKey, debug } = getApiConfig();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+  }
+
+  if (debug) {
+    console.log('[API] Updating system prompt:', name);
+  }
+
+  const response = await fetch(`${apiUrl}/v1/system-prompts/${name}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(request),
+    mode: 'cors',
+    credentials: 'omit',
+  });
+
+  if (!response.ok) {
+    let errorDetail = `HTTP ${response.status}`;
+    try {
+      const errorData = (await response.json()) as ApiError;
+      errorDetail = errorData.detail || errorDetail;
+    } catch {
+      // JSON parseに失敗した場合はHTTPステータスをそのまま使用
+    }
+
+    if (debug) {
+      console.error('[API] Update system prompt failed:', errorDetail);
+    }
+
+    throw new ApiRequestError(response.status, errorDetail);
+  }
+
+  const data = (await response.json()) as SystemPromptResponse;
+
+  if (debug) {
+    console.log('[API] System prompt update response:', data);
   }
 
   return data;
