@@ -2,7 +2,7 @@
 
 import pytest
 
-from backend.context_files import (
+from backend.infrastructure.context_files import (
     CONTEXT_FILE_MAX_CHARS,
     build_bootstrap_context,
     ensure_context_file,

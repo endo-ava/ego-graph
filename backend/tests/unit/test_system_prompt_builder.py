@@ -19,7 +19,8 @@ def test_system_prompt_includes_bootstrap_when_context_exists(tmp_path, monkeypa
     (tmp_path / "USER.md").write_text("user", encoding="utf-8")
 
     monkeypatch.setattr(
-        "backend.context_files.get_context_dir", lambda base_dir=None: tmp_path
+        "backend.infrastructure.context_files.get_context_dir",
+        lambda base_dir=None: tmp_path,
     )
 
     message = SystemPromptBuilder.build_with_current_date()
@@ -33,7 +34,8 @@ def test_system_prompt_omits_bootstrap_when_missing(tmp_path, monkeypatch):
     """コンテキストがない場合は注入セクションが出ない。"""
 
     monkeypatch.setattr(
-        "backend.context_files.get_context_dir", lambda base_dir=None: tmp_path
+        "backend.infrastructure.context_files.get_context_dir",
+        lambda base_dir=None: tmp_path,
     )
 
     message = SystemPromptBuilder.build_with_current_date()

@@ -3,7 +3,7 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from backend.context_files import build_bootstrap_context
+from backend.infrastructure.context_files import build_bootstrap_context
 from backend.infrastructure.llm import Message
 
 JST = ZoneInfo("Asia/Tokyo")

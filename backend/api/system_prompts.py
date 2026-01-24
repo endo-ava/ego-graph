@@ -5,13 +5,13 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.schemas import SystemPromptResponse, SystemPromptUpdateRequest
-from backend.context_files import (
+from backend.dependencies import verify_api_key
+from backend.infrastructure.context_files import (
     ensure_context_file,
     read_context_file,
     resolve_context_file,
     write_context_file,
 )
-from backend.dependencies import verify_api_key
 
 logger = logging.getLogger(__name__)
 
