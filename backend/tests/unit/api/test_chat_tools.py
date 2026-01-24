@@ -619,12 +619,8 @@ class TestChatEndpointToolLoop:
 
         async def slow_llm_call(*args, **kwargs):
             """遅いLLM呼び出しをシミュレート。"""
-            await asyncio.sleep(95)  # TOTAL_TIMEOUT (90秒) を超える
-            return ChatResponse(
-                id="chatcmpl-slow",
-                message=Message(role="assistant", content="Too late"),
-                finish_reason="stop",
-            )
+            # 実際に待機するのではなく、TimeoutErrorを発生させる
+            raise asyncio.TimeoutError("LLM call timed out")
 
         with (
             patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,

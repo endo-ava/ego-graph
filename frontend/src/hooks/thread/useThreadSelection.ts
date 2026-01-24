@@ -1,6 +1,8 @@
 import { useRef, useCallback } from 'react';
 import { useShallow } from 'zustand/shallow';
+import { toast } from 'sonner';
 import { useChatStore } from '@/lib/store';
+import { useIsMobile } from '@/hooks/ui/useIsMobile';
 import { getThreadMessages } from '@/lib/api';
 import type { ChatMessage } from '@/types/chat';
 
@@ -10,15 +12,20 @@ export function useThreadSelection() {
     setMessages,
     setSidebarOpen,
     setSelectedModel,
+    setActiveView,
+    activeView,
   } = useChatStore(
     useShallow((state) => ({
       setCurrentThreadId: state.setCurrentThreadId,
       setMessages: state.setMessages,
       setSidebarOpen: state.setSidebarOpen,
       setSelectedModel: state.setSelectedModel,
+      setActiveView: state.setActiveView,
+      activeView: state.activeView,
     })),
   );
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isMobile = useIsMobile();
 
   const selectThread = useCallback(async (threadId: string) => {
     if (abortControllerRef.current) {
@@ -27,6 +34,7 @@ export function useThreadSelection() {
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    const previousView = activeView;
 
     try {
       const response = await getThreadMessages(threadId, {
@@ -51,17 +59,20 @@ export function useThreadSelection() {
         setSelectedModel(lastAssistantMessage.model_name);
       }
 
-      if (window.innerWidth < 768) {
+      setActiveView('chat');
+
+      if (isMobile) {
         setSidebarOpen(false);
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         return;
       }
+      setActiveView(previousView);
       console.error('Failed to load thread messages:', error);
-      alert('スレッドの読み込みに失敗しました。もう一度試してください。');
+      toast.error('スレッドの読み込みに失敗しました');
     }
-  }, [setCurrentThreadId, setMessages, setSidebarOpen, setSelectedModel]);
+  }, [activeView, isMobile, setActiveView, setCurrentThreadId, setMessages, setSidebarOpen, setSelectedModel]);
 
   return { selectThread };
 }

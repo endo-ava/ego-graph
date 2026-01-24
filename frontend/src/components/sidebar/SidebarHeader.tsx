@@ -1,12 +1,15 @@
 import { useChatStore } from '@/lib/store';
+import { useIsMobile } from '@/hooks/ui/useIsMobile';
 import { Button } from '@/components/ui/button';
 
 export function SidebarHeader() {
-  const { clearMessages, setSidebarOpen } = useChatStore();
+  const { clearMessages, setSidebarOpen, setActiveView } = useChatStore();
+  const isMobile = useIsMobile();
 
   const handleNewChat = () => {
+    setActiveView('chat');
     clearMessages();
-    if (window.innerWidth < 768) {
+    if (isMobile) {
       setSidebarOpen(false);
     }
   };

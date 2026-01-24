@@ -36,6 +36,7 @@ describe('useChatStore', () => {
       messages: [],
       currentThreadId: null,
       sidebarOpen: false,
+      activeView: 'chat',
       selectedModel: 'tngtech/deepseek-r1t2-chimera:free',
     });
   });
@@ -299,6 +300,22 @@ describe('useChatStore', () => {
       // トグル
       store.toggleSidebar();
       expect(useChatStore.getState().sidebarOpen).toBe(false);
+    });
+  });
+
+  describe('activeView', () => {
+    it('デフォルトはchat', () => {
+      const store = useChatStore.getState();
+
+      expect(store.activeView).toBe('chat');
+    });
+
+    it('setActiveViewで画面を切り替える', () => {
+      const store = useChatStore.getState();
+
+      store.setActiveView('system_prompt');
+
+      expect(useChatStore.getState().activeView).toBe('system_prompt');
     });
   });
 });

@@ -12,7 +12,6 @@ from typing import AsyncGenerator
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 
 from backend.api.schemas import (
     DEFAULT_MODEL,
@@ -24,7 +23,6 @@ from backend.api.schemas import (
 )
 from backend.config import BackendConfig
 from backend.dependencies import get_chat_db, get_config, verify_api_key
-from backend.domain.models.llm import Message
 from backend.infrastructure.repositories import DuckDBThreadRepository
 from backend.usecases.chat import (
     ChatUseCase,

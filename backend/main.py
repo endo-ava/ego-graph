@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api import chat, data, health, threads
+from backend.api import chat, data, health, system_prompts, threads
 from backend.config import BackendConfig
 from backend.infrastructure.database import ChatDuckDBConnection, create_chat_tables
 
@@ -86,6 +86,7 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
     app.include_router(data.router)
     app.include_router(chat.router)
     app.include_router(threads.router)
+    app.include_router(system_prompts.router)
 
     logger.info("EgoGraph Backend initialized successfully")
 
