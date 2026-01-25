@@ -4,10 +4,25 @@ requires-python = ">=3.12"
 
 [manifest]
 members = [
-    "ego-graph-monorepo",
     "egograph-backend",
     "egograph-ingest",
     "shared",
+]
+
+[manifest.dependency-groups]
+dev = [
+    { name = "black", specifier = ">=24.10.0" },
+    { name = "flake8", specifier = ">=7.1.0" },
+    { name = "httpx", specifier = ">=0.28.0" },
+    { name = "mypy", specifier = ">=1.14.0" },
+    { name = "prompt-toolkit", specifier = ">=3.0.0" },
+    { name = "pytest", specifier = ">=8.3.0" },
+    { name = "pytest-asyncio", specifier = ">=0.25.0" },
+    { name = "pytest-cov", specifier = ">=6.0.0" },
+    { name = "pytest-mock", specifier = ">=3.12.0" },
+    { name = "responses", specifier = ">=0.25.0" },
+    { name = "rich", specifier = ">=13.7.0" },
+    { name = "ruff", specifier = ">=0.14.9" },
 ]
 
 [[package]]
@@ -290,21 +305,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/94/41/abec537cc7c519121a2a83b9a6f180af8915fabb433777dc147744513e74/duckdb-1.4.3-cp314-cp314-win_amd64.whl", hash = "sha256:23b12854032c1a58d0452e2b212afa908d4ce64171862f3792ba9a596ba7c765", size = 12836056, upload-time = "2025-12-09T10:59:03.388Z" },
     { url = "https://files.pythonhosted.org/packages/b1/5a/8af5b96ce5622b6168854f479ce846cf7fb589813dcc7d8724233c37ded3/duckdb-1.4.3-cp314-cp314-win_arm64.whl", hash = "sha256:90f241f25cffe7241bf9f376754a5845c74775e00e1c5731119dc88cd71e0cb2", size = 13527759, upload-time = "2025-12-09T10:59:05.496Z" },
 ]
-
-[[package]]
-name = "ego-graph-monorepo"
-version = "0.1.0"
-source = { virtual = "." }
-
-[package.dev-dependencies]
-dev = [
-    { name = "ruff" },
-]
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.9" }]
 
 [[package]]
 name = "egograph-backend"
@@ -1207,7 +1207,7 @@ dependencies = [
     { name = "python-dotenv" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "black" },
     { name = "mypy" },
@@ -1217,15 +1217,18 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "black", marker = "extra == 'dev'", specifier = ">=24.10.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.14.0" },
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "pydantic-settings", specifier = ">=2.7.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
 ]
-provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black", specifier = ">=24.10.0" },
+    { name = "mypy", specifier = ">=1.14.0" },
+    { name = "pytest", specifier = ">=8.3.0" },
+    { name = "pytest-cov", specifier = ">=6.0.0" },
+]
 
 [[package]]
 name = "six"
