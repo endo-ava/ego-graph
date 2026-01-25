@@ -7,9 +7,11 @@ LLMが必要に応じてツールを呼び出し、データにアクセスし�
 import asyncio
 import json
 import logging
-from typing import AsyncGenerator
+import re
+from typing import Any, AsyncGenerator
 
 import duckdb
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -38,6 +40,53 @@ router = APIRouter(prefix="/v1/chat", tags=["chat"])
 
 # MVP: ユーザーIDは固定値
 DEFAULT_USER_ID = "default_user"
+
+_SENSITIVE_KEYS = {
+    "api_key",
+    "authorization",
+    "token",
+    "credentials",
+    "access_token",
+    "refresh_token",
+}
+
+
+def _redact_string(value: str) -> str:
+    value = re.sub(
+        r"(?i)\bbearer\s+[a-z0-9\-._~+/]+=*",
+        "Bearer <redacted>",
+        value,
+    )
+    return re.sub(
+        r"(?i)\b(api_key|authorization|token|credentials|access_token|refresh_token)\b\s*[:=]\s*([^\s,;]+)",
+        r"\1: <redacted>",
+        value,
+    )
+
+
+def _sanitize_error_detail(detail: Any) -> Any:
+    if isinstance(detail, dict):
+        sanitized: dict[str, Any] = {}
+        for key, value in detail.items():
+            if key.lower() in _SENSITIVE_KEYS:
+                continue
+            sanitized[key] = _sanitize_error_detail(value)
+        return sanitized
+    if isinstance(detail, list):
+        return [_sanitize_error_detail(item) for item in detail]
+    if isinstance(detail, str):
+        try:
+            parsed = json.loads(detail)
+        except (TypeError, ValueError):
+            return _redact_string(detail)
+        return _sanitize_error_detail(parsed)
+    return detail
+
+
+def _coerce_safe_detail(detail: Any, status_code: int) -> Any:
+    if detail in (None, "", {}, []):
+        return f"LLM API error (status={status_code})"
+    return detail
 
 
 @router.get("/models", response_model=ModelsResponse)
@@ -109,7 +158,7 @@ async def chat(
     )
 
     # 2. モデル名検証
-    model_name = request.model_name or config.llm.model_name
+    model_name = request.model_name or config.llm.default_model
     try:
         get_model(model_name)
     except ValueError as e:
@@ -177,6 +226,19 @@ async def _chat_non_streaming(
     except asyncio.TimeoutError:
         logger.exception("Request timed out")
         raise HTTPException(status_code=504, detail="Request timed out") from None
+    except httpx.HTTPStatusError as e:
+        logger.exception(
+            "LLM API error: status=%s response=%s",
+            e.response.status_code,
+            e.response.text,
+        )
+        try:
+            error_body = e.response.json()
+        except ValueError:
+            error_body = e.response.text
+        safe_detail = _sanitize_error_detail(error_body)
+        safe_detail = _coerce_safe_detail(safe_detail, e.response.status_code)
+        raise HTTPException(status_code=502, detail=safe_detail) from e
     except Exception as e:
         logger.exception("Chat request failed")
         raise HTTPException(status_code=502, detail=f"LLM API error: {str(e)}") from e
@@ -210,7 +272,7 @@ async def _stream_chat(
             ChatUseCaseRequest(
                 messages=request.messages,
                 thread_id=request.thread_id,
-                model_name=request.model_name or config.llm.model_name,
+                model_name=request.model_name or config.llm.default_model,
                 user_id=DEFAULT_USER_ID,
             )
         ):
@@ -230,6 +292,20 @@ async def _stream_chat(
         logger.exception("Request timed out")
         yield "event: error\n"
         yield f"data: {json.dumps({'error': 'Request timed out'})}\n\n"
+    except httpx.HTTPStatusError as e:
+        logger.exception(
+            "LLM API error: status=%s response=%s",
+            e.response.status_code,
+            e.response.text,
+        )
+        try:
+            error_body = e.response.json()
+        except ValueError:
+            error_body = e.response.text
+        safe_detail = _sanitize_error_detail(error_body)
+        safe_detail = _coerce_safe_detail(safe_detail, e.response.status_code)
+        yield "event: error\n"
+        yield f"data: {json.dumps({'error': safe_detail})}\n\n"
     except Exception as e:
         logger.exception("Chat request failed")
         yield "event: error\n"
