@@ -193,3 +193,5 @@ gh pr view <PR_NUMBER> --json reviews,comments > pr_data.json
 - 積極的にサブエージェントを活用し、メインコンテキストをクリーンに保つこと。
 
 - コードを変更した後は、テストが通ることを確認すること。
+
+- OpenCodeでサブエージェントを呼ぶ場合は、必ず`delegate_task`を活用すること。`task`は使わない。
