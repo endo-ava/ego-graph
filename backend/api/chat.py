@@ -281,17 +281,17 @@ async def _stream_chat(
             yield f"data: {chunk.model_dump_json()}\n\n"
     except NoUserMessageError as e:
         yield "event: error\n"
-        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
     except ThreadNotFoundError as e:
         yield "event: error\n"
-        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
     except MaxIterationsExceeded as e:
         yield "event: error\n"
-        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
     except asyncio.TimeoutError:
         logger.exception("Request timed out")
         yield "event: error\n"
-        yield f"data: {json.dumps({'error': 'Request timed out'})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'error': 'Request timed out'})}\n\n"
     except httpx.HTTPStatusError as e:
         logger.exception(
             "LLM API error: status=%s response=%s",
@@ -305,8 +305,8 @@ async def _stream_chat(
         safe_detail = _sanitize_error_detail(error_body)
         safe_detail = _coerce_safe_detail(safe_detail, e.response.status_code)
         yield "event: error\n"
-        yield f"data: {json.dumps({'error': safe_detail})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'error': safe_detail})}\n\n"
     except Exception as e:
         logger.exception("Chat request failed")
         yield "event: error\n"
-        yield f"data: {json.dumps({'error': f'LLM API error: {str(e)}'})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'error': f'LLM API error: {str(e)}'})}\n\n"
