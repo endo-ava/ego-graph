@@ -127,6 +127,11 @@ export function useChat() {
             updateLastMessage(chunk.error || 'エラーが発生しました');
           }
         }
+        // ストリーム終了後、done が来なかった場合のフォールバック
+        // （BE のエラーレスポンスに type がない場合の防御）
+        if (accumulatedContent) {
+          updateLastMessage(accumulatedContent);
+        }
       } catch (error) {
         const errorMessage = getErrorMessage(error);
         toast.error(errorMessage);
