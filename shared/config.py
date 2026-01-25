@@ -3,6 +3,18 @@
 from pydantic import BaseModel, SecretStr, field_validator
 
 
+class YouTubeConfig(BaseModel):
+    """YouTube API設定。"""
+
+    youtube_api_key: str
+
+
+class GoogleActivityConfig(BaseModel):
+    """Google Activity API設定。"""
+
+    accounts: list[str]
+
+
 class LastFmConfig(BaseModel):
     """Last.fm API設定。"""
 
