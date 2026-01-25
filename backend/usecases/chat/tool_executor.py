@@ -239,7 +239,12 @@ class ToolExecutor:
                         temperature=temperature,
                         max_tokens=max_tokens,
                     ):
-                        if chunk.type == "delta":
+                        if chunk.type == "error":
+                            # エラーが発生した場合はエラーチャンクをyieldして終了
+                            logger.error("LLM streaming error: %s", chunk.error)
+                            yield chunk
+                            return
+                        elif chunk.type == "delta":
                             # テキストデルタを yield
                             yield chunk
                         elif chunk.type == "tool_call" and chunk.tool_calls:

@@ -128,7 +128,7 @@ class ChatUseCase:
         used_model_name = (
             request.model_name
             if request.model_name is not None
-            else self.llm_config.model_name
+            else self.llm_config.default_model
         )
         logger.info("Using model_name=%s", used_model_name)
 
@@ -136,11 +136,9 @@ class ChatUseCase:
         conversation_history = self._prepare_conversation(request.messages)
 
         # 4. LLM初期化
-        llm_client = LLMClient(
-            provider_name=self.llm_config.provider,
-            api_key=self.llm_config.api_key.get_secret_value(),
-            model_name=used_model_name,
-            enable_web_search=self.llm_config.enable_web_search,
+        llm_client = LLMClient.from_config(
+            self.llm_config,
+            used_model_name,
         )
 
         # 5. ツールレジストリ構築
@@ -346,7 +344,7 @@ class ChatUseCase:
         used_model_name = (
             request.model_name
             if request.model_name is not None
-            else self.llm_config.model_name
+            else self.llm_config.default_model
         )
         logger.info("Using model_name=%s", used_model_name)
 
@@ -354,11 +352,9 @@ class ChatUseCase:
         conversation_history = self._prepare_conversation(request.messages)
 
         # 4. LLM初期化
-        llm_client = LLMClient(
-            provider_name=self.llm_config.provider,
-            api_key=self.llm_config.api_key.get_secret_value(),
-            model_name=used_model_name,
-            enable_web_search=self.llm_config.enable_web_search,
+        llm_client = LLMClient.from_config(
+            self.llm_config,
+            used_model_name,
         )
 
         # 5. ツールレジストリ構築

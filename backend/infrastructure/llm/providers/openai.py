@@ -27,7 +27,8 @@ class OpenAIProvider(BaseLLMProvider):
         self,
         api_key: str,
         model_name: str,
-        base_url: str = "https://api.openai.com/v1",
+        base_url: str = "https://api.z.ai/api/coding/paas/v4",
+        # base_url: str = "https://api.openai.com/v1",
         enable_web_search: bool = False,
     ):
         """OpenAIProviderを初期化します。
@@ -92,6 +93,12 @@ class OpenAIProvider(BaseLLMProvider):
                 json=payload,
                 timeout=60.0,
             )
+            if response.is_error:
+                logger.error(
+                    "OpenAI API error: status=%s body=%s",
+                    response.status_code,
+                    response.text,
+                )
             response.raise_for_status()
 
             return self._parse_response(response.json())
@@ -273,7 +280,31 @@ class OpenAIProvider(BaseLLMProvider):
                 json=payload,
                 timeout=60.0,
             ) as response:
-                response.raise_for_status()
+                if response.is_error:
+                    body = await response.aread()
+                    body_text = body.decode("utf-8", errors="replace")
+                    logger.error(
+                        "OpenAI API stream error: status=%s body=%s",
+                        response.status_code,
+                        body_text,
+                    )
+                    # エラーメッセージを抽出してエラーチャンクをyield
+                    try:
+                        error_data = json.loads(body_text)
+                        # OpenAI/互換APIのエラーフォーマット
+                        if "error" in error_data:
+                            error_obj = error_data["error"]
+                            if isinstance(error_obj, dict):
+                                error_message = error_obj.get("message", body_text)
+                            else:
+                                error_message = str(error_obj)
+                        else:
+                            error_message = body_text
+                    except (json.JSONDecodeError, ValueError):
+                        error_message = body_text
+                    # エラーチャンクをyieldして終了（例外は投げない）
+                    yield StreamChunk(type="error", error=error_message)
+                    return
 
                 # SSE パース
                 async for line in response.aiter_lines():

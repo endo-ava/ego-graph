@@ -14,7 +14,12 @@ def test_chat_new_thread(test_client_with_chat_db, monkeypatch):
     async def mock_chat(*args, **kwargs):
         return mock_chat_response(content="Hello! How can I help you today?")
 
+    async def mock_chat_stream(*args, **kwargs):  # type: ignore
+        return  # Empty async generator
+        yield
+
     monkeypatch.setattr(llm_client_module.LLMClient, "chat", mock_chat)
+    monkeypatch.setattr(llm_client_module.LLMClient, "chat_stream", mock_chat_stream)
 
     # リクエスト（thread_idなし）
     response = test_client_with_chat_db.post(
@@ -52,7 +57,12 @@ def test_chat_existing_thread(test_client_with_chat_db, monkeypatch):
     async def mock_chat(*args, **kwargs):
         return mock_chat_response(content="I'm doing well, thank you!")
 
+    async def mock_chat_stream(*args, **kwargs):  # type: ignore
+        return  # Empty async generator
+        yield
+
     monkeypatch.setattr(llm_client_module.LLMClient, "chat", mock_chat)
+    monkeypatch.setattr(llm_client_module.LLMClient, "chat_stream", mock_chat_stream)
 
     # 新規スレッド作成
     first_response = test_client_with_chat_db.post(
@@ -106,7 +116,12 @@ def test_chat_nonexistent_thread(test_client_with_chat_db, monkeypatch):
     async def mock_chat(*args, **kwargs):
         return mock_chat_response(content="Should not be called")
 
+    async def mock_chat_stream(*args, **kwargs):  # type: ignore
+        return  # Empty async generator
+        yield
+
     monkeypatch.setattr(llm_client_module.LLMClient, "chat", mock_chat)
+    monkeypatch.setattr(llm_client_module.LLMClient, "chat_stream", mock_chat_stream)
 
     # 存在しないthread_id
     nonexistent_thread_id = "00000000-0000-0000-0000-000000000000"
@@ -176,7 +191,12 @@ def test_chat_with_invalid_thread_id_format(test_client_with_chat_db, monkeypatc
     async def mock_chat(*args, **kwargs):
         return mock_chat_response(content="Should not be called")
 
+    async def mock_chat_stream(*args, **kwargs):  # type: ignore
+        return  # Empty async generator
+        yield
+
     monkeypatch.setattr(llm_client_module.LLMClient, "chat", mock_chat)
+    monkeypatch.setattr(llm_client_module.LLMClient, "chat_stream", mock_chat_stream)
 
     invalid_thread_id = "invalid-uuid-format"
 

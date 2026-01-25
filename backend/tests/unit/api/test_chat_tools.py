@@ -293,12 +293,13 @@ class TestChatEndpointToolLoop:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
-            # LLMクライアントのモック: 1回目はツール呼び出し、2回目は最終回答
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(
                 side_effect=[tool_call_response, final_response]
             )
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             # ToolRegistryのモック
             mock_registry = MagicMock()
@@ -387,11 +388,13 @@ class TestChatEndpointToolLoop:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(
                 side_effect=[response_1, response_2, response_3]
             )
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             # ToolRegistryのモック
             mock_registry = MagicMock()
@@ -462,11 +465,13 @@ class TestChatEndpointToolLoop:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(
                 side_effect=[tool_call_response, final_response]
             )
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             # ToolRegistryのモック
             mock_registry = MagicMock()
@@ -536,11 +541,13 @@ class TestChatEndpointToolLoop:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(
                 side_effect=[tool_call_response, error_response]
             )
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             # ToolRegistryのモック(エラーを返す)
             mock_registry = MagicMock()
@@ -591,10 +598,12 @@ class TestChatEndpointToolLoop:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             # 常に同じツール呼び出しレスポンスを返す
             mock_llm_instance.chat = AsyncMock(return_value=tool_call_response)
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             # ToolRegistryのモック
             mock_registry = MagicMock()
@@ -628,9 +637,11 @@ class TestChatEndpointToolLoop:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = slow_llm_call
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             # ToolRegistryのモック
             mock_registry = MagicMock()

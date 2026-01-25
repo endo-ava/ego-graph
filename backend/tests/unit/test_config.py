@@ -14,47 +14,122 @@ class TestLLMConfig:
     def test_default_values(self):
         """デフォルト値の検証。"""
         # Arrange & Act: model_construct()を使ってデフォルト値で構築
-        config = LLMConfig.model_construct(api_key="test-key")
+        config = LLMConfig.model_construct()
 
         # Assert: デフォルト値を検証
-        assert config.provider == "openai"
-        assert config.model_name == "gpt-4o-mini"
+        assert config.default_model == "xiaomi/mimo-v2-flash:free"
         assert config.temperature == 0.7
         assert config.max_tokens == 2048
+        assert config.enable_web_search is False
 
     def test_custom_values(self):
         """カスタム値の設定。"""
         # Arrange & Act: カスタム値でLLMConfigを構築
         config = LLMConfig.model_construct(
-            provider="anthropic",
-            api_key="test-key",
-            model_name="claude-3-5-sonnet-20241022",
+            openai_api_key=SecretStr("sk-test-openai"),
+            anthropic_api_key=SecretStr("sk-ant-test-anthropic"),
+            openrouter_api_key=SecretStr("sk-or-test-openrouter"),
+            default_model="gpt-4o-mini",
             temperature=0.5,
             max_tokens=4096,
+            enable_web_search=True,
         )
 
         # Assert: カスタム値が正しく設定されることを検証
-        assert config.provider == "anthropic"
-        assert config.model_name == "claude-3-5-sonnet-20241022"
+        assert config.default_model == "gpt-4o-mini"
         assert config.temperature == 0.5
         assert config.max_tokens == 4096
+        assert config.enable_web_search is True
 
-    def test_missing_api_key_raises_error(self):
-        """API Keyが必須であることを確認（環境変数経由）。"""
-        # Arrange: 環境変数がクリアされた状態を想定
+    def test_all_api_keys_are_optional(self):
+        """API Keyは任意であることを確認。"""
+        # Arrange & Act: APIキーなしで作成可能
+        config = LLMConfig.model_construct()
 
-        # Act & Assert: API Keyなしでの作成時にValidationErrorが発生することを検証
-        with pytest.raises(ValidationError):
-            LLMConfig()
+        # Assert: 全てのAPIキーがNoneであることを検証
+        assert config.openai_api_key is None
+        assert config.anthropic_api_key is None
+        assert config.openrouter_api_key is None
 
-    def test_api_key_is_secret(self):
+    def test_api_keys_are_secret(self):
         """API Keyが SecretStr として扱われる。"""
         # Arrange & Act: SecretStrでラップしたAPI KeyでLLMConfigを構築
-        config = LLMConfig.model_construct(api_key=SecretStr("test-key"))
+        config = LLMConfig.model_construct(
+            openai_api_key=SecretStr("sk-test-key"),
+        )
 
         # Assert: API KeyがSecretStrとして扱われることを検証
-        assert isinstance(config.api_key, SecretStr)
-        assert config.api_key.get_secret_value() == "test-key"
+        assert isinstance(config.openai_api_key, SecretStr)
+        assert config.openai_api_key.get_secret_value() == "sk-test-key"
+
+    def test_get_api_key_openai(self):
+        """OpenAIのAPIキーを取得できる。"""
+        # Arrange
+        config = LLMConfig.model_construct(
+            openai_api_key=SecretStr("sk-test-openai"),
+        )
+
+        # Act
+        api_key = config.get_api_key("openai")
+
+        # Assert
+        assert api_key == "sk-test-openai"
+
+    def test_get_api_key_anthropic(self):
+        """AnthropicのAPIキーを取得できる。"""
+        # Arrange
+        config = LLMConfig.model_construct(
+            anthropic_api_key=SecretStr("sk-ant-test"),
+        )
+
+        # Act
+        api_key = config.get_api_key("anthropic")
+
+        # Assert
+        assert api_key == "sk-ant-test"
+
+    def test_get_api_key_openrouter(self):
+        """OpenRouterのAPIキーを取得できる。"""
+        # Arrange
+        config = LLMConfig.model_construct(
+            openrouter_api_key=SecretStr("sk-or-test"),
+        )
+
+        # Act
+        api_key = config.get_api_key("openrouter")
+
+        # Assert
+        assert api_key == "sk-or-test"
+
+    def test_get_api_key_missing_raises_error(self):
+        """APIキーが未設定の場合にエラーが発生する。"""
+        # Arrange
+        config = LLMConfig.model_construct()
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="OPENAI_API_KEY is not set"):
+            config.get_api_key("openai")
+
+    def test_get_api_key_unsupported_provider_raises_error(self):
+        """未対応のプロバイダーでエラーが発生する。"""
+        # Arrange
+        config = LLMConfig.model_construct()
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="Unsupported provider: unknown"):
+            config.get_api_key("unknown")
+
+    def test_get_api_key_case_insensitive(self):
+        """プロバイダー名の大文字小文字を区別しない。"""
+        # Arrange
+        config = LLMConfig.model_construct(
+            openai_api_key=SecretStr("sk-test"),
+        )
+
+        # Act & Assert: 大文字小文字が違っても同じAPIキーが返される
+        assert config.get_api_key("OpenAI") == "sk-test"
+        assert config.get_api_key("OPENAI") == "sk-test"
+        assert config.get_api_key("openai") == "sk-test"
 
 
 class TestBackendConfig:
@@ -121,16 +196,13 @@ class TestBackendConfig:
         monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "test_secret")
         monkeypatch.setenv("R2_BUCKET_NAME", "test-bucket")
 
-        # LLM環境変数はクリア
-        monkeypatch.delenv("LLM_API_KEY", raising=False)
-
         # Act: 環境変数からConfigをロード
         config = BackendConfig.from_env()
 
-        # Assert: R2のみが設定され、LLMはNoneであることを検証
+        # Assert: R2のみが設定されることを検証（LLMはデフォルト値で作成される）
         assert config.r2 is not None
         assert config.r2.bucket_name == "test-bucket"
-        assert config.llm is None  # LLMは任意なのでNone
+        # LLMConfigは必須フィールドがないため常に作成される（APIキーはNone）
 
     def test_from_env_with_llm_and_r2(self, monkeypatch):
         """LLMとR2の両方が設定されている場合。"""
@@ -141,9 +213,10 @@ class TestBackendConfig:
         monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "test_secret")
         monkeypatch.setenv("R2_BUCKET_NAME", "test-bucket")
 
-        # LLM環境変数
-        monkeypatch.setenv("LLM_API_KEY", "test-llm-key")
-        monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+        # LLM環境変数（新しい形式）
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test-openai")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-anthropic")
+        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test-openrouter")
 
         # Act: 環境変数からConfigをロード
         config = BackendConfig.from_env()
@@ -151,7 +224,18 @@ class TestBackendConfig:
         # Assert: R2とLLM両方が設定されることを検証
         assert config.r2 is not None
         assert config.llm is not None
-        assert config.llm.provider == "anthropic"
+        assert config.llm.openai_api_key is not None
+        assert config.llm.openai_api_key.get_secret_value() == (
+            "sk-test-openai"
+        )
+        assert config.llm.anthropic_api_key is not None
+        assert config.llm.anthropic_api_key.get_secret_value() == (
+            "sk-ant-test-anthropic"
+        )
+        assert config.llm.openrouter_api_key is not None
+        assert config.llm.openrouter_api_key.get_secret_value() == (
+            "sk-or-test-openrouter"
+        )
 
     def test_validate_for_production_with_api_key_and_llm(self, mock_backend_config):
         """API KeyとLLMがあれば本番環境検証成功。"""

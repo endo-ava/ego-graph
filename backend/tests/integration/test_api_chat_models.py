@@ -75,10 +75,11 @@ class TestChatEndpointModelSelection:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
-            # LLMクライアントのモック
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             # ToolRegistryのモック
             mock_registry = MagicMock()
@@ -100,10 +101,8 @@ class TestChatEndpointModelSelection:
             data = response.json()
             assert data["model_name"] == specified_model
 
-            # LLMClientが指定されたモデルで初期化されたことを確認
-            mock_llm_class.assert_called_once()
-            init_call_kwargs = mock_llm_class.call_args.kwargs
-            assert init_call_kwargs["model_name"] == specified_model
+            # LLMClient.from_config が呼ばれたことを確認
+            mock_llm_class.from_config.assert_called_once()
 
     def test_chat_uses_default_model_when_not_specified(
         self, test_client, mock_backend_config
@@ -122,10 +121,11 @@ class TestChatEndpointModelSelection:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
-            # LLMクライアントのモック
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             # ToolRegistryのモック
             mock_registry = MagicMock()
@@ -144,13 +144,11 @@ class TestChatEndpointModelSelection:
             data = response.json()
 
             # デフォルトモデル（設定値）が使用されることを確認
-            expected_model = mock_backend_config.llm.model_name
+            expected_model = mock_backend_config.llm.default_model
             assert data["model_name"] == expected_model
 
-            # LLMClientがデフォルトモデルで初期化されたことを確認
-            mock_llm_class.assert_called_once()
-            init_call_kwargs = mock_llm_class.call_args.kwargs
-            assert init_call_kwargs["model_name"] == expected_model
+            # LLMClient.from_config が呼ばれたことを確認
+            mock_llm_class.from_config.assert_called_once()
 
     def test_chat_returns_error_for_invalid_model(self, test_client):
         """無効なmodel_nameでエラーが返される。"""
@@ -158,11 +156,17 @@ class TestChatEndpointModelSelection:
         invalid_model = "nonexistent-model"
 
         with (
-            patch("backend.usecases.chat.chat_usecase.LLMClient"),
+            patch("backend.usecases.chat.chat_usecase.LLMClient") as mock_llm_class,
             patch(
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
+            mock_llm_instance = MagicMock()
+            mock_llm_instance.chat = AsyncMock()
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
+
             # ToolRegistryのモック
             mock_registry = MagicMock()
             mock_registry.get_all_schemas.return_value = []
@@ -197,10 +201,11 @@ class TestChatEndpointModelSelection:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
-            # LLMクライアントのモック
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             # ToolRegistryのモック
             mock_registry = MagicMock()
@@ -218,7 +223,7 @@ class TestChatEndpointModelSelection:
             assert response.status_code == 200
             data = response.json()
             assert "model_name" in data
-            assert data["model_name"] == mock_backend_config.llm.model_name
+            assert data["model_name"] == mock_backend_config.llm.default_model
 
     def test_chat_saves_model_name_to_database(self, test_client, mock_backend_config):
         """使用したモデル名がDBに保存される。"""
@@ -239,10 +244,11 @@ class TestChatEndpointModelSelection:
                 "backend.api.chat.DuckDBThreadRepository"
             ) as mock_thread_service_class,
         ):
-            # LLMクライアントのモック
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             # ToolRegistryのモック
             mock_registry = MagicMock()

@@ -15,9 +15,27 @@ from shared.config import R2Config
 USE_ENV_FILE = os.getenv("USE_ENV_FILE", "true").lower() in ("true", "1", "yes")
 ENV_FILES = ["backend/.env", ".env"] if USE_ENV_FILE else []
 
+PROVIDERS_CONFIG = {
+    "openai": {
+        "api_key_field": "openai_api_key",
+        "env_var": "OPENAI_API_KEY",
+    },
+    "anthropic": {
+        "api_key_field": "anthropic_api_key",
+        "env_var": "ANTHROPIC_API_KEY",
+    },
+    "openrouter": {
+        "api_key_field": "openrouter_api_key",
+        "env_var": "OPENROUTER_API_KEY",
+    },
+}
+
 
 class LLMConfig(BaseSettings):
-    """LLM API設定。"""
+    """LLM API設定。
+
+    複数プロバイダーに対応し、プロバイダーごとのAPIキーを管理します。
+    """
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILES,
@@ -25,9 +43,15 @@ class LLMConfig(BaseSettings):
         extra="ignore",
     )
 
-    provider: str = Field("openai", alias="LLM_PROVIDER")
-    api_key: SecretStr = Field(..., alias="LLM_API_KEY")
-    model_name: str = Field("gpt-4o-mini", alias="LLM_MODEL_NAME")
+    # プロバイダーごとのAPIキー
+    openai_api_key: SecretStr | None = Field(None, alias="OPENAI_API_KEY")
+    anthropic_api_key: SecretStr | None = Field(None, alias="ANTHROPIC_API_KEY")
+    openrouter_api_key: SecretStr | None = Field(None, alias="OPENROUTER_API_KEY")
+
+    # デフォルトモデル（未指定時のフォールバック）
+    default_model: str = Field("xiaomi/mimo-v2-flash:free", alias="DEFAULT_LLM_MODEL")
+
+    # 生成パラメータ
     temperature: float = Field(0.7, alias="LLM_TEMPERATURE")
     max_tokens: int = Field(2048, alias="LLM_MAX_TOKENS")
 
@@ -35,6 +59,41 @@ class LLMConfig(BaseSettings):
     enable_web_search: bool = Field(
         False, alias="LLM_ENABLE_WEB_SEARCH"
     )  # デフォルトはオフ
+
+    def get_api_key(self, provider: str) -> str:
+        """プロバイダーに対応するAPIキーを取得します。
+
+        Args:
+            provider: プロバイダー名（"openai", "anthropic", "openrouter"）
+
+        Returns:
+            プロバイダーに対応するAPIキー（文字列）
+
+        Raises:
+            ValueError: 対応プロバイダーのAPIキーが未設定の場合
+            ValueError: サポート対象外のプロバイダー名が指定された場合
+
+        Example:
+            >>> config = LLMConfig.model_construct(openai_api_key=SecretStr("sk-test"))
+            >>> config.get_api_key("openai")
+            'sk-test'
+        """
+        provider_lower = provider.lower()
+        provider_config = PROVIDERS_CONFIG.get(provider_lower)
+
+        if not provider_config:
+            supported = ", ".join(PROVIDERS_CONFIG.keys())
+            raise ValueError(
+                f"Unsupported provider: {provider}. Supported: {supported}"
+            )
+
+        api_key = getattr(self, provider_config["api_key_field"])
+        if not api_key or not api_key.get_secret_value():
+            raise ValueError(
+                f"{provider_config['env_var']} is not set. "
+                "Please set the environment variable."
+            )
+        return api_key.get_secret_value()
 
 
 class BackendConfig(BaseSettings):

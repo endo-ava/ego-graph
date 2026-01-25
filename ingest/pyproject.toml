@@ -44,8 +44,3 @@ dev = [
     "mypy>=1.14.0",
     "responses>=0.25.0",
 ]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
-addopts = "-v --cov=ingest"

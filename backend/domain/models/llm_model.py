@@ -60,6 +60,14 @@ MODELS_CONFIG: dict[str, LLMModel] = {
         output_cost_per_1m=0.38,
         is_free=False,
     ),
+    "glm-4.7": LLMModel(
+        id="glm-4.7",
+        name="GLM 4.7",
+        provider="openai",
+        input_cost_per_1m=0.0,
+        output_cost_per_1m=0.0,
+        is_free=False,
+    ),
 }
 
 DEFAULT_MODEL = "xiaomi/mimo-v2-flash:free"

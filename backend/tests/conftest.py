@@ -65,9 +65,8 @@ def mock_llm_config():
 
     # model_construct()を使って検証をスキップして直接構築
     return LLMConfig.model_construct(
-        provider="openrouter",
-        api_key=SecretStr("test-api-key"),  # SecretStrでラップ
-        model_name="xiaomi/mimo-v2-flash:free",  # プリセットに存在するモデル
+        openrouter_api_key=SecretStr("test-api-key"),
+        default_model="xiaomi/mimo-v2-flash:free",
         temperature=0.7,
         max_tokens=2048,
     )
@@ -271,9 +270,8 @@ def test_client_with_chat_db(tmp_path, monkeypatch):
     monkeypatch.setattr(chat_connection, "DB_PATH", chat_db_path)
 
     # LLM APIキーとモデルを設定（モックLLMを使用）
-    monkeypatch.setenv("LLM_PROVIDER", "openrouter")
-    monkeypatch.setenv("LLM_API_KEY", "test-key")
-    monkeypatch.setenv("LLM_MODEL_NAME", "xiaomi/mimo-v2-flash:free")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("DEFAULT_LLM_MODEL", "xiaomi/mimo-v2-flash:free")
 
     # R2設定（ダミー）
     monkeypatch.setenv("R2_ENDPOINT_URL", "https://test.r2.cloudflarestorage.com")
