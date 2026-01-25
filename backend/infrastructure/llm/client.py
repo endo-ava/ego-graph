@@ -6,7 +6,9 @@
 import logging
 from typing import AsyncGenerator
 
+from backend.config import LLMConfig
 from backend.domain.models.llm import ChatResponse, Message, StreamChunk
+from backend.domain.models.llm_model import MODELS_CONFIG
 from backend.domain.models.tool import Tool
 from backend.infrastructure.llm.providers import (
     AnthropicProvider,
@@ -20,11 +22,12 @@ logger = logging.getLogger(__name__)
 class LLMClient:
     """統一LLMクライアント。
 
-    プロバイダー名に基づいて適切なプロバイダーを選択し、
+    モデルIDに基づいてプロバイダーを判定し、
     統一されたインターフェースでLLM APIにアクセスします。
 
     Example:
-        >>> client = LLMClient("openai", "sk-...", "gpt-4o-mini")
+        >>> config = LLMConfig()
+        >>> client = LLMClient.from_config(config, "xiaomi/mimo-v2-flash:free")
         >>> response = await client.chat(messages, tools)
     """
 
@@ -43,10 +46,62 @@ class LLMClient:
         self.provider = self._create_provider(
             provider_name, api_key, model_name, **kwargs
         )
+        self.provider_name = provider_name
+        self.model_name = model_name
         logger.info(
             "Initialized LLM client with provider: %s, model: %s",
             provider_name,
             model_name,
+        )
+
+    @classmethod
+    def from_config(cls, config: LLMConfig, model_id: str, **kwargs) -> "LLMClient":
+        """設定とモデルIDからLLMClientを作成します。
+
+        Args:
+            config: LLM設定
+            model_id: モデルエイリアス（例: "xiaomi/mimo-v2-flash:free"）
+            **kwargs: プロバイダー固有のパラメータ
+
+        Returns:
+            設定済みのLLMClientインスタンス
+
+        Raises:
+            ValueError: MODELS_CONFIGに存在しないモデルIDが指定された場合
+            ValueError: 対応プロバイダーのAPIキーが未設定の場合
+
+        Example:
+            >>> config = LLMConfig.model_construct(
+            ...     openrouter_api_key=SecretStr("sk-or")
+            ... )
+            >>> client = LLMClient.from_config(
+            ...     config, "xiaomi/mimo-v2-flash:free"
+            ... )
+            >>> client.provider_name
+            'openrouter'
+        """
+        # モデルIDからプロバイダー情報を取得
+        if model_id not in MODELS_CONFIG:
+            raise ValueError(
+                f"invalid_model_name: Unknown model '{model_id}'. "
+                f"Available models: {list(MODELS_CONFIG.keys())}"
+            )
+
+        model_config = MODELS_CONFIG[model_id]
+        provider_name = model_config.provider
+
+        # プロバイダーに対応するAPIキーを取得
+        api_key = config.get_api_key(provider_name)
+
+        # OpenRouterの場合はWeb検索設定を追加
+        if provider_name == "openrouter":
+            kwargs["enable_web_search"] = config.enable_web_search
+
+        return cls(
+            provider_name=provider_name,
+            api_key=api_key,
+            model_name=model_config.id,
+            **kwargs,
         )
 
     def _create_provider(
