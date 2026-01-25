@@ -3,7 +3,10 @@
 from unittest.mock import AsyncMock
 
 import pytest
+from pydantic import SecretStr
 
+from backend.config import LLMConfig
+from backend.domain.models.llm_model import LLMModel, MODELS_CONFIG
 from backend.infrastructure.llm import (
     AnthropicProvider,
     ChatResponse,
@@ -46,14 +49,14 @@ class TestLLMClient:
         """Anthropicプロバイダーを作成。"""
         # Arrange: Anthropicのプロバイダー名とモデル名を準備
         provider_name = "anthropic"
-        model_name = "claude-3-5-sonnet-20241022"
+        model_name = "anthropic/test-model"
 
         # Act: LLMClientを作成
         client = LLMClient(provider_name, "test-key", model_name)
 
         # Assert: Anthropicプロバイダーが作成されることを検証
         assert isinstance(client.provider, AnthropicProvider)
-        assert client.provider.model_name == "claude-3-5-sonnet-20241022"
+        assert client.provider.model_name == "anthropic/test-model"
 
     def test_raises_error_for_unsupported_provider(self):
         """未対応プロバイダーでエラー。"""
@@ -107,3 +110,91 @@ class TestLLMClient:
         assert call_kwargs["messages"] == messages
         assert call_kwargs["temperature"] == 0.5
         assert call_kwargs["max_tokens"] == 1024
+
+
+class TestLLMClientFromConfig:
+    """LLMClient.from_configメソッドのテスト。"""
+
+    def test_from_config_openai_model(self):
+        """OpenAIモデルでLLMClientを作成。"""
+        # Arrange: OpenAIプロバイダーのAPIキーを設定
+        config = LLMConfig.model_construct(
+            openai_api_key=SecretStr("sk-test-openai"),
+        )
+        # MODELS_CONFIG に存在する glm-4.7 を使用（openai プロバイダー）
+        model_id = "glm-4.7"
+
+        # Act: from_configでLLMClientを作成
+        client = LLMClient.from_config(config, model_id)
+
+        # Assert: OpenAIプロバイダーが作成されることを検証
+        assert isinstance(client.provider, OpenAIProvider)
+        assert client.provider_name == "openai"
+        assert client.model_name == model_id
+
+    def test_from_config_openrouter_model(self):
+        """OpenRouterモデルでLLMClientを作成。"""
+        # Arrange: OpenRouterプロバイダーのAPIキーを設定
+        config = LLMConfig.model_construct(
+            openrouter_api_key=SecretStr("sk-or-test"),
+            enable_web_search=True,
+        )
+        model_id = "xiaomi/mimo-v2-flash:free"
+
+        # Act: from_configでLLMClientを作成
+        client = LLMClient.from_config(config, model_id)
+
+        # Assert: OpenRouterプロバイダーが作成されることを検証
+        assert isinstance(client.provider, OpenAIProvider)
+        assert client.provider_name == "openrouter"
+        assert client.provider.enable_web_search is True
+
+    def test_from_config_anthropic_model(self, monkeypatch):
+        """AnthropicプロバイダーでLLMClientを作成。"""
+        # Arrange: AnthropicプロバイダーのAPIキーを設定
+        config = LLMConfig.model_construct(
+            anthropic_api_key=SecretStr("sk-ant-test"),
+        )
+        model_id = "anthropic/test-model"
+        test_models = {
+            **MODELS_CONFIG,
+            model_id: LLMModel(
+                id=model_id,
+                name="Anthropic Test Model",
+                provider="anthropic",
+                input_cost_per_1m=0.0,
+                output_cost_per_1m=0.0,
+                is_free=True,
+            ),
+        }
+        monkeypatch.setattr(
+            "backend.infrastructure.llm.client.MODELS_CONFIG", test_models
+        )
+
+        # Act: from_configでLLMClientを作成
+        client = LLMClient.from_config(config, model_id)
+        assert isinstance(client.provider, AnthropicProvider)
+        assert client.provider_name == "anthropic"
+
+    def test_from_config_invalid_model_raises_error(self):
+        """無効なモデルIDでエラーが発生する。"""
+        # Arrange
+        config = LLMConfig.model_construct(
+            openai_api_key=SecretStr("sk-test"),
+        )
+        invalid_model_id = "invalid/model"
+
+        # Act & Assert: ValueErrorが発生することを検証
+        with pytest.raises(ValueError, match="invalid_model_name"):
+            LLMClient.from_config(config, invalid_model_id)
+
+    def test_from_config_missing_api_key_raises_error(self):
+        """APIキーが未設定の場合にエラーが発生する。"""
+        # Arrange: APIキー未設定の設定
+        config = LLMConfig.model_construct()
+        # MODELS_CONFIG に存在する glm-4.7 を使用（openai プロバイダー）
+        model_id = "glm-4.7"
+
+        # Act & Assert: ValueErrorが発生することを検証
+        with pytest.raises(ValueError, match="OPENAI_API_KEY is not set"):
+            LLMClient.from_config(config, model_id)

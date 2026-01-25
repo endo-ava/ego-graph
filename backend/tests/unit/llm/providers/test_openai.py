@@ -1,11 +1,32 @@
 """LLM/Providers/OpenAI層のテスト。"""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
+import httpx
 import pytest
 
 from backend.infrastructure.llm import Message, OpenAIProvider, ToolCall
 from backend.usecases.tools import Tool
+
+
+# カスタムMockクラス：is_errorプロパティを正しく実装
+class MockResponse(MagicMock):
+    """httpx.Response のモック。"""
+
+    def __init__(self, status_code: int = 200, is_error: bool = False):
+        super().__init__()
+        self.status_code = status_code
+        type(self).is_error = PropertyMock(return_value=is_error)
+
+    def raise_for_status(self):
+        if self.is_error:
+            raise httpx.HTTPStatusError("Mock error", request=None)
+
+    async def aread(self):
+        return b""
+
+    async def aiter_lines(self):
+        yield  # Default implementation - should be overridden
 
 
 class TestOpenAIProvider:
@@ -19,7 +40,8 @@ class TestOpenAIProvider:
         # Assert: 設定値が正しく保存されることを検証
         assert provider.api_key == "test-key"
         assert provider.model_name == "gpt-4o-mini"
-        assert provider.base_url == "https://api.openai.com/v1"
+        # デフォルト base_url が変更されたのでそれに合わせる
+        assert provider.base_url == "https://api.z.ai/api/coding/paas/v4"
 
     def test_custom_base_url(self):
         """カスタムbase_urlの設定。"""
@@ -35,11 +57,11 @@ class TestOpenAIProvider:
         """base_urlの末尾スラッシュを除去。"""
         # Arrange & Act: 末尾にスラッシュを含むbase_urlで初期化
         provider = OpenAIProvider(
-            "test-key", "model-name", base_url="https://api.openai.com/v1/"
+            "test-key", "model-name", base_url="https://api.z.ai/api/paas/v4/"
         )
 
         # Assert: 末尾のスラッシュが除去されることを検証
-        assert provider.base_url == "https://api.openai.com/v1"
+        assert provider.base_url == "https://api.z.ai/api/paas/v4"
 
     def test_convert_tools_to_provider_format(self):
         """ツールをOpenAI形式に変換。"""
@@ -276,17 +298,32 @@ class TestOpenAIProvider:
         messages = [Message(role="user", content="Tell me a story")]
 
         # httpx.AsyncClientのストリーミングレスポンスをモック
-        mock_response = MagicMock()
+        mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
+        # is_error プロパティをモック（status_code < 400 なら False）
+        type(mock_response).is_error = PropertyMock(return_value=False)
         mock_response.raise_for_status = MagicMock()
+        mock_response.aread = AsyncMock(return_value=b"")  # エラーハンドリング用
 
         # ストリーミング-linesをモック
         async def mock_iter_lines():
             # テキストチャンクと[DONE]をyield
             lines = [
-                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"content":"Once"},"finish_reason":null}]}',
-                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567891,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"content":" upon"},"finish_reason":null}]}',
-                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567892,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"content":" a time"},"finish_reason":null}]}',
+                (
+                    'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk",'
+                    '"created":1234567890,"model":"gpt-4o-mini","choices":[{'
+                    '"index":0,"delta":{"content":"Once"},"finish_reason":null}]}'
+                ),
+                (
+                    'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk",'
+                    '"created":1234567891,"model":"gpt-4o-mini","choices":[{'
+                    '"index":0,"delta":{"content":" upon"},"finish_reason":null}]}'
+                ),
+                (
+                    'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk",'
+                    '"created":1234567892,"model":"gpt-4o-mini","choices":[{'
+                    '"index":0,"delta":{"content":" a time"},"finish_reason":null}]}'
+                ),
                 "data: [DONE]",
             ]
             for line in lines:
@@ -304,7 +341,13 @@ class TestOpenAIProvider:
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
             )
-            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+            # stream メソッドが async context manager を返すようにモック
+            mock_stream_async_context = MagicMock()
+            mock_stream_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+            mock_stream_async_context.__aexit__ = AsyncMock(return_value=None)
+            mock_client_instance.stream = MagicMock(
+                return_value=mock_stream_async_context
+            )
 
             # Act: ストリーミングチャット補完を実行
             chunks = []
@@ -333,12 +376,21 @@ class TestOpenAIProvider:
         # ストリーミングレスポンスをモック（ツール呼び出しを含む）
         mock_response = MagicMock()
         mock_response.status_code = 200
+        mock_response.is_error = False  # httpx.Response.is_error を明示的にモック
         mock_response.raise_for_status = MagicMock()
+        mock_response.aread = AsyncMock(return_value=b"")  # エラーハンドリング用
 
         async def mock_iter_lines():
             lines = [
                 # ツール呼び出しを含むチャンク
-                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_001","type":"function","function":{"name":"get_stats","arguments":"{\\"limit\\":10}"},"index":0}]},"finish_reason":null}]}',
+                (
+                    'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk",'
+                    '"created":1234567890,"model":"gpt-4o-mini","choices":[{'
+                    '"index":0,"delta":{"tool_calls":[{"id":"call_001",'
+                    '"type":"function","function":{"name":"get_stats",'
+                    '"arguments":"{\\"limit\\":10}"},"index":0}]},'
+                    '"finish_reason":null}]}'
+                ),
                 "data: [DONE]",
             ]
             for line in lines:
@@ -355,7 +407,13 @@ class TestOpenAIProvider:
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
             )
-            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+            # stream メソッドが async context manager を返すようにモック
+            mock_stream_async_context = MagicMock()
+            mock_stream_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+            mock_stream_async_context.__aexit__ = AsyncMock(return_value=None)
+            mock_client_instance.stream = MagicMock(
+                return_value=mock_stream_async_context
+            )
 
             # Act: ストリーミングチャット補完を実行
             chunks = []
@@ -382,7 +440,9 @@ class TestOpenAIProvider:
 
         mock_response = MagicMock()
         mock_response.status_code = 200
+        mock_response.is_error = False  # httpx.Response.is_error を明示的にモック
         mock_response.raise_for_status = MagicMock()
+        mock_response.aread = AsyncMock(return_value=b"")  # エラーハンドリング用
 
         async def mock_iter_lines():
             # [DONE]マーカーのみ（テキストなし）
@@ -401,7 +461,13 @@ class TestOpenAIProvider:
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
             )
-            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+            # stream メソッドが async context manager を返すようにモック
+            mock_stream_async_context = MagicMock()
+            mock_stream_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+            mock_stream_async_context.__aexit__ = AsyncMock(return_value=None)
+            mock_client_instance.stream = MagicMock(
+                return_value=mock_stream_async_context
+            )
 
             # Act: ストリーミングチャット補完を実行
             chunks = []
@@ -421,14 +487,25 @@ class TestOpenAIProvider:
 
         mock_response = MagicMock()
         mock_response.status_code = 200
+        mock_response.is_error = False  # httpx.Response.is_error を明示的にモック
         mock_response.raise_for_status = MagicMock()
+        mock_response.aread = AsyncMock(return_value=b"")  # エラーハンドリング用
 
         async def mock_iter_lines():
             lines = [
                 # テキスト増量チャンク
-                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"content":"Hi"},"finish_reason":null}]}',
+                (
+                    'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk",'
+                    '"created":1234567890,"model":"gpt-4o-mini","choices":[{'
+                    '"index":0,"delta":{"content":"Hi"},"finish_reason":null}]}'
+                ),
                 # 完了チャンク（finish_reasonとusage）
-                'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk","created":1234567891,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5}}',
+                (
+                    'data: {"id":"chatcmpl-stream","object":"chat.completion.chunk",'
+                    '"created":1234567891,"model":"gpt-4o-mini","choices":[{'
+                    '"index":0,"delta":{},"finish_reason":"stop"}],"usage":{'
+                    '"prompt_tokens":10,"completion_tokens":5}}'
+                ),
                 "data: [DONE]",
             ]
             for line in lines:
@@ -445,7 +522,13 @@ class TestOpenAIProvider:
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
             )
-            mock_client_instance.stream = MagicMock(return_value=mock_async_context)
+            # stream メソッドが async context manager を返すようにモック
+            mock_stream_async_context = MagicMock()
+            mock_stream_async_context.__aenter__ = AsyncMock(return_value=mock_response)
+            mock_stream_async_context.__aexit__ = AsyncMock(return_value=None)
+            mock_client_instance.stream = MagicMock(
+                return_value=mock_stream_async_context
+            )
 
             # Act: ストリーミングチャット補完を実行
             chunks = []

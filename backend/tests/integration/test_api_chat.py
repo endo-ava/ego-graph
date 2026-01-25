@@ -65,9 +65,11 @@ class TestChatEndpoint:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             mock_registry = MagicMock()
             mock_registry.get_all_schemas.return_value = []
@@ -140,11 +142,13 @@ class TestChatEndpoint:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(
                 side_effect=[tool_call_response, final_response]
             )
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             mock_registry = MagicMock()
             mock_registry.get_all_schemas.return_value = []
@@ -176,9 +180,11 @@ class TestChatEndpoint:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(side_effect=Exception("LLM API error"))
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             mock_registry = MagicMock()
             mock_registry.get_all_schemas.return_value = []
@@ -206,8 +212,11 @@ class TestChatEndpoint:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat = AsyncMock()
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
             mock_registry = MagicMock()
             mock_registry.get_all_schemas.return_value = []
             mock_registry_class.return_value = mock_registry
@@ -239,9 +248,11 @@ class TestChatEndpoint:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             mock_registry = MagicMock()
             mock_registry.get_all_schemas.return_value = []
@@ -291,9 +302,11 @@ class TestChatEndpoint:
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
         ):
+            # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()
             mock_llm_instance.chat = AsyncMock(return_value=mock_response)
-            mock_llm_class.return_value = mock_llm_instance
+            mock_llm_instance.chat_stream = AsyncMock()
+            mock_llm_class.from_config = MagicMock(return_value=mock_llm_instance)
 
             mock_registry = MagicMock()
             mock_registry.get_all_schemas.return_value = []
@@ -505,7 +518,7 @@ class TestChatStreamingEndpoint:
 
                 assert messages[1][0] == "assistant"
                 assert messages[1][1] == "Hello, how can I help you?"
-                assert messages[1][2] == mock_backend_config.llm.model_name
+                assert messages[1][2] == mock_backend_config.llm.default_model
 
     def test_chat_streaming_creates_new_thread(self, test_client, mock_backend_config):
         """ストリーミングモードで新規スレッドが作成される。"""
