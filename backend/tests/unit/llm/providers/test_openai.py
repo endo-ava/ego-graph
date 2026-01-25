@@ -16,11 +16,20 @@ class MockResponse(MagicMock):
     def __init__(self, status_code: int = 200, is_error: bool = False):
         super().__init__()
         self.status_code = status_code
-        type(self).is_error = PropertyMock(return_value=is_error)
+        self._is_error = is_error
+
+    @property
+    def is_error(self):
+        return self._is_error
 
     def raise_for_status(self):
-        if self.is_error:
-            raise httpx.HTTPStatusError("Mock error", request=None)
+        if self._is_error:
+            mock_request = MagicMock(spec=httpx.Request)
+            raise httpx.HTTPStatusError(
+                "Mock error",
+                request=mock_request,
+                response=self,
+            )
 
     async def aread(self):
         return b""

@@ -88,7 +88,7 @@ class LLMConfig(BaseSettings):
             )
 
         api_key = getattr(self, provider_config["api_key_field"])
-        if not api_key:
+        if not api_key or not api_key.get_secret_value():
             raise ValueError(
                 f"{provider_config['env_var']} is not set. "
                 "Please set the environment variable."

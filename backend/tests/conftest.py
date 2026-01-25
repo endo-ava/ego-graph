@@ -270,7 +270,6 @@ def test_client_with_chat_db(tmp_path, monkeypatch):
     monkeypatch.setattr(chat_connection, "DB_PATH", chat_db_path)
 
     # LLM APIキーとモデルを設定（モックLLMを使用）
-    monkeypatch.setenv("LLM_PROVIDER", "openrouter")
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setenv("DEFAULT_LLM_MODEL", "xiaomi/mimo-v2-flash:free")
 
