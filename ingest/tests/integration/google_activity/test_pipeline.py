@@ -607,12 +607,6 @@ async def test_account_independence_on_failure():
 async def test_transform_integration():
     """Transform モジュールが Collector と Storage の間で正しく動作することを検証する。"""
     # Arrange
-    account_config = AccountConfig(
-        account_id="test_account",
-        cookies={"SID": "test_sid"},
-        youtube_api_key="test_api_key",
-    )
-
     raw_items = SAMPLE_WATCH_HISTORY
 
     # Act: Transform を直接実行
@@ -659,10 +653,6 @@ async def test_video_channel_api_integration():
     マスター情報を補完するフローを追加する必要があります。
     """
     # Arrange
-    from ingest.google_activity.youtube_api import YouTubeAPIClient
-
-    api_key = "test_api_key"
-
     # Mock YouTube API Client
     mock_client = MagicMock(spec=YouTubeAPIClient)
     mock_client.get_videos.return_value = SAMPLE_API_VIDEOS

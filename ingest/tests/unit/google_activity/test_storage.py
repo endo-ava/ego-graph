@@ -49,9 +49,7 @@ class TestYouTubeStorageSaveRawJson:
         with patch.object(
             uuid_module, "uuid4", return_value=MagicMock(hex="test-uuid")
         ):
-            storage.save_raw_json(
-                data, prefix="activity", account_id="account1"
-            )
+            storage.save_raw_json(data, prefix="activity", account_id="account1")
 
         # Assert
         mock_s3.put_object.assert_called_once()
@@ -92,8 +90,7 @@ class TestYouTubeStorageSaveParquet:
     """save_parquetメソッドのテスト。"""
 
     @patch("boto3.client")
-    @patch("pandas.DataFrame")
-    def test_save_parquet_saves_with_partitioning(self, mock_df, mock_boto3_client):
+    def test_save_parquet_saves_with_partitioning(self, mock_boto3_client):
         """年月パーティションでParquetを保存することを確認。"""
         # Arrange
         mock_s3 = MagicMock()
@@ -126,8 +123,7 @@ class TestYouTubeStorageSaveMasterParquet:
     """save_master_parquetメソッドのテスト。"""
 
     @patch("boto3.client")
-    @patch("pandas.DataFrame")
-    def test_save_master_parquet_with_partitioning(self, mock_df, mock_boto3_client):
+    def test_save_master_parquet_with_partitioning(self, mock_boto3_client):
         """年月パーティションでマスターParquetを保存することを確認。"""
         # Arrange
         mock_s3 = MagicMock()

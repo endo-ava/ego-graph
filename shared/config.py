@@ -6,7 +6,7 @@ from pydantic import BaseModel, SecretStr, field_validator
 class YouTubeConfig(BaseModel):
     """YouTube API設定。"""
 
-    youtube_api_key: str
+    youtube_api_key: SecretStr
 
 
 class GoogleActivityConfig(BaseModel):
