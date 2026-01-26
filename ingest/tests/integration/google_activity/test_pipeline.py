@@ -130,7 +130,10 @@ async def test_full_pipeline_success():
     # Arrange
     account_config = AccountConfig(
         account_id="account1",
-        cookies={"SID": "test_sid", "HSID": "test_hsid"},
+        cookies=[
+            {"name": "SID", "value": "test_sid"},
+            {"name": "HSID", "value": "test_hsid"},
+        ],
         youtube_api_key="test_api_key",
     )
 
@@ -194,7 +197,7 @@ async def test_pipeline_with_multiple_months():
     # Arrange
     account_config = AccountConfig(
         account_id="account1",
-        cookies={"SID": "test_sid"},
+        cookies=[{"name": "SID", "value": "test_sid"}],
         youtube_api_key="test_api_key",
     )
 
@@ -244,7 +247,7 @@ async def test_incremental_fetch_with_state():
     # Arrange
     account_config = AccountConfig(
         account_id="account1",
-        cookies={"SID": "test_sid"},
+        cookies=[{"name": "SID", "value": "test_sid"}],
         youtube_api_key="test_api_key",
     )
 
@@ -316,7 +319,7 @@ async def test_collector_failure_isolation():
     # Arrange
     account_config = AccountConfig(
         account_id="account1",
-        cookies={"SID": "test_sid"},
+        cookies=[{"name": "SID", "value": "test_sid"}],
         youtube_api_key="test_api_key",
     )
 
@@ -365,7 +368,7 @@ async def test_storage_failure_handling():
     # Arrange
     account_config = AccountConfig(
         account_id="account1",
-        cookies={"SID": "test_sid"},
+        cookies=[{"name": "SID", "value": "test_sid"}],
         youtube_api_key="test_api_key",
     )
 
@@ -416,7 +419,7 @@ async def test_no_new_data_early_return():
     # Arrange
     account_config = AccountConfig(
         account_id="account1",
-        cookies={"SID": "test_sid"},
+        cookies=[{"name": "SID", "value": "test_sid"}],
         youtube_api_key="test_api_key",
     )
 
@@ -462,13 +465,13 @@ async def test_sequential_account_execution():
     # Arrange
     account1_config = AccountConfig(
         account_id="account1",
-        cookies={"SID": "test_sid1"},
+        cookies=[{"name": "SID", "value": "test_sid1"}],
         youtube_api_key="test_api_key",
     )
 
     account2_config = AccountConfig(
         account_id="account2",
-        cookies={"SID": "test_sid2"},
+        cookies=[{"name": "SID", "value": "test_sid2"}],
         youtube_api_key="test_api_key",
     )
 
@@ -526,19 +529,19 @@ async def test_account_independence_on_failure():
     # Arrange
     account1_config = AccountConfig(
         account_id="account1",
-        cookies={"SID": "test_sid1"},
+        cookies=[{"name": "SID", "value": "test_sid1"}],
         youtube_api_key="test_api_key",
     )
 
     account2_config = AccountConfig(
         account_id="account2",
-        cookies={"SID": "test_sid2"},
+        cookies=[{"name": "SID", "value": "test_sid2"}],
         youtube_api_key="test_api_key",
     )
 
     account3_config = AccountConfig(
         account_id="account3",
-        cookies={"SID": "test_sid3"},
+        cookies=[{"name": "SID", "value": "test_sid3"}],
         youtube_api_key="test_api_key",
     )
 
@@ -694,7 +697,7 @@ async def test_end_to_end_with_api_enrichment():
     # Arrange
     account_config = AccountConfig(
         account_id="account1",
-        cookies={"SID": "test_sid"},
+        cookies=[{"name": "SID", "value": "test_sid"}],
         youtube_api_key="test_api_key",
     )
 
@@ -745,7 +748,7 @@ async def test_max_items_limit():
     # Arrange
     account_config = AccountConfig(
         account_id="account1",
-        cookies={"SID": "test_sid"},
+        cookies=[{"name": "SID", "value": "test_sid"}],
         youtube_api_key="test_api_key",
     )
 
@@ -783,11 +786,13 @@ async def test_max_items_limit():
             max_items=2,  # 2件に制限
         )
 
-    # Assert: max_items 制限が適用されている（Collector 側で制限されるため、ここではパラメータ渡しを確認）
+    # Assert: パイプラインはmax_itemsパラメータをCollectorに渡すが、自分では制限しない
+    # 注: Collectorはmax_itemsを尊重して5件中2件のみを返すようにモックされているが、
+    # ここではパイプラインが正しくmax_itemsを渡していることを検証する
     assert result.success is True
-    assert result.collected_count == 5  # 注: 現在の実装では Collector 側で制限
+    assert result.collected_count == 5  # Collectorモックが返した件数
     assert result.saved_count == 5
 
-    # Collector 呼び出しで max_items=2 が渡されている
+    # Collector 呼び出しで max_items=2 が渡されていることを検証
     collector_call_args = mock_collector.collect_watch_history.call_args
     assert collector_call_args[1]["max_items"] == 2

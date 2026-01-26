@@ -68,14 +68,14 @@ def _extract_video_id(video_url: str) -> str | None:
     return None
 
 
-def _parse_watched_at(timestamp_str: str) -> datetime:
+def _parse_watched_at(timestamp_str: str) -> datetime | None:
     """視聴日時文字列をdatetimeオブジェクトに変換する。
 
     Args:
         timestamp_str: 日時文字列（ISO8601形式など）
 
     Returns:
-        datetimeオブジェクト（UTC）
+        datetimeオブジェクト（UTC）、またはパース失敗時はNone
     """
     # 各種形式を試す
     for fmt in [
@@ -93,9 +93,9 @@ def _parse_watched_at(timestamp_str: str) -> datetime:
         except ValueError:
             continue
 
-    # パースに失敗した場合は現在時刻を返す（エラーハンドリング用）
+    # パースに失敗した場合はNoneを返す
     logger.warning("Failed to parse timestamp: %s", timestamp_str)
-    return datetime.now(timezone.utc)
+    return None
 
 
 class MyActivityCollector:
@@ -360,12 +360,12 @@ class MyActivityCollector:
         # 視聴日時の取得
         time_element = await element.query_selector(".timestamp, .time, .date")
         time_text = await time_element.inner_text() if time_element else None
-        watched_at = (
-            _parse_watched_at(time_text) if time_text else datetime.now(timezone.utc)
-        )
 
-        # after_timestampによるフィルタリング
-        if watched_at < after_timestamp:
+        # タイムスタンプをパース（失敗した場合はNone）
+        watched_at = _parse_watched_at(time_text) if time_text else None
+
+        # パース失敗またはafter_timestamp以前のアイテムは除外
+        if watched_at is None or watched_at < after_timestamp:
             return None
 
         # 必須フィールドのチェック

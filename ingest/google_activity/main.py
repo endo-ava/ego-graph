@@ -158,13 +158,17 @@ def _load_cookies(env_var: str) -> list[dict] | None:
         or cookies_str.startswith("/")
         or cookies_str.startswith("~")
     ):
+        # ホームディレクトリを展開（~を実際のパスに変換）
+        from pathlib import Path
+
+        expanded_path = Path(cookies_str).expanduser()
         try:
-            with open(cookies_str, "r", encoding="utf-8") as f:
+            with open(expanded_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except FileNotFoundError as e:
-            raise ValueError(f"Cookie file not found: {cookies_str}") from e
+            raise ValueError(f"Cookie file not found: {expanded_path}") from e
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in cookie file: {cookies_str}") from e
+            raise ValueError(f"Invalid JSON in cookie file: {expanded_path}") from e
 
     # JSON文字列としてパース
     try:

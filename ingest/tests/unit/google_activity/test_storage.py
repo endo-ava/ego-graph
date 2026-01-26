@@ -46,9 +46,9 @@ class TestYouTubeStorageSaveRawJson:
         data = [{"test": "data"}]
 
         # Act
-        with patch.object(
-            uuid_module, "uuid4", return_value=MagicMock(hex="test-uuid")
-        ):
+        # uuid4モックを正確にシミュレート（str(uuid.uuid4())[:8]形式）
+        mock_uuid = uuid_module.UUID("12345678-1234-5678-1234-567812345678")
+        with patch.object(uuid_module, "uuid4", return_value=mock_uuid):
             storage.save_raw_json(data, prefix="activity", account_id="account1")
 
         # Assert

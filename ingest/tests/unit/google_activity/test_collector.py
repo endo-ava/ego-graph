@@ -95,11 +95,10 @@ def test_parse_watched_at_japanese_format():
 
 
 def test_parse_watched_at_invalid_format():
-    """無効な形式の場合は現在時刻を返す（エラーハンドリング用）。"""
+    """無効な形式の場合はNoneを返す（パース失敗時の安全な挙動）。"""
     timestamp_str = "invalid_timestamp"
     result = _parse_watched_at(timestamp_str)
-    assert isinstance(result, datetime)
-    assert result.tzinfo == timezone.utc
+    assert result is None
 
 
 @pytest.mark.asyncio
@@ -172,8 +171,7 @@ async def test_collect_watch_history_with_valid_params():
 async def test_collect_watch_history_retry_decorator():
     """リトライデコレータが適用されていることを確認する。"""
     from unittest.mock import AsyncMock, patch
-
-    logger.debug("Setting up retry test")
+    from tenacity import RetryError
 
     mock_cookies = [
         {"name": "test", "value": "value", "domain": ".google.com", "path": "/"}
@@ -182,18 +180,18 @@ async def test_collect_watch_history_retry_decorator():
 
     after_timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
-    # メソッドにデコレータが適用されていることを確認
-    # リトライデコレータがあれば、複数回失敗後にエラーが発生する
+    # リトライデコレータが適用されていることを確認
+    # デコレータがある場合、RuntimeErrorはRetryErrorでラップされる
     with patch.object(collector, "_initialize_browser", new_callable=AsyncMock):
         with patch.object(collector, "_cleanup_browser", new_callable=AsyncMock):
-            try:
+            with pytest.raises(RetryError):
                 # ブラウザ初期化がモックされているため失敗する
                 await collector.collect_watch_history(
                     after_timestamp=after_timestamp, max_items=10
                 )
-            except Exception:
-                # エラーが発生してもデコレータが適用されていればOK
-                pass
+
+    # テストが成功すれば、リトライデコレータが適用されていることの証明
+    # （AuthenticationError以外の例外はRetryErrorでラップされる）
 
 
 @pytest.mark.asyncio
@@ -206,7 +204,7 @@ async def test_collect_watch_history_max_items_parameter():
 
     after_timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
-    # max_items=None（無制限）
+    # max_items=None(無制限)
     mock_items_1 = [
         {
             "video_id": f"video{i}",

@@ -33,12 +33,14 @@ class TestLoadCookies:
         assert result[0]["value"] == "test_sid_value"
 
     def test_load_cookies_from_json_string(self):
-        """JSON文字列からCookieを読み込めること（配列形式）。"""
+        """JSON文字列からCookieを読み込めること(配列形式)。"""
         # Arrange
-        cookies_json = json.dumps([
-            {"name": "SID", "value": "test_sid_value"},
-            {"name": "HSID", "value": "test_hsid_value"},
-        ])
+        cookies_json = json.dumps(
+            [
+                {"name": "SID", "value": "test_sid_value"},
+                {"name": "HSID", "value": "test_hsid_value"},
+            ]
+        )
 
         # Act
         with patch.dict(os.environ, {"TEST_COOKIE": cookies_json}):
@@ -49,12 +51,14 @@ class TestLoadCookies:
         assert result[0]["name"] == "SID"
 
     def test_load_cookies_from_json_dict(self):
-        """JSON文字列からCookieを読み込めること（辞書形式）。"""
+        """JSON文字列からCookieを読み込めること(辞書形式)。"""
         # Arrange
-        cookies_json = json.dumps({
-            "SID": "test_sid_value",
-            "HSID": "test_hsid_value",
-        })
+        cookies_json = json.dumps(
+            {
+                "SID": "test_sid_value",
+                "HSID": "test_hsid_value",
+            }
+        )
 
         # Act
         with patch.dict(os.environ, {"TEST_COOKIE": cookies_json}):
