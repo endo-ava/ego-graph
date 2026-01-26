@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -126,32 +127,45 @@ async def test_collect_watch_history_with_valid_params():
 
     after_timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
-    # Note: 実際のMyActivityページへのアクセスは必要なクッキーと環境が必要
-    # このテストではメソッドが呼び出し可能であることを確認するのみ
-    # エラーが発生しても、構造が正しければOKとする
+    # ブラウザ操作をモックして、決定的なデータを返す
+    async def mock_init():
+        # モック用のpageオブジェクトを作成
+        collector.page = AsyncMock()
+        collector.page.goto = AsyncMock()
+        collector.page.url = "https://myactivity.google.com/product/youtube"
 
-    try:
-        result = await collector.collect_watch_history(
-            after_timestamp=after_timestamp, max_items=10
-        )
-        # 成功した場合、結果の構造を検証
-        assert isinstance(result, list)
-        for item in result:
-            assert isinstance(item, dict)
-            assert "video_id" in item
-            assert "title" in item
-            assert "channel_name" in item
-            assert "watched_at" in item
-            assert "video_url" in item
-    except AuthenticationError:
-        # 認証エラーは想定内（クッキーが有効でない場合）
+    async def mock_cleanup():
         pass
-    except Exception as e:
-        # その他のエラーはログに出力
-        import logging
 
-        logger = logging.getLogger(__name__)
-        logger.warning("Expected error in unit test: %s", e)
+    with patch.object(collector, "_initialize_browser", mock_init):
+        with patch.object(collector, "_cleanup_browser", mock_cleanup):
+            with patch.object(
+                collector, "_is_authentication_failed", return_value=False
+            ):
+                # _scrape_watch_itemsをモック
+                mock_items = [
+                    {
+                        "video_id": "test_video1",
+                        "title": "Test Video 1",
+                        "channel_name": "Test Channel",
+                        "watched_at": datetime(
+                            2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc
+                        ),
+                        "video_url": "https://www.youtube.com/watch?v=test_video1",
+                    }
+                ]
+                with patch.object(
+                    collector, "_scrape_watch_items", return_value=mock_items
+                ):
+                    result = await collector.collect_watch_history(
+                        after_timestamp=after_timestamp, max_items=10
+                    )
+
+    # 成功した場合、結果の構造を検証
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0]["video_id"] == "test_video1"
+    assert result[0]["title"] == "Test Video 1"
 
 
 @pytest.mark.asyncio
@@ -192,26 +206,48 @@ async def test_collect_watch_history_max_items_parameter():
 
     after_timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
-    # max_items=None（無制限）とmax_items=5の両方を試す
-    try:
-        result1 = await collector.collect_watch_history(
-            after_timestamp=after_timestamp, max_items=None
-        )
-        assert isinstance(result1, list)
-    except (AuthenticationError, Exception):
+    # max_items=None（無制限）
+    mock_items_1 = [
+        {
+            "video_id": f"video{i}",
+            "title": f"Video {i}",
+            "channel_name": "Test Channel",
+            "watched_at": datetime(2025, 1, i + 1, 10, 30, 0, tzinfo=timezone.utc),
+            "video_url": f"https://www.youtube.com/watch?v=video{i}",
+        }
+        for i in range(10)
+    ]
+
+    async def mock_init():
+        # モック用のpageオブジェクトを作成
+        collector.page = AsyncMock()
+        collector.page.goto = AsyncMock()
+        collector.page.url = "https://myactivity.google.com/product/youtube"
+
+    async def mock_cleanup():
         pass
 
-    try:
-        result2 = await collector.collect_watch_history(
-            after_timestamp=after_timestamp, max_items=5
-        )
-        assert isinstance(result2, list)
-        # max_itemsが指定されている場合は、取得数が制限されるはず
-        # （実際のスクレイピングが成功した場合）
-        if len(result2) > 0:
-            assert len(result2) <= 5
-    except (AuthenticationError, Exception):
-        pass
+    with patch.object(collector, "_initialize_browser", mock_init):
+        with patch.object(collector, "_cleanup_browser", mock_cleanup):
+            with patch.object(
+                collector, "_is_authentication_failed", return_value=False
+            ):
+                with patch.object(
+                    collector, "_scrape_watch_items", return_value=mock_items_1
+                ):
+                    result1 = await collector.collect_watch_history(
+                        after_timestamp=after_timestamp, max_items=None
+                    )
+
+    assert isinstance(result1, list)
+    assert len(result1) == 10
+
+    # max_items=5
+    result2 = await collector.collect_watch_history(
+        after_timestamp=after_timestamp, max_items=5
+    )
+    assert isinstance(result2, list)
+    assert len(result2) <= 5
 
 
 @pytest.mark.asyncio
@@ -222,17 +258,43 @@ async def test_collect_watch_history_after_timestamp_filtering():
     ]
     collector = MyActivityCollector(mock_cookies)
 
-    after_timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    after_timestamp = datetime(2025, 1, 10, 0, 0, 0, tzinfo=timezone.utc)
 
-    try:
-        result = await collector.collect_watch_history(
-            after_timestamp=after_timestamp, max_items=10
-        )
-        assert isinstance(result, list)
+    # after_timestamp以降のアイテムを含むモックデータ
+    mock_items = [
+        {
+            "video_id": f"video{i}",
+            "title": f"Video {i}",
+            "channel_name": "Test Channel",
+            "watched_at": datetime(2025, 1, 10 + i, 10, 30, 0, tzinfo=timezone.utc),
+            "video_url": f"https://www.youtube.com/watch?v=video{i}",
+        }
+        for i in range(5)
+    ]
 
-        # 結果内の全アイテムがafter_timestamp以降であることを確認
-        for item in result:
-            if "watched_at" in item:
-                assert item["watched_at"] >= after_timestamp
-    except (AuthenticationError, Exception):
+    async def mock_init():
+        # モック用のpageオブジェクトを作成
+        collector.page = AsyncMock()
+        collector.page.goto = AsyncMock()
+        collector.page.url = "https://myactivity.google.com/product/youtube"
+
+    async def mock_cleanup():
         pass
+
+    with patch.object(collector, "_initialize_browser", mock_init):
+        with patch.object(collector, "_cleanup_browser", mock_cleanup):
+            with patch.object(
+                collector, "_is_authentication_failed", return_value=False
+            ):
+                with patch.object(
+                    collector, "_scrape_watch_items", return_value=mock_items
+                ):
+                    result = await collector.collect_watch_history(
+                        after_timestamp=after_timestamp, max_items=10
+                    )
+
+    assert isinstance(result, list)
+    # 結果内の全アイテムがafter_timestamp以降であることを確認
+    for item in result:
+        if "watched_at" in item:
+            assert item["watched_at"] >= after_timestamp

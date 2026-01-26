@@ -44,7 +44,7 @@ def _parse_youtube_duration(duration_str: str) -> int | None:
     """YouTubeのdurationフォーマット（ISO8601）を秒数に変換する。
 
     Args:
-        duration_str: PT1H30M15Sのようなduration文字列
+        duration_str: P1DT2H30M15SやPT2H30M15Sのようなduration文字列
 
     Returns:
         秒数、またはパース失敗時はNone
@@ -52,24 +52,32 @@ def _parse_youtube_duration(duration_str: str) -> int | None:
     if not duration_str:
         return None
 
-    # PTで始まらない場合は不正
-    if not duration_str.startswith("PT"):
+    # Pで始まらない場合は不正
+    if not duration_str.startswith("P"):
         return None
 
     total_seconds = 0
 
+    # 日数 (D) - Tの前
+    day_match = re.search(r"(\d+)D", duration_str)
+    if day_match:
+        total_seconds += int(day_match.group(1)) * 86400
+
+    # T以降の部分を抽出（時分秒）
+    t_part = duration_str.split("T", 1)[1] if "T" in duration_str else ""
+
     # 時間 (H)
-    hour_match = re.search(r"(\d+)H", duration_str)
+    hour_match = re.search(r"(\d+)H", t_part)
     if hour_match:
         total_seconds += int(hour_match.group(1)) * 3600
 
     # 分 (M)
-    minute_match = re.search(r"(\d+)M", duration_str)
+    minute_match = re.search(r"(\d+)M", t_part)
     if minute_match:
         total_seconds += int(minute_match.group(1)) * 60
 
     # 秒 (S)
-    second_match = re.search(r"(\d+)S", duration_str)
+    second_match = re.search(r"(\d+)S", t_part)
     if second_match:
         total_seconds += int(second_match.group(1))
 
@@ -90,8 +98,9 @@ def _get_thumbnail_url(thumbnails: dict[str, Any]) -> str | None:
 
     # 優先順位: high > medium > default
     for quality in ["high", "medium", "default"]:
-        if quality in thumbnails and thumbnails[quality]:
-            return thumbnails[quality].get("url")
+        url = thumbnails.get(quality, {}).get("url")
+        if url:
+            return url
 
     return None
 

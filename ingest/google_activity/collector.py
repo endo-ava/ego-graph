@@ -17,7 +17,7 @@ from playwright.async_api import (
 )
 from tenacity import (
     retry,
-    retry_if_exception_type,
+    retry_if_not_exception_type,
     stop_after_attempt,
     wait_exponential,
 )
@@ -33,11 +33,9 @@ class AuthenticationError(Exception):
     pass
 
 
-# 共通リトライデコレータ
+# 共通リトライデコレータ (AuthenticationErrorはリトライ対象外)
 collector_retry = retry(
-    retry=retry_if_exception_type(
-        (Exception,)  # 一般的な例外をリトライ対象に含む
-    ),
+    retry=retry_if_not_exception_type(AuthenticationError),
     stop=stop_after_attempt(MAX_RETRIES),
     wait=wait_exponential(multiplier=RETRY_BACKOFF_FACTOR, min=2, max=10),
 )
@@ -143,6 +141,9 @@ class MyActivityCollector:
             await self.context.close()
         if self.browser and self.browser.is_connected():
             await self.browser.close()
+        if self._playwright:
+            await self._playwright.__aexit__(None, None, None)
+            self._playwright = None
 
         self.context = None
         self.page = None
@@ -200,7 +201,7 @@ class MyActivityCollector:
         except AuthenticationError:
             raise
         except Exception as e:
-            logger.error("Failed to collect watch history: %s", e)
+            logger.exception("Failed to collect watch history: %s", e)
             raise
         finally:
             await self._cleanup_browser()
@@ -335,13 +336,11 @@ class MyActivityCollector:
         title_element = await element.query_selector(
             "[data-title], .title, h3, a[title]"
         )
-        title = (
-            await title_element.get_attribute("title")
-            if title_element
-            else await title_element.inner_text()
-            if title_element
-            else None
-        )
+        title = None
+        if title_element:
+            title = await title_element.get_attribute("title")
+            if not title:
+                title = await title_element.inner_text()
 
         # チャンネル名の取得
         channel_element = await element.query_selector(".channel-name, .byline")

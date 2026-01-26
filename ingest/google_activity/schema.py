@@ -34,7 +34,7 @@ class YouTubeSchema:
 
     # 視聴履歴ビュー定義（R2 Parquetファイルへのアクセス）
     RAW_WATCH_HISTORY = """
-        CREATE OR REPLACE VIEW youtube_raw_watch_history AS
+        CREATE OR REPLACE VIEW youtube.youtube_raw_watch_history AS
         SELECT
             watch_id,
             account_id,
@@ -50,7 +50,7 @@ class YouTubeSchema:
 
     # 動画マスタービュー定義（R2 Parquetファイルへのアクセス）
     MART_VIDEOS = """
-        CREATE OR REPLACE VIEW youtube_videos AS
+        CREATE OR REPLACE VIEW youtube.youtube_videos AS
         SELECT
             video_id,
             title,
@@ -71,7 +71,7 @@ class YouTubeSchema:
 
     # チャンネルマスタービュー定義（R2 Parquetファイルへのアクセス）
     MART_CHANNELS = """
-        CREATE OR REPLACE VIEW youtube_channels AS
+        CREATE OR REPLACE VIEW youtube.youtube_channels AS
         SELECT
             channel_id,
             channel_name,

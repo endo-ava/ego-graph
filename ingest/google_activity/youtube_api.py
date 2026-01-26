@@ -57,24 +57,37 @@ class YouTubeAPIClient:
         for attempt in range(MAX_RETRIES):
             try:
                 response = requests.get(url, params=params, timeout=30)
+
+                # クォータ超過エラーチェック (403の場合は先にチェック)
+                if response.status_code == 403:
+                    try:
+                        data = response.json()
+                        if "error" in data:
+                            error = data["error"]
+                            for error_detail in error.get("errors", []):
+                                if error_detail.get("reason") == "quotaExceeded":
+                                    raise QuotaExceededError(
+                                        "YouTube API quota exceeded: %s"
+                                        % error.get("message", "Unknown reason")
+                                    )
+                    except ValueError:
+                        # JSON解析エラーの場合は後のraise_for_statusで処理
+                        pass
+
                 response.raise_for_status()
 
                 data = response.json()
 
-                # クォータ超過エラーチェック
-                if "error" in data:
-                    error = data["error"]
-                    if error.get("code") == 403:
-                        for error_detail in error.get("errors", []):
-                            if error_detail.get("reason") == "quotaExceeded":
-                                raise QuotaExceededError(
-                                    "YouTube API quota exceeded: %s"
-                                    % error.get("message")
-                                )
-
                 return data
 
-            except requests.HTTPError as e:
+            except QuotaExceededError:
+                # クォータ超過はリトライせず、即座に例外を再スロー
+                raise
+            except (
+                requests.HTTPError,
+                requests.ConnectionError,
+                requests.Timeout,
+            ) as e:
                 if attempt < MAX_RETRIES - 1:
                     # 指数バックオフで待機
                     wait_time = RETRY_BACKOFF_FACTOR**attempt
@@ -88,7 +101,9 @@ class YouTubeAPIClient:
                     time.sleep(wait_time)
                 else:
                     # 最後の試行で失敗した場合
-                    logger.error("Request failed after %d attempts: %s", MAX_RETRIES, e)
+                    logger.exception(
+                        "Request failed after %d attempts: %s", MAX_RETRIES, e
+                    )
                     raise
 
         raise requests.HTTPError("Max retries exceeded")  # pragma: no cover

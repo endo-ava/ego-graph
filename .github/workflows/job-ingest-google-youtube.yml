@@ -3,7 +3,7 @@ name: Google YouTube Data Ingestion
 on:
   schedule:
     - cron: '0 4 * * *'  # 毎日 4:00 UTC (日本時間 13:00)
-    - workflow_dispatch:  # 手動実行
+  workflow_dispatch:  # 手動実行
 
 jobs:
   ingest-google-youtube:

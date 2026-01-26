@@ -3,7 +3,7 @@
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .collector import MyActivityCollector
@@ -72,6 +72,18 @@ async def run_account_pipeline(
         state = storage.get_ingest_state(account_id)
         latest_watched_at = state.get("latest_watched_at") if state else None
 
+        if isinstance(latest_watched_at, str):
+            try:
+                latest_watched_at = datetime.fromisoformat(latest_watched_at)
+                if latest_watched_at.tzinfo is None:
+                    latest_watched_at = latest_watched_at.replace(tzinfo=timezone.utc)
+            except (ValueError, TypeError) as e:
+                logger.warning(
+                    "Failed to parse latest_watched_at from state: %s. Using after_timestamp.",
+                    e,
+                )
+                latest_watched_at = None
+
         # after_timestampとlatest_watched_atの後方を取得対象にする
         fetch_after = after_timestamp
         if latest_watched_at:
@@ -84,9 +96,7 @@ async def run_account_pipeline(
                 )
 
         # 2. MyActivityから視聴履歴を収集
-        collector = MyActivityCollector(
-            cookies=[{"name": k, "value": v} for k, v in account_config.cookies.items()]
-        )
+        collector = MyActivityCollector(cookies=account_config.cookies)
         raw_items = await collector.collect_watch_history(
             after_timestamp=fetch_after, max_items=max_items
         )
@@ -182,11 +192,10 @@ async def run_account_pipeline(
         )
 
     except Exception as e:
-        logger.error(
+        logger.exception(
             "Pipeline failed for account=%s: %s",
             account_id,
             e,
-            exc_info=True,
         )
         return PipelineResult(
             success=False,

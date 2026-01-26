@@ -113,13 +113,22 @@ def _load_google_accounts() -> list[AccountConfig]:
 
     # Cookieパース
     try:
-        cookies = json.loads(cookies_str) if cookies_str.startswith("{") else {}
-        if not cookies:
+        first_char = cookies_str.lstrip()[0] if cookies_str.lstrip() else ""
+        if first_char in ["{", "["]:
+            parsed = json.loads(cookies_str)
+            if isinstance(parsed, dict):
+                cookies = [{"name": k, "value": v} for k, v in parsed.items()]
+            elif isinstance(parsed, list):
+                cookies = parsed
+            else:
+                raise ValueError("JSON must be a dict or list of cookie objects")
+        else:
             # key=value,key=value形式のパース
+            cookies = []
             for pair in cookies_str.split(","):
                 if "=" in pair:
                     key, value = pair.strip().split("=", 1)
-                    cookies[key.strip()] = value.strip()
+                    cookies.append({"name": key.strip(), "value": value.strip()})
     except Exception as e:
         raise ValueError(f"Failed to parse GOOGLE_COOKIES_1: {e}") from e
 

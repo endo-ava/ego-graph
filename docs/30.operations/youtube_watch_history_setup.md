@@ -97,8 +97,8 @@ uv run python -m ingest.google_activity.main
 
 収集されたデータは以下のパスに保存されます。
 
-- **視聴履歴 (Parquet)**: `s3://egograph/events/google/youtube_watch_history/year=YYYY/month=MM/*.parquet`
-- **状態ファイル (JSON)**: `s3://egograph/state/google_activity/youtube_watch_history_account1.json`
+- **視聴履歴 (Parquet)**: `s3://egograph/events/youtube/watch_history/year={YYYY}/month={MM:02d}/{uuid}.parquet`
+- **状態ファイル (JSON)**: `s3://egograph/state/youtube_{account_id}_state.json`
 
 ### トラブルシューティング
 

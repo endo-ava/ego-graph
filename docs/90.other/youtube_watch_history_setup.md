@@ -131,7 +131,7 @@ ls .github/workflows/job-ingest-google-youtube.yml
 
 ### 5.2 実行ログの確認ポイント
 
-```
+```text
 ✅ MyActivityからの視聴履歴取得
 ✅ YouTube Data API呼び出し（動画・チャンネルメタデータ）
 ✅ R2へのParquet保存
@@ -143,8 +143,8 @@ ls .github/workflows/job-ingest-google-youtube.yml
 ```bash
 # R2バケット内の構造
 events/youtube/watch_history/year=2026/month=01/*.parquet
-master/youtube/videos/year=2026/month=01/*.parquet
-master/youtube/channels/year=2026/month=01/*.parquet
+events/youtube/videos/year=2026/month=01/*.parquet
+events/youtube/channels/year=2026/month=01/*.parquet
 state/youtube_account1_state.json
 state/youtube_account2_state.json  # アカウント2を使用している場合
 ```
@@ -166,7 +166,7 @@ state/youtube_account2_state.json  # アカウント2を使用している場合
 **原因**: YouTube Data API v3の1日のクォータ（10,000 units）を超過
 
 **解決策**:
-- 翌日まで待機（クォータは00:00 UTC にリセット）
+- 翌日まで待機（クォータはPacific Time (PT)の00:00にリセット）
 - Google Cloud Consoleでクォータ上限引き上げを申請
 
 ### エラー: `playwright executable doesn't exist`

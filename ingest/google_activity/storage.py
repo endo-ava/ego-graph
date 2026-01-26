@@ -11,6 +11,21 @@ import boto3
 import pandas as pd
 from botocore.exceptions import ClientError
 
+
+def _serialize_datetime(obj: Any) -> str:
+    """JSONシリアライズ用のdatetimeハンドラー。
+
+    Args:
+        obj: シリアライズ対象のオブジェクト
+
+    Returns:
+        ISO8601形式の文字列、またはその他の変換
+    """
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return str(obj)
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -129,7 +144,9 @@ class YouTubeStorage:
         key = f"{self.raw_path}{prefix}/{date_path}/{file_name}"
 
         try:
-            json_bytes = json.dumps(data, ensure_ascii=False).encode("utf-8")
+            json_bytes = json.dumps(
+                data, ensure_ascii=False, default=_serialize_datetime
+            ).encode("utf-8")
             self.s3.put_object(
                 Bucket=self.bucket_name,
                 Key=key,
@@ -138,7 +155,7 @@ class YouTubeStorage:
             )
             logger.info("Saved raw JSON to %s", key)
             return key
-        except ClientError:
+        except (ClientError, TypeError):
             logger.exception("Failed to save raw JSON")
             return None
 

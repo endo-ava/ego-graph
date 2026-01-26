@@ -1,6 +1,7 @@
 """YouTube固有の設定。"""
 
 from dataclasses import dataclass
+from typing import Any
 
 # レート制限
 MAX_RETRIES = 3
@@ -22,10 +23,10 @@ class AccountConfig:
 
     Args:
         account_id: アカウント識別子（例: account1, account2）
-        cookies: Cookieの辞書 {name: value}
+        cookies: Playwright Cookieオブジェクトのリスト
         youtube_api_key: YouTube Data API v3のAPIキー
     """
 
     account_id: str
-    cookies: dict[str, str]
+    cookies: list[dict[str, Any]]
     youtube_api_key: str
