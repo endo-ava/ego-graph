@@ -42,11 +42,31 @@ def export_cookies(account: str) -> None:
     print("⏸️  After login, press Enter here to extract cookies...")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
-        context = browser.new_context()
+        # Googleの自動化検出を回避するための設定
+        browser = p.chromium.launch(
+            headless=False,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+            ],
+            ignore_default_args=["--enable-automation"],
+        )
+        ua = (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/121.0.0.0 Safari/537.36"
+        )
+        context = browser.new_context(
+            user_agent=ua,
+            viewport={"width": 1280, "height": 720},
+        )
 
         page = context.new_page()
-        page.goto("https://www.google.com")
+        # navigator.webdriverを完全に隠すためのスクリプト
+        page.add_init_script(
+            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        )
+        page.goto("https://accounts.google.com/ServiceLogin")
 
         # Enterキーを待つ
         input()

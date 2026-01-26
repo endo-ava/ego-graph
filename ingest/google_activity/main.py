@@ -6,12 +6,15 @@ import logging
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 from ingest.google_activity import transform as google_transform
 from ingest.google_activity.config import AccountConfig
 from ingest.google_activity.pipeline import run_all_accounts_pipeline
 from ingest.google_activity.storage import YouTubeStorage
-from ingest.settings import IngestSettings
+from ingest.settings import ENV_FILES, IngestSettings
 from shared import log_execution_time
 
 logger = logging.getLogger(__name__)
@@ -20,16 +23,20 @@ logger = logging.getLogger(__name__)
 @log_execution_time
 def main():
     """メイン Ingestion パイプライン実行処理。"""
+    # .envファイルをロード（環境変数の読み込み）
+    for env_file in ENV_FILES:
+        load_dotenv(env_file, override=False)
+
+    # 設定を先にロードしてログ設定を初期化
+    config = IngestSettings.load()
+
     logger.info("=" * 60)
     logger.info("EgoGraph YouTube Activity Ingestion Pipeline (Parquet)")
     logger.info(f"Started at: {datetime.now(timezone.utc).isoformat()}")
     logger.info("=" * 60)
 
     try:
-        config = IngestSettings.load()
-
         # Google Activityアカウント設定の構築
-        # TODO: 複数アカウント対応のために環境変数から読み込む
         accounts = _load_google_accounts()
 
         # R2 Storage初期化
@@ -40,7 +47,7 @@ def main():
         storage = YouTubeStorage(
             endpoint_url=r2_config.endpoint_url,
             access_key_id=r2_config.access_key_id,
-            secret_access_key=r2_config.secret_access_key,
+            secret_access_key=r2_config.secret_access_key.get_secret_value(),
             bucket_name=r2_config.bucket_name,
             raw_path=r2_config.raw_path,
             events_path=r2_config.events_path,
@@ -159,8 +166,6 @@ def _load_cookies(env_var: str) -> list[dict] | None:
         or cookies_str.startswith("~")
     ):
         # ホームディレクトリを展開（~を実際のパスに変換）
-        from pathlib import Path
-
         expanded_path = Path(cookies_str).expanduser()
         try:
             with open(expanded_path, "r", encoding="utf-8") as f:

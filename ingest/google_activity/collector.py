@@ -5,7 +5,8 @@ Playwrightを使用してスクレイピングを行い、クッキー認証を�
 """
 
 import logging
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
@@ -13,6 +14,7 @@ from playwright.async_api import (
     Browser,
     BrowserContext,
     Page,
+    Playwright,
     async_playwright,
 )
 from tenacity import (
@@ -119,23 +121,31 @@ class MyActivityCollector:
         self.browser: Browser | None = None
         self.context: BrowserContext | None = None
         self.page: Page | None = None
-        self._playwright = async_playwright()
+        self._playwright: Playwright | None = None
         logger.info("MyActivity collector initialized with %d cookies", len(cookies))
 
     async def _initialize_browser(self) -> None:
         """Playwrightブラウザとコンテキストを初期化します。"""
         if self.browser is None or not self.browser.is_connected():
-            # self._playwrightがNoneの場合は新しいインスタンスを作成
             if self._playwright is None:
-                self._playwright = async_playwright()
-            playwright_instance = await self._playwright.start()
+                self._playwright = await async_playwright().start()
+            playwright_instance = self._playwright
+            if playwright_instance is None:
+                raise RuntimeError("Failed to initialize Playwright instance")
             self.browser = await playwright_instance.chromium.launch(headless=True)
-            self.context = await self.browser.new_context()
+            browser = self.browser
+            if browser is None:
+                raise RuntimeError("Browser failed to launch")
+            self.context = await browser.new_context()
+
+            context = self.context
+            if context is None:
+                raise RuntimeError("Browser context was not created")
 
             # クッキーを設定
-            await self.context.add_cookies(self.cookies)
+            await context.add_cookies(self.cookies)
 
-            self.page = await self.context.new_page()
+            self.page = await context.new_page()
             logger.info("Browser initialized with cookies")
 
     async def _cleanup_browser(self) -> None:
@@ -146,6 +156,7 @@ class MyActivityCollector:
             await self.browser.close()
         if self._playwright:
             await self._playwright.stop()
+            self._playwright = None
 
         self.context = None
         self.page = None
@@ -183,10 +194,13 @@ class MyActivityCollector:
 
         try:
             await self._initialize_browser()
+            page = self.page
+            if page is None:
+                raise RuntimeError("Browser page is not initialized")
 
             # MyActivityページにアクセス
             logger.info("Navigating to MyActivity page: %s", MYACTIVITY_URL)
-            response = await self.page.goto(MYACTIVITY_URL, wait_until="networkidle")
+            response = await page.goto(MYACTIVITY_URL, wait_until="networkidle")
 
             # 認証エラーのチェック
             if await self._is_authentication_failed(response):
@@ -251,6 +265,10 @@ class MyActivityCollector:
         Returns:
             スクレイピングした視聴履歴アイテムのリスト
         """
+        page = self.page
+        if page is None:
+            raise RuntimeError("Browser page is not initialized")
+
         items: list[dict[str, Any]] = []
         scroll_count = 0
         max_scrolls = 50  # 無限ループ防止
@@ -281,8 +299,8 @@ class MyActivityCollector:
                 break
 
             # スクロールしてさらにアイテムを読み込む
-            await self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            await self.page.wait_for_timeout(2000)  # スクロール待機
+            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await page.wait_for_timeout(2000)  # スクロール待機
 
             scroll_count += 1
 
@@ -294,93 +312,274 @@ class MyActivityCollector:
     ) -> list[dict[str, Any]]:
         """現在のページから視聴履歴アイテムを抽出する。
 
+        DOMをJavascriptでトラバースし、日付ヘッダーとアイテムを紐付けて抽出します。
+
         Args:
             after_timestamp: この時刻以降のアイテムのみ抽出
 
         Returns:
             抽出したアイテムのリスト
         """
-        # 実際のセレクタはMyActivityのHTML構造に依存
-        # 注: これは実装例であり、実際のセレクタは検証が必要
+        page = self.page
+        if page is None:
+            raise RuntimeError("Browser page is not initialized")
 
-        items = []
+        # ページ読み込み完了を待機（アイテムコンテナが表示されるまで）
+        try:
+            await page.wait_for_selector(".k2bP7e", timeout=10000)
+        except Exception:
+            logger.warning("Timeout waiting for selectors using .k2bP7e")
+            # タイムアウトしてもDOM解析は試みる（ページ自体はロードされている可能性があるため）
 
-        # 視聴履歴アイテムのセレクタ（実装例）
-        # 実際の構造に基づいて調整が必要
-        item_elements = await self.page.query_selector_all(
-            '[data-contain="watch-history-item"], .activity-item, .ytd-watch-card'
+        # JavascriptでDOMを解析してデータ抽出
+        scraped_data = await page.evaluate(
+            """
+            () => {
+                const results = [];
+                let currentDate = "";
+                
+                // アイテムコンテナのクラス
+                const ITEM_CLASS = 'k2bP7e';
+                const TITLE_CLASS = 'l8sGWb';
+                
+                // アイテムを全て取得してから、その親（リストコンテナ）を特定する
+                const allItems = document.querySelectorAll('.' + ITEM_CLASS);
+                
+                if (allItems.length === 0) return [];
+                
+                // 全ての親コンテナを探索する必要がある
+                // フラットに上からトラバースする
+                // .k2bP7e の親には日付ヘッダー的な要素が含まれていることが多い
+                
+                // DOM全体から日付け要素とアイテム要素を順番に取得する戦略
+                // 戦略: アイテムの親を特定し、その親の兄弟要素(前の要素)から日付を探す
+                
+                const processedItems = new Set();
+                
+                // DOM順にアイテムを処理
+                for (const item of allItems) {
+                    try {
+                         // 日付の取得: アイテムの親階層を遡り、直近のヘッダーを探す
+                         // MyActivityの構造は複雑で、
+                         // [List] -> [DateHeader] -> [Item] のように並んでいることが多い
+                         
+                         // ここでは簡易的に、アイテムより「前」にある直近の日付テキストを探す
+                         // ただしJSでのDOM順探索は複雑になるため、
+                         // 「アイテム内テキスト」や「親の構造」から推測する
+                    
+                        // アイテム情報の抽出
+                        // タイトル & URL
+                        // 1つのアイテム内に（画像用とテキスト用で）複数ある場合最初のものを取得
+                        const titleEl = item.querySelector('a.' + TITLE_CLASS);
+                        if (!titleEl) continue;
+                        
+                        const title = titleEl.innerText;
+                        const videoUrl = titleEl.getAttribute('href');
+                        
+                        // チャンネル名
+                        // hrefに 'channel/', 'user/', '@' を含むリンク
+                        const channelQuery = 'a[href*="/channel/"], ' + 
+                                             'a[href*="/user/"], a[href*="@"]';
+                        const channelEl = item.querySelector(channelQuery);
+                        const channelName = channelEl ? channelEl.innerText : "Unknown";
+                        
+                        // 時刻
+                        // 詳細ボタン (.WFTFcf) の親要素のテキストから抽出
+                        let timeStr = "";
+                        const detailsBtn = item.querySelector('.WFTFcf');
+                        if (detailsBtn && detailsBtn.parentElement) {
+                            const detailsParent = detailsBtn.parentElement;
+                            const timeContainerText = detailsParent.innerText;
+                            const match = timeContainerText.match(/(\\d{1,2}:\\d{2})/);
+                            if (match) {
+                                timeStr = match[1];
+                            }
+                        }
+                        
+                        // 日付の取得:
+                        // アイテムの祖先要素を辿り、その前の兄弟(Previous Sibling)要素を確認
+                        // 一般的な構造: H2(日付) -> div(グループ) -> div(アイテム)
+                        let dateText = "";
+                        
+                        // 親を遡る
+                        let current = item;
+                        let depth = 0;
+                        while(current && depth < 5) {
+                            const parent = current.parentElement;
+                            if (parent) {
+                                // 親の前にある要素(日付ヘッダー)を探す
+                                let prev = parent.previousElementSibling;
+                                if (prev) {
+                                    // ヘッダー要素か判定: h2タグ, または特定のクラス
+                                    const isHeader = prev.tagName === 'H2' || 
+                                        prev.classList.contains('ot996') || 
+                                        prev.classList.contains('I67SDe');
+                                    
+                                    if (isHeader) {
+                                        dateText = prev.innerText;
+                                        break;
+                                    }
+                                }
+                                // アイテム自体が同じコンテナ内で並んでいる場合
+                                prev = current.previousElementSibling;
+                                while (prev) {
+                                    const isHeader = prev.tagName === 'H2' || 
+                                        prev.classList.contains('ot996') || 
+                                        prev.classList.contains('I67SDe');
+                                        
+                                    if (isHeader) {
+                                        dateText = prev.innerText;
+                                        break; 
+                                    }
+                                    if (prev.classList.contains(ITEM_CLASS)) {
+                                        // 別のアイテムならスキップ
+                                    }
+                                    prev = prev.previousElementSibling;
+                                }
+                                if (dateText) break;
+                            }
+                            current = parent;
+                            depth++;
+                        }
+                        
+                        // fallback: 見つからなければ画面上の最初の日付を取得
+                        if (!dateText) {
+                            const firstHeader = document.querySelector('h2');
+                            if (firstHeader) dateText = firstHeader.innerText;
+                        }
+
+                        results.push({
+                            type: 'item',
+                            date: dateText,
+                            title: title,
+                            video_url: videoUrl,
+                            channel_name: channelName,
+                            full_text: item.innerText,
+                            time_str: timeStr
+                        });
+                        
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+                return results;
+            }
+            """
         )
 
-        for element in item_elements:
+        items = []
+        for data in scraped_data:
+            if data["type"] != "item":
+                continue
+
+            # データの整形とタイムスタンプ解析
             try:
-                item = await self._parse_item_element(element, after_timestamp)
-                if item:
-                    items.append(item)
+                video_url = data.get("video_url")
+                if not video_url:
+                    continue
+
+                video_id = _extract_video_id(video_url)
+                if not video_id:
+                    continue
+
+                # 日時の構築
+                date_str = data.get("date", "")
+
+                # JSで抽出した時刻を優先使用
+                time_str = data.get("time_str", "")
+
+                if not time_str:
+                    # Fallback: full_textから抽出
+                    full_text = data.get("full_text", "")
+                    time_match = re.search(r"(\d{1,2}:\d{2})", full_text)
+                    time_str = time_match.group(1) if time_match else "00:00"
+
+                # 日付文字列と時刻を結合してパース
+                watched_at = self._parse_relative_datetime(date_str, time_str)
+
+                if not watched_at:
+                    # パース失敗時はスキップ
+                    continue
+
+                # タイムスタンプフィルタ
+                if watched_at < after_timestamp:
+                    continue
+
+                items.append(
+                    {
+                        "video_id": video_id,
+                        "title": data.get("title"),
+                        "channel_name": data.get("channel_name"),
+                        "watched_at": watched_at,
+                        "video_url": video_url,
+                    }
+                )
+
             except Exception as e:
-                logger.warning("Failed to parse item element: %s", e)
+                logger.warning("Failed to process scraped item: %s", e)
                 continue
 
         return items
 
-    async def _parse_item_element(
-        self, element, after_timestamp: datetime
-    ) -> dict[str, Any] | None:
-        """アイテム要素からデータをパースする。
+    def _parse_relative_datetime(self, date_str: str, time_str: str) -> datetime | None:
+        """相対日付("今日", "昨日")やMyActivityの日付形式をパースしてdatetimeを返す。"""
+        now = datetime.now(timezone.utc)
+        target_date = None
 
-        Args:
-            element: Playwright ElementHandle
-            after_timestamp: この時刻以降のアイテムのみ抽出
+        date_str = date_str.strip()
 
-        Returns:
-            パースしたアイテムデータ（条件に合わない場合はNone）
-        """
-        # タイトルの取得
-        title_element = await element.query_selector(
-            "[data-title], .title, h3, a[title]"
-        )
-        title = None
-        if title_element:
-            title = await title_element.get_attribute("title")
-            if not title:
-                title = await title_element.inner_text()
+        # 相対日付の処理
+        if "今日" in date_str or "Today" in date_str:
+            target_date = now.date()
+        elif "昨日" in date_str or "Yesterday" in date_str:
+            target_date = (now - timedelta(days=1)).date()
+        else:
+            # 一般的な日付形式のパース
+            # 2025/01/26, 1月26日, Jan 26, 2025 等
+            # 現在の年を補完する必要がある場合(年がない場合)を考慮
 
-        # チャンネル名の取得
-        channel_element = await element.query_selector(".channel-name, .byline")
-        channel_name = (
-            await channel_element.inner_text() if channel_element else "Unknown"
-        )
+            # 日本語形式: "1月26日" -> 現在の年と仮定 (ただし未来になるなら去年)
+            # "2024年12月31日" -> そのまま
 
-        # 動画URLの取得
-        link_element = await element.query_selector("a[href*='youtube.com/watch']")
-        video_url = await link_element.get_attribute("href") if link_element else None
+            # 簡易実装: 主要な形式をトライ
+            parsed_date = None
+            formats = [
+                "%Y年%m月%d日",
+                "%m月%d日",
+                "%Y/%m/%d",
+                "%b %d, %Y",  # Jan 26, 2025
+                "%b %d",  # Jan 26
+            ]
 
-        # video_idの抽出
-        video_id = _extract_video_id(video_url) if video_url else None
+            for fmt in formats:
+                try:
+                    dt = datetime.strptime(date_str, fmt)
+                    # 年がない形式の補完
+                    if "%Y" not in fmt:
+                        dt = dt.replace(year=now.year)
+                        if dt.date() > now.date():
+                            dt = dt.replace(year=now.year - 1)
+                    parsed_date = dt.date()
+                    break
+                except ValueError:
+                    continue
 
-        # 視聴日時の取得
-        time_element = await element.query_selector(".timestamp, .time, .date")
-        time_text = await time_element.inner_text() if time_element else None
+            target_date = parsed_date
 
-        # タイムスタンプをパース（失敗した場合はNone）
-        watched_at = _parse_watched_at(time_text) if time_text else None
-
-        # パース失敗またはafter_timestamp以前のアイテムは除外
-        if watched_at is None or watched_at < after_timestamp:
+        if not target_date:
             return None
 
-        # 必須フィールドのチェック
-        if not all([video_id, title, channel_name, watched_at, video_url]):
-            logger.warning(
-                "Item missing required fields: video_id=%s, title=%s",
-                video_id,
-                title,
+        # 時刻のパース
+        try:
+            h, m = map(int, time_str.split(":"))
+            return datetime(
+                target_date.year,
+                target_date.month,
+                target_date.day,
+                h,
+                m,
+                0,
+                tzinfo=timezone.utc,
             )
+        except ValueError:
             return None
-
-        return {
-            "video_id": video_id,
-            "title": title,
-            "channel_name": channel_name,
-            "watched_at": watched_at,
-            "video_url": video_url,
-        }
