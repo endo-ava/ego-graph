@@ -2,6 +2,12 @@
 
 Google MyActivityからYouTube視聴履歴を収集します。
 Playwrightを使用してスクレイピングを行い、クッキー認証をサポートします。
+
+壊れやすいポイント (DOM変更に弱い箇所):
+- CSSクラス依存: ITEM_CLASS='k2bP7e', TITLE_CLASS='l8sGWb', HEADER_SELECTOR='h2, .ot996, .I67SDe'
+- 時刻抽出: .WFTFcf の親要素テキストから時刻を抜く（表示形式変更に弱い）
+- 日付ヘッダーの紐付け: DOM順にヘッダー→アイテムを読む前提
+- 認証判定: URL/テキスト判定（ログイン画面の文言変更に弱い）
 """
 
 import logging
@@ -9,6 +15,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import parse_qs, urlparse
+from zoneinfo import ZoneInfo
 
 from playwright.async_api import (
     Browser,
@@ -24,7 +31,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from .config import MAX_RETRIES, MYACTIVITY_URL, RETRY_BACKOFF_FACTOR
+from .config import MAX_RETRIES, MYACTIVITY_URL, RETRY_BACKOFF_FACTOR, TIMEZONE
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +143,7 @@ class MyActivityCollector:
             browser = self.browser
             if browser is None:
                 raise RuntimeError("Browser failed to launch")
-            self.context = await browser.new_context()
+            self.context = await browser.new_context(timezone_id="UTC")
 
             context = self.context
             if context is None:
@@ -328,8 +335,8 @@ class MyActivityCollector:
         try:
             await page.wait_for_selector(".k2bP7e", timeout=10000)
         except Exception:
-            logger.warning("Timeout waiting for selectors using .k2bP7e")
-            # タイムアウトしてもDOM解析は試みる（ページ自体はロードされている可能性があるため）
+            logger.warning("Timeout waiting for .k2bP7e selector")
+            # タイムアウトでもDOM解析は試みる
 
         # JavascriptでDOMを解析してデータ抽出
         scraped_data = await page.evaluate(
@@ -338,115 +345,60 @@ class MyActivityCollector:
                 const results = [];
                 let currentDate = "";
                 
-                // アイテムコンテナのクラス
                 const ITEM_CLASS = 'k2bP7e';
                 const TITLE_CLASS = 'l8sGWb';
                 
-                // アイテムを全て取得してから、その親（リストコンテナ）を特定する
-                const allItems = document.querySelectorAll('.' + ITEM_CLASS);
+                const HEADER_SELECTOR = 'h2, .ot996, .I67SDe';
+                const nodes = document.querySelectorAll(
+                    `${HEADER_SELECTOR}, .${ITEM_CLASS}`
+                );
                 
-                if (allItems.length === 0) return [];
+                if (nodes.length === 0) return [];
                 
-                // 全ての親コンテナを探索する必要がある
-                // フラットに上からトラバースする
-                // .k2bP7e の親には日付ヘッダー的な要素が含まれていることが多い
-                
-                // DOM全体から日付け要素とアイテム要素を順番に取得する戦略
-                // 戦略: アイテムの親を特定し、その親の兄弟要素(前の要素)から日付を探す
-                
-                const processedItems = new Set();
-                
-                // DOM順にアイテムを処理
-                for (const item of allItems) {
+                for (const node of nodes) {
                     try {
-                         // 日付の取得: アイテムの親階層を遡り、直近のヘッダーを探す
-                         // MyActivityの構造は複雑で、
-                         // [List] -> [DateHeader] -> [Item] のように並んでいることが多い
-                         
-                         // ここでは簡易的に、アイテムより「前」にある直近の日付テキストを探す
-                         // ただしJSでのDOM順探索は複雑になるため、
-                         // 「アイテム内テキスト」や「親の構造」から推測する
-                    
-                        // アイテム情報の抽出
-                        // タイトル & URL
-                        // 1つのアイテム内に（画像用とテキスト用で）複数ある場合最初のものを取得
-                        const titleEl = item.querySelector('a.' + TITLE_CLASS);
+                        if (node.matches(HEADER_SELECTOR)) {
+                            currentDate = node.innerText;
+                            continue;
+                        }
+
+                        if (!node.classList.contains(ITEM_CLASS)) {
+                            continue;
+                        }
+
+                        if (!currentDate) {
+                            continue;
+                        }
+                        const titleEl = node.querySelector(
+                            'a.' + TITLE_CLASS
+                        );
                         if (!titleEl) continue;
                         
                         const title = titleEl.innerText;
                         const videoUrl = titleEl.getAttribute('href');
                         
-                        // チャンネル名
-                        // hrefに 'channel/', 'user/', '@' を含むリンク
-                        const channelQuery = 'a[href*="/channel/"], ' + 
-                                             'a[href*="/user/"], a[href*="@"]';
-                        const channelEl = item.querySelector(channelQuery);
-                        const channelName = channelEl ? channelEl.innerText : "Unknown";
+                        const channelQuery =
+                            'a[href*="/channel/"], ' +
+                            'a[href*="/user/"], a[href*="@"]';
+                        const channelEl = node.querySelector(channelQuery);
+                        const channelName = channelEl
+                            ? channelEl.innerText
+                            : "Unknown";
                         
-                        // 時刻
-                        // 詳細ボタン (.WFTFcf) の親要素のテキストから抽出
                         let timeStr = "";
-                        const detailsBtn = item.querySelector('.WFTFcf');
+                        const detailsBtn = node.querySelector('.WFTFcf');
                         if (detailsBtn && detailsBtn.parentElement) {
                             const detailsParent = detailsBtn.parentElement;
                             const timeContainerText = detailsParent.innerText;
-                            const match = timeContainerText.match(/(\\d{1,2}:\\d{2})/);
+                            const match = timeContainerText.match(
+                                /(\\d{1,2}:\\d{2})/
+                            );
                             if (match) {
                                 timeStr = match[1];
                             }
                         }
                         
-                        // 日付の取得:
-                        // アイテムの祖先要素を辿り、その前の兄弟(Previous Sibling)要素を確認
-                        // 一般的な構造: H2(日付) -> div(グループ) -> div(アイテム)
-                        let dateText = "";
-                        
-                        // 親を遡る
-                        let current = item;
-                        let depth = 0;
-                        while(current && depth < 5) {
-                            const parent = current.parentElement;
-                            if (parent) {
-                                // 親の前にある要素(日付ヘッダー)を探す
-                                let prev = parent.previousElementSibling;
-                                if (prev) {
-                                    // ヘッダー要素か判定: h2タグ, または特定のクラス
-                                    const isHeader = prev.tagName === 'H2' || 
-                                        prev.classList.contains('ot996') || 
-                                        prev.classList.contains('I67SDe');
-                                    
-                                    if (isHeader) {
-                                        dateText = prev.innerText;
-                                        break;
-                                    }
-                                }
-                                // アイテム自体が同じコンテナ内で並んでいる場合
-                                prev = current.previousElementSibling;
-                                while (prev) {
-                                    const isHeader = prev.tagName === 'H2' || 
-                                        prev.classList.contains('ot996') || 
-                                        prev.classList.contains('I67SDe');
-                                        
-                                    if (isHeader) {
-                                        dateText = prev.innerText;
-                                        break; 
-                                    }
-                                    if (prev.classList.contains(ITEM_CLASS)) {
-                                        // 別のアイテムならスキップ
-                                    }
-                                    prev = prev.previousElementSibling;
-                                }
-                                if (dateText) break;
-                            }
-                            current = parent;
-                            depth++;
-                        }
-                        
-                        // fallback: 見つからなければ画面上の最初の日付を取得
-                        if (!dateText) {
-                            const firstHeader = document.querySelector('h2');
-                            if (firstHeader) dateText = firstHeader.innerText;
-                        }
+                        const dateText = currentDate;
 
                         results.push({
                             type: 'item',
@@ -454,7 +406,7 @@ class MyActivityCollector:
                             title: title,
                             video_url: videoUrl,
                             channel_name: channelName,
-                            full_text: item.innerText,
+                            full_text: node.innerText,
                             time_str: timeStr
                         });
                         
@@ -523,7 +475,8 @@ class MyActivityCollector:
 
     def _parse_relative_datetime(self, date_str: str, time_str: str) -> datetime | None:
         """相対日付("今日", "昨日")やMyActivityの日付形式をパースしてdatetimeを返す。"""
-        now = datetime.now(timezone.utc)
+        tz = ZoneInfo(TIMEZONE)
+        now = datetime.now(tz)
         target_date = None
 
         date_str = date_str.strip()
@@ -572,14 +525,15 @@ class MyActivityCollector:
         # 時刻のパース
         try:
             h, m = map(int, time_str.split(":"))
-            return datetime(
+            local_dt = datetime(
                 target_date.year,
                 target_date.month,
                 target_date.day,
                 h,
                 m,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=tz,
             )
+            return local_dt.astimezone(timezone.utc)
         except ValueError:
             return None

@@ -11,6 +11,7 @@ RETRY_BACKOFF_FACTOR = 2  # 指数バックオフ: 2, 4, 8秒
 SCROLL_DELAY_MIN = 2  # 秒
 SCROLL_DELAY_MAX = 5  # 秒
 MYACTIVITY_URL = "https://myactivity.google.com/product/youtube"
+TIMEZONE = "UTC"
 
 # YouTube Data API設定
 YOUTUBE_API_BATCH_SIZE = 50  # API制限: videos.list, channels.listは50件/リクエスト
