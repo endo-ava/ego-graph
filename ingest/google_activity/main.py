@@ -156,7 +156,8 @@ def _load_cookies(env_var: str) -> list[dict] | None:
         ValueError: Cookieのパースに失敗した場合
     """
     cookies_str = os.getenv(env_var)
-    if not cookies_str:
+    # 未設定の場合はNoneを返す（空文字列はエラーにするため区別）
+    if cookies_str is None:
         return None
 
     # ファイルパスとして扱う（./cookies.json など）
@@ -209,6 +210,11 @@ def _load_cookies(env_var: str) -> list[dict] | None:
                 if "=" in pair:
                     key, value = pair.strip().split("=", 1)
                     cookies.append({"name": key.strip(), "value": value.strip()})
+            # 少なくとも1つのcookieがパースされたことを検証
+            if not cookies:
+                raise ValueError(
+                    f"invalid_cookies: no valid key=value pairs found in {env_var} (value: {cookies_str[:100]}...)"
+                )
             return cookies
     except ValueError:
         raise

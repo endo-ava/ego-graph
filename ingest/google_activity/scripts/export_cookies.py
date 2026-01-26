@@ -19,12 +19,14 @@ def _sanitize_account(account: str) -> str:
         account: アカウント識別子（例: account1, account2）
 
     Returns:
-        サニタイズされたアカウント識別子（英数字、アンダースコア、ハイフンのみ）
+        サニタイズされたアカウント識別子（英数字とアンダースコアのみ）
 
     Raises:
         ValueError: サニタイズ結果が空の場合
     """
-    sanitized = re.sub(r"[^A-Za-z0-9_-]", "_", account).strip("_")
+    # GitHub Actionsシークレット名はA-Z、0-9、アンダースコアのみ許可されるため、
+    # ハイフンもアンダースコアに置換する
+    sanitized = re.sub(r"[^A-Za-z0-9_-]", "_", account).strip("_").replace("-", "_")
     if not sanitized:
         raise ValueError(f"Invalid account identifier: {account}")
     return sanitized

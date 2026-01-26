@@ -120,6 +120,32 @@ class TestLoadCookies:
 
         assert "Invalid JSON" in str(exc_info.value)
 
+    def test_load_cookies_empty_key_value_format(self):
+        """空のkey=value形式の場合はエラーになること。"""
+        # Arrange
+        cookies_str = ""
+
+        # Act & Assert
+        with patch.dict(os.environ, {"TEST_COOKIE": cookies_str}):
+            with pytest.raises(ValueError) as exc_info:
+                _load_cookies("TEST_COOKIE")
+
+        assert "invalid_cookies" in str(exc_info.value)
+        assert "no valid key=value pairs" in str(exc_info.value)
+
+    def test_load_cookies_no_valid_pairs(self):
+        """有効なkey=valueペアがない場合はエラーになること。"""
+        # Arrange
+        cookies_str = "invalid,noequals,here"
+
+        # Act & Assert
+        with patch.dict(os.environ, {"TEST_COOKIE": cookies_str}):
+            with pytest.raises(ValueError) as exc_info:
+                _load_cookies("TEST_COOKIE")
+
+        assert "invalid_cookies" in str(exc_info.value)
+        assert "no valid key=value pairs" in str(exc_info.value)
+
 
 class TestLoadGoogleAccounts:
     """_load_google_accounts 関数のテスト。"""
