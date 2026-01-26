@@ -1,9 +1,12 @@
 """データ変換モジュール。"""
 
 import hashlib
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def _generate_watch_id(account_id: str, video_id: str, watched_at: Any) -> str:
@@ -152,6 +155,25 @@ def transform_watch_history_item(
 
     # video_idが空文字列の場合も無効
     if not video_id or not isinstance(video_id, str):
+        return None
+
+    # watched_atの検証と変換（文字列の場合はdatetimeにパース）
+    if isinstance(watched_at, str):
+        parsed = _parse_iso8601(watched_at)
+        if parsed is None:
+            logger.warning(
+                "invalid_watched_at: failed to parse datetime string '%s' for video_id=%s",
+                watched_at,
+                video_id,
+            )
+            return None
+        watched_at = parsed
+    elif not isinstance(watched_at, datetime):
+        logger.warning(
+            "invalid_watched_at: unsupported type %s for video_id=%s",
+            type(watched_at).__name__,
+            video_id,
+        )
         return None
 
     return {

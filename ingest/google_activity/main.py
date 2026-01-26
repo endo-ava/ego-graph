@@ -92,34 +92,105 @@ def _load_google_accounts() -> list[AccountConfig]:
         AccountConfigのリスト
 
     環境変数:
-        GOOGLE_ACCOUNT_ID_1: アカウントID (例: account1)
-        GOOGLE_COOKIES_1: Cookie文字列 (JSON形式またはkey=value,key=value形式)
-        GOOGLE_API_KEY_1: YouTube APIキー
+        YOUTUBE_API_KEY: YouTube Data API v3 のAPIキー（全アカウント共通）
+        GOOGLE_COOKIE_ACCOUNT1: アカウント1のCookie（JSON形式またはファイルパス）
+        GOOGLE_COOKIE_ACCOUNT2: アカウント2のCookie（任意）
 
     Note:
-        現在は単一アカウントのサンプル実装
-        将来的には複数アカウントに対応可能
+        Cookieはファイルパス（./cookies.json）またはJSON文字列を指定可能
     """
     accounts = []
 
+    # YouTube API Key（全アカウント共通）
+    youtube_api_key = os.getenv("YOUTUBE_API_KEY")
+    if not youtube_api_key:
+        raise ValueError("YOUTUBE_API_KEY is required")
+
     # アカウント1（必須）
-    account_id = os.getenv("GOOGLE_ACCOUNT_ID_1")
-    if not account_id:
-        raise ValueError("GOOGLE_ACCOUNT_ID_1 is required")
+    cookies_1 = _load_cookies("GOOGLE_COOKIE_ACCOUNT1")
+    if cookies_1:
+        accounts.append(
+            AccountConfig(
+                account_id="account1",
+                cookies=cookies_1,
+                youtube_api_key=youtube_api_key,
+            )
+        )
 
-    cookies_str = os.getenv("GOOGLE_COOKIES_1")
+    # アカウント2（任意）
+    cookies_2 = _load_cookies("GOOGLE_COOKIE_ACCOUNT2")
+    if cookies_2:
+        accounts.append(
+            AccountConfig(
+                account_id="account2",
+                cookies=cookies_2,
+                youtube_api_key=youtube_api_key,
+            )
+        )
+
+    if not accounts:
+        raise ValueError("At least one account (GOOGLE_COOKIE_ACCOUNT1) is required")
+
+    logger.info("Loaded %d Google account(s)", len(accounts))
+
+    return accounts
+
+
+def _load_cookies(env_var: str) -> list[dict] | None:
+    """環境変数からCookieを読み込む。
+
+    Args:
+        env_var: 環境変数名（例: GOOGLE_COOKIE_ACCOUNT1）
+
+    Returns:
+        Cookieオブジェクトのリスト。環境変数が未設定の場合はNone
+
+    Raises:
+        ValueError: Cookieのパースに失敗した場合
+    """
+    cookies_str = os.getenv(env_var)
     if not cookies_str:
-        raise ValueError("GOOGLE_COOKIES_1 is required")
+        return None
 
-    # Cookieパース
+    # ファイルパスとして扱う（./cookies.json など）
+    if (
+        cookies_str.startswith("./")
+        or cookies_str.startswith("/")
+        or cookies_str.startswith("~")
+    ):
+        try:
+            with open(cookies_str, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except FileNotFoundError as e:
+            raise ValueError(f"Cookie file not found: {cookies_str}") from e
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in cookie file: {cookies_str}") from e
+
+    # JSON文字列としてパース
     try:
         first_char = cookies_str.lstrip()[0] if cookies_str.lstrip() else ""
         if first_char in ["{", "["]:
             parsed = json.loads(cookies_str)
             if isinstance(parsed, dict):
-                cookies = [{"name": k, "value": v} for k, v in parsed.items()]
+                return [{"name": k, "value": v} for k, v in parsed.items()]
             elif isinstance(parsed, list):
-                cookies = parsed
+                # リスト内の各要素をバリデーション・変換
+                cookies = []
+                for idx, item in enumerate(parsed):
+                    if not isinstance(item, dict):
+                        raise ValueError(
+                            f"invalid_cookie_list_item: element {idx} is not a dict (got {type(item).__name__})"
+                        )
+                    if "name" not in item or "value" not in item:
+                        raise ValueError(
+                            f"invalid_cookie_list_item: element {idx} missing required keys 'name' or 'value'"
+                        )
+                    name = item["name"]
+                    value = item["value"]
+                    cookies.append(
+                        {"name": str(name).strip(), "value": str(value).strip()}
+                    )
+                return cookies
             else:
                 raise ValueError("JSON must be a dict or list of cookie objects")
         else:
@@ -129,26 +200,11 @@ def _load_google_accounts() -> list[AccountConfig]:
                 if "=" in pair:
                     key, value = pair.strip().split("=", 1)
                     cookies.append({"name": key.strip(), "value": value.strip()})
+            return cookies
+    except ValueError:
+        raise
     except Exception as e:
-        raise ValueError(f"Failed to parse GOOGLE_COOKIES_1: {e}") from e
-
-    if not cookies:
-        raise ValueError("GOOGLE_COOKIES_1 must contain valid cookies")
-
-    youtube_api_key = os.getenv("GOOGLE_API_KEY_1")
-    if not youtube_api_key:
-        raise ValueError("GOOGLE_API_KEY_1 is required")
-
-    account = AccountConfig(
-        account_id=account_id,
-        cookies=cookies,
-        youtube_api_key=youtube_api_key,
-    )
-    accounts.append(account)
-
-    logger.info("Loaded %d Google account(s)", len(accounts))
-
-    return accounts
+        raise ValueError(f"Failed to parse {env_var}: {e}") from e
 
 
 if __name__ == "__main__":

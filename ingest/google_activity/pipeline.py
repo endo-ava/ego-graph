@@ -137,6 +137,8 @@ async def run_account_pipeline(
             monthly_events[month_key].append(event)
 
         saved_count = 0
+        failed_count = 0
+        failed_months: list[str] = []
         for (year, month), events in monthly_events.items():
             saved_key = storage.save_parquet(
                 data=events, year=year, month=month, prefix="youtube/watch_history"
@@ -151,6 +153,8 @@ async def run_account_pipeline(
                     account_id,
                 )
             else:
+                failed_count += 1
+                failed_months.append(f"{year}/{month:02d}")
                 logger.warning(
                     "Failed to save events for %s/%02d for account=%s",
                     year,
@@ -160,6 +164,13 @@ async def run_account_pipeline(
 
         if saved_count == 0:
             raise RuntimeError("Failed to save any events to Parquet")
+
+        # 失敗したパーティションがある場合はstate更新をスキップ
+        if failed_count > 0:
+            raise RuntimeError(
+                f"Failed to save events for {failed_count} partition(s): {', '.join(failed_months)}. "
+                f"Ingest state not updated."
+            )
 
         # 6. インジェスト状態を更新（全コンポーネント成功時のみ）
         # 最新のwatched_atを特定

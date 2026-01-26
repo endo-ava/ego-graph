@@ -218,6 +218,18 @@ async def test_collect_watch_history_max_items_parameter():
         for i in range(10)
     ]
 
+    # max_items=5
+    mock_items_2 = [
+        {
+            "video_id": f"video{i}",
+            "title": f"Video {i}",
+            "channel_name": "Test Channel",
+            "watched_at": datetime(2025, 1, i + 1, 10, 30, 0, tzinfo=timezone.utc),
+            "video_url": f"https://www.youtube.com/watch?v=video{i}",
+        }
+        for i in range(5)
+    ]
+
     async def mock_init():
         # モック用のpageオブジェクトを作成
         collector.page = AsyncMock()
@@ -227,11 +239,13 @@ async def test_collect_watch_history_max_items_parameter():
     async def mock_cleanup():
         pass
 
+    # 2回の呼び出しを同じモックコンテキスト内で実行
     with patch.object(collector, "_initialize_browser", mock_init):
         with patch.object(collector, "_cleanup_browser", mock_cleanup):
             with patch.object(
                 collector, "_is_authentication_failed", return_value=False
             ):
+                # max_items=Noneの呼び出し
                 with patch.object(
                     collector, "_scrape_watch_items", return_value=mock_items_1
                 ):
@@ -239,15 +253,19 @@ async def test_collect_watch_history_max_items_parameter():
                         after_timestamp=after_timestamp, max_items=None
                     )
 
+                # max_items=5の呼び出し
+                with patch.object(
+                    collector, "_scrape_watch_items", return_value=mock_items_2
+                ):
+                    result2 = await collector.collect_watch_history(
+                        after_timestamp=after_timestamp, max_items=5
+                    )
+
     assert isinstance(result1, list)
     assert len(result1) == 10
 
-    # max_items=5
-    result2 = await collector.collect_watch_history(
-        after_timestamp=after_timestamp, max_items=5
-    )
     assert isinstance(result2, list)
-    assert len(result2) <= 5
+    assert len(result2) == 5
 
 
 @pytest.mark.asyncio

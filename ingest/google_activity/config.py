@@ -22,7 +22,7 @@ class AccountConfig:
     """Googleアカウント設定。
 
     Args:
-        account_id: アカウント識別子（例: account1, account2）
+        account_id: アカウント識別子(例: account1, account2)
         cookies: Playwright Cookieオブジェクトのリスト
         youtube_api_key: YouTube Data API v3のAPIキー
     """

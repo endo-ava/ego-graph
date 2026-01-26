@@ -125,6 +125,9 @@ class MyActivityCollector:
     async def _initialize_browser(self) -> None:
         """Playwrightブラウザとコンテキストを初期化します。"""
         if self.browser is None or not self.browser.is_connected():
+            # self._playwrightがNoneの場合は新しいインスタンスを作成
+            if self._playwright is None:
+                self._playwright = async_playwright()
             playwright_instance = await self._playwright.start()
             self.browser = await playwright_instance.chromium.launch(headless=True)
             self.context = await self.browser.new_context()
@@ -142,8 +145,7 @@ class MyActivityCollector:
         if self.browser and self.browser.is_connected():
             await self.browser.close()
         if self._playwright:
-            await self._playwright.__aexit__(None, None, None)
-            self._playwright = None
+            await self._playwright.stop()
 
         self.context = None
         self.page = None
