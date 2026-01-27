@@ -6,6 +6,11 @@ MCP風のツール設計を採用し、LLMエージェントがDuckDBデータ�
 
 from backend.domain.models.tool import Tool, ToolBase
 from backend.domain.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
+from backend.domain.tools.youtube.stats import (
+    GetTopChannelsTool,
+    GetWatchHistoryTool,
+    GetWatchingStatsTool,
+)
 from backend.usecases.tools.registry import ToolRegistry
 
 __all__ = [
@@ -14,4 +19,7 @@ __all__ = [
     "ToolRegistry",
     "GetTopTracksTool",
     "GetListeningStatsTool",
+    "GetWatchHistoryTool",
+    "GetWatchingStatsTool",
+    "GetTopChannelsTool",
 ]

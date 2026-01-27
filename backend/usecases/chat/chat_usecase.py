@@ -12,11 +12,17 @@ from pydantic import BaseModel
 from backend.config import LLMConfig
 from backend.domain.models.llm import StreamChunk
 from backend.domain.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
+from backend.domain.tools.youtube.stats import (
+    GetTopChannelsTool,
+    GetWatchHistoryTool,
+    GetWatchingStatsTool,
+)
 from backend.infrastructure.llm import LLMClient, Message
 from backend.infrastructure.repositories import (
     AddMessageParams,
     DuckDBThreadRepository,
     SpotifyRepository,
+    YouTubeRepository,
 )
 from backend.usecases.chat.system_prompt_builder import SystemPromptBuilder
 from backend.usecases.chat.tool_executor import (
@@ -291,7 +297,7 @@ class ChatUseCase:
     def _build_tool_registry(self) -> ToolRegistry:
         """ツールレジストリを構築します。
 
-        R2設定が存在する場合、Spotifyツール群を登録します。
+        R2設定が存在する場合、Spotifyツール群とYouTubeツール群を登録します。
 
         Returns:
             ToolRegistry: 構築されたツールレジストリ
@@ -304,6 +310,13 @@ class ChatUseCase:
             tool_registry.register(GetTopTracksTool(spotify_repository))
             tool_registry.register(GetListeningStatsTool(spotify_repository))
             logger.debug("Registered Spotify tools")
+
+            # YouTubeRepository を作成してツールに渡す
+            youtube_repository = YouTubeRepository(self.r2_config)
+            tool_registry.register(GetWatchHistoryTool(youtube_repository))
+            tool_registry.register(GetWatchingStatsTool(youtube_repository))
+            tool_registry.register(GetTopChannelsTool(youtube_repository))
+            logger.debug("Registered YouTube tools")
 
         return tool_registry
 
