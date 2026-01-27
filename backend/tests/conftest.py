@@ -159,6 +159,116 @@ def duckdb_with_sample_data(duckdb_conn, tmp_path):
     yield wrapper
 
 
+class YouTubeConnectionWrapper:
+    """YouTube用DuckDB接続のラッパー（テスト用の属性を保持）。"""
+
+    def __init__(self, conn, watches_parquet_path, videos_parquet_path):
+        self._conn = conn
+        self.test_watches_parquet_path = watches_parquet_path
+        self.test_videos_parquet_path = videos_parquet_path
+
+    def __getattr__(self, name):
+        """属性アクセスを内部の接続オブジェクトに委譲。"""
+        return getattr(self._conn, name)
+
+
+@pytest.fixture
+def youtube_with_sample_data(duckdb_conn, tmp_path):
+    """サンプルYouTube Parquetデータを持つDuckDB。"""
+    # 視聴履歴データ作成
+    watches_data = pd.DataFrame(
+        {
+            "watch_id": ["watch_1", "watch_2", "watch_3", "watch_4", "watch_5"],
+            "account_id": ["account_1"] * 5,
+            "watched_at_utc": pd.to_datetime(
+                [
+                    "2024-01-01 10:00:00",
+                    "2024-01-01 11:00:00",
+                    "2024-01-02 10:00:00",
+                    "2024-01-02 11:00:00",
+                    "2024-01-03 10:00:00",
+                ]
+            ),
+            "video_id": ["video_1", "video_2", "video_1", "video_3", "video_1"],
+            "video_title": [
+                "Video A",
+                "Video B",
+                "Video A",
+                "Video C",
+                "Video A",
+            ],
+            "channel_id": [
+                "channel_1",
+                "channel_2",
+                "channel_1",
+                "channel_3",
+                "channel_1",
+            ],
+            "channel_name": [
+                "Channel X",
+                "Channel Y",
+                "Channel X",
+                "Channel Z",
+                "Channel X",
+            ],
+            "video_url": [
+                "https://youtube.com/watch?v=video_1",
+                "https://youtube.com/watch?v=video_2",
+                "https://youtube.com/watch?v=video_1",
+                "https://youtube.com/watch?v=video_3",
+                "https://youtube.com/watch?v=video_1",
+            ],
+            "context": ["{}"] * 5,
+        }
+    )
+
+    # 動画マスターデータ作成
+    videos_data = pd.DataFrame(
+        {
+            "video_id": ["video_1", "video_2", "video_3"],
+            "title": ["Video A", "Video B", "Video C"],
+            "channel_id": ["channel_1", "channel_2", "channel_3"],
+            "channel_name": ["Channel X", "Channel Y", "Channel Z"],
+            "duration_seconds": [600, 900, 300],
+            "view_count": [1000, 2000, 3000],
+            "like_count": [100, 200, 300],
+            "comment_count": [10, 20, 30],
+            "published_at": pd.to_datetime(["2023-01-01", "2023-02-01", "2023-03-01"]),
+            "thumbnail_url": ["thumb1.jpg", "thumb2.jpg", "thumb3.jpg"],
+            "description": ["Desc A", "Desc B", "Desc C"],
+            "category_id": [1, 2, 3],
+            "tags": [["tag1", "tag2"], ["tag3"], ["tag4", "tag5"]],
+            "updated_at": pd.to_datetime(["2024-01-01"] * 3),
+        }
+    )
+
+    # Parquetファイルとして保存
+    watches_parquet_path = tmp_path / "youtube_watches.parquet"
+    videos_parquet_path = tmp_path / "youtube_videos.parquet"
+    watches_data.to_parquet(watches_parquet_path)
+    videos_data.to_parquet(videos_parquet_path)
+
+    # DuckDBにDataFrameを直接登録
+    duckdb_conn.register("youtube_watches_df", watches_data)
+    duckdb_conn.execute(
+        "CREATE TABLE youtube_watches AS SELECT * FROM youtube_watches_df"
+    )
+    duckdb_conn.unregister("youtube_watches_df")
+
+    duckdb_conn.register("youtube_videos_df", videos_data)
+    duckdb_conn.execute(
+        "CREATE TABLE youtube_videos AS SELECT * FROM youtube_videos_df"
+    )
+    duckdb_conn.unregister("youtube_videos_df")
+
+    # ラッパーオブジェクトを作成
+    wrapper = YouTubeConnectionWrapper(
+        duckdb_conn, str(watches_parquet_path), str(videos_parquet_path)
+    )
+
+    yield wrapper
+
+
 # ========================================
 # R2（S3）モックフィクスチャ
 # ========================================
