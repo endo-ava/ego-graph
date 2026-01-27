@@ -2,8 +2,8 @@ name: Google YouTube Data Ingestion
 
 on:
   schedule:
-    - cron: '0 4 * * *'  # 毎日 4:00 UTC (日本時間 13:00)
-  workflow_dispatch:  # 手動実行
+    - cron: '0 14 * * *'  # 14:00 UTC = 23:00 JST
+  workflow_dispatch:
 
 jobs:
   ingest-google-youtube:
@@ -28,3 +28,61 @@ jobs:
 
       - name: Run Google YouTube ingestion
         run: uv run python -m ingest.google_activity.main
+
+      - name: Verify Parquet Data Integrity (R2)
+        if: success()
+        env:
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          uv run python - << 'PY'
+          import duckdb
+          import os
+
+          endpoint_url = os.environ["R2_ENDPOINT_URL"]
+          access_key_id = os.environ["R2_ACCESS_KEY_ID"]
+          secret_access_key = os.environ["R2_SECRET_ACCESS_KEY"]
+          bucket_name = os.environ["R2_BUCKET_NAME"]
+
+          conn = duckdb.connect(":memory:")
+          conn.execute("INSTALL httpfs; LOAD httpfs;")
+          conn.execute(f"""
+              CREATE SECRET (
+                  TYPE S3,
+                  KEY_ID '{access_key_id}',
+                  SECRET '{secret_access_key}',
+                  REGION 'auto',
+                  ENDPOINT '{endpoint_url.replace("https://", "")}',
+                  URL_STYLE 'path'
+              );
+          """)
+
+          parquet_url = f"s3://{bucket_name}/events/youtube/watch_history/**/*.parquet"
+          print(f"🧐 Querying: {parquet_url}")
+
+          try:
+              count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{parquet_url}')").fetchone()[0]
+              latest = conn.execute(f"SELECT MAX(watched_at_utc) FROM read_parquet('{parquet_url}')").fetchone()[0]
+              unique_videos = conn.execute(f"SELECT COUNT(DISTINCT video_id) FROM read_parquet('{parquet_url}')").fetchone()[0]
+
+              print(f"✅ Total watch events in R2: {count}")
+              print(f"✅ Unique videos in R2: {unique_videos}")
+              print(f"✅ Latest watch in R2: {latest}")
+          except Exception as e:
+              print(f"⚠️ Verification failed or no data: {e}")
+          finally:
+              conn.close()
+          PY
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-pipeline-logs-${{ github.run_number }}
+          path: |
+            *.log
+            logs/
+          retention-days: 7
+          if-no-files-found: ignore
