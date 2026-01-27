@@ -188,6 +188,7 @@ class IngestSettings(BaseSettings):
         logging.basicConfig(
             level=getattr(logging, config.log_level.upper()),
             format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            force=True,  # 既存のハンドラを強制的に上書き
         )
 
         return config

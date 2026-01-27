@@ -1,47 +1,33 @@
-name: Spotify Data Ingestion to R2 Data Lake
+name: Google YouTube Data Ingestion
 
 on:
   schedule:
-    # 1日2回実行（50曲以上の取りこぼしを防ぐ）
-    - cron: '0 2 * * *'   # 02:00 UTC = 11:00 JST (午前)
-    - cron: '0 14 * * *'  # 14:00 UTC = 23:00 JST (夜)
+    - cron: '0 14 * * *'  # 14:00 UTC = 23:00 JST
   workflow_dispatch:
 
 jobs:
-  ingest:
+  ingest-google-youtube:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 60
+    env:
+      R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      GOOGLE_COOKIE_ACCOUNT1: ${{ secrets.GOOGLE_COOKIE_ACCOUNT1 }}
+      GOOGLE_COOKIE_ACCOUNT2: ${{ secrets.GOOGLE_COOKIE_ACCOUNT2 }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Set up Python 3.13
-        run: uv python install 3.13
-
-      - name: Install dependencies
+      - name: Install Playwright and dependencies
         run: |
-          uv sync --all-packages
+          uv sync
+          uv run playwright install --with-deps chromium
 
-      - name: Run Spotify DuckDB ingestion pipeline
-        env:
-          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
-          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-          SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
-          DUCKDB_PATH: data/analytics.duckdb
-          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
-          LOG_LEVEL: INFO
-        run: |
-          uv run python -m ingest.spotify.main
+      - name: Run Google YouTube ingestion
+        run: uv run python -m ingest.google_activity.main
 
       - name: Verify Parquet Data Integrity (R2)
         if: success()
@@ -55,12 +41,10 @@ jobs:
           import duckdb
           import os
 
-          # R2設定を環境変数から直接読み取り
           endpoint_url = os.environ["R2_ENDPOINT_URL"]
           access_key_id = os.environ["R2_ACCESS_KEY_ID"]
           secret_access_key = os.environ["R2_SECRET_ACCESS_KEY"]
           bucket_name = os.environ["R2_BUCKET_NAME"]
-          events_path = os.environ.get("R2_EVENTS_PATH", "events/")
 
           conn = duckdb.connect(":memory:")
           conn.execute("INSTALL httpfs; LOAD httpfs;")
@@ -75,18 +59,19 @@ jobs:
               );
           """)
 
-          parquet_url = f"s3://{bucket_name}/{events_path}spotify/plays/**/*.parquet"
+          parquet_url = f"s3://{bucket_name}/events/youtube/watch_history/**/*.parquet"
           print(f"🧐 Querying: {parquet_url}")
 
           try:
               count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{parquet_url}')").fetchone()[0]
-              latest = conn.execute(f"SELECT MAX(played_at_utc) FROM read_parquet('{parquet_url}')").fetchone()[0]
+              latest = conn.execute(f"SELECT MAX(watched_at_utc) FROM read_parquet('{parquet_url}')").fetchone()[0]
+              unique_videos = conn.execute(f"SELECT COUNT(DISTINCT video_id) FROM read_parquet('{parquet_url}')").fetchone()[0]
 
-              print(f"✅ Total plays in R2: {count}")
-              print(f"✅ Latest play in R2: {latest}")
+              print(f"✅ Total watch events in R2: {count}")
+              print(f"✅ Unique videos in R2: {unique_videos}")
+              print(f"✅ Latest watch in R2: {latest}")
           except Exception as e:
               print(f"⚠️ Verification failed or no data: {e}")
-              # 初回実行時はデータがない可能性があるため、エラーにはせず警告に留める
           finally:
               conn.close()
           PY
@@ -95,7 +80,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: pipeline-logs-${{ github.run_number }}
+          name: youtube-pipeline-logs-${{ github.run_number }}
           path: |
             *.log
             logs/
