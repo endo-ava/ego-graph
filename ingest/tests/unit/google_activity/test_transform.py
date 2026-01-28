@@ -1,5 +1,3 @@
-"""変換モジュールのテスト。"""
-
 from datetime import datetime, timezone
 
 from ingest.google_activity.transform import (

@@ -1,5 +1,3 @@
-"""YouTube Data API v3 クライアント。"""
-
 import logging
 import time
 from typing import Any

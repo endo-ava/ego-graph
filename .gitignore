@@ -95,6 +95,9 @@ query_graph
 scripts/install-android.ps1
 scripts/install-lsp.sh
 scripts/debug-adb.ps1
+scripts/curl-prod-api.sh
 
 # Ignore git worktree checkout
 wt1/
+
+.sisyphus/

@@ -1,5 +1,3 @@
-"""データ変換モジュール。"""
-
 import hashlib
 import logging
 import re

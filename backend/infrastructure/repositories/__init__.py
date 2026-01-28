@@ -8,5 +8,11 @@ from backend.infrastructure.repositories.thread_repository_impl import (
     AddMessageParams,
     DuckDBThreadRepository,
 )
+from backend.infrastructure.repositories.youtube_repository import YouTubeRepository
 
-__all__ = ["AddMessageParams", "DuckDBThreadRepository", "SpotifyRepository"]
+__all__ = [
+    "AddMessageParams",
+    "DuckDBThreadRepository",
+    "SpotifyRepository",
+    "YouTubeRepository",
+]
