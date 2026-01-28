@@ -4,7 +4,13 @@ API用のリクエスト/レスポンススキーマを定義します。
 """
 
 from backend.api.schemas.chat import ChatRequest, ChatResponse
-from backend.api.schemas.data import ListeningStatsResponse, TopTrackResponse
+from backend.api.schemas.data import (
+    ListeningStatsResponse,
+    TopChannelResponse,
+    TopTrackResponse,
+    WatchHistoryResponse,
+    WatchingStatsResponse,
+)
 from backend.api.schemas.models import ModelsResponse
 from backend.api.schemas.system_prompt import (
     SystemPromptResponse,
@@ -27,6 +33,9 @@ __all__ = [
     # Data API スキーマ
     "TopTrackResponse",
     "ListeningStatsResponse",
+    "WatchHistoryResponse",
+    "WatchingStatsResponse",
+    "TopChannelResponse",
     # Models API スキーマ
     "ModelsResponse",
     "LLMModel",
