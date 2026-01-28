@@ -170,7 +170,8 @@ def _load_cookies(env_var: str) -> list[dict] | None:
         expanded_path = Path(cookies_str).expanduser()
         try:
             with open(expanded_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                parsed = json.load(f)
+                return _normalize_cookies(parsed)
         except FileNotFoundError as e:
             raise ValueError(f"Cookie file not found: {expanded_path}") from e
         except json.JSONDecodeError as e:
@@ -181,28 +182,7 @@ def _load_cookies(env_var: str) -> list[dict] | None:
         first_char = cookies_str.lstrip()[0] if cookies_str.lstrip() else ""
         if first_char in ["{", "["]:
             parsed = json.loads(cookies_str)
-            if isinstance(parsed, dict):
-                return [{"name": k, "value": v} for k, v in parsed.items()]
-            elif isinstance(parsed, list):
-                # リスト内の各要素をバリデーション・変換
-                cookies = []
-                for idx, item in enumerate(parsed):
-                    if not isinstance(item, dict):
-                        raise ValueError(
-                            f"invalid_cookie_list_item: element {idx} is not a dict (got {type(item).__name__})"
-                        )
-                    if "name" not in item or "value" not in item:
-                        raise ValueError(
-                            f"invalid_cookie_list_item: element {idx} missing required keys 'name' or 'value'"
-                        )
-                    name = item["name"]
-                    value = item["value"]
-                    cookies.append(
-                        {"name": str(name).strip(), "value": str(value).strip()}
-                    )
-                return cookies
-            else:
-                raise ValueError("JSON must be a dict or list of cookie objects")
+            return _normalize_cookies(parsed)
         else:
             # key=value,key=value形式のパース
             cookies = []
@@ -215,11 +195,52 @@ def _load_cookies(env_var: str) -> list[dict] | None:
                 raise ValueError(
                     f"invalid_cookies: no valid key=value pairs found in {env_var} (value: {cookies_str[:100]}...)"
                 )
-            return cookies
+            return _normalize_cookies(cookies)
     except ValueError:
         raise
     except Exception as e:
         raise ValueError(f"Failed to parse {env_var}: {e}") from e
+
+
+def _normalize_cookies(parsed: object) -> list[dict]:
+    """Cookie入力を正規化し、Playwright必須属性を補完する。"""
+    if isinstance(parsed, dict):
+        cookies = [{"name": k, "value": v} for k, v in parsed.items()]
+    elif isinstance(parsed, list):
+        cookies = []
+        for idx, item in enumerate(parsed):
+            if not isinstance(item, dict):
+                raise ValueError(
+                    f"invalid_cookie_list_item: element {idx} is not a dict (got {type(item).__name__})"
+                )
+            if "name" not in item or "value" not in item:
+                raise ValueError(
+                    f"invalid_cookie_list_item: element {idx} missing required keys 'name' or 'value'"
+                )
+            cookie = dict(item)
+            cookie["name"] = str(cookie["name"]).strip()
+            cookie["value"] = str(cookie["value"]).strip()
+            cookies.append(cookie)
+    else:
+        raise ValueError("JSON must be a dict or list of cookie objects")
+
+    for cookie in cookies:
+        has_url = "url" in cookie and str(cookie["url"]).strip() != ""
+        has_domain = "domain" in cookie and str(cookie["domain"]).strip() != ""
+        has_path = "path" in cookie and str(cookie["path"]).strip() != ""
+
+        # urlがない場合のみdomain/pathを補完（既存値は尊重）
+        if not has_url:
+            if not has_domain:
+                cookie["domain"] = ".google.com"
+            if not has_path:
+                cookie["path"] = "/"
+
+        # sameSite を設定（Playwright 推奨、既存値は尊重）
+        if "sameSite" not in cookie:
+            cookie["sameSite"] = "Lax"
+
+    return cookies
 
 
 if __name__ == "__main__":

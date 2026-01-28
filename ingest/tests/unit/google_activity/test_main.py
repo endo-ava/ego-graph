@@ -154,6 +154,15 @@ class TestLoadGoogleAccounts:
         """単一アカウントを読み込めること。"""
         # Arrange
         cookies = [{"name": "SID", "value": "test_value"}]
+        expected_cookies = [
+            {
+                "name": "SID",
+                "value": "test_value",
+                "domain": ".google.com",
+                "path": "/",
+                "sameSite": "Lax",
+            }
+        ]
         env = {
             "YOUTUBE_API_KEY": "test_api_key",
             "GOOGLE_COOKIE_ACCOUNT1": json.dumps(cookies),
@@ -167,7 +176,7 @@ class TestLoadGoogleAccounts:
         assert len(accounts) == 1
         assert accounts[0].account_id == "account1"
         assert accounts[0].youtube_api_key == "test_api_key"
-        assert accounts[0].cookies == cookies
+        assert accounts[0].cookies == expected_cookies
 
     def test_load_two_accounts(self):
         """2つのアカウントを読み込めること。"""
@@ -221,6 +230,15 @@ class TestLoadGoogleAccounts:
         """ファイルパスからCookieを読み込めること。"""
         # Arrange
         cookies_data = [{"name": "SID", "value": "test_value"}]
+        expected_cookies = [
+            {
+                "name": "SID",
+                "value": "test_value",
+                "domain": ".google.com",
+                "path": "/",
+                "sameSite": "Lax",
+            }
+        ]
         cookie_file = tmp_path / "cookies.json"
         cookie_file.write_text(json.dumps(cookies_data))
 
@@ -240,4 +258,4 @@ class TestLoadGoogleAccounts:
 
         # Assert
         assert len(accounts) == 1
-        assert accounts[0].cookies == cookies_data
+        assert accounts[0].cookies == expected_cookies
