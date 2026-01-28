@@ -1,9 +1,7 @@
 """YouTube Repository層のテスト（REDフェーズ）。"""
 
 from datetime import date
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from backend.infrastructure.repositories.youtube_repository import YouTubeRepository
 
@@ -114,6 +112,7 @@ class TestYouTubeRepository:
 def mock_r2_config():
     """モックR2設定。"""
     from pydantic import SecretStr
+
     from shared.config import R2Config
 
     return R2Config.model_construct(

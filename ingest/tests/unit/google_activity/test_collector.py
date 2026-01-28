@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from ingest.google_activity.collector import (
-    AuthenticationError,
     MyActivityCollector,
     _extract_video_id,
     _parse_watched_at,
@@ -171,6 +170,7 @@ async def test_collect_watch_history_with_valid_params():
 async def test_collect_watch_history_retry_decorator():
     """リトライデコレータが適用されていることを確認する。"""
     from unittest.mock import AsyncMock, patch
+
     from tenacity import RetryError
 
     mock_cookies = [

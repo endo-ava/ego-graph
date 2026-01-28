@@ -7,15 +7,15 @@ import pytest
 
 from backend.infrastructure.database.youtube_queries import (
     YouTubeQueryParams,
+    _generate_partition_paths,
     execute_query,
-    get_watch_history,
-    get_watching_stats,
-    get_top_channels,
-    get_watches_parquet_path,
-    get_videos_parquet_path,
     get_channels_parquet_path,
+    get_top_channels,
+    get_videos_parquet_path,
+    get_watch_history,
+    get_watches_parquet_path,
+    get_watching_stats,
 )
-from backend.infrastructure.database.youtube_queries import _generate_partition_paths
 
 
 class TestYouTubeQueryParams:

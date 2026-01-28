@@ -6,7 +6,7 @@ import pytest
 from pydantic import SecretStr
 
 from backend.config import LLMConfig
-from backend.domain.models.llm_model import LLMModel, MODELS_CONFIG
+from backend.domain.models.llm_model import MODELS_CONFIG, LLMModel
 from backend.infrastructure.llm import (
     AnthropicProvider,
     ChatResponse,

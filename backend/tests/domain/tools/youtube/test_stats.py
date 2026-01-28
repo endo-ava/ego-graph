@@ -6,8 +6,8 @@ import pytest
 
 from backend.domain.tools.youtube.stats import (
     GetTopChannelsTool,
-    GetWatchingStatsTool,
     GetWatchHistoryTool,
+    GetWatchingStatsTool,
 )
 
 

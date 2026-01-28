@@ -10,15 +10,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from ingest.google_activity import transform
 from ingest.google_activity.config import AccountConfig
 from ingest.google_activity.pipeline import (
     PipelineResult,
     run_account_pipeline,
     run_all_accounts_pipeline,
 )
-from ingest.google_activity import transform
 from ingest.google_activity.youtube_api import YouTubeAPIClient
-
 
 # テスト用サンプルデータ
 SAMPLE_WATCH_HISTORY = [

@@ -48,7 +48,7 @@ def create_issue_with_gh(
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         print(result.stdout)
-        print(f"✓ Issue を作成しました")
+        print("✓ Issue を作成しました")
     except subprocess.CalledProcessError as e:
         print(f"✗ Issue の作成に失敗しました: {e.stderr}", file=sys.stderr)
         sys.exit(1)
