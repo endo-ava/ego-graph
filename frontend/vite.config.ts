@@ -12,7 +12,7 @@ const buildTime = new Intl.DateTimeFormat('ja-JP', {
 export default defineConfig({
   plugins: [
     react(),
-    tailwindcss(),  // Tailwind v4 Viteプラグイン
+    tailwindcss(), // Tailwind v4 Viteプラグイン
   ],
   resolve: {
     alias: {
@@ -22,10 +22,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5174,
-    allowedHosts: [
-      'dev-server',
-      'localhost',
-    ],
+    allowedHosts: ['dev-server', 'localhost'],
   },
   build: {
     outDir: 'dist',

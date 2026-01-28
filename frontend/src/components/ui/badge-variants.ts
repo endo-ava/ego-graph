@@ -7,9 +7,11 @@ export const badgeVariants = cva(
       variant: {
         default: 'border-transparent bg-secondary text-secondary-foreground',
         primary: 'border-transparent bg-accent text-accent-foreground',
-        destructive: 'border-transparent bg-destructive text-destructive-foreground',
+        destructive:
+          'border-transparent bg-destructive text-destructive-foreground',
         outline: 'text-foreground border-border',
-        success: 'border-transparent bg-success/10 text-success border-success/20',
+        success:
+          'border-transparent bg-success/10 text-success border-success/20',
       },
     },
     defaultVariants: {

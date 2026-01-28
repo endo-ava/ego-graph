@@ -54,7 +54,8 @@ export function SystemPromptEditorBody({
       ) : error ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="rounded-lg border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            Error loading content: {error instanceof Error ? error.message : 'Unknown error'}
+            Error loading content:{' '}
+            {error instanceof Error ? error.message : 'Unknown error'}
           </div>
         </div>
       ) : (
@@ -74,12 +75,19 @@ export function SystemPromptEditorBody({
               <div className="flex-1">
                 {Boolean(saveError) && (
                   <div className="rounded border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    Save failed: {saveError instanceof Error ? saveError.message : 'Unknown error'}
+                    Save failed:{' '}
+                    {saveError instanceof Error
+                      ? saveError.message
+                      : 'Unknown error'}
                   </div>
                 )}
               </div>
 
-              <Button onClick={save} disabled={isSaving} className="min-w-[120px]">
+              <Button
+                onClick={save}
+                disabled={isSaving}
+                className="min-w-[120px]"
+              >
                 {isSaving ? (
                   <span className="flex items-center gap-2">
                     <svg

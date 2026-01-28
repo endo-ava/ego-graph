@@ -13,7 +13,11 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
       components={{
         code(props) {
           const { children, className, ...rest } = props;
-          return <CodeBlock className={className} {...rest}>{children}</CodeBlock>;
+          return (
+            <CodeBlock className={className} {...rest}>
+              {children}
+            </CodeBlock>
+          );
         },
       }}
     >

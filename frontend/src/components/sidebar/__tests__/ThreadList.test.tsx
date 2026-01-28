@@ -11,7 +11,11 @@ import type { ThreadListResponse } from '@/types/chat';
 
 // ThreadItemをモック
 vi.mock('../ThreadItem', () => ({
-  ThreadItem: ({ thread }: { thread: { thread_id: string; title: string } }) => (
+  ThreadItem: ({
+    thread,
+  }: {
+    thread: { thread_id: string; title: string };
+  }) => (
     <div data-testid={`thread-item-${thread.thread_id}`}>{thread.title}</div>
   ),
 }));
@@ -83,8 +87,12 @@ describe('ThreadList', () => {
       expect(screen.getByTestId('thread-item-thread-1')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('thread-item-thread-1')).toHaveTextContent('Test Thread 1');
-    expect(screen.getByTestId('thread-item-thread-2')).toHaveTextContent('Test Thread 2');
+    expect(screen.getByTestId('thread-item-thread-1')).toHaveTextContent(
+      'Test Thread 1',
+    );
+    expect(screen.getByTestId('thread-item-thread-2')).toHaveTextContent(
+      'Test Thread 2',
+    );
   });
 
   it('空状態を表示する', async () => {

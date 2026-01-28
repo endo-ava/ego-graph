@@ -85,7 +85,9 @@ describe('useThreads', () => {
     });
 
     expect(result.current.data?.pages[0]?.threads).toHaveLength(2);
-    expect(result.current.data?.pages[0]?.threads[0]?.thread_id).toBe('thread-1');
+    expect(result.current.data?.pages[0]?.threads[0]?.thread_id).toBe(
+      'thread-1',
+    );
   });
 
   it('次のページを取得できる（fetchNextPage）', async () => {
@@ -135,7 +137,9 @@ describe('useThreads', () => {
       expect(result.current.data?.pages).toHaveLength(2);
     });
 
-    expect(result.current.data?.pages[1]?.threads[0]?.thread_id).toBe('thread-3');
+    expect(result.current.data?.pages[1]?.threads[0]?.thread_id).toBe(
+      'thread-3',
+    );
   });
 
   it('エラー時に適切に処理される', async () => {
@@ -170,13 +174,17 @@ describe('useThreadMessages', () => {
   });
 
   it('スレッドメッセージを取得できる', async () => {
-    vi.spyOn(api, 'getThreadMessages').mockResolvedValue(mockThreadMessagesResponse);
+    vi.spyOn(api, 'getThreadMessages').mockResolvedValue(
+      mockThreadMessagesResponse,
+    );
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
 
-    const { result } = renderHook(() => useThreadMessages('thread-1'), { wrapper });
+    const { result } = renderHook(() => useThreadMessages('thread-1'), {
+      wrapper,
+    });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -187,7 +195,9 @@ describe('useThreadMessages', () => {
   });
 
   it('threadIdがnullの場合はクエリが実行されない', () => {
-    vi.spyOn(api, 'getThreadMessages').mockResolvedValue(mockThreadMessagesResponse);
+    vi.spyOn(api, 'getThreadMessages').mockResolvedValue(
+      mockThreadMessagesResponse,
+    );
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -201,13 +211,17 @@ describe('useThreadMessages', () => {
   });
 
   it('エラー時に適切に処理される', async () => {
-    vi.spyOn(api, 'getThreadMessages').mockRejectedValue(new Error('Network error'));
+    vi.spyOn(api, 'getThreadMessages').mockRejectedValue(
+      new Error('Network error'),
+    );
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
 
-    const { result } = renderHook(() => useThreadMessages('thread-1'), { wrapper });
+    const { result } = renderHook(() => useThreadMessages('thread-1'), {
+      wrapper,
+    });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);

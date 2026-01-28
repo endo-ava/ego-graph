@@ -15,7 +15,13 @@ import { SystemPromptEditor } from '@/components/system-prompt/SystemPromptEdito
 import { Toaster } from 'sonner';
 
 export default function App() {
-  const { clearMessages, setOnSidebarClose, sidebarOpen, toggleSidebar, activeView } = useChatStore();
+  const {
+    clearMessages,
+    setOnSidebarClose,
+    sidebarOpen,
+    toggleSidebar,
+    activeView,
+  } = useChatStore();
   const chatInputRef = useRef<ChatInputRef>(null);
   const { messages, sendMessage, isLoading } = useChat();
 
@@ -64,7 +70,10 @@ export default function App() {
         {activeView === 'system_prompt' ? (
           <>
             {/* System Prompt ビュー */}
-            <AppHeader title="System Prompt Editor" onMenuClick={handleToggleSidebar} />
+            <AppHeader
+              title="System Prompt Editor"
+              onMenuClick={handleToggleSidebar}
+            />
 
             <main className="flex-1 min-h-0 overflow-hidden">
               <SystemPromptEditor />
@@ -96,7 +105,11 @@ export default function App() {
 
             {/* 入力エリア */}
             <footer className="shrink-0">
-              <ChatInput ref={chatInputRef} onSendMessage={sendMessage} disabled={isLoading} />
+              <ChatInput
+                ref={chatInputRef}
+                onSendMessage={sendMessage}
+                disabled={isLoading}
+              />
             </footer>
           </>
         )}

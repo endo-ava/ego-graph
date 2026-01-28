@@ -51,7 +51,12 @@ describe('AppLayout', () => {
   /**
    * タッチイベントをシミュレート
    */
-  const simulateSwipe = (startX: number, endX: number, startY = 100, endY = 100) => {
+  const simulateSwipe = (
+    startX: number,
+    endX: number,
+    startY = 100,
+    endY = 100,
+  ) => {
     act(() => {
       const touchStart = new TouchEvent('touchstart', {
         touches: [{ clientX: startX, clientY: startY } as Touch],

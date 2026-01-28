@@ -11,7 +11,8 @@ import { useIsMobile } from '@/hooks/ui/useIsMobile';
 import { Button } from '@/components/ui/button';
 
 export function Sidebar() {
-  const { sidebarOpen, activeView, setActiveView, setSidebarOpen } = useChatStore();
+  const { sidebarOpen, activeView, setActiveView, setSidebarOpen } =
+    useChatStore();
   const isMobile = useIsMobile();
 
   const handleNavigate = (view: 'chat' | 'system_prompt') => {

@@ -50,7 +50,12 @@ export interface ChatResponse {
 /**
  * ストリーミングチャンクの種類
  */
-export type StreamChunkType = 'delta' | 'tool_call' | 'tool_result' | 'done' | 'error';
+export type StreamChunkType =
+  | 'delta'
+  | 'tool_call'
+  | 'tool_result'
+  | 'done'
+  | 'error';
 
 /**
  * ストリーミングチャンク

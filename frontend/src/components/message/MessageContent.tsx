@@ -3,7 +3,13 @@ import { format, isValid } from 'date-fns';
 import { MarkdownContent } from '@/components/content/MarkdownContent';
 
 export function MessageContent({
-  isUser, modelName, timestamp, isError, isLoading, content, showCursor
+  isUser,
+  modelName,
+  timestamp,
+  isError,
+  isLoading,
+  content,
+  showCursor,
 }: MessageContentProps) {
   const timeLabel = isValid(timestamp) ? format(timestamp, 'HH:mm') : '--';
   return (
@@ -18,7 +24,12 @@ export function MessageContent({
           {timeLabel}
         </span>
       </div>
-      <div className={cn('prose prose-sm max-w-none dark:prose-invert', isError && 'text-destructive')}>
+      <div
+        className={cn(
+          'prose prose-sm max-w-none dark:prose-invert',
+          isError && 'text-destructive',
+        )}
+      >
         {isLoading ? (
           <>
             <span className="sr-only">Loading...</span>

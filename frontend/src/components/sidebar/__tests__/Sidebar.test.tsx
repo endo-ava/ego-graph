@@ -77,7 +77,9 @@ describe('Sidebar', () => {
 
     expect(screen.getByRole('complementary')).toBeInTheDocument();
     expect(screen.getByText('History')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'New chat' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'New chat' }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId('thread-list')).toBeInTheDocument();
   });
 
@@ -139,5 +141,4 @@ describe('Sidebar', () => {
 
     expect(useChatStore.getState().sidebarOpen).toBe(false);
   });
-
 });

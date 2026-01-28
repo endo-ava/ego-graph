@@ -6,10 +6,19 @@ interface ChatControlsProps {
   disabled: boolean;
 }
 
-export function ChatControls({ canSubmit, onSubmit, disabled }: ChatControlsProps) {
+export function ChatControls({
+  canSubmit,
+  onSubmit,
+  disabled,
+}: ChatControlsProps) {
   return (
     <>
-      <Button onClick={onSubmit} disabled={!canSubmit || disabled} size="icon" className="shrink-0">
+      <Button
+        onClick={onSubmit}
+        disabled={!canSubmit || disabled}
+        size="icon"
+        className="shrink-0"
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"

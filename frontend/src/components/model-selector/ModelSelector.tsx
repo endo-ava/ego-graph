@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { SparklesIcon, AlertCircleIcon, ChevronDownIcon } from '@/components/ui/icons';
+import {
+  SparklesIcon,
+  AlertCircleIcon,
+  ChevronDownIcon,
+} from '@/components/ui/icons';
 import { useModelSelection } from '@/hooks/model/useModelSelection';
 import { useClickOutside } from '@/hooks/ui/useClickOutside';
 import { formatCost } from '@/lib/model';
@@ -11,13 +15,8 @@ function ModelSelectorInner() {
   const listboxRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
-  const {
-    models,
-    error,
-    isLoading,
-    selectedModel,
-    setSelectedModel,
-  } = useModelSelection();
+  const { models, error, isLoading, selectedModel, setSelectedModel } =
+    useModelSelection();
 
   const currentModel = models.find((m) => m.id === selectedModel) || models[0];
 
@@ -55,14 +54,16 @@ function ModelSelectorInner() {
         case 'ArrowDown':
           event.preventDefault();
           setFocusedIndex((prev) => {
-            const nextIndex = prev === -1 ? 0 : Math.min(prev + 1, models.length - 1);
+            const nextIndex =
+              prev === -1 ? 0 : Math.min(prev + 1, models.length - 1);
             return nextIndex;
           });
           break;
         case 'ArrowUp':
           event.preventDefault();
           setFocusedIndex((prev) => {
-            const prevIndex = prev === -1 ? models.length - 1 : Math.max(prev - 1, 0);
+            const prevIndex =
+              prev === -1 ? models.length - 1 : Math.max(prev - 1, 0);
             return prevIndex;
           });
           break;
@@ -91,7 +92,9 @@ function ModelSelectorInner() {
 
   useEffect(() => {
     if (isOpen && focusedIndex !== -1 && listboxRef.current) {
-      const items = listboxRef.current.querySelectorAll('button[role="option"]');
+      const items = listboxRef.current.querySelectorAll(
+        'button[role="option"]',
+      );
       (items[focusedIndex] as HTMLElement)?.focus();
     }
   }, [focusedIndex, isOpen]);
@@ -127,7 +130,10 @@ function ModelSelectorInner() {
         aria-controls="model-listbox"
         className="group"
       >
-        <Badge variant="primary" className="cursor-pointer transition-all active:scale-95">
+        <Badge
+          variant="primary"
+          className="cursor-pointer transition-all active:scale-95"
+        >
           <SparklesIcon className="h-3 w-3" />
           <span>{currentModel.name}</span>
           <ChevronDownIcon className="h-3 w-3 opacity-50 group-active:opacity-100" />
@@ -150,12 +156,16 @@ function ModelSelectorInner() {
               aria-selected={selectedModel === model.id}
               onClick={() => handleSelect(model.id)}
               className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors active:bg-accent active:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
-                selectedModel === model.id ? 'bg-accent text-accent-foreground' : ''
+                selectedModel === model.id
+                  ? 'bg-accent text-accent-foreground'
+                  : ''
               }`}
             >
               <div className="flex flex-col gap-1">
                 <span className="font-medium">{model.name}</span>
-                <span className="font-mono text-xs opacity-70">{formatCost(model)}</span>
+                <span className="font-mono text-xs opacity-70">
+                  {formatCost(model)}
+                </span>
               </div>
             </button>
           ))}

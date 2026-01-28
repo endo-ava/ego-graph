@@ -6,8 +6,14 @@ import { ThreadListError } from './ThreadListError';
 import { ThreadListEmpty } from './ThreadListEmpty';
 
 export function ThreadList() {
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } =
-    useThreads();
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useThreads();
 
   const observerTarget = useInfiniteScroll({
     fetchNextPage,
@@ -42,7 +48,11 @@ export function ThreadList() {
       <div ref={observerTarget} className="h-4" aria-hidden="true" />
 
       {isFetchingNextPage && (
-        <div className="flex items-center justify-center py-4" role="status" aria-live="polite">
+        <div
+          className="flex items-center justify-center py-4"
+          role="status"
+          aria-live="polite"
+        >
           <span className="text-sm text-muted-foreground">Loading...</span>
         </div>
       )}

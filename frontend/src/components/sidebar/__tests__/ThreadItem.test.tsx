@@ -112,7 +112,9 @@ describe('ThreadItem', () => {
       ],
     };
 
-    const getThreadMessagesSpy = vi.spyOn(api, 'getThreadMessages').mockResolvedValue(mockResponse);
+    const getThreadMessagesSpy = vi
+      .spyOn(api, 'getThreadMessages')
+      .mockResolvedValue(mockResponse);
     const user = userEvent.setup();
 
     render(<ThreadItem thread={mockThread} />);
@@ -123,9 +125,12 @@ describe('ThreadItem', () => {
     // APIが呼ばれることを確認
     await waitFor(() => {
       expect(getThreadMessagesSpy).toHaveBeenCalledTimes(1);
-      expect(getThreadMessagesSpy).toHaveBeenCalledWith('thread-1', expect.objectContaining({
-        signal: expect.any(AbortSignal),
-      }));
+      expect(getThreadMessagesSpy).toHaveBeenCalledWith(
+        'thread-1',
+        expect.objectContaining({
+          signal: expect.any(AbortSignal),
+        }),
+      );
     });
   });
 
@@ -448,7 +453,9 @@ describe('ThreadItem', () => {
   });
 
   it('エラー時にtoastを表示する', async () => {
-    vi.spyOn(api, 'getThreadMessages').mockRejectedValue(new Error('Network error'));
+    vi.spyOn(api, 'getThreadMessages').mockRejectedValue(
+      new Error('Network error'),
+    );
 
     const user = userEvent.setup();
     render(<ThreadItem thread={mockThread} />);

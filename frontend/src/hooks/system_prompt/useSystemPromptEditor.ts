@@ -72,7 +72,10 @@ export function useSystemPromptEditor() {
   const isDirty = (key: SystemPromptName) => {
     const draft = drafts[key];
     if (draft === undefined) return false;
-    const cached = queryClient.getQueryData<{ content: string }>(['system-prompt', key]);
+    const cached = queryClient.getQueryData<{ content: string }>([
+      'system-prompt',
+      key,
+    ]);
     return cached ? draft !== cached.content : false;
   };
 

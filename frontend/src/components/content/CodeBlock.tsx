@@ -14,15 +14,15 @@ export function CodeBlock({ className, children, ...rest }: CodeBlockProps) {
 
   if (!isInline && language) {
     return (
-      <SyntaxHighlighter
-        style={vscDarkPlus}
-        language={language}
-        PreTag="div"
-      >
+      <SyntaxHighlighter style={vscDarkPlus} language={language} PreTag="div">
         {String(children).replace(/\n$/, '')}
       </SyntaxHighlighter>
     );
   }
 
-  return <code className={className} {...rest}>{children}</code>;
+  return (
+    <code className={className} {...rest}>
+      {children}
+    </code>
+  );
 }

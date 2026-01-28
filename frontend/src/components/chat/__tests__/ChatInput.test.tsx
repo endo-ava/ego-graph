@@ -36,8 +36,8 @@ describe('ChatInput', () => {
     vi.clearAllMocks();
     // デフォルトではサイドバーは閉じている
     // useChatStoreはセレクター関数を受け取るため、適切にモックする
-    (useChatStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector) =>
-      selector({ sidebarOpen: false })
+    (useChatStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector) => selector({ sidebarOpen: false }),
     );
   });
 
@@ -106,7 +106,9 @@ describe('ChatInput', () => {
 
   // デスクトップ環境でEnterキーで送信
   it('sends message on Enter key press (desktop)', async () => {
-    (Capacitor.isNativePlatform as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    (Capacitor.isNativePlatform as ReturnType<typeof vi.fn>).mockReturnValue(
+      false,
+    );
 
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
@@ -121,7 +123,9 @@ describe('ChatInput', () => {
 
   // デスクトップ環境でShift+Enterで改行
   it('adds newline on Shift+Enter (desktop)', async () => {
-    (Capacitor.isNativePlatform as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    (Capacitor.isNativePlatform as ReturnType<typeof vi.fn>).mockReturnValue(
+      false,
+    );
 
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
@@ -135,7 +139,9 @@ describe('ChatInput', () => {
 
   // モバイル環境でEnterキーは改行のみ
   it('does not send on Enter key press in mobile environment', async () => {
-    (Capacitor.isNativePlatform as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (Capacitor.isNativePlatform as ReturnType<typeof vi.fn>).mockReturnValue(
+      true,
+    );
 
     const user = userEvent.setup();
     render(<ChatInput onSendMessage={mockOnSendMessage} />);
@@ -156,7 +162,9 @@ describe('ChatInput', () => {
     };
     render(<TestWrapper />);
 
-    const textarea = screen.getByPlaceholderText('Type a message...') as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText(
+      'Type a message...',
+    ) as HTMLTextAreaElement;
     textarea.focus();
     expect(textarea).toHaveFocus();
 

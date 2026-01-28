@@ -9,7 +9,11 @@ import type { LLMModel } from '@/types/chat';
  */
 export function formatCost(model: LLMModel): string {
   // サブスクリプションモデル
-  if (!model.is_free && model.input_cost_per_1m === 0 && model.output_cost_per_1m === 0) {
+  if (
+    !model.is_free &&
+    model.input_cost_per_1m === 0 &&
+    model.output_cost_per_1m === 0
+  ) {
     return 'Subscription';
   }
   // 無料モデル

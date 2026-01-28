@@ -191,41 +191,41 @@ export async function* sendChatMessageStream(
     buffer = lines.pop() || ''; // 最後の不完全な行をバッファに戻す
 
     for (const line of lines) {
-        if (!line.trim()) {
-            continue;
-        }
+      if (!line.trim()) {
+        continue;
+      }
 
-        // data: ... の形式
-        const dataMatch = line.match(/^data: (.+)$/m);
+      // data: ... の形式
+      const dataMatch = line.match(/^data: (.+)$/m);
 
-        if (dataMatch && dataMatch[1]) {
-            try {
-                const data = JSON.parse(dataMatch[1]) as StreamChunk;
-                if (debug && data.type !== 'delta') {
-                    console.log('[API] Stream chunk:', data);
-                }
-                yield data;
+      if (dataMatch && dataMatch[1]) {
+        try {
+          const data = JSON.parse(dataMatch[1]) as StreamChunk;
+          if (debug && data.type !== 'delta') {
+            console.log('[API] Stream chunk:', data);
+          }
+          yield data;
 
-                // エラーが発生した場合
-                if (data.type === 'error') {
-                    const errorMsg = data.error || 'Unknown error';
-                    if (debug) {
-                        console.error('[API] Stream error:', errorMsg);
-                    }
-                    throw new ApiRequestError(500, errorMsg);
-                }
-            } catch (e) {
-                if (debug) {
-                    console.error('[API] Failed to parse SSE data:', line, e);
-                }
-                // エラーが ApiRequestError の場合は再スロー
-                if (e instanceof ApiRequestError) {
-                    throw e;
-                }
+          // エラーが発生した場合
+          if (data.type === 'error') {
+            const errorMsg = data.error || 'Unknown error';
+            if (debug) {
+              console.error('[API] Stream error:', errorMsg);
             }
+            throw new ApiRequestError(500, errorMsg);
+          }
+        } catch (e) {
+          if (debug) {
+            console.error('[API] Failed to parse SSE data:', line, e);
+          }
+          // エラーが ApiRequestError の場合は再スロー
+          if (e instanceof ApiRequestError) {
+            throw e;
+          }
         }
+      }
     }
-}
+  }
 }
 
 /**

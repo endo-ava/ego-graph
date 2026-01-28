@@ -27,52 +27,63 @@ export function useThreadSelection() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const isMobile = useIsMobile();
 
-  const selectThread = useCallback(async (threadId: string) => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    const previousView = activeView;
-
-    try {
-      const response = await getThreadMessages(threadId, {
-        signal: controller.signal,
-      });
-
-      setCurrentThreadId(threadId);
-
-      const messages: ChatMessage[] = response.messages.map((msg) => ({
-        id: msg.message_id,
-        role: msg.role,
-        content: msg.content,
-        timestamp: new Date(msg.created_at),
-        model_name: msg.model_name || undefined,
-      }));
-      setMessages(messages);
-
-      const lastAssistantMessage = [...response.messages]
-        .reverse()
-        .find((msg) => msg.role === 'assistant');
-      if (lastAssistantMessage?.model_name) {
-        setSelectedModel(lastAssistantMessage.model_name);
+  const selectThread = useCallback(
+    async (threadId: string) => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
 
-      setActiveView('chat');
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const previousView = activeView;
 
-      if (isMobile) {
-        setSidebarOpen(false);
+      try {
+        const response = await getThreadMessages(threadId, {
+          signal: controller.signal,
+        });
+
+        setCurrentThreadId(threadId);
+
+        const messages: ChatMessage[] = response.messages.map((msg) => ({
+          id: msg.message_id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(msg.created_at),
+          model_name: msg.model_name || undefined,
+        }));
+        setMessages(messages);
+
+        const lastAssistantMessage = [...response.messages]
+          .reverse()
+          .find((msg) => msg.role === 'assistant');
+        if (lastAssistantMessage?.model_name) {
+          setSelectedModel(lastAssistantMessage.model_name);
+        }
+
+        setActiveView('chat');
+
+        if (isMobile) {
+          setSidebarOpen(false);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+        setActiveView(previousView);
+        console.error('Failed to load thread messages:', error);
+        toast.error('スレッドの読み込みに失敗しました');
       }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return;
-      }
-      setActiveView(previousView);
-      console.error('Failed to load thread messages:', error);
-      toast.error('スレッドの読み込みに失敗しました');
-    }
-  }, [activeView, isMobile, setActiveView, setCurrentThreadId, setMessages, setSidebarOpen, setSelectedModel]);
+    },
+    [
+      activeView,
+      isMobile,
+      setActiveView,
+      setCurrentThreadId,
+      setMessages,
+      setSidebarOpen,
+      setSelectedModel,
+    ],
+  );
 
   return { selectThread };
 }

@@ -28,7 +28,10 @@ interface ChatStore {
   onSidebarClose: (() => void) | null;
   addMessage: (message: ChatMessage) => void;
   updateLastMessage: (content: string) => void;
-  updateLastMessageWithModel: (content: string, modelName: string | null) => void;
+  updateLastMessageWithModel: (
+    content: string,
+    modelName: string | null,
+  ) => void;
   setLastMessageError: (isError: boolean) => void;
   clearMessages: () => void;
   setMessages: (messages: ChatMessage[]) => void;

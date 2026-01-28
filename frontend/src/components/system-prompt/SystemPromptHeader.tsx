@@ -113,7 +113,10 @@ export function SystemPromptHeader({ onBack }: SystemPromptHeaderProps) {
               "
             >
               <div className="flex items-center justify-between gap-2 border-b border-border bg-accent/5 px-4 py-3">
-                <h3 id="guide-popover-title" className="font-mono text-sm font-semibold text-foreground tracking-tight">
+                <h3
+                  id="guide-popover-title"
+                  className="font-mono text-sm font-semibold text-foreground tracking-tight"
+                >
                   GUIDE: System Prompt Files
                 </h3>
                 <button
@@ -133,7 +136,11 @@ export function SystemPromptHeader({ onBack }: SystemPromptHeaderProps) {
                     stroke="currentColor"
                     className="h-4 w-4"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -141,8 +148,12 @@ export function SystemPromptHeader({ onBack }: SystemPromptHeaderProps) {
               <div className="px-4 py-3 text-sm max-h-[60vh] overflow-y-auto space-y-4">
                 {GUIDE_SECTIONS.map((section) => (
                   <div key={section.title} className="space-y-1.5">
-                    <p className="text-sm font-semibold text-foreground">{section.title}</p>
-                    <p className="text-muted-foreground leading-relaxed">{section.description}</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {section.title}
+                    </p>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {section.description}
+                    </p>
                     <p className="text-muted-foreground leading-relaxed">
                       主な記載項目: {section.keyPoints}
                     </p>
