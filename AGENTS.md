@@ -23,6 +23,7 @@ DuckDB を採用し、サーバーレス・ローカルファーストで動作�
 uv sync                          # 依存関係同期
 uv run pytest                     # 全テスト
 uv run ruff check .               # Lint
+uv run ruff check . --fix .       # Lint & Fix
 uv run ruff format .              # Format
 ```
 
