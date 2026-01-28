@@ -1,3 +1,4 @@
+---
 name: "tmux-api-debug"
 description: "Generic tmux-based API debugging workflow for cases like HTTP 4xx/5xx from an upstream provider, intermittent API failures, or when local reproduction is needed. Use when you need to run a backend in a tmux session, reproduce a request (including streaming), capture logs, iterate on minimal fixes, and shut down cleanly."
 allowed-tools: "Bash, Read, Write"

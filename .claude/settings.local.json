@@ -1,6 +1,11 @@
 {
   "permissions": {
     "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Read",
+      "Glob",
+      "Grep",
       "mcp__serena__list_dir",
       "mcp__serena__get_symbols_overview",
       "mcp__serena__activate_project",
@@ -23,19 +28,20 @@
       "Bash(uv run ruff:*)",
       "Bash(tree:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm test)",
+      "Bash(npm test:*)",
+      "Bash(npm lint:*)",
       "mcp__serena__find_file",
       "Bash(pkill:*)",
       "Skill(pr-review-extraction)",
       "WebSearch",
-      "Bash(npm test:*)",
       "Bash(npm view:*)",
       "Bash(uv run mypy:*)",
       "mcp__serena__think_about_task_adherence",
       "Bash(npm run test:run:*)",
       "Bash(uv run python3:*)",
       "Bash(eza:*)",
-      "Bash(fd:*)"
+      "Bash(fd:*)",
+      "Bash(npm run prepare:*)"
     ],
     "deny": [
       "Read(.env)",
@@ -49,7 +55,19 @@
       "Write(.env)",
       "Write(**/.env)",
       "Write(.env.production)",
-      "Write(**/.env.production)"
+      "Write(**/.env.production)",
+      "Bash(git add -A:*)",
+      "Bash(git add --all:*)",
+      "Bash(git add .:*)",
+      "Bash(git add -u:*)",
+      "Bash(git add *)",
+      "Bash(git commit -a:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)",
+      "Bash(git clean -fd:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
