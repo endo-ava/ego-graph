@@ -151,10 +151,20 @@ async def test_full_pipeline_success():
     )
     mock_storage.save_ingest_state = MagicMock()
 
+    mock_api_client = MagicMock()
+    mock_api_client.get_videos.return_value = []
+    mock_api_client.get_channels.return_value = []
+
     # Act
-    with patch(
-        "ingest.google_activity.pipeline.MyActivityCollector",
-        return_value=mock_collector,
+    with (
+        patch(
+            "ingest.google_activity.pipeline.MyActivityCollector",
+            return_value=mock_collector,
+        ),
+        patch(
+            "ingest.google_activity.pipeline.YouTubeAPIClient",
+            return_value=mock_api_client,
+        ),
     ):
         result = await run_account_pipeline(
             account_config=account_config,
@@ -209,10 +219,28 @@ async def test_pipeline_with_multiple_months():
     mock_storage.save_parquet.return_value = "events/test.parquet"
     mock_storage.save_ingest_state = MagicMock()
 
+    mock_api_client = MagicMock()
+    mock_api_client.get_videos.return_value = []
+    mock_api_client.get_channels.return_value = []
+
+    mock_api_client = MagicMock()
+    mock_api_client.get_videos.return_value = []
+    mock_api_client.get_channels.return_value = []
+
+    mock_api_client = MagicMock()
+    mock_api_client.get_videos.return_value = []
+    mock_api_client.get_channels.return_value = []
+
     # Act
-    with patch(
-        "ingest.google_activity.pipeline.MyActivityCollector",
-        return_value=mock_collector,
+    with (
+        patch(
+            "ingest.google_activity.pipeline.MyActivityCollector",
+            return_value=mock_collector,
+        ),
+        patch(
+            "ingest.google_activity.pipeline.YouTubeAPIClient",
+            return_value=mock_api_client,
+        ),
     ):
         result = await run_account_pipeline(
             account_config=account_config,
@@ -278,10 +306,20 @@ async def test_incremental_fetch_with_state():
     mock_storage.save_parquet.return_value = "events/test.parquet"
     mock_storage.save_ingest_state = MagicMock()
 
+    mock_api_client = MagicMock()
+    mock_api_client.get_videos.return_value = []
+    mock_api_client.get_channels.return_value = []
+
     # Act
-    with patch(
-        "ingest.google_activity.pipeline.MyActivityCollector",
-        return_value=mock_collector,
+    with (
+        patch(
+            "ingest.google_activity.pipeline.MyActivityCollector",
+            return_value=mock_collector,
+        ),
+        patch(
+            "ingest.google_activity.pipeline.YouTubeAPIClient",
+            return_value=mock_api_client,
+        ),
     ):
         result = await run_account_pipeline(
             account_config=account_config,
@@ -330,6 +368,10 @@ async def test_collector_failure_isolation():
     mock_storage.save_raw_json.return_value = "raw/test.json"
     mock_storage.save_parquet.return_value = "events/test.parquet"
     mock_storage.save_ingest_state = MagicMock()
+
+    mock_api_client = MagicMock()
+    mock_api_client.get_videos.return_value = []
+    mock_api_client.get_channels.return_value = []
 
     # Act
     with patch(
@@ -776,10 +818,20 @@ async def test_max_items_limit():
     mock_storage.save_parquet.return_value = "events/test.parquet"
     mock_storage.save_ingest_state = MagicMock()
 
+    mock_api_client = MagicMock()
+    mock_api_client.get_videos.return_value = []
+    mock_api_client.get_channels.return_value = []
+
     # Act
-    with patch(
-        "ingest.google_activity.pipeline.MyActivityCollector",
-        return_value=mock_collector,
+    with (
+        patch(
+            "ingest.google_activity.pipeline.MyActivityCollector",
+            return_value=mock_collector,
+        ),
+        patch(
+            "ingest.google_activity.pipeline.YouTubeAPIClient",
+            return_value=mock_api_client,
+        ),
     ):
         result = await run_account_pipeline(
             account_config=account_config,
