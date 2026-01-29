@@ -20,12 +20,16 @@ from backend.api.schemas import (
     ChatRequest,
     ChatResponse,
     ModelsResponse,
+    ToolInfo,
+    ToolsResponse,
     get_all_models,
     get_model,
 )
 from backend.config import BackendConfig
 from backend.dependencies import get_chat_db, get_config, verify_api_key
-from backend.infrastructure.repositories import DuckDBThreadRepository
+from backend.infrastructure.repositories import (
+    DuckDBThreadRepository,
+)
 from backend.usecases.chat import (
     ChatUseCase,
     ChatUseCaseRequest,
@@ -101,6 +105,58 @@ async def get_models_endpoint(_: None = Depends(verify_api_key)):
         "models": get_all_models(),
         "default_model": DEFAULT_MODEL,
     }
+
+
+@router.get("/tools", response_model=ToolsResponse)
+async def get_tools_endpoint(
+    config: BackendConfig = Depends(get_config),
+    _: None = Depends(verify_api_key),
+):
+    """利用可能なツール一覧を取得する。
+
+    R2設定が有効な場合、Spotifyツール群とYouTubeツール群を返します。
+
+    Returns:
+        ツール情報のリストを含む辞書
+    """
+    tools: list[ToolInfo] = []
+
+    if config.r2:
+        # Spotifyツール
+        tools.append(
+            ToolInfo(
+                name="get_top_tracks",
+                description="Spotifyトップトラックを取得します。",
+            )
+        )
+        tools.append(
+            ToolInfo(
+                name="get_listening_stats",
+                description="Spotify聴取統計を取得します。",
+            )
+        )
+
+        # YouTubeツール
+        tools.append(
+            ToolInfo(
+                name="get_watch_history",
+                description="YouTube視聴履歴を取得します。",
+            )
+        )
+        tools.append(
+            ToolInfo(
+                name="get_watching_stats",
+                description="YouTube視聴統計を取得します。",
+            )
+        )
+        tools.append(
+            ToolInfo(
+                name="get_top_channels",
+                description="YouTubeトップチャンネルを取得します。",
+            )
+        )
+
+    return ToolsResponse(tools=tools)
 
 
 @router.post("", response_model=ChatResponse)

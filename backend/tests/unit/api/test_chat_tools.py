@@ -656,3 +656,105 @@ class TestChatEndpointToolLoop:
 
             assert response.status_code == 504
             assert "timed out" in response.json()["detail"]
+
+
+class TestChatToolsEndpoint:
+    """/v1/chat/tools エンドポイントのテスト。"""
+
+    def test_tools_requires_api_key(self, test_client):
+        """API Keyが必要。"""
+        # Arrange
+        # Act
+        response = test_client.get("/v1/chat/tools")
+
+        # Assert
+        assert response.status_code == 401
+
+    def test_tools_returns_all_tools_when_r2_config_exists(
+        self, test_client, mock_backend_config
+    ):
+        """R2設定がある場合は全ツールを返す。"""
+        # Arrange
+        # mock_backend_configにはR2設定が含まれている
+
+        # Act
+        response = test_client.get(
+            "/v1/chat/tools",
+            headers={"X-API-Key": "test-backend-key"},
+        )
+
+        # Assert
+        assert response.status_code == 200
+        data = response.json()
+        assert "tools" in data
+        tools = data["tools"]
+
+        # Spotifyツール
+        assert any(t["name"] == "get_top_tracks" for t in tools)
+        assert any(t["name"] == "get_listening_stats" for t in tools)
+
+        # YouTubeツール
+        assert any(t["name"] == "get_watch_history" for t in tools)
+        assert any(t["name"] == "get_watching_stats" for t in tools)
+        assert any(t["name"] == "get_top_channels" for t in tools)
+
+        # 各ツールにdescriptionが含まれる
+        for tool in tools:
+            assert "name" in tool
+            assert "description" in tool
+            assert isinstance(tool["name"], str)
+            assert isinstance(tool["description"], str)
+
+    def test_tools_response_structure(self, test_client, mock_backend_config):
+        """レスポンス構造の検証。"""
+        # Arrange
+        # Act
+        response = test_client.get(
+            "/v1/chat/tools",
+            headers={"X-API-Key": "test-backend-key"},
+        )
+
+        # Assert
+        assert response.status_code == 200
+        data = response.json()
+
+        # ToolsResponse構造の検証
+        assert isinstance(data, dict)
+        assert "tools" in data
+        assert isinstance(data["tools"], list)
+
+    def test_tools_includes_spotify_tools(self, test_client, mock_backend_config):
+        """Spotifyツールが含まれる。"""
+        # Arrange
+        # Act
+        response = test_client.get(
+            "/v1/chat/tools",
+            headers={"X-API-Key": "test-backend-key"},
+        )
+
+        # Assert
+        assert response.status_code == 200
+        data = response.json()
+        tools = data["tools"]
+
+        # Spotifyツール
+        spotify_tools = [t for t in tools if "spotify" in t["description"].lower()]
+        assert len(spotify_tools) >= 2
+
+    def test_tools_includes_youtube_tools(self, test_client, mock_backend_config):
+        """YouTubeツールが含まれる。"""
+        # Arrange
+        # Act
+        response = test_client.get(
+            "/v1/chat/tools",
+            headers={"X-API-Key": "test-backend-key"},
+        )
+
+        # Assert
+        assert response.status_code == 200
+        data = response.json()
+        tools = data["tools"]
+
+        # YouTubeツール
+        youtube_tools = [t for t in tools if "youtube" in t["description"].lower()]
+        assert len(youtube_tools) >= 3

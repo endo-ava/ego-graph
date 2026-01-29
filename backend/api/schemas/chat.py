@@ -42,3 +42,25 @@ class ChatResponse(BaseModel):
     usage: dict | None = None
     thread_id: str
     model_name: str | None = None
+
+
+class ToolInfo(BaseModel):
+    """ツール情報。
+
+    Attributes:
+        name: ツール名
+        description: ツール説明
+    """
+
+    name: str
+    description: str
+
+
+class ToolsResponse(BaseModel):
+    """ツール一覧レスポンス。
+
+    Attributes:
+        tools: ツール情報のリスト
+    """
+
+    tools: list[ToolInfo]
