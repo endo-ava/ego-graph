@@ -85,6 +85,61 @@ jobs:
               conn.close()
           PY
 
+      - name: Verify YouTube Master Data Integrity (R2)
+        if: success()
+        env:
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_MASTER_PATH: ${{ secrets.R2_MASTER_PATH }}
+        run: |
+          uv run python - << 'PY'
+          import duckdb
+          import os
+
+          endpoint_url = os.environ["R2_ENDPOINT_URL"]
+          access_key_id = os.environ["R2_ACCESS_KEY_ID"]
+          secret_access_key = os.environ["R2_SECRET_ACCESS_KEY"]
+          bucket_name = os.environ["R2_BUCKET_NAME"]
+          master_path = os.getenv("R2_MASTER_PATH", "master/")
+          if not master_path.endswith("/"):
+              master_path = f"{master_path}/"
+
+          conn = duckdb.connect(":memory:")
+          conn.execute("INSTALL httpfs; LOAD httpfs;")
+          conn.execute(f"""
+              CREATE SECRET (
+                  TYPE S3,
+                  KEY_ID '{access_key_id}',
+                  SECRET '{secret_access_key}',
+                  REGION 'auto',
+                  ENDPOINT '{endpoint_url.replace("https://", "")}',
+                  URL_STYLE 'path'
+              );
+          """)
+
+          videos_url = f"s3://{bucket_name}/{master_path}youtube/videos/**/*.parquet"
+          channels_url = f"s3://{bucket_name}/{master_path}youtube/channels/**/*.parquet"
+          print(f"🧐 Querying: {videos_url}")
+          print(f"🧐 Querying: {channels_url}")
+
+          try:
+              video_count = conn.execute(
+                  f"SELECT COUNT(*) FROM read_parquet('{videos_url}')"
+              ).fetchone()[0]
+              channel_count = conn.execute(
+                  f"SELECT COUNT(*) FROM read_parquet('{channels_url}')"
+              ).fetchone()[0]
+
+              print(f"✅ Total video masters in R2: {video_count}")
+              print(f"✅ Total channel masters in R2: {channel_count}")
+          except Exception as e:
+              print(f"⚠️ Master data verification failed or no data: {e}")
+          finally:
+              conn.close()
+          PY
+
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4

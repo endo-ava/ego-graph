@@ -37,6 +37,7 @@ from backend.usecases.chat import (
     NoUserMessageError,
     ThreadNotFoundError,
 )
+from backend.usecases.tools import build_tool_registry
 
 logger = logging.getLogger(__name__)
 
@@ -119,42 +120,11 @@ async def get_tools_endpoint(
     Returns:
         ツール情報のリストを含む辞書
     """
-    tools: list[ToolInfo] = []
-
-    if config.r2:
-        # Spotifyツール
-        tools.append(
-            ToolInfo(
-                name="get_top_tracks",
-                description="Spotifyトップトラックを取得します。",
-            )
-        )
-        tools.append(
-            ToolInfo(
-                name="get_listening_stats",
-                description="Spotify聴取統計を取得します。",
-            )
-        )
-
-        # YouTubeツール
-        tools.append(
-            ToolInfo(
-                name="get_watch_history",
-                description="YouTube視聴履歴を取得します。",
-            )
-        )
-        tools.append(
-            ToolInfo(
-                name="get_watching_stats",
-                description="YouTube視聴統計を取得します。",
-            )
-        )
-        tools.append(
-            ToolInfo(
-                name="get_top_channels",
-                description="YouTubeトップチャンネルを取得します。",
-            )
-        )
+    tool_registry = build_tool_registry(config.r2)
+    tools = [
+        ToolInfo(name=tool.name, description=tool.description)
+        for tool in tool_registry.get_all_schemas()
+    ]
 
     return ToolsResponse(tools=tools)
 

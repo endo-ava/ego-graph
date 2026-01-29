@@ -11,25 +11,17 @@ from pydantic import BaseModel
 
 from backend.config import LLMConfig
 from backend.domain.models.llm import StreamChunk
-from backend.domain.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
-from backend.domain.tools.youtube.stats import (
-    GetTopChannelsTool,
-    GetWatchHistoryTool,
-    GetWatchingStatsTool,
-)
 from backend.infrastructure.llm import LLMClient, Message
 from backend.infrastructure.repositories import (
     AddMessageParams,
     DuckDBThreadRepository,
-    SpotifyRepository,
-    YouTubeRepository,
 )
 from backend.usecases.chat.system_prompt_builder import SystemPromptBuilder
 from backend.usecases.chat.tool_executor import (
     MaxIterationsExceeded,
     ToolExecutor,
 )
-from backend.usecases.tools import ToolRegistry
+from backend.usecases.tools import ToolRegistry, build_tool_registry
 from shared.config import R2Config
 
 logger = logging.getLogger(__name__)
@@ -302,22 +294,9 @@ class ChatUseCase:
         Returns:
             ToolRegistry: 構築されたツールレジストリ
         """
-        tool_registry = ToolRegistry()
-
+        tool_registry = build_tool_registry(self.r2_config)
         if self.r2_config:
-            # SpotifyRepository を作成してツールに渡す
-            spotify_repository = SpotifyRepository(self.r2_config)
-            tool_registry.register(GetTopTracksTool(spotify_repository))
-            tool_registry.register(GetListeningStatsTool(spotify_repository))
-            logger.debug("Registered Spotify tools")
-
-            # YouTubeRepository を作成してツールに渡す
-            youtube_repository = YouTubeRepository(self.r2_config)
-            tool_registry.register(GetWatchHistoryTool(youtube_repository))
-            tool_registry.register(GetWatchingStatsTool(youtube_repository))
-            tool_registry.register(GetTopChannelsTool(youtube_repository))
-            logger.debug("Registered YouTube tools")
-
+            logger.debug("Registered Spotify + YouTube tools")
         return tool_registry
 
     async def execute_stream(
