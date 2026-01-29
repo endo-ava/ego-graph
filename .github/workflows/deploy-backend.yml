@@ -59,7 +59,7 @@ jobs:
             cd /opt/egograph/repo
             git fetch origin main
             git checkout main
-            git pull --ff-only
+            git reset --hard origin/main
             /root/.local/bin/uv sync --all-packages
             sudo systemctl restart egograph-backend
             sleep 2
