@@ -105,16 +105,16 @@ cd /opt/egograph/repo
 uv sync --all-packages
 ```
 
- ### 4.1 DuckDB 拡張のインストール
+### 4.1 DuckDB 拡張のインストール
 
- **httpfs拡張とは？**
+**httpfs拡張とは？**
 
- DuckDBは標準ではローカルファイルしか読み込めません。
- `httpfs`（HTTP File System）拡張を入れると、以下が可能になります：
+DuckDBは標準ではローカルファイルしか読み込めません。
+`httpfs`（HTTP File System）拡張を入れると、以下が可能になります：
 
- - HTTP/HTTPS経由でリモートのファイルを読み込む
- - S3互換ストレージ（R2、AWS S3、MinIOなど）に直接アクセスする
- - 読み込んだファイルをローカルに保存せず、メモリ上でクエリできる
+- HTTP/HTTPS経由でリモートのファイルを読み込む
+- S3互換ストレージ（R2、AWS S3、MinIOなど）に直接アクセスする
+- 読み込んだファイルをローカルに保存せず、メモリ上でクエリできる
 
 ```bash
 uv run python -c "import duckdb; conn = duckdb.connect(); conn.execute('INSTALL httpfs;'); conn.execute('LOAD httpfs;'); print('httpfs installed successfully')"
@@ -139,7 +139,6 @@ sudo touch /etc/systemd/system/egograph-backend.service
 sudo nano /etc/systemd/system/egograph-backend.service
 ```
 
-
 ```ini
 [Unit]
 Description=EgoGraph Backend
@@ -160,6 +159,7 @@ WantedBy=multi-user.target
 ```
 
 起動前に.envを作成
+
 ```bash
 sudo nano /opt/egograph/repo/.env
 ```
@@ -254,10 +254,13 @@ CI を使わずに更新する場合:
 
 ```bash
 cd /opt/egograph/repo
-git pull
+git fetch origin main
+git reset --hard origin/main
 uv sync
 sudo systemctl restart egograph-backend
 ```
+
+**注意**: `git reset --hard` はローカルの変更を破棄します。本番環境での直接変更は推奨しません。
 
 ## 8. VM + Docker でのデプロイ（補足）
 
