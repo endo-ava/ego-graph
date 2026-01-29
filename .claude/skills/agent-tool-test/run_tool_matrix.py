@@ -132,6 +132,7 @@ def _stream_tool_call(
         "tool": tool_name,
         "llm_response": None,
         "events": [],
+        "error": None,
     }
 
     try:
@@ -158,8 +159,8 @@ def _stream_tool_call(
                     result["llm_response"] += chunk["delta"]
 
             return result
-    except httpx.HTTPError as exc:
-        result["llm_response"] = f"HTTP error: {exc}"
+    except httpx.RequestError as exc:
+        result["error"] = f"HTTP error: {exc}"
         return result
 
 
@@ -200,7 +201,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--api-key", default=os.getenv("API_KEY"))
     parser.add_argument(
         "--api-key-header",
-        default=os.getenv("API_KEY_HEADER", "X-API-Key"),
+        default=os.getenv("API_KEY_HEADER", "Authorization"),
     )
     parser.add_argument(
         "--models",
