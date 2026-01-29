@@ -28,6 +28,7 @@ class TestYouTubeQueryParams:
             conn=duckdb_conn,
             bucket="test-bucket",
             events_path="events/",
+            master_path="master/",
             start_date=date(2024, 1, 1),
             end_date=date(2024, 1, 31),
         )
@@ -53,18 +54,18 @@ class TestGetParquetPaths:
     def test_get_videos_parquet_path(self):
         """動画マスターのS3パスパターンを生成。"""
         # Arrange & Act
-        path = get_videos_parquet_path("my-bucket", "events/")
+        path = get_videos_parquet_path("my-bucket", "master/")
 
         # Assert
-        assert path == "s3://my-bucket/events/youtube/videos/**/*.parquet"
+        assert path == "s3://my-bucket/master/youtube/videos/**/*.parquet"
 
     def test_get_channels_parquet_path(self):
         """チャンネルマスターのS3パスパターンを生成。"""
         # Arrange & Act
-        path = get_channels_parquet_path("my-bucket", "events/")
+        path = get_channels_parquet_path("my-bucket", "master/")
 
         # Assert
-        assert path == "s3://my-bucket/events/youtube/channels/**/*.parquet"
+        assert path == "s3://my-bucket/master/youtube/channels/**/*.parquet"
 
 
 class TestGeneratePartitionPaths:
@@ -201,6 +202,7 @@ class TestGetWatchHistory:
                     conn=youtube_with_sample_data,
                     bucket=bucket,
                     events_path=events_path,
+                    master_path="master/",
                     start_date=date(2024, 1, 1),
                     end_date=date(2024, 1, 3),
                 )
@@ -211,7 +213,6 @@ class TestGetWatchHistory:
         assert "watch_id" in result[0]
         assert "watched_at_utc" in result[0]
         assert "video_title" in result[0]
-        assert "duration_seconds" in result[0]
 
     def test_filters_by_date_range(self, youtube_with_sample_data):
         """日付範囲でフィルタリング。"""
@@ -234,6 +235,7 @@ class TestGetWatchHistory:
                     conn=youtube_with_sample_data,
                     bucket=bucket,
                     events_path=events_path,
+                    master_path="master/",
                     start_date=date(2024, 1, 1),
                     end_date=date(2024, 1, 1),
                 )
@@ -263,6 +265,7 @@ class TestGetWatchHistory:
                     conn=youtube_with_sample_data,
                     bucket=bucket,
                     events_path=events_path,
+                    master_path="master/",
                     start_date=date(2024, 1, 1),
                     end_date=date(2024, 1, 3),
                 )
@@ -296,6 +299,7 @@ class TestGetWatchingStats:
                     conn=youtube_with_sample_data,
                     bucket=bucket,
                     events_path=events_path,
+                    master_path="master/",
                     start_date=date(2024, 1, 1),
                     end_date=date(2024, 1, 3),
                 )
@@ -329,6 +333,7 @@ class TestGetWatchingStats:
                     conn=youtube_with_sample_data,
                     bucket=bucket,
                     events_path=events_path,
+                    master_path="master/",
                     start_date=date(2024, 1, 1),
                     end_date=date(2024, 1, 3),
                 )
@@ -359,6 +364,7 @@ class TestGetWatchingStats:
                     conn=youtube_with_sample_data,
                     bucket=bucket,
                     events_path=events_path,
+                    master_path="master/",
                     start_date=date(2024, 1, 1),
                     end_date=date(2024, 1, 3),
                 )
@@ -391,6 +397,7 @@ class TestGetTopChannels:
                     conn=youtube_with_sample_data,
                     bucket=bucket,
                     events_path=events_path,
+                    master_path="master/",
                     start_date=date(2024, 1, 1),
                     end_date=date(2024, 1, 3),
                 )
@@ -424,6 +431,7 @@ class TestGetTopChannels:
                     conn=youtube_with_sample_data,
                     bucket=bucket,
                     events_path=events_path,
+                    master_path="master/",
                     start_date=date(2024, 1, 1),
                     end_date=date(2024, 1, 3),
                 )
@@ -453,6 +461,7 @@ class TestGetTopChannels:
                     conn=youtube_with_sample_data,
                     bucket=bucket,
                     events_path=events_path,
+                    master_path="master/",
                     start_date=date(2024, 1, 1),
                     end_date=date(2024, 1, 3),
                 )

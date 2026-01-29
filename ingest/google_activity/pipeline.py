@@ -7,6 +7,7 @@ from typing import Any
 from .collector import MyActivityCollector
 from .config import AccountConfig
 from .storage import YouTubeStorage
+from .youtube_api import QuotaExceededError, YouTubeAPIClient
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,8 @@ async def run_account_pipeline(
         3. 収集データを変換
         4. 生データ(JSON)をR2に保存
         5. イベントデータ(Parquet)をR2に保存（月次パーティショニング）
-        6. インジェスト状態を更新（全コンポーネント成功時のみ）
+        6. YouTube APIで動画・チャンネルのマスターデータを取得して保存
+        7. インジェスト状態を更新（全コンポーネント成功時のみ）
     """
     account_id = account_config.account_id
     logger.info(
@@ -77,7 +79,9 @@ async def run_account_pipeline(
                     latest_watched_at = latest_watched_at.replace(tzinfo=timezone.utc)
             except (ValueError, TypeError) as e:
                 logger.warning(
-                    "Failed to parse latest_watched_at from state: %s. Using after_timestamp.",
+                    "Failed to parse latest_watched_at "
+                    "from state: %s. "
+                    "Using after_timestamp.",
                     e,
                 )
                 latest_watched_at = None
@@ -165,12 +169,67 @@ async def run_account_pipeline(
 
         # 失敗したパーティションがある場合はstate更新をスキップ
         if failed_count > 0:
-            raise RuntimeError(
-                f"Failed to save events for {failed_count} partition(s): {', '.join(failed_months)}. "
-                f"Ingest state not updated."
-            )
+            failed_partitions = ", ".join(failed_months)
+            error_message = (
+                "Failed to save events for %d "
+                "partition(s): %s. "
+                "Ingest state not updated."
+            ) % (failed_count, failed_partitions)
+            raise RuntimeError(error_message)
 
-        # 6. インジェスト状態を更新（全コンポーネント成功時のみ）
+        # 6. YouTube APIで動画・チャンネルのマスターデータを取得して保存
+        video_ids = sorted(
+            {
+                event.get("video_id")
+                for event in transformed_events
+                if event.get("video_id")
+            }
+        )
+        if video_ids:
+            api_client = YouTubeAPIClient(account_config.youtube_api_key)
+            try:
+                video_items = api_client.get_videos(video_ids)
+            except QuotaExceededError as e:
+                raise RuntimeError("YouTube API quota exceeded") from e
+
+            if not video_items:
+                logger.warning("No video metadata returned for account=%s", account_id)
+            else:
+                video_master = [
+                    transform.transform_video_info(video) for video in video_items
+                ]
+                saved_videos_key = storage.save_master_parquet(
+                    data=video_master, prefix="youtube/videos"
+                )
+                if not saved_videos_key:
+                    raise RuntimeError("Failed to save video master data")
+
+                channel_ids = sorted(
+                    {
+                        video.get("snippet", {}).get("channelId")
+                        for video in video_items
+                        if video.get("snippet", {}).get("channelId")
+                    }
+                )
+                if channel_ids:
+                    channel_items = api_client.get_channels(channel_ids)
+                    if not channel_items:
+                        logger.warning(
+                            "No channel metadata returned for account=%s",
+                            account_id,
+                        )
+                    else:
+                        channel_master = [
+                            transform.transform_channel_info(channel)
+                            for channel in channel_items
+                        ]
+                        saved_channels_key = storage.save_master_parquet(
+                            data=channel_master, prefix="youtube/channels"
+                        )
+                        if not saved_channels_key:
+                            raise RuntimeError("Failed to save channel master data")
+
+        # 7. インジェスト状態を更新（全コンポーネント成功時のみ）
         # 最新のwatched_atを特定
         latest_event_watched_at = max(
             (event["watched_at_utc"] for event in transformed_events), default=None

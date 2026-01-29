@@ -61,6 +61,7 @@ class YouTubeRepository:
                 conn=conn,
                 bucket=self.r2_config.bucket_name,
                 events_path=self.r2_config.events_path,
+                master_path=self.r2_config.master_path,
                 start_date=start_date,
                 end_date=end_date,
             )

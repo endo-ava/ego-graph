@@ -607,7 +607,10 @@ async def test_account_independence_on_failure():
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_transform_integration():
-    """Transform モジュールが Collector と Storage の間で正しく動作することを検証する。"""
+    """Transform モジュールの動作を検証する。
+
+    Collector と Storage の間で正しく動くことを確認する。
+    """
     # Arrange
     raw_items = SAMPLE_WATCH_HISTORY
 
@@ -688,10 +691,8 @@ async def test_video_channel_api_integration():
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_end_to_end_with_api_enrichment():
-    """Collector → Transform → API Client → Storage のエンドツーエンドフローを検証する。
-
-    注: 現在の Pipeline 実装では API Client による補完は含まれていません。
-    このテストは、将来 API Client 統合を追加した場合の動作を確認するためのものです。
+    """Collector → Transform → API Client → Storage の
+    エンドツーエンドフローを検証する。
     """
     # Arrange
     account_config = AccountConfig(
@@ -715,9 +716,15 @@ async def test_end_to_end_with_api_enrichment():
     mock_storage.save_ingest_state = MagicMock()
 
     # Act: Pipeline を実行
-    with patch(
-        "ingest.google_activity.pipeline.MyActivityCollector",
-        return_value=mock_collector,
+    with (
+        patch(
+            "ingest.google_activity.pipeline.MyActivityCollector",
+            return_value=mock_collector,
+        ),
+        patch(
+            "ingest.google_activity.pipeline.YouTubeAPIClient",
+            return_value=mock_api_client,
+        ),
     ):
         result = await run_account_pipeline(
             account_config=account_config,
@@ -732,12 +739,9 @@ async def test_end_to_end_with_api_enrichment():
     assert result.collected_count == 2
     assert result.saved_count == 2
 
-    # 注: 将来、API Client 統合を追加した際に、
-    # 以下のような検証を追加します:
-    # - mock_api_client.get_videos が適切に呼ばれているか
-    # - mock_api_client.get_channels が適切に呼ばれているか
-    # - mock_storage.save_master_parquet が動画・チャンネルマスターに対して呼ばれているか
-    # - マスター情報がイベントデータに結合されているか
+    mock_api_client.get_videos.assert_called_once()
+    mock_api_client.get_channels.assert_called_once()
+    assert mock_storage.save_master_parquet.call_count == 2
 
 
 @pytest.mark.integration

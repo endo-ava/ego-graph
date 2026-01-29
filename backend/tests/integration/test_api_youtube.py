@@ -42,7 +42,6 @@ class TestWatchHistoryEndpoint:
             assert "video_title" in data[0]
             assert "channel_id" in data[0]
             assert "channel_name" in data[0]
-            assert "duration_seconds" in data[0]
             assert "video_url" in data[0]
 
     def test_get_watch_history_requires_api_key(self, test_client):

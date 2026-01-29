@@ -19,6 +19,7 @@ class YouTubeQueryParams:
     conn: duckdb.DuckDBPyConnection
     bucket: str
     events_path: str
+    master_path: str
     start_date: date
     end_date: date
 
@@ -26,8 +27,8 @@ class YouTubeQueryParams:
 # Parquetパスパターン
 YOUTUBE_WATCHES_PATH = "s3://{bucket}/{events_path}youtube/watch_history/**/*.parquet"
 YOUTUBE_WATCHES_PARTITION_PATH = "s3://{bucket}/{events_path}youtube/watch_history/year={year}/month={month}/**/*.parquet"
-YOUTUBE_VIDEOS_PATH = "s3://{bucket}/{events_path}youtube/videos/**/*.parquet"
-YOUTUBE_CHANNELS_PATH = "s3://{bucket}/{events_path}youtube/channels/**/*.parquet"
+YOUTUBE_VIDEOS_PATH = "s3://{bucket}/{master_path}youtube/videos/**/*.parquet"
+YOUTUBE_CHANNELS_PATH = "s3://{bucket}/{master_path}youtube/channels/**/*.parquet"
 
 
 def get_watches_parquet_path(bucket: str, events_path: str) -> str:
@@ -43,30 +44,30 @@ def get_watches_parquet_path(bucket: str, events_path: str) -> str:
     return YOUTUBE_WATCHES_PATH.format(bucket=bucket, events_path=events_path)
 
 
-def get_videos_parquet_path(bucket: str, events_path: str) -> str:
+def get_videos_parquet_path(bucket: str, master_path: str) -> str:
     """YouTube動画マスターのS3パスパターンを生成します。
 
     Args:
         bucket: R2バケット名
-        events_path: イベントデータのパスプレフィックス
+        master_path: マスターデータのパスプレフィックス
 
     Returns:
-        S3パスパターン（例: s3://egograph/events/youtube/videos/**/*.parquet）
+        S3パスパターン（例: s3://egograph/master/youtube/videos/**/*.parquet）
     """
-    return YOUTUBE_VIDEOS_PATH.format(bucket=bucket, events_path=events_path)
+    return YOUTUBE_VIDEOS_PATH.format(bucket=bucket, master_path=master_path)
 
 
-def get_channels_parquet_path(bucket: str, events_path: str) -> str:
+def get_channels_parquet_path(bucket: str, master_path: str) -> str:
     """YouTubeチャンネルマスターのS3パスパターンを生成します。
 
     Args:
         bucket: R2バケット名
-        events_path: イベントデータのパスプレフィックス
+        master_path: マスターデータのパスプレフィックス
 
     Returns:
-        S3パスパターン（例: s3://egograph/events/youtube/channels/**/*.parquet）
+        S3パスパターン（例: s3://egograph/master/youtube/channels/**/*.parquet）
     """
-    return YOUTUBE_CHANNELS_PATH.format(bucket=bucket, events_path=events_path)
+    return YOUTUBE_CHANNELS_PATH.format(bucket=bucket, master_path=master_path)
 
 
 def _generate_partition_paths(
@@ -151,8 +152,7 @@ def get_watch_history(
                 "video_title": str,
                 "channel_id": str,
                 "channel_name": str,
-                "duration_seconds": int,
-                "video_url": str
+        "video_url": str
             },
             ...
         ]
@@ -169,10 +169,8 @@ def get_watch_history(
             w.video_title,
             w.channel_id,
             w.channel_name,
-            v.duration_seconds,
             w.video_url
         FROM read_parquet(?) w
-        LEFT JOIN read_parquet(?) v ON w.video_id = v.video_id
         WHERE w.watched_at_utc::DATE BETWEEN ? AND ?
         ORDER BY w.watched_at_utc DESC
     """
@@ -186,11 +184,10 @@ def get_watch_history(
         limit,
     )
 
-    videos_path = get_videos_parquet_path(params.bucket, params.events_path)
     return execute_query(
         params.conn,
         query,
-        [partition_paths, videos_path, params.start_date, params.end_date],
+        [partition_paths, params.start_date, params.end_date],
     )
 
 
@@ -259,7 +256,7 @@ def get_watching_stats(
         granularity,
     )
 
-    videos_path = get_videos_parquet_path(params.bucket, params.events_path)
+    videos_path = get_videos_parquet_path(params.bucket, params.master_path)
     return execute_query(
         params.conn,
         query,
@@ -313,7 +310,7 @@ def get_top_channels(
         limit,
     )
 
-    videos_path = get_videos_parquet_path(params.bucket, params.events_path)
+    videos_path = get_videos_parquet_path(params.bucket, params.master_path)
     return execute_query(
         params.conn,
         query,
