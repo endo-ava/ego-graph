@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import sys
 from dataclasses import dataclass
@@ -92,13 +93,14 @@ def _iter_sse_events(response: httpx.Response):
     event_name: str | None = None
     for line in response.iter_lines():
         if not line:
+            event_name = None
             continue
         if line.startswith("event:"):
             event_name = line.split(":", 1)[1].strip()
             continue
         if line.startswith("data:"):
             payload = line.split(":", 1)[1].strip()
-            yield event_name, payload
+            yield event_name or "message", payload
 
 
 def _stream_tool_call(
@@ -132,28 +134,32 @@ def _stream_tool_call(
         "events": [],
     }
 
-    with client.stream(
-        "POST", url, json=payload, headers=headers, timeout=timeout
-    ) as resp:
-        if resp.status_code != 200:
-            result["llm_response"] = f"HTTP {resp.status_code}: {resp.text}"
+    try:
+        with client.stream(
+            "POST", url, json=payload, headers=headers, timeout=timeout
+        ) as resp:
+            if resp.status_code != 200:
+                result["llm_response"] = f"HTTP {resp.status_code}: {resp.text}"
+                return result
+
+            for event, data in _iter_sse_events(resp):
+                if not data:
+                    continue
+                try:
+                    chunk = json.loads(data)
+                except json.JSONDecodeError:
+                    continue
+
+                result["events"].append({"event": event, "data": chunk})
+
+                if chunk.get("delta"):
+                    if not result["llm_response"]:
+                        result["llm_response"] = ""
+                    result["llm_response"] += chunk["delta"]
+
             return result
-
-        for event, data in _iter_sse_events(resp):
-            if not event or not data:
-                continue
-            try:
-                chunk = json.loads(data)
-            except json.JSONDecodeError:
-                continue
-
-            result["events"].append({"event": event, "data": chunk})
-
-            if event == "delta" and chunk.get("delta"):
-                if not result["llm_response"]:
-                    result["llm_response"] = ""
-                result["llm_response"] += chunk["delta"]
-
+    except httpx.HTTPError as exc:
+        result["llm_response"] = f"HTTP error: {exc}"
         return result
 
 
@@ -191,6 +197,11 @@ def _parse_args() -> argparse.Namespace:
     today = date.today().strftime("%Y-%m-%d")
     parser = argparse.ArgumentParser(description="Run tool matrix test.")
     parser.add_argument("--api-url", default=DEFAULT_API_URL)
+    parser.add_argument("--api-key", default=os.getenv("API_KEY"))
+    parser.add_argument(
+        "--api-key-header",
+        default=os.getenv("API_KEY_HEADER", "X-API-Key"),
+    )
     parser.add_argument(
         "--models",
         default=None,
@@ -209,6 +220,8 @@ def main() -> int:
     args = _parse_args()
     api_url = args.api_url.rstrip("/")
     headers: dict[str, str] = {}
+    if args.api_key:
+        headers[args.api_key_header] = args.api_key
 
     with httpx.Client() as client:
         # モデルリストを取得
