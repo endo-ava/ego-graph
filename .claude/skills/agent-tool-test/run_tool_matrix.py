@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""全モデル × 全ツールの実行テストを行う。
+"""全モデル x 全ツールの実行テストを行う。
 
 使い方:
     uv run python .claude/skills/agent-tool-test/run_tool_matrix.py \
@@ -43,7 +43,7 @@ def _build_tool_cases(
     """APIから取得したツール情報からテストケースを構築します。
 
     Args:
-        tools: ツール情報のリスト（APIから取得）
+        tools: ツール情報のリスト(APIから取得)
         start_date: 開始日
         end_date: 終了日
         limit: リミット
