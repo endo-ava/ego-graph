@@ -53,7 +53,7 @@ class TestGetModel:
     def test_get_model_with_valid_id(self):
         """有効なモデルIDでモデルが返される。"""
         # Arrange
-        model_id = "xiaomi/mimo-v2-flash:free"
+        model_id = "deepseek/deepseek-v3.2"
 
         # Act
         model = get_model(model_id)
@@ -61,9 +61,9 @@ class TestGetModel:
         # Assert
         assert isinstance(model, LLMModel)
         assert model.id == MODELS_CONFIG[model_id].id
-        assert model.name == "MIMO v2 Flash"
+        assert model.name == "DeepSeek v3.2"
         assert model.provider == "openrouter"
-        assert model.is_free is True
+        assert model.is_free is False
 
     def test_get_model_with_all_preset_models(self):
         """すべてのプリセットモデルが取得できる。"""

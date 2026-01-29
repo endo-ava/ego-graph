@@ -139,7 +139,7 @@ class TestLLMClientFromConfig:
             openrouter_api_key=SecretStr("sk-or-test"),
             enable_web_search=True,
         )
-        model_id = "xiaomi/mimo-v2-flash:free"
+        model_id = "deepseek/deepseek-v3.2"
 
         # Act: from_configでLLMClientを作成
         client = LLMClient.from_config(config, model_id)

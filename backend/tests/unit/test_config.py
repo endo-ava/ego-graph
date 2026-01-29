@@ -17,7 +17,7 @@ class TestLLMConfig:
         config = LLMConfig.model_construct()
 
         # Assert: デフォルト値を検証
-        assert config.default_model == "xiaomi/mimo-v2-flash:free"
+        assert config.default_model == "deepseek/deepseek-v3.2"
         assert config.temperature == 0.7
         assert config.max_tokens == 2048
         assert config.enable_web_search is False
@@ -225,9 +225,7 @@ class TestBackendConfig:
         assert config.r2 is not None
         assert config.llm is not None
         assert config.llm.openai_api_key is not None
-        assert config.llm.openai_api_key.get_secret_value() == (
-            "sk-test-openai"
-        )
+        assert config.llm.openai_api_key.get_secret_value() == ("sk-test-openai")
         assert config.llm.anthropic_api_key is not None
         assert config.llm.anthropic_api_key.get_secret_value() == (
             "sk-ant-test-anthropic"

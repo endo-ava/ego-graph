@@ -49,7 +49,7 @@ class LLMConfig(BaseSettings):
     openrouter_api_key: SecretStr | None = Field(None, alias="OPENROUTER_API_KEY")
 
     # デフォルトモデル（未指定時のフォールバック）
-    default_model: str = Field("xiaomi/mimo-v2-flash:free", alias="DEFAULT_LLM_MODEL")
+    default_model: str = Field("deepseek/deepseek-v3.2", alias="DEFAULT_LLM_MODEL")
 
     # 生成パラメータ
     temperature: float = Field(0.7, alias="LLM_TEMPERATURE")

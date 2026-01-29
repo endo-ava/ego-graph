@@ -66,7 +66,7 @@ def mock_llm_config():
     # model_construct()を使って検証をスキップして直接構築
     return LLMConfig.model_construct(
         openrouter_api_key=SecretStr("test-api-key"),
-        default_model="xiaomi/mimo-v2-flash:free",
+        default_model="deepseek/deepseek-v3.2",
         temperature=0.7,
         max_tokens=2048,
     )
@@ -381,7 +381,7 @@ def test_client_with_chat_db(tmp_path, monkeypatch):
 
     # LLM APIキーとモデルを設定（モックLLMを使用）
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setenv("DEFAULT_LLM_MODEL", "xiaomi/mimo-v2-flash:free")
+    monkeypatch.setenv("DEFAULT_LLM_MODEL", "deepseek/deepseek-v3.2")
 
     # R2設定（ダミー）
     monkeypatch.setenv("R2_ENDPOINT_URL", "https://test.r2.cloudflarestorage.com")

@@ -28,22 +28,24 @@ class LLMModel(BaseModel):
 
 # 利用可能な LLM モデルの定義
 MODELS_CONFIG: dict[str, LLMModel] = {
-    "xiaomi/mimo-v2-flash:free": LLMModel(
-        id="xiaomi/mimo-v2-flash:free",
-        name="MIMO v2 Flash",
-        provider="openrouter",
-        input_cost_per_1m=0.0,
-        output_cost_per_1m=0.0,
-        is_free=True,
-    ),
-    "mistralai/devstral-2512:free": LLMModel(
-        id="mistralai/devstral-2512:free",
-        name="DevStral-2512",
-        provider="openrouter",
-        input_cost_per_1m=0.0,
-        output_cost_per_1m=0.0,
-        is_free=True,
-    ),
+    # MIMO v2 Flash - 廃止のためコメントアウト
+    # "xiaomi/mimo-v2-flash:free": LLMModel(
+    #     id="xiaomi/mimo-v2-flash:free",
+    #     name="MIMO v2 Flash",
+    #     provider="openrouter",
+    #     input_cost_per_1m=0.0,
+    #     output_cost_per_1m=0.0,
+    #     is_free=True,
+    # ),
+    # DevStral-2512 - 廃止のためコメントアウト
+    # "mistralai/devstral-2512:free": LLMModel(
+    #     id="mistralai/devstral-2512:free",
+    #     name="DevStral-2512",
+    #     provider="openrouter",
+    #     input_cost_per_1m=0.0,
+    #     output_cost_per_1m=0.0,
+    #     is_free=True,
+    # ),
     "x-ai/grok-4.1-fast": LLMModel(
         id="x-ai/grok-4.1-fast",
         name="Grok 4.1 Fast",
@@ -70,4 +72,4 @@ MODELS_CONFIG: dict[str, LLMModel] = {
     ),
 }
 
-DEFAULT_MODEL = "xiaomi/mimo-v2-flash:free"
+DEFAULT_MODEL = "deepseek/deepseek-v3.2"
