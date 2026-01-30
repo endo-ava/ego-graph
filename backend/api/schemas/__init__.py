@@ -3,7 +3,7 @@
 API用のリクエスト/レスポンススキーマを定義します。
 """
 
-from backend.api.schemas.chat import ChatRequest, ChatResponse
+from backend.api.schemas.chat import ChatRequest, ChatResponse, ToolInfo, ToolsResponse
 from backend.api.schemas.data import (
     ListeningStatsResponse,
     TopChannelResponse,
@@ -30,6 +30,8 @@ __all__ = [
     # Chat API スキーマ
     "ChatRequest",
     "ChatResponse",
+    "ToolInfo",
+    "ToolsResponse",
     # Data API スキーマ
     "TopTrackResponse",
     "ListeningStatsResponse",

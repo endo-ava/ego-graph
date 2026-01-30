@@ -57,11 +57,25 @@ class TestRunAccountPipeline:
                 "context": None,
             }
         ]
+        mock_transform.transform_video_info.return_value = {"video_id": "abc123"}
+        mock_transform.transform_channel_info.return_value = {"channel_id": "chan1"}
+
+        mock_api_client = MagicMock()
+        mock_api_client.get_videos.return_value = [
+            {"id": "abc123", "snippet": {"channelId": "chan1"}}
+        ]
+        mock_api_client.get_channels.return_value = [{"id": "chan1"}]
 
         # Act
-        with patch(
-            "ingest.google_activity.pipeline.MyActivityCollector",
-            return_value=mock_collector,
+        with (
+            patch(
+                "ingest.google_activity.pipeline.MyActivityCollector",
+                return_value=mock_collector,
+            ),
+            patch(
+                "ingest.google_activity.pipeline.YouTubeAPIClient",
+                return_value=mock_api_client,
+            ),
         ):
             result = await run_account_pipeline(
                 account_config=account_config,
@@ -104,11 +118,19 @@ class TestRunAccountPipeline:
 
         mock_transform = MagicMock()
         mock_transform.transform_watch_history_items.return_value = []
+        mock_transform.transform_video_info.return_value = {"video_id": "abc123"}
+        mock_transform.transform_channel_info.return_value = {"channel_id": "chan1"}
 
         # Act
-        with patch(
-            "ingest.google_activity.pipeline.MyActivityCollector",
-            return_value=mock_collector,
+        with (
+            patch(
+                "ingest.google_activity.pipeline.MyActivityCollector",
+                return_value=mock_collector,
+            ),
+            patch(
+                "ingest.google_activity.pipeline.YouTubeAPIClient",
+                return_value=MagicMock(),
+            ),
         ):
             result = await run_account_pipeline(
                 account_config=account_config,
@@ -168,8 +190,9 @@ class TestRunAccountPipeline:
         mock_storage.save_ingest_state = MagicMock()
 
         mock_transform = MagicMock()
-        # Note: account1 fails at collector step, so transform is never called for account1
-        # Therefore, first call to transform_watch_history_items is for account2
+        # Note: account1 fails at collector step, so transform is never called
+        # for account1. The first call to transform_watch_history_items is
+        # for account2
         mock_transform.transform_watch_history_items.return_value = [
             {
                 "watch_id": "test_watch_id_2",
@@ -183,11 +206,25 @@ class TestRunAccountPipeline:
                 "context": None,
             }
         ]
+        mock_transform.transform_video_info.return_value = {"video_id": "xyz789"}
+        mock_transform.transform_channel_info.return_value = {"channel_id": "chan2"}
+
+        mock_api_client = MagicMock()
+        mock_api_client.get_videos.return_value = [
+            {"id": "xyz789", "snippet": {"channelId": "chan2"}}
+        ]
+        mock_api_client.get_channels.return_value = [{"id": "chan2"}]
 
         # Act & Assert for account1 (fails)
-        with patch(
-            "ingest.google_activity.pipeline.MyActivityCollector",
-            return_value=mock_collector1,
+        with (
+            patch(
+                "ingest.google_activity.pipeline.MyActivityCollector",
+                return_value=mock_collector1,
+            ),
+            patch(
+                "ingest.google_activity.pipeline.YouTubeAPIClient",
+                return_value=mock_api_client,
+            ),
         ):
             result1 = await run_account_pipeline(
                 account_config=account1_config,
@@ -202,9 +239,15 @@ class TestRunAccountPipeline:
         assert result1.error is not None
 
         # Act & Assert for account2 (succeeds)
-        with patch(
-            "ingest.google_activity.pipeline.MyActivityCollector",
-            return_value=mock_collector2,
+        with (
+            patch(
+                "ingest.google_activity.pipeline.MyActivityCollector",
+                return_value=mock_collector2,
+            ),
+            patch(
+                "ingest.google_activity.pipeline.YouTubeAPIClient",
+                return_value=mock_api_client,
+            ),
         ):
             result2 = await run_account_pipeline(
                 account_config=account2_config,

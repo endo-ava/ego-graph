@@ -3,7 +3,10 @@
 from datetime import date
 from unittest.mock import MagicMock, patch
 
+from pydantic import SecretStr
+
 from backend.infrastructure.repositories.youtube_repository import YouTubeRepository
+from shared.config import R2Config
 
 
 class TestYouTubeRepository:
@@ -39,7 +42,6 @@ class TestYouTubeRepository:
         assert len(result) > 0
         assert "watch_id" in result[0]
         assert "video_title" in result[0]
-        assert "duration_seconds" in result[0]
 
     def test_get_watching_stats(self, youtube_with_sample_data):
         """視聴統計を取得。"""
@@ -111,10 +113,6 @@ class TestYouTubeRepository:
 
 def mock_r2_config():
     """モックR2設定。"""
-    from pydantic import SecretStr
-
-    from shared.config import R2Config
-
     return R2Config.model_construct(
         endpoint_url="https://test.r2.cloudflarestorage.com",
         access_key_id="test_key",
@@ -122,4 +120,5 @@ def mock_r2_config():
         bucket_name="test-bucket",
         raw_path="raw/",
         events_path="events/",
+        master_path="master/",
     )

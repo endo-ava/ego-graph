@@ -36,7 +36,7 @@ class GetTopTracksTool(ToolBase):
     @property
     def description(self) -> str:
         return (
-            "指定した期間（start_date から end_date）で最も再生された曲を取得します。"
+            "Spotifyの指定した期間（start_date から end_date）で最も再生された曲を取得します。"
             "再生回数の多い順にソートされます。"
         )
 
@@ -108,7 +108,7 @@ class GetListeningStatsTool(ToolBase):
     @property
     def description(self) -> str:
         return (
-            "指定した期間の視聴統計を取得します。"
+            "Spotifyの指定した期間の聴取統計を取得します。"
             "日別、週別、月別で集計できます。"
             "総再生時間、再生トラック数、ユニーク曲数を返します。"
         )

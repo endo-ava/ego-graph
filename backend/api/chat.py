@@ -20,12 +20,16 @@ from backend.api.schemas import (
     ChatRequest,
     ChatResponse,
     ModelsResponse,
+    ToolInfo,
+    ToolsResponse,
     get_all_models,
     get_model,
 )
 from backend.config import BackendConfig
 from backend.dependencies import get_chat_db, get_config, verify_api_key
-from backend.infrastructure.repositories import DuckDBThreadRepository
+from backend.infrastructure.repositories import (
+    DuckDBThreadRepository,
+)
 from backend.usecases.chat import (
     ChatUseCase,
     ChatUseCaseRequest,
@@ -33,6 +37,7 @@ from backend.usecases.chat import (
     NoUserMessageError,
     ThreadNotFoundError,
 )
+from backend.usecases.tools import build_tool_registry
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +106,27 @@ async def get_models_endpoint(_: None = Depends(verify_api_key)):
         "models": get_all_models(),
         "default_model": DEFAULT_MODEL,
     }
+
+
+@router.get("/tools", response_model=ToolsResponse)
+async def get_tools_endpoint(
+    config: BackendConfig = Depends(get_config),
+    _: None = Depends(verify_api_key),
+):
+    """利用可能なツール一覧を取得する。
+
+    R2設定が有効な場合、Spotifyツール群とYouTubeツール群を返します。
+
+    Returns:
+        ツール情報のリストを含む辞書
+    """
+    tool_registry = build_tool_registry(config.r2)
+    tools = [
+        ToolInfo(name=tool.name, description=tool.description)
+        for tool in tool_registry.get_all_schemas()
+    ]
+
+    return ToolsResponse(tools=tools)
 
 
 @router.post("", response_model=ChatResponse)

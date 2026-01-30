@@ -48,7 +48,7 @@ class WatchHistoryResponse(BaseModel):
         video_title: 動画タイトル
         channel_id: チャンネルID
         channel_name: チャンネル名
-        duration_seconds: 動画長（秒）
+        duration_seconds: 動画長（秒、未取得の場合はNone）
         video_url: 動画URL
     """
 
@@ -58,7 +58,7 @@ class WatchHistoryResponse(BaseModel):
     video_title: str
     channel_id: str
     channel_name: str
-    duration_seconds: int
+    duration_seconds: int | None = None
     video_url: str
 
 

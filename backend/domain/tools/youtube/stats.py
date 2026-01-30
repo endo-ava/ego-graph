@@ -36,7 +36,7 @@ class GetWatchHistoryTool(ToolBase):
     @property
     def description(self) -> str:
         return (
-            "指定した期間（start_date から end_date）の視聴履歴を取得します。"
+            "YouTubeの指定した期間（start_date から end_date）の視聴履歴を取得します。"
             "視聴時刻の降順で返されます。"
         )
 
@@ -115,7 +115,7 @@ class GetWatchingStatsTool(ToolBase):
     @property
     def description(self) -> str:
         return (
-            "指定した期間の視聴統計を取得します。"
+            "YouTubeの指定した期間の視聴統計を取得します。"
             "日別、週別、月別で集計できます。"
             "総視聴時間、視聴動画数、ユニーク動画数を返します。"
         )
@@ -192,7 +192,7 @@ class GetTopChannelsTool(ToolBase):
     @property
     def description(self) -> str:
         return (
-            "指定した期間（start_date から end_date）で最も視聴された"
+            "YouTubeの指定した期間（start_date から end_date）で最も視聴された"
             "チャンネルを取得します。視聴時間の多い順にソートされます。"
         )
 
