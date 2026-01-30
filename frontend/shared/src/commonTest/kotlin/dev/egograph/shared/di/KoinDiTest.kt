@@ -2,7 +2,8 @@ package dev.egograph.shared.di
 
 import dev.egograph.shared.repository.ThreadRepository
 import io.ktor.client.HttpClient
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertNotNull
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.test.KoinTest
@@ -21,6 +22,8 @@ class KoinDiTest : KoinTest {
         startKoin {
             modules(appModule)
         }.checkModules()
+
+        stopKoin()
     }
 
     @Test
@@ -30,7 +33,7 @@ class KoinDiTest : KoinTest {
         }
 
         val repository: ThreadRepository by inject()
-        assert(repository != null) { "ThreadRepository should be injected" }
+        assertNotNull(repository, "ThreadRepository should be injected")
 
         stopKoin()
     }
@@ -42,7 +45,7 @@ class KoinDiTest : KoinTest {
         }
 
         val httpClient: HttpClient by inject()
-        assert(httpClient != null) { "HttpClient should be injected" }
+        assertNotNull(httpClient, "HttpClient should be injected")
 
         stopKoin()
     }

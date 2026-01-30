@@ -59,6 +59,7 @@ kotlin {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotest.framework.engine)
                 implementation(libs.turbine)
+                implementation(libs.koin.test)
             }
         }
     }
