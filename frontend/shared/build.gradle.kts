@@ -37,6 +37,9 @@ kotlin {
                 implementation(libs.koin.core)
                 implementation(libs.koin.compose)
 
+                // Kermit Logging
+                implementation(libs.kermit)
+
                 // Kotlinx
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
