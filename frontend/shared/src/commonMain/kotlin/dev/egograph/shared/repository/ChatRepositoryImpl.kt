@@ -11,11 +11,13 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
+import io.ktor.utils.io.readAvailable
 
 /**
  * ChatRepositoryの実装
@@ -32,7 +34,10 @@ class ChatRepositoryImpl(
     }
 ) : ChatRepository {
 
-    override fun sendMessage(request: ChatRequest): Flow<RepositoryResult<StreamChunk>> = flow {
+    override fun sendMessage(request: ChatRequest): Flow<RepositoryResult<StreamChunk>> =
+        streamChatResponse(request)
+
+    override fun streamChatResponse(request: ChatRequest): Flow<RepositoryResult<StreamChunk>> = flow {
         try {
             val response = httpClient.post("$baseUrl/v1/chat") {
                 contentType(io.ktor.http.ContentType.Application.Json)
@@ -41,8 +46,26 @@ class ChatRepositoryImpl(
 
             when (response.status) {
                 HttpStatusCode.OK -> {
-                    val responseBody = response.body<String>()
-                    parseSSEChunks(responseBody)
+                    val channel = response.bodyAsChannel()
+                    val buffer = StringBuilder()
+                    val chunkBuffer = ByteArray(8192)
+
+                    while (!channel.isClosedForRead) {
+                        val readCount = channel.readAvailable(chunkBuffer, 0, chunkBuffer.size)
+                        if (readCount == -1) {
+                            break
+                        }
+                        if (readCount == 0) {
+                            continue
+                        }
+
+                        buffer.append(chunkBuffer.decodeToString(0, readCount))
+                        emitSseEventsFromBuffer(buffer)
+                    }
+
+                    if (buffer.isNotBlank()) {
+                        emitSseEvent(buffer.toString())
+                    }
                 }
                 else -> {
                     val errorDetail = try {
@@ -66,27 +89,52 @@ class ChatRepositoryImpl(
         }
     }
 
-    private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.parseSSEChunks(responseBody: String) {
-        val lines = responseBody.split("\n")
-        for (line in lines) {
-            if (line.startsWith("data: ")) {
-                try {
-                    val jsonData = line.substring(6)
-                    val chunk = json.decodeFromString(StreamChunk.serializer(), jsonData)
-                    emit(Result.success(chunk))
+    private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEventsFromBuffer(
+        buffer: StringBuilder
+    ) {
+        var delimiterIndex = buffer.indexOf("\n\n")
+        while (delimiterIndex >= 0) {
+            val event = buffer.substring(0, delimiterIndex)
+            buffer.delete(0, delimiterIndex + 2)
+            emitSseEvent(event)
+            delimiterIndex = buffer.indexOf("\n\n")
+        }
+    }
 
-                    if (chunk.type == StreamChunkType.ERROR) {
-                        throw ApiError.HttpError(
-                            code = 500,
-                            errorMessage = "Stream error",
-                            detail = chunk.error
-                        )
-                    }
-                } catch (e: Exception) {
-                    if (e is ApiError) throw e
-                    emit(Result.failure(ApiError.SerializationError(e)))
-                }
+    private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEvent(
+        event: String
+    ) {
+        if (event.isBlank()) {
+            return
+        }
+
+        val dataLines = event.lineSequence()
+            .map { it.trimEnd() }
+            .filter { it.startsWith("data: ") }
+            .toList()
+
+        for (line in dataLines) {
+            emitChunk(line.removePrefix("data: "))
+        }
+    }
+
+    private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitChunk(
+        data: String
+    ) {
+        try {
+            val chunk = json.decodeFromString(StreamChunk.serializer(), data)
+            emit(Result.success(chunk))
+
+            if (chunk.type == StreamChunkType.ERROR) {
+                throw ApiError.HttpError(
+                    code = 500,
+                    errorMessage = "Stream error",
+                    detail = chunk.error
+                )
             }
+        } catch (e: Exception) {
+            if (e is ApiError) throw e
+            emit(Result.failure(ApiError.SerializationError(e)))
         }
     }
 
