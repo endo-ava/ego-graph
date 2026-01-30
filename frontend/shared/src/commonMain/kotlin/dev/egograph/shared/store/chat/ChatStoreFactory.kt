@@ -34,6 +34,10 @@ internal sealed interface ChatView {
 
     data class ModelSelected(val modelId: String) : ChatView
 
+    data object MessageSendingStarted : ChatView
+    data class MessageSent(val messages: List<dev.egograph.shared.dto.ThreadMessage>, val threadId: String) : ChatView
+    data class MessageSendFailed(val error: String) : ChatView
+
     data object ErrorsCleared : ChatView
 }
 
@@ -134,6 +138,23 @@ private object ChatReducerImpl :
 
         is ChatView.ModelSelected -> copy(
             selectedModel = msg.modelId
+        )
+
+        is ChatView.MessageSendingStarted -> copy(
+            isSending = true,
+            messagesError = null
+        )
+
+        is ChatView.MessageSent -> copy(
+            isSending = false,
+            messages = msg.messages,
+            selectedThread = selectedThread?.copy(threadId = msg.threadId) ?: selectedThread, // If threadId changed (new thread)
+            messagesError = null
+        )
+
+        is ChatView.MessageSendFailed -> copy(
+            isSending = false,
+            messagesError = msg.error
         )
 
         is ChatView.ErrorsCleared -> copy(

@@ -4,9 +4,14 @@ import com.arkivanov.mvikotlin.extensions.coroutines.CoroutineExecutor
 import dev.egograph.shared.repository.ChatRepository
 import dev.egograph.shared.repository.MessageRepository
 import dev.egograph.shared.repository.ThreadRepository
+import dev.egograph.shared.dto.ChatRequest
+import dev.egograph.shared.dto.Message
+import dev.egograph.shared.dto.MessageRole
+import dev.egograph.shared.dto.ThreadMessage
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 import co.touchlab.kermit.Logger
 
 internal class ChatExecutor(
@@ -27,7 +32,81 @@ internal class ChatExecutor(
             is ChatIntent.LoadMessages -> loadMessages(intent.threadId)
             is ChatIntent.LoadModels -> loadModels()
             is ChatIntent.SelectModel -> dispatch(ChatView.ModelSelected(intent.modelId))
+            is ChatIntent.SendMessage -> sendMessage(intent.content)
             is ChatIntent.ClearErrors -> dispatch(ChatView.ErrorsCleared)
+        }
+    }
+
+    private fun sendMessage(content: String) {
+        if (content.isBlank()) return
+
+        val currentState = state()
+        if (currentState.isSending) return
+
+        dispatch(ChatView.MessageSendingStarted)
+
+        val historyMessages = currentState.messages.map {
+            Message(
+                role = it.role,
+                content = it.content
+            )
+        }
+
+        val newUserMessage = Message(
+            role = MessageRole.USER,
+            content = content
+        )
+
+        val apiMessages = historyMessages + newUserMessage
+        val currentThreadId = currentState.selectedThread?.threadId
+
+        scope.launch {
+            val request = ChatRequest(
+                messages = apiMessages,
+                stream = false,
+                threadId = currentThreadId,
+                modelName = currentState.selectedModel
+            )
+
+            val result = chatRepository.sendMessageSync(request)
+            
+            result.onSuccess { response ->
+                // Placeholder date since we don't have kotlinx-datetime
+                val now = "2025-01-01T00:00:00Z"
+                
+                val userThreadMessage = ThreadMessage(
+                    messageId = "temp-user-${Random.nextLong()}",
+                    threadId = response.threadId,
+                    userId = "user",
+                    role = MessageRole.USER,
+                    content = content,
+                    createdAt = now
+                )
+                
+                val assistantThreadMessage = ThreadMessage(
+                    messageId = response.id,
+                    threadId = response.threadId,
+                    userId = "assistant",
+                    role = MessageRole.ASSISTANT,
+                    content = response.message.content ?: "",
+                    createdAt = now,
+                    modelName = response.modelName
+                )
+                
+                val newMessages = currentState.messages + userThreadMessage + assistantThreadMessage
+                
+                dispatch(ChatView.MessageSent(newMessages, response.threadId))
+                
+                if (currentThreadId != response.threadId) {
+                    publish(ChatLabel.ThreadSelectionCompleted(response.threadId))
+                    loadThreads()
+                }
+                
+            }.onFailure { error ->
+                val message = "メッセージの送信に失敗しました: ${error.message}"
+                logger.e(message, error)
+                dispatch(ChatView.MessageSendFailed(message))
+            }
         }
     }
 

@@ -35,6 +35,7 @@ data class ChatState(
     val isLoadingThreads: Boolean = false,
     val isLoadingMessages: Boolean = false,
     val isLoadingModels: Boolean = false,
+    val isSending: Boolean = false,
     val threadsError: String? = null,
     val messagesError: String? = null,
     val modelsError: String? = null
@@ -49,7 +50,7 @@ data class ChatState(
      * いずれかの読み込み中フラグが有効かどうか
      */
     val isLoading: Boolean
-        get() = isLoadingThreads || isLoadingMessages || isLoadingModels
+        get() = isLoadingThreads || isLoadingMessages || isLoadingModels || isSending
 
     /**
      * いずれかのエラーが存在するかどうか
@@ -104,6 +105,13 @@ sealed interface ChatIntent {
      * @param modelId 選択するモデルのID
      */
     data class SelectModel(val modelId: String) : ChatIntent
+
+    /**
+     * メッセージを送信する
+     *
+     * @param content メッセージ本文
+     */
+    data class SendMessage(val content: String) : ChatIntent
 
     /**
      * エラーをクリアする
