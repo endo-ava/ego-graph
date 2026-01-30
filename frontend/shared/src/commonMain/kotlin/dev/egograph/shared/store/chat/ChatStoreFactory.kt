@@ -35,6 +35,7 @@ internal sealed interface ChatView {
     data class ModelSelected(val modelId: String) : ChatView
 
     data object MessageSendingStarted : ChatView
+    data class MessageStreamUpdated(val messages: List<dev.egograph.shared.dto.ThreadMessage>) : ChatView
     data class MessageSent(val messages: List<dev.egograph.shared.dto.ThreadMessage>, val threadId: String) : ChatView
     data class MessageSendFailed(val error: String) : ChatView
 
@@ -71,7 +72,7 @@ internal class ChatStoreFactory(
  * ChatViewメッセージをChatStateに変換します。
  * 純粋関数であり、副作用を持たない。
  */
-private object ChatReducerImpl :
+internal object ChatReducerImpl :
     com.arkivanov.mvikotlin.core.store.Reducer<ChatState, ChatView> {
 
     override fun ChatState.reduce(msg: ChatView): ChatState = when (msg) {
@@ -142,6 +143,12 @@ private object ChatReducerImpl :
 
         is ChatView.MessageSendingStarted -> copy(
             isSending = true,
+            messagesError = null
+        )
+
+        is ChatView.MessageStreamUpdated -> copy(
+            isSending = true,
+            messages = msg.messages,
             messagesError = null
         )
 

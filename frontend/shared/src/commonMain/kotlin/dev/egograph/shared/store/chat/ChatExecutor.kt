@@ -7,6 +7,7 @@ import dev.egograph.shared.repository.ThreadRepository
 import dev.egograph.shared.dto.ChatRequest
 import dev.egograph.shared.dto.Message
 import dev.egograph.shared.dto.MessageRole
+import dev.egograph.shared.dto.StreamChunkType
 import dev.egograph.shared.dto.ThreadMessage
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -60,53 +61,172 @@ internal class ChatExecutor(
         val apiMessages = historyMessages + newUserMessage
         val currentThreadId = currentState.selectedThread?.threadId
 
+        // Placeholder date since we don't have kotlinx-datetime
+        val now = "2025-01-01T00:00:00Z"
+        val provisionalThreadId = currentThreadId ?: "pending-thread-${Random.nextLong()}"
+
+        var userThreadMessage = ThreadMessage(
+            messageId = "temp-user-${Random.nextLong()}",
+            threadId = provisionalThreadId,
+            userId = "user",
+            role = MessageRole.USER,
+            content = content,
+            createdAt = now
+        )
+
+        var assistantThreadMessage: ThreadMessage? = null
+
+        val baseMessages = currentState.messages
+        dispatch(ChatView.MessageStreamUpdated(baseMessages + userThreadMessage))
+
         scope.launch {
             val request = ChatRequest(
                 messages = apiMessages,
-                stream = false,
+                stream = true,
                 threadId = currentThreadId,
                 modelName = currentState.selectedModel
             )
 
-            val result = chatRepository.sendMessageSync(request)
-            
-            result.onSuccess { response ->
-                // Placeholder date since we don't have kotlinx-datetime
-                val now = "2025-01-01T00:00:00Z"
-                
-                val userThreadMessage = ThreadMessage(
-                    messageId = "temp-user-${Random.nextLong()}",
-                    threadId = response.threadId,
-                    userId = "user",
-                    role = MessageRole.USER,
+            var resolvedThreadId: String? = currentThreadId
+            val shouldStream = request.stream == true
+
+            if (!shouldStream) {
+                sendMessageSyncFallback(
+                    request = request.copy(stream = false),
+                    baseMessages = baseMessages,
                     content = content,
-                    createdAt = now
+                    currentThreadId = currentThreadId
                 )
-                
-                val assistantThreadMessage = ThreadMessage(
-                    messageId = response.id,
-                    threadId = response.threadId,
-                    userId = "assistant",
-                    role = MessageRole.ASSISTANT,
-                    content = response.message.content ?: "",
-                    createdAt = now,
-                    modelName = response.modelName
-                )
-                
-                val newMessages = currentState.messages + userThreadMessage + assistantThreadMessage
-                
-                dispatch(ChatView.MessageSent(newMessages, response.threadId))
-                
-                if (currentThreadId != response.threadId) {
-                    publish(ChatLabel.ThreadSelectionCompleted(response.threadId))
+                return@launch
+            }
+
+            try {
+                chatRepository.streamChatResponse(request)
+                    .collect { result ->
+                        val chunk = result.getOrElse { throw it }
+                        val chunkThreadId = chunk.threadId?.takeIf { it.isNotBlank() }
+                        var updatedMessages = state().messages
+                        var updated = false
+
+                        if (chunkThreadId != null && chunkThreadId != resolvedThreadId) {
+                            resolvedThreadId = chunkThreadId
+                            userThreadMessage = userThreadMessage.copy(threadId = chunkThreadId)
+                            assistantThreadMessage = assistantThreadMessage?.copy(threadId = chunkThreadId)
+                            updatedMessages = updatedMessages.map { message ->
+                                when (message.messageId) {
+                                    userThreadMessage.messageId -> userThreadMessage
+                                    assistantThreadMessage?.messageId -> assistantThreadMessage ?: message
+                                    else -> message
+                                }
+                            }
+                            updated = true
+                        }
+
+                        if (chunk.type == StreamChunkType.DELTA) {
+                            val delta = chunk.delta.orEmpty()
+                            if (delta.isNotEmpty()) {
+                                val lastMessage = updatedMessages.lastOrNull()
+                                val updatedAssistant = if (lastMessage?.role == MessageRole.ASSISTANT) {
+                                    lastMessage.copy(content = lastMessage.content + delta)
+                                } else {
+                                    ThreadMessage(
+                                        messageId = "temp-assistant-${Random.nextLong()}",
+                                        threadId = resolvedThreadId ?: provisionalThreadId,
+                                        userId = "assistant",
+                                        role = MessageRole.ASSISTANT,
+                                        content = delta,
+                                        createdAt = now,
+                                        modelName = currentState.selectedModel
+                                    )
+                                }
+
+                                assistantThreadMessage = updatedAssistant
+                                updatedMessages = if (lastMessage?.role == MessageRole.ASSISTANT) {
+                                    updatedMessages.dropLast(1) + updatedAssistant
+                                } else {
+                                    updatedMessages + updatedAssistant
+                                }
+                                updated = true
+                            }
+                        }
+
+                        if (updated) {
+                            dispatch(ChatView.MessageStreamUpdated(updatedMessages))
+                        }
+                    }
+
+                val finalThreadId = resolvedThreadId ?: provisionalThreadId
+                val finalAssistantMessage = assistantThreadMessage?.copy(threadId = finalThreadId)
+                val finalMessages = state().messages.map { message ->
+                    when (message.messageId) {
+                        userThreadMessage.messageId -> userThreadMessage.copy(threadId = finalThreadId)
+                        finalAssistantMessage?.messageId -> finalAssistantMessage
+                        else -> message
+                    }
+                }
+
+                dispatch(ChatView.MessageSent(finalMessages, finalThreadId))
+
+                if (resolvedThreadId != null && currentThreadId != resolvedThreadId) {
+                    publish(ChatLabel.ThreadSelectionCompleted(resolvedThreadId))
                     loadThreads()
                 }
-                
-            }.onFailure { error ->
-                val message = "メッセージの送信に失敗しました: ${error.message}"
+            } catch (error: Exception) {
+                val message = "ストリーミングに失敗しました: ${error.message}"
                 logger.e(message, error)
-                dispatch(ChatView.MessageSendFailed(message))
+                sendMessageSyncFallback(
+                    request = request.copy(stream = false),
+                    baseMessages = baseMessages,
+                    content = content,
+                    currentThreadId = currentThreadId
+                )
             }
+        }
+    }
+
+    private suspend fun sendMessageSyncFallback(
+        request: ChatRequest,
+        baseMessages: List<ThreadMessage>,
+        content: String,
+        currentThreadId: String?
+    ) {
+        val result = chatRepository.sendMessageSync(request)
+
+        result.onSuccess { response ->
+            // Placeholder date since we don't have kotlinx-datetime
+            val now = "2025-01-01T00:00:00Z"
+
+            val userThreadMessage = ThreadMessage(
+                messageId = "temp-user-${Random.nextLong()}",
+                threadId = response.threadId,
+                userId = "user",
+                role = MessageRole.USER,
+                content = content,
+                createdAt = now
+            )
+
+            val assistantThreadMessage = ThreadMessage(
+                messageId = response.id,
+                threadId = response.threadId,
+                userId = "assistant",
+                role = MessageRole.ASSISTANT,
+                content = response.message.content ?: "",
+                createdAt = now,
+                modelName = response.modelName
+            )
+
+            val newMessages = baseMessages + userThreadMessage + assistantThreadMessage
+
+            dispatch(ChatView.MessageSent(newMessages, response.threadId))
+
+            if (currentThreadId != response.threadId) {
+                publish(ChatLabel.ThreadSelectionCompleted(response.threadId))
+                loadThreads()
+            }
+        }.onFailure { error ->
+            val message = "メッセージの送信に失敗しました: ${error.message}"
+            logger.e(message, error)
+            dispatch(ChatView.MessageSendFailed(message))
         }
     }
 
