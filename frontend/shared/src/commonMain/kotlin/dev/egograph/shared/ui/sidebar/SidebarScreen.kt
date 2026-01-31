@@ -1,0 +1,91 @@
+package dev.egograph.shared.ui.sidebar
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import cafe.adriel.voyager.core.screen.Screen
+import com.arkivanov.mvikotlin.extensions.coroutines.states
+import dev.egograph.shared.store.chat.ChatIntent
+import dev.egograph.shared.store.chat.ChatStore
+import dev.egograph.shared.ui.ChatScreen
+import dev.egograph.shared.ui.ThreadList
+import dev.egograph.shared.ui.systemprompt.SystemPromptEditorScreen
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
+
+enum class SidebarView {
+    Chat,
+    SystemPrompt
+}
+
+class SidebarScreen : Screen {
+    @Composable
+    override fun Content() {
+        val store = koinInject<ChatStore>()
+        val state by store.states.collectAsState(initial = store.state)
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+        val scope = rememberCoroutineScope()
+        var activeView by remember { mutableStateOf(SidebarView.Chat) }
+
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet {
+                    SidebarHeader(
+                        onNewChatClick = {
+                            activeView = SidebarView.Chat
+                            store.accept(ChatIntent.ClearThreadSelection)
+                            scope.launch { drawerState.close() }
+                        }
+                    )
+                    
+                    NavigationDrawerItem(
+                        label = { Text("System Prompt") },
+                        selected = activeView == SidebarView.SystemPrompt,
+                        onClick = {
+                            activeView = SidebarView.SystemPrompt
+                            scope.launch { drawerState.close() }
+                        },
+                        icon = { Text("⚙") },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+
+                    ThreadList(
+                        threads = state.threads,
+                        selectedThreadId = state.selectedThread?.threadId,
+                        isLoading = state.isLoadingThreads,
+                        error = state.threadsError,
+                        onThreadClick = { threadId ->
+                            activeView = SidebarView.Chat
+                            store.accept(ChatIntent.SelectThread(threadId))
+                            scope.launch { drawerState.close() }
+                        },
+                        onRefresh = {
+                            store.accept(ChatIntent.RefreshThreads)
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            },
+            gesturesEnabled = true
+        ) {
+            when (activeView) {
+                SidebarView.Chat -> ChatScreen().Content()
+                SidebarView.SystemPrompt -> SystemPromptEditorScreen().Content()
+            }
+        }
+    }
+}
