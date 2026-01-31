@@ -38,8 +38,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Build Release APK
-        run: ./gradlew :androidApp:assembleRelease
+      - name: Build Debug APK
+        run: ./gradlew :androidApp:assembleDebug
         working-directory: frontend
 
       - name: Create GitHub Release
@@ -47,7 +47,7 @@ jobs:
         with:
           tag_name: kmp-android-${{ github.run_number }}
           name: KMP Android APK (Build ${{ github.run_number }})
-          files: frontend/androidApp/build/outputs/apk/release/androidApp-release-unsigned.apk
+          files: frontend/androidApp/build/outputs/apk/debug/androidApp-debug.apk
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
