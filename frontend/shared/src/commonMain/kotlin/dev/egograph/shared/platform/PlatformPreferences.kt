@@ -25,6 +25,7 @@ expect class PlatformPreferences {
 object PlatformPrefsKeys {
     const val KEY_THEME = "theme"
     const val KEY_API_URL = "api_url"
+    const val KEY_API_KEY = "api_key"
 }
 
 object PlatformPrefsValues {
@@ -35,4 +36,5 @@ object PlatformPrefsValues {
 object PlatformPrefsDefaults {
     const val DEFAULT_THEME = PlatformPrefsValues.THEME_LIGHT
     const val DEFAULT_API_URL = ""
+    const val DEFAULT_API_KEY = ""
 }
