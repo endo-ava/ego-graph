@@ -61,9 +61,8 @@ internal class ChatExecutor(
         val apiMessages = historyMessages + newUserMessage
         val currentThreadId = currentState.selectedThread?.threadId
 
-        // Placeholder date since we don't have kotlinx-datetime
-        val now = "2025-01-01T00:00:00Z"
-        val provisionalThreadId = currentThreadId ?: "pending-thread-${Random.nextLong()}"
+        val now = getProvisionalIsoTimestamp()
+        val provisionalThreadId = currentThreadId ?: "pending-thread-${Random.nextLong(Long.MAX_VALUE)}"
 
         var userThreadMessage = ThreadMessage(
             messageId = "temp-user-${Random.nextLong()}",
@@ -193,8 +192,7 @@ internal class ChatExecutor(
         val result = chatRepository.sendMessageSync(request)
 
         result.onSuccess { response ->
-            // Placeholder date since we don't have kotlinx-datetime
-            val now = "2025-01-01T00:00:00Z"
+            val now = getProvisionalIsoTimestamp()
 
             val userThreadMessage = ThreadMessage(
                 messageId = "temp-user-${Random.nextLong()}",
@@ -266,12 +264,13 @@ internal class ChatExecutor(
                             dispatch(ChatView.ThreadSelected(fetchedThread))
                             loadMessages(threadId)
                         }.onFailure { error ->
-                            val message = "スレッドの取得に失敗しました: ${error.message}"
-                            logger.e(message, error)
-                        }
+                        val message = "スレッドの取得に失敗しました: ${error.message}"
+                        logger.e(message, error)
+                        dispatch(ChatView.ThreadsLoadFailed(message))
                     }
             }
         }
+    }
     }
 
     private fun clearThreadSelection() {
@@ -317,5 +316,9 @@ internal class ChatExecutor(
                 dispatch(ChatView.ModelsLoadFailed(message))
             }
         }
+    }
+
+    private fun getProvisionalIsoTimestamp(): String {
+        return "2025-01-01T00:00:00Z"
     }
 }
