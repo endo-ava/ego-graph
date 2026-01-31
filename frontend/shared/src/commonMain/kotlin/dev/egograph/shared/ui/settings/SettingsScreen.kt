@@ -59,7 +59,17 @@ fun SettingsScreen(
         )
     }
 
+    var apiKey by remember {
+        mutableStateOf(
+            preferences.getString(
+                PlatformPrefsKeys.KEY_API_KEY,
+                PlatformPrefsDefaults.DEFAULT_API_KEY,
+            ),
+        )
+    }
+
     var inputUrl by remember { mutableStateOf(apiUrl) }
+    var inputKey by remember { mutableStateOf(apiKey) }
 
     Scaffold(
         topBar = {
@@ -137,6 +147,19 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                OutlinedTextField(
+                    value = inputKey,
+                    onValueChange = { newValue ->
+                        inputKey = newValue
+                    },
+                    label = { Text("API Key") },
+                    placeholder = { Text("Optional: Enter your API key") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Button(
                     onClick = {
                         val urlToSave = inputUrl.trim()
@@ -147,6 +170,12 @@ fun SettingsScreen(
                             )
                             apiUrl = urlToSave
                         }
+                        val keyToSave = inputKey.trim()
+                        preferences.putString(
+                            PlatformPrefsKeys.KEY_API_KEY,
+                            keyToSave,
+                        )
+                        apiKey = keyToSave
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled =
