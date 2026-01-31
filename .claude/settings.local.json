@@ -52,7 +52,12 @@
       "mcp__serena__think_about_collected_information",
       "mcp__serena__find_file",
       "mcp__serena__think_about_task_adherence",
-      "mcp__sequential-thinking__sequentialthinking"
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(./gradlew tasks:*)",
+      "Bash(./gradlew ktlintCheck:*)",
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew :shared:test)",
+      "Bash(./gradlew:*)"
     ],
     "deny": [
       "Read(.env)",
