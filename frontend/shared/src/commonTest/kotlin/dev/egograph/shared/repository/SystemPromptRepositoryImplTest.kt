@@ -1,6 +1,6 @@
 package dev.egograph.shared.repository
 
-import io.ktor.client.HttpClient
+import dev.egograph.shared.network.HttpClientFactory
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -15,17 +15,21 @@ class SystemPromptRepositoryImplTest {
     @Test
     fun `SystemPromptRepositoryImpl can be instantiated`() {
         // Given
-        val httpClient = HttpClient()
+        val httpClient = HttpClientFactory().create()
 
-        // When
-        val repository = SystemPromptRepositoryImpl(httpClient, "http://localhost:8000")
+        try {
+            // When
+            val repository = SystemPromptRepositoryImpl(httpClient, "http://localhost:8000")
 
-        // Then
-        assertTrue(repository is SystemPromptRepository)
+            // Then
+            assertTrue(repository is SystemPromptRepository)
+        } finally {
+            httpClient.close()
+        }
     }
 
     @Test
-    fun `handles network error gracefully`() = runTest {
+    fun `network error type can be created`() = runTest {
         // This test documents expected behavior without actual HTTP calls
         // When MockEngine is available, add actual network error tests
 
