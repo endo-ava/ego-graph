@@ -38,6 +38,15 @@ val appModule =
             if (savedUrl.isNullOrBlank()) getDefaultBaseUrl() else savedUrl
         }
 
+        single<String>(
+            qualifier =
+                org.koin.core.qualifier
+                    .named("ApiKey"),
+        ) {
+            val preferences = getOrNull<PlatformPreferences>()
+            preferences?.getString(PlatformPrefsKeys.KEY_API_KEY, PlatformPrefsDefaults.DEFAULT_API_KEY) ?: ""
+        }
+
         single<HttpClient> {
             provideHttpClient()
         }
@@ -45,24 +54,16 @@ val appModule =
         single<ThreadRepository> {
             ThreadRepositoryImpl(
                 httpClient = get(),
-                baseUrl =
-                    get(
-                        qualifier =
-                            org.koin.core.qualifier
-                                .named("BaseUrl"),
-                    ),
+                baseUrl = get(qualifier = org.koin.core.qualifier.named("BaseUrl")),
+                apiKey = get(qualifier = org.koin.core.qualifier.named("ApiKey")),
             )
         }
 
         single<SystemPromptRepository> {
             SystemPromptRepositoryImpl(
                 httpClient = get(),
-                baseUrl =
-                    get(
-                        qualifier =
-                            org.koin.core.qualifier
-                                .named("BaseUrl"),
-                    ),
+                baseUrl = get(qualifier = org.koin.core.qualifier.named("BaseUrl")),
+                apiKey = get(qualifier = org.koin.core.qualifier.named("ApiKey")),
             )
         }
 
@@ -70,6 +71,7 @@ val appModule =
             MessageRepositoryImpl(
                 httpClient = get(),
                 baseUrl = get(qualifier = org.koin.core.qualifier.named("BaseUrl")),
+                apiKey = get(qualifier = org.koin.core.qualifier.named("ApiKey")),
             )
         }
 
@@ -77,6 +79,7 @@ val appModule =
             ChatRepositoryImpl(
                 httpClient = get(),
                 baseUrl = get(qualifier = org.koin.core.qualifier.named("BaseUrl")),
+                apiKey = get(qualifier = org.koin.core.qualifier.named("ApiKey")),
             )
         }
 
