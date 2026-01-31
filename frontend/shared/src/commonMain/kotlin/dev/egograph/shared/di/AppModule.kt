@@ -7,6 +7,7 @@ import dev.egograph.shared.platform.PlatformPreferences
 import dev.egograph.shared.platform.PlatformPrefsDefaults
 import dev.egograph.shared.platform.PlatformPrefsKeys
 import dev.egograph.shared.platform.getDefaultBaseUrl
+import dev.egograph.shared.platform.normalizeBaseUrl
 import dev.egograph.shared.repository.ChatRepository
 import dev.egograph.shared.repository.ChatRepositoryImpl
 import dev.egograph.shared.repository.MessageRepository
@@ -18,6 +19,7 @@ import dev.egograph.shared.repository.ThreadRepositoryImpl
 import dev.egograph.shared.store.chat.ChatStore
 import dev.egograph.shared.store.chat.ChatStoreFactory
 import io.ktor.client.HttpClient
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
@@ -29,19 +31,22 @@ import org.koin.dsl.module
 val appModule =
     module {
         single<String>(
-            qualifier =
-                org.koin.core.qualifier
-                    .named("BaseUrl"),
+            qualifier = named("BaseUrl"),
         ) {
             val preferences = getOrNull<PlatformPreferences>()
             val savedUrl = preferences?.getString(PlatformPrefsKeys.KEY_API_URL, PlatformPrefsDefaults.DEFAULT_API_URL)
-            if (savedUrl.isNullOrBlank()) getDefaultBaseUrl() else savedUrl
+            val rawUrl = if (savedUrl.isNullOrBlank()) getDefaultBaseUrl() else savedUrl
+            // URLを正規化してパスの重複を防ぐ
+            try {
+                normalizeBaseUrl(rawUrl)
+            } catch (e: IllegalArgumentException) {
+                // 無効なURLの場合はデフォルトを使用
+                getDefaultBaseUrl()
+            }
         }
 
         single<String>(
-            qualifier =
-                org.koin.core.qualifier
-                    .named("ApiKey"),
+            qualifier = named("ApiKey"),
         ) {
             val preferences = getOrNull<PlatformPreferences>()
             preferences?.getString(PlatformPrefsKeys.KEY_API_KEY, PlatformPrefsDefaults.DEFAULT_API_KEY) ?: ""
@@ -54,32 +59,32 @@ val appModule =
         single<ThreadRepository> {
             ThreadRepositoryImpl(
                 httpClient = get(),
-                baseUrl = get(qualifier = org.koin.core.qualifier.named("BaseUrl")),
-                apiKey = get(qualifier = org.koin.core.qualifier.named("ApiKey")),
+                baseUrl = get(qualifier = named("BaseUrl")),
+                apiKey = get(qualifier = named("ApiKey")),
             )
         }
 
         single<SystemPromptRepository> {
             SystemPromptRepositoryImpl(
                 httpClient = get(),
-                baseUrl = get(qualifier = org.koin.core.qualifier.named("BaseUrl")),
-                apiKey = get(qualifier = org.koin.core.qualifier.named("ApiKey")),
+                baseUrl = get(qualifier = named("BaseUrl")),
+                apiKey = get(qualifier = named("ApiKey")),
             )
         }
 
         single<MessageRepository> {
             MessageRepositoryImpl(
                 httpClient = get(),
-                baseUrl = get(qualifier = org.koin.core.qualifier.named("BaseUrl")),
-                apiKey = get(qualifier = org.koin.core.qualifier.named("ApiKey")),
+                baseUrl = get(qualifier = named("BaseUrl")),
+                apiKey = get(qualifier = named("ApiKey")),
             )
         }
 
         single<ChatRepository> {
             ChatRepositoryImpl(
                 httpClient = get(),
-                baseUrl = get(qualifier = org.koin.core.qualifier.named("BaseUrl")),
-                apiKey = get(qualifier = org.koin.core.qualifier.named("ApiKey")),
+                baseUrl = get(qualifier = named("BaseUrl")),
+                apiKey = get(qualifier = named("ApiKey")),
             )
         }
 

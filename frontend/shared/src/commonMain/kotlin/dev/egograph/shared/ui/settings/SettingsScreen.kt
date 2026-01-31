@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import dev.egograph.shared.platform.PlatformPreferences
 import dev.egograph.shared.platform.PlatformPrefsDefaults
 import dev.egograph.shared.platform.PlatformPrefsKeys
+import dev.egograph.shared.platform.normalizeBaseUrl
 import dev.egograph.shared.settings.AppTheme
 import dev.egograph.shared.settings.toAppTheme
 import dev.egograph.shared.settings.toStorageString
@@ -139,10 +140,17 @@ fun SettingsScreen(
                         inputUrl = newValue
                     },
                     label = { Text("API URL") },
-                    placeholder = { Text("https://api.example.com") },
+                    placeholder = { Text("https://api.egograph.dev") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    isError = inputUrl.isBlank() || (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://")),
+                    isError = inputUrl.isNotBlank() && (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://")),
+                    supportingText = {
+                        Text(
+                            text = "Production: https://api.egograph.dev | Tailscale: http://100.x.x.x:8000",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -164,11 +172,14 @@ fun SettingsScreen(
                     onClick = {
                         val urlToSave = inputUrl.trim()
                         if (urlToSave.isNotBlank() && (urlToSave.startsWith("http://") || urlToSave.startsWith("https://"))) {
+                            // URLを正規化して保存（末尾スラッシュを削除）
+                            val normalizedUrl = normalizeBaseUrl(urlToSave)
                             preferences.putString(
                                 PlatformPrefsKeys.KEY_API_URL,
-                                urlToSave,
+                                normalizedUrl,
                             )
-                            apiUrl = urlToSave
+                            apiUrl = normalizedUrl
+                            inputUrl = normalizedUrl
                         }
                         val keyToSave = inputKey.trim()
                         preferences.putString(
