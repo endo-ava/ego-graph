@@ -59,6 +59,8 @@ fun SettingsScreen(
         )
     }
 
+    var inputUrl by remember { mutableStateOf(apiUrl) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -87,33 +89,29 @@ fun SettingsScreen(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                AppTheme.LIGHT.displayName.also { lightText ->
-                    ThemeOption(
-                        text = lightText,
-                        selected = selectedTheme == AppTheme.LIGHT,
-                        onClick = {
-                            selectedTheme = AppTheme.LIGHT
-                            preferences.putString(
-                                PlatformPrefsKeys.KEY_THEME,
-                                AppTheme.LIGHT.toStorageString()
-                            )
-                        }
-                    )
-                }
+                ThemeOption(
+                    text = AppTheme.LIGHT.displayName,
+                    selected = selectedTheme == AppTheme.LIGHT,
+                    onClick = {
+                        selectedTheme = AppTheme.LIGHT
+                        preferences.putString(
+                            PlatformPrefsKeys.KEY_THEME,
+                            AppTheme.LIGHT.toStorageString()
+                        )
+                    }
+                )
 
-                AppTheme.DARK.displayName.also { darkText ->
-                    ThemeOption(
-                        text = darkText,
-                        selected = selectedTheme == AppTheme.DARK,
-                        onClick = {
-                            selectedTheme = AppTheme.DARK
-                            preferences.putString(
-                                PlatformPrefsKeys.KEY_THEME,
-                                AppTheme.DARK.toStorageString()
-                            )
-                        }
-                    )
-                }
+                ThemeOption(
+                    text = AppTheme.DARK.displayName,
+                    selected = selectedTheme == AppTheme.DARK,
+                    onClick = {
+                        selectedTheme = AppTheme.DARK
+                        preferences.putString(
+                            PlatformPrefsKeys.KEY_THEME,
+                            AppTheme.DARK.toStorageString()
+                        )
+                    }
+                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -124,26 +122,33 @@ fun SettingsScreen(
                 )
 
                 OutlinedTextField(
-                    value = apiUrl,
+                    value = inputUrl,
                     onValueChange = { newValue ->
-                        apiUrl = newValue
+                        inputUrl = newValue
                     },
                     label = { Text("API URL") },
                     placeholder = { Text("https://api.example.com") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = inputUrl.isBlank() || (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://"))
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
                     onClick = {
-                        preferences.putString(
-                            PlatformPrefsKeys.KEY_API_URL,
-                            apiUrl
-                        )
+                        val urlToSave = inputUrl.trim()
+                        if (urlToSave.isNotBlank() && (urlToSave.startsWith("http://") || urlToSave.startsWith("https://"))) {
+                            preferences.putString(
+                                PlatformPrefsKeys.KEY_API_URL,
+                                urlToSave
+                            )
+                            apiUrl = urlToSave
+                        }
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = inputUrl.trim().isNotEmpty() &&
+                             (inputUrl.trim().startsWith("http://") || inputUrl.trim().startsWith("https://"))
                 ) {
                     Text("Save Settings")
                 }

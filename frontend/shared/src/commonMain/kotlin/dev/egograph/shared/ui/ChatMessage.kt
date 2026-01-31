@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -85,6 +86,11 @@ private fun MessageAvatar(isUser: Boolean) {
                 .background(MaterialTheme.colorScheme.secondary),
             contentAlignment = Alignment.Center
         ) {
+            Text(
+                text = "U",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondary
+            )
         }
     } else {
         val color = MaterialTheme.colorScheme.tertiary

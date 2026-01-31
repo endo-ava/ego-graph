@@ -39,8 +39,7 @@ fun SidebarHeader(
         ) {
             Text(
                 text = "⚙",
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(end = 4.dp)
+                style = MaterialTheme.typography.labelLarge
             )
         }
         Spacer(modifier = Modifier.width(8.dp))

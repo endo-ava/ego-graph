@@ -1,6 +1,7 @@
 package dev.egograph.shared.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,7 +30,7 @@ fun ModelSelector(
 ) {
     val state by store.states.collectAsState(initial = store.state)
 
-    LaunchedEffect(state.models.isEmpty()) {
+    LaunchedEffect(Unit) {
         if (state.models.isEmpty() && !state.isLoadingModels) {
             store.accept(ChatIntent.LoadModels)
         }
@@ -93,7 +94,7 @@ fun ModelSelector(
                     models.forEach { model ->
                         DropdownMenuItem(
                             text = {
-                                androidx.compose.foundation.layout.Column {
+                                Column {
                                     Text(
                                         text = model.name,
                                         style = MaterialTheme.typography.bodyLarge
@@ -120,5 +121,11 @@ fun ModelSelector(
 
 private fun formatCost(model: LLMModel): String {
     if (model.isFree) return "Free"
-    return "$${model.inputCostPer1m}/1M"
+    val inputCost = model.inputCostPer1m
+    val outputCost = model.outputCostPer1m
+    return if (inputCost == outputCost) {
+        "$$inputCost/1M"
+    } else {
+        "In: $$inputCost/1M, Out: $$outputCost/1M"
+    }
 }

@@ -12,7 +12,8 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ThreadListLoading(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    message: String = "Loading..."
 ) {
     Box(
         modifier = modifier
@@ -21,7 +22,7 @@ fun ThreadListLoading(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Loading...",
+            text = message,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

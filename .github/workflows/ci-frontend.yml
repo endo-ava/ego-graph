@@ -15,7 +15,7 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -42,10 +42,6 @@ jobs:
 
       - name: Build KMP project
         run: ./gradlew build
-        working-directory: frontend
-
-      - name: Run tests
-        run: ./gradlew test
         working-directory: frontend
 
       - name: Upload APK artifact

@@ -2,7 +2,6 @@ package dev.egograph.shared.store.chat
 
 import com.arkivanov.mvikotlin.core.store.Store
 import com.arkivanov.mvikotlin.core.store.StoreFactory
-import com.arkivanov.mvikotlin.main.store.DefaultStoreFactory
 import dev.egograph.shared.repository.ChatRepository
 import dev.egograph.shared.repository.MessageRepository
 import dev.egograph.shared.repository.ThreadRepository

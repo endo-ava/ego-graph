@@ -1,4 +1,6 @@
-# Frontend App
+# Frontend App (Capacitor - Legacy)
+
+> **NOTE**: これは旧バージョンのフロントエンドです。Kotlin Multiplatform (KMP) への移行が完了しており、新規開発は `../frontend/` (KMP版) で行っています。このコードは参照用として残されています。
 
 React + Capacitor で構築されたクロスプラットフォームチャット UI（Web & モバイル）。
 

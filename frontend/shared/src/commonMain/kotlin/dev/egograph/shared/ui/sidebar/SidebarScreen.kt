@@ -41,6 +41,8 @@ class SidebarScreen : Screen {
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         var activeView by remember { mutableStateOf(SidebarView.Chat) }
+        val chatScreen = remember { ChatScreen() }
+        val promptScreen = remember { SystemPromptEditorScreen() }
 
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -89,10 +91,10 @@ class SidebarScreen : Screen {
             gesturesEnabled = true
         ) {
             when (activeView) {
-                SidebarView.Chat -> ChatScreen().Content()
-                SidebarView.SystemPrompt -> SystemPromptEditorScreen().Content()
+                SidebarView.Chat -> chatScreen.Content()
+                SidebarView.SystemPrompt -> promptScreen.Content()
                 SidebarView.Settings -> {
-                    val preferences = org.koin.compose.koinInject<dev.egograph.shared.platform.PlatformPreferences>()
+                    val preferences = koinInject<dev.egograph.shared.platform.PlatformPreferences>()
                     SettingsScreen(
                         preferences = preferences,
                         onBack = { activeView = SidebarView.Chat }
