@@ -5,13 +5,6 @@ import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.dto.ThreadMessage
 
 /**
- * チャット機能のMVIKotlin Store定義
- *
- * チャット機能の状態管理を行います。
- * スレッド一覧、メッセージ一覧、モデル選択、メッセージ送信などの機能を含みます。
- */
-
-/**
  * チャット画面の状態
  *
  * @property threads スレッド一覧

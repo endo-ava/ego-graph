@@ -31,6 +31,9 @@ subprojects {
     configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
         version.set("1.3.1")
         android.set(true)  // KMP projects require this
+        filter {
+            exclude { element -> element.file.path.contains("build/") }
+        }
     }
 }
 
