@@ -16,7 +16,8 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun SidebarHeader(
-    onNewChatClick: () -> Unit
+    onNewChatClick: () -> Unit,
+    onSettingsClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -30,6 +31,18 @@ fun SidebarHeader(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.weight(1f))
+        OutlinedButton(
+            onClick = onSettingsClick,
+            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+            modifier = Modifier.height(32.dp)
+        ) {
+            Text(
+                text = "⚙",
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(end = 4.dp)
+            )
+        }
+        Spacer(modifier = Modifier.padding(4.dp))
         OutlinedButton(
             onClick = onNewChatClick,
             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,

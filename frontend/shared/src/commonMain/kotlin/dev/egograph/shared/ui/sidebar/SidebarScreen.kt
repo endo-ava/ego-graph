@@ -22,13 +22,15 @@ import dev.egograph.shared.store.chat.ChatIntent
 import dev.egograph.shared.store.chat.ChatStore
 import dev.egograph.shared.ui.ChatScreen
 import dev.egograph.shared.ui.ThreadList
+import dev.egograph.shared.ui.settings.SettingsScreen
 import dev.egograph.shared.ui.systemprompt.SystemPromptEditorScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 enum class SidebarView {
     Chat,
-    SystemPrompt
+    SystemPrompt,
+    Settings
 }
 
 class SidebarScreen : Screen {
@@ -48,6 +50,10 @@ class SidebarScreen : Screen {
                         onNewChatClick = {
                             activeView = SidebarView.Chat
                             store.accept(ChatIntent.ClearThreadSelection)
+                            scope.launch { drawerState.close() }
+                        },
+                        onSettingsClick = {
+                            activeView = SidebarView.Settings
                             scope.launch { drawerState.close() }
                         }
                     )
@@ -85,6 +91,13 @@ class SidebarScreen : Screen {
             when (activeView) {
                 SidebarView.Chat -> ChatScreen().Content()
                 SidebarView.SystemPrompt -> SystemPromptEditorScreen().Content()
+                SidebarView.Settings -> {
+                    val preferences = org.koin.compose.koinInject<dev.egograph.shared.platform.PlatformPreferences>()
+                    SettingsScreen(
+                        preferences = preferences,
+                        onBack = { activeView = SidebarView.Chat }
+                    )
+                }
             }
         }
     }
