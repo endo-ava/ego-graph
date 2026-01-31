@@ -32,5 +32,4 @@
 -dontwarn io.ktor.**
 
 # Keep Kotlinx serialization
--keep,allowobfuscation,allowshrinking class kotlinx.serialization.json.** { *; }
 -keep,allowobfuscation,allowshrinking class kotlinx.serialization.** { *; }

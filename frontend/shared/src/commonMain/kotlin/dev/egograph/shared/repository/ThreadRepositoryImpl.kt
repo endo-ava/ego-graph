@@ -24,28 +24,32 @@ class ThreadRepositoryImpl(
     private val logger = Logger.withTag("ThreadRepository")
 
     override fun getThreads(limit: Int, offset: Int): Flow<RepositoryResult<ThreadListResponse>> = flow {
-        val response = httpClient.get("$baseUrl/v1/threads") {
-            parameter("limit", limit)
-            parameter("offset", offset)
-        }
+        try {
+            val response = httpClient.get("$baseUrl/v1/threads") {
+                parameter("limit", limit)
+                parameter("offset", offset)
+            }
 
-        when (response.status) {
-            HttpStatusCode.OK -> {
-                emit(Result.success(response.body<ThreadListResponse>()))
-            }
-            else -> {
-                val errorDetail = try { response.body<String>() } catch (e: Exception) {
-                    logger.w(e) { "Failed to read error response body" }
-                    null
+            when (response.status) {
+                HttpStatusCode.OK -> {
+                    emit(Result.success(response.body<ThreadListResponse>()))
                 }
-                emit(Result.failure(
-                    ApiError.HttpError(
-                        code = response.status.value,
-                        errorMessage = response.status.description,
-                        detail = errorDetail
-                    )
-                ))
+                else -> {
+                    val errorDetail = try { response.body<String>() } catch (e: Exception) {
+                        logger.w(e) { "Failed to read error response body" }
+                        null
+                    }
+                    emit(Result.failure(
+                        ApiError.HttpError(
+                            code = response.status.value,
+                            errorMessage = response.status.description,
+                            detail = errorDetail
+                        )
+                    ))
+                }
             }
+        } catch (e: Exception) {
+            emit(Result.failure(ApiError.NetworkError(e)))
         }
     }
 

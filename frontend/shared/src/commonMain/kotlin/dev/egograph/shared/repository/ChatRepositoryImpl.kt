@@ -125,8 +125,6 @@ class ChatRepositoryImpl(
     ) {
         try {
             val chunk = json.decodeFromString(StreamChunk.serializer(), data)
-            emit(Result.success(chunk))
-
             if (chunk.type == StreamChunkType.ERROR) {
                 throw ApiError.HttpError(
                     code = 500,
@@ -134,6 +132,8 @@ class ChatRepositoryImpl(
                     detail = chunk.error
                 )
             }
+
+            emit(Result.success(chunk))
         } catch (e: Exception) {
             if (e is ApiError) throw e
             emit(Result.failure(ApiError.SerializationError(e)))
