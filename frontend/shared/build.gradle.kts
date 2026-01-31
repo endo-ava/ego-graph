@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.ktlint)
 }
 
 kotlin {
@@ -58,8 +60,12 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotest.framework.engine)
+                implementation(libs.kotest.assertions.core)
+                implementation(libs.kotest.framework.datatest)
                 implementation(libs.turbine)
                 implementation(libs.koin.test)
+                implementation(libs.ktor.client.mock)
+                implementation(libs.mockk)
             }
         }
     }
@@ -74,17 +80,17 @@ android {
         buildConfigField(
             "String",
             "DEBUG_BASE_URL",
-            "\"${project.findProperty("EGOGRAPH_BASE_URL_DEBUG") ?: "http://10.0.2.2:8000"}\""
+            "\"${project.findProperty("EGOGRAPH_BASE_URL_DEBUG") ?: "http://10.0.2.2:8000"}\"",
         )
         buildConfigField(
             "String",
             "STAGING_BASE_URL",
-            "\"${project.findProperty("EGOGRAPH_BASE_URL_STAGING") ?: "http://192.168.0.2:8000"}\""
+            "\"${project.findProperty("EGOGRAPH_BASE_URL_STAGING") ?: "http://192.168.0.2:8000"}\"",
         )
         buildConfigField(
             "String",
             "RELEASE_BASE_URL",
-            "\"${project.findProperty("EGOGRAPH_BASE_URL_RELEASE") ?: "https://api.egograph.dev"}\""
+            "\"${project.findProperty("EGOGRAPH_BASE_URL_RELEASE") ?: "https://api.egograph.dev"}\"",
         )
     }
 

@@ -122,18 +122,39 @@ emulator -avd Pixel_7_API_34 &  # AVD 名は適宜変更
 # レポート: shared/build/reports/kover/htmlDebug/index.html
 ```
 
-## Lint とフォーマット
+### テストフレームワーク
+
+- **Kotest**: 記述的なテストDSL（`shouldBe`, `shouldNotBe`）
+- **Turbine**: Flowのテスト
+- **MockK**: モックライブラリ
+- **Ktor MockEngine**: HTTPモック
+
+## Lint と静的解析
 
 ```bash
-# Kotlin コードスタイルチェック
+# コードフォーマット（自動修正）
+./gradlew ktlintFormat
+
+# コードスタイルチェック
 ./gradlew ktlintCheck
 
-# 自動修正
-./gradlew ktlintFormat
+# 静的解析
+./gradlew detekt
+
+# まとめて実行
+./gradlew ktlintCheck detekt
 
 # Android Lint
 ./gradlew :androidApp:lintDebug
 ```
+
+### ツール構成
+
+| ツール           | 役割                                           |
+| :--------------- | :--------------------------------------------- |
+| **Ktlint**       | コードフォーマット（インデント、スペースなど） |
+| **Detekt**       | 静的解析（複雑さ、バグの可能性など）           |
+| **Android Lint** | Android固有のチェック                          |
 
 ## 主要機能
 

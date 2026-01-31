@@ -13,7 +13,6 @@ import org.koin.core.context.startKoin
  * Must be declared in AndroidManifest.xml as the application class.
  */
 class EgoGraphApplication : Application() {
-
     /**
      * Application entry point
      *
