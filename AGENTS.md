@@ -7,12 +7,12 @@ DuckDB を採用し、サーバーレス・ローカルファーストで動作�
 
 **モノレポ構成**: Python (uv workspace) + Node.js (npm)
 
-| コンポーネント | 役割           | 技術                   | エントリポイント            |
-| -------------- | -------------- | ---------------------- | --------------------------- |
-| **shared/**    | 共有ライブラリ | Python 3.13, Pydantic  | `__init__.py`（公開API）    |
-| **ingest/**    | データ収集     | Spotipy, DuckDB, boto3 | `ingest.spotify.main:main`  |
-| **backend/**   | Agent API      | FastAPI, DuckDB, LLM   | `backend.main:create_app()` |
-| **frontend/**  | チャット UI    | React 19, Capacitor 8  | `npm run dev`               |
+| コンポーネント | 役割           | 技術                                         | エントリポイント                     |
+| -------------- | -------------- | -------------------------------------------- | ------------------------------------ |
+| **shared/**    | 共有ライブラリ | Python 3.13, Pydantic                        | `__init__.py`（公開API）             |
+| **ingest/**    | データ収集     | Spotipy, DuckDB, boto3                       | `ingest.spotify.main:main`           |
+| **backend/**   | Agent API      | FastAPI, DuckDB, LLM                         | `backend.main:create_app()`          |
+| **frontend/**  | チャット UI    | Kotlin 2.3, Compose Multiplatform, MVIKotlin | `./gradlew :androidApp:installDebug` |
 
 ---
 
@@ -47,12 +47,11 @@ uv run python -m backend.dev_tools.chat_cli # デバッグ用LLM CLIツール
 ### Frontend（モバイル/Web）
 
 ```bash
-cd frontend && npm run dev        # Web 開発
-npm run test:run                  # テスト
-npm run lint                      # Lint チェック
-npm run lint:fix                  # Lint & Fix
-npm run format                    # Format
-npm run android:sync              # モバイル同期
+cd frontend
+./gradlew :androidApp:installDebug    # デバッグ実行
+./gradlew :shared:testDebugUnitTest   # テスト
+./gradlew ktlintCheck                 # Lint チェック
+./gradlew ktlintFormat                # Format
 ```
 
 ---
@@ -121,7 +120,7 @@ frontend/  (独立、Backend API のみ利用)
 | ------------------------ | ------------------------- | ------------------ |
 | `ci-backend.yml`         | `backend/**`, `shared/**` | Coverage → Codecov |
 | `ci-ingest.yml`          | `ingest/**`, `shared/**`  | Coverage → Codecov |
-| `ci-frontend.yml`        | `frontend/**`             | Vitest             |
+| `ci-frontend.yml`        | `frontend/**`             | Test (JUnit)       |
 | `job-ingest-spotify.yml` | Cron: `0 2,14 * * *`      | 1日2回実行         |
 
 ---
@@ -186,8 +185,8 @@ cursor.execute("SELECT * FROM events WHERE user_id = ?", (user_id,))
 
 ### Frontend
 
-- **フレームワーク**: Vitest
-- **実行**: `npm run test:run` / `npm run test:coverage`
+- **フレームワーク**: Kotest + JUnit
+- **実行**: `cd frontend && ./gradlew :shared:testDebugUnitTest`
 
 ---
 

@@ -2,12 +2,11 @@ name: Release Frontend (KMP Android APK)
 
 on:
   workflow_dispatch:
-  # Uncomment below to enable automatic releases on main branch pushes
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - "frontend/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
 
 permissions:
   contents: write

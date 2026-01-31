@@ -1,4 +1,8 @@
-# Capacitor アーキテクチャとプラグイン
+# Capacitor アーキテクチャとプラグイン [DEPRECATED]
+
+> **Warning**: 本プロジェクトは Kotlin Multiplatform (KMP) に移行しました。
+> このドキュメントは旧バージョン（React + Capacitor）の参照用に残されています。
+> 現在のフロントエンドについては `frontend/README.md` を参照してください。
 
 Capacitor の仕組みと、iOS/Android 共通の機能について解説する。
 プラットフォーム固有の情報は各デプロイガイドを参照。

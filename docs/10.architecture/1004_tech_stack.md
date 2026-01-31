@@ -6,21 +6,22 @@
 
 ## モノレポ構成
 
-| コンポーネント | 言語/FW | パッケージマネージャー | 主要ライブラリ |
-|--------------|---------|---------------------|--------------|
-| **shared/** | Python 3.13 | uv | Pydantic, python-dotenv |
-| **ingest/** | Python 3.13 | uv | Spotipy, DuckDB, boto3, pyarrow |
-| **backend/** | Python 3.13 | uv | FastAPI, Uvicorn, DuckDB |
-| **frontend/** | TypeScript 5 | npm | React 19, Capacitor 8, Vite 6 |
+| コンポーネント | 言語/FW     | パッケージマネージャー | 主要ライブラリ                   |
+| -------------- | ----------- | ---------------------- | -------------------------------- |
+| **shared/**    | Python 3.13 | uv                     | Pydantic, python-dotenv          |
+| **ingest/**    | Python 3.13 | uv                     | Spotipy, DuckDB, boto3, pyarrow  |
+| **backend/**   | Python 3.13 | uv                     | FastAPI, Uvicorn, DuckDB         |
+| **frontend/**  | Kotlin 2.3  | Gradle                 | Compose Multiplatform, MVIKotlin |
 
 - **Python Workspace**: uv で shared, ingest, backend を一元管理
-- **Node.js**: frontend のみ独立した npm パッケージ
+- **Frontend**: Kotlin Multiplatform (Gradle)
 
 ---
 
 ## 1. Data Storage
 
 ### DuckDB (OLAP 分析エンジン)
+
 - **用途**: SQL 分析、集計、台帳管理
 - **Extension**:
   - `parquet`: Parquet ファイルに対する高速クエリ
@@ -29,11 +30,13 @@
 - **理由**: 列指向処理による高速集計、ファイルベースで運用が簡単
 
 ### Qdrant Cloud (ベクトル検索)
+
 - **用途**: 意味検索、RAG のインデックス
 - **Free Tier**: 1GB メモリ（約10万ベクトル）
 - **理由**: マネージドサービスで運用不要、Backend のメモリ負荷を削減
 
 ### Cloudflare R2 (Object Storage)
+
 - **用途**: 正本（Parquet/Raw JSON）の永続化
 - **特徴**: S3 互換、egress 無料
 - **構造**:
@@ -87,15 +90,13 @@
 
 ## 5. Frontend（モバイル/Web アプリ）
 
-- **Framework**: React 19 + Vite 6
-- **Language**: TypeScript 5
-- **Mobile Runtime**: Capacitor 8（Android 対応）
-- **UI System**: Tailwind CSS 4 + shadcn/ui
-- **State Management**:
-  - Server State: TanStack Query (React Query)
-  - Client State: Zustand
-- **テスト**: Vitest
-- **実行環境**: モバイル（Android）/Web ブラウザ
+- **Framework**: Kotlin Multiplatform + Compose Multiplatform
+- **Language**: Kotlin 2.3
+- **Mobile Runtime**: Native Android
+- **UI System**: Material3 (Compose)
+- **State Management**: MVIKotlin
+- **テスト**: Kotest, Turbine
+- **実行環境**: モバイル（Android）
 
 詳細: [フロントエンド技術選定](../20.technical_selections/02_frontend.md)
 
@@ -105,27 +106,29 @@
 
 ### GitHub Actions
 
-| ワークフロー | トリガー | 用途 |
-|-------------|---------|------|
-| `ci-backend.yml` | `backend/**`, `shared/**` | Backend テスト・Lint |
-| `ci-ingest.yml` | `ingest/**`, `shared/**` | Ingest テスト・Lint |
-| `ci-frontend.yml` | `frontend/**` | Frontend テスト・Lint |
-| `job-ingest-spotify.yml` | Cron (1日2回) | Spotify データ収集 |
+| ワークフロー             | トリガー                  | 用途                    |
+| ------------------------ | ------------------------- | ----------------------- |
+| `ci-backend.yml`         | `backend/**`, `shared/**` | Backend テスト・Lint    |
+| `ci-ingest.yml`          | `ingest/**`, `shared/**`  | Ingest テスト・Lint     |
+| `ci-frontend.yml`        | `frontend/**`             | Frontend テスト (JUnit) |
+| `job-ingest-spotify.yml` | Cron (1日2回)             | Spotify データ収集      |
 
 ### テストツール
 
 - **Python**: pytest, pytest-cov, Ruff (Lint/Format)
-- **Frontend**: Vitest, ESLint, TypeScript
+- **Frontend**: Kotest, Ktlint, Detekt
 
 ---
 
 ## 7. Deployment Infrastructure
 
 ### 開発環境
+
 - **Python**: uv で依存関係管理（`uv sync`）
-- **Node.js**: npm で依存関係管理（`npm install`）
+- **Frontend**: Gradle で依存関係管理（`./gradlew build`）
 
 ### 本番環境（想定）
+
 - **Server**: VPS (Hetzner / Sakura) or GCP VM
 - **Storage**:
   - Cloudflare R2: 正本（Parquet/Raw JSON）
@@ -151,8 +154,8 @@
 3. **開発効率**: `uv sync` 一発で全 Python パッケージをセットアップ
 4. **CI/CD の最適化**: コンポーネント別テストで高速フィードバック
 
-### Mobile First (Capacitor)
+### Mobile First (KMP)
 
-1. **クロスプラットフォーム**: Web 技術で Android/iOS 対応
-2. **開発速度**: React エコシステムの恩恵（shadcn/ui, TanStack Query）
-3. **将来性**: Web でも動作するため、デスクトップ対応も容易
+1. **Native Performance**: ネイティブAndroidアプリとしての高速な動作
+2. **Type Safety**: Kotlinによる堅牢な型システムと、Backend (Pydantic) との連携
+3. **Future Proof**: iOS版も同じコードベース（Compose Multiplatform）で展開可能
