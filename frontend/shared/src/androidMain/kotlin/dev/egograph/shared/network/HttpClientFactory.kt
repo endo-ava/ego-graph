@@ -9,6 +9,7 @@ import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.client.utils.unwrapCancellationException
 import kotlinx.serialization.json.Json
 import co.touchlab.kermit.Logger as KermitLogger
 
@@ -18,7 +19,7 @@ import co.touchlab.kermit.Logger as KermitLogger
  * Creates a Ktor HttpClient configured with:
  * - Android engine
  * - Timeout settings (30s request, 10s connect)
- * - Retry logic (3 retries on server errors or network exceptions)
+ * - Retry logic (3 retries on server errors or exceptions)
  * - JSON content negotiation with kotlinx.serialization
  * - Request/response logging with Kermit
  */
@@ -33,7 +34,10 @@ actual class HttpClientFactory {
         install(HttpRequestRetry) {
             maxRetries = 3
             retryOnServerErrors(maxRetries = 3)
-            retryOnExceptionIf { request, cause -> cause is Exception }
+            retryOnExceptionIf { _, cause ->
+                val unwrapped = cause.unwrapCancellationException()
+                unwrapped is Exception
+            }
             exponentialDelay()
         }
 

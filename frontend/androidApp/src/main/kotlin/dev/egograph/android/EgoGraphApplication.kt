@@ -3,6 +3,7 @@ package dev.egograph.android
 import android.app.Application
 import dev.egograph.shared.di.androidModule
 import dev.egograph.shared.di.appModule
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 
 /**
@@ -23,6 +24,7 @@ class EgoGraphApplication : Application() {
 
         // Initialize Koin DI container
         startKoin {
+            androidContext(this@EgoGraphApplication)
             modules(appModule, androidModule)
         }
     }

@@ -19,22 +19,26 @@ class MessageRepositoryImpl(
 ) : MessageRepository {
 
     override fun getMessages(threadId: String): Flow<RepositoryResult<ThreadMessagesResponse>> = flow {
-        val response = httpClient.get("$baseUrl/v1/threads/$threadId/messages")
+        try {
+            val response = httpClient.get("$baseUrl/v1/threads/$threadId/messages")
 
-        when (response.status) {
-            HttpStatusCode.OK -> {
-                emit(Result.success(response.body<ThreadMessagesResponse>()))
+            when (response.status) {
+                HttpStatusCode.OK -> {
+                    emit(Result.success(response.body<ThreadMessagesResponse>()))
+                }
+                else -> {
+                    val errorDetail = try { response.body<String>() } catch (e: Exception) { null }
+                    emit(Result.failure(
+                        ApiError.HttpError(
+                            code = response.status.value,
+                            errorMessage = response.status.description,
+                            detail = errorDetail
+                        )
+                    ))
+                }
             }
-            else -> {
-                val errorDetail = try { response.body<String>() } catch (e: Exception) { null }
-                emit(Result.failure(
-                    ApiError.HttpError(
-                        code = response.status.value,
-                        errorMessage = response.status.description,
-                        detail = errorDetail
-                    )
-                ))
-            }
+        } catch (e: Exception) {
+            emit(Result.failure(ApiError.NetworkError(e)))
         }
     }
 }

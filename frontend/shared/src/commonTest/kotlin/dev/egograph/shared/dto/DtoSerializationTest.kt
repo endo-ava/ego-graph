@@ -113,6 +113,16 @@ class DtoSerializationTest {
     }
 
     @Test
+    fun `deserialize Usage from snake_case JSON`() {
+        val snakeCaseJson = """{"prompt_tokens":100,"completion_tokens":50,"total_tokens":150}"""
+        val decoded = json.decodeFromString<Usage>(snakeCaseJson)
+
+        assertEquals(100, decoded.promptTokens)
+        assertEquals(50, decoded.completionTokens)
+        assertEquals(150, decoded.totalTokens)
+    }
+
+    @Test
     fun `serialize and deserialize StreamChunk`() {
         val streamChunk = StreamChunk(
             type = StreamChunkType.DELTA,

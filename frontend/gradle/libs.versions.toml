@@ -1,7 +1,7 @@
 [versions]
 # Core versions
 kotlin = "2.3.0"
-compose = "1.10.0"
+compose = "1.9.0"
 agp = "8.6.0"
 
 # Libraries
@@ -21,6 +21,7 @@ kermit = "2.0.4"
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -57,6 +58,7 @@ mvikotlin-logging = { module = "com.arkivanov.mvikotlin:mvikotlin-logging", vers
 
 # Koin DI
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 koin-annotations = { module = "io.insert-koin:koin-annotations", version.ref = "koin" }
 koin-ksp-compiler = { module = "io.insert-koin:koin-ksp-compiler", version.ref = "koin" }

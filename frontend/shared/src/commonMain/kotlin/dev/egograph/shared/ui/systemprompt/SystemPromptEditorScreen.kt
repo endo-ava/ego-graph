@@ -43,14 +43,17 @@ class SystemPromptEditorScreen : Screen {
 
         suspend fun fetchContent() {
             isLoading = true
-            val result = repository.getSystemPrompt(selectedTab)
-            result.onSuccess {
-                originalContent = it.content
-                draftContent = it.content
-            }.onFailure {
-                snackbarHostState.showSnackbar("Error: ${it.message}")
+            try {
+                val result = repository.getSystemPrompt(selectedTab)
+                result.onSuccess {
+                    originalContent = it.content
+                    draftContent = it.content
+                }.onFailure {
+                    snackbarHostState.showSnackbar("Error: ${it.message}")
+                }
+            } finally {
+                isLoading = false
             }
-            isLoading = false
         }
 
         // Fetch content when tab changes
@@ -83,15 +86,18 @@ class SystemPromptEditorScreen : Screen {
                         onClick = {
                             scope.launch {
                                 isLoading = true
-                                val result = repository.updateSystemPrompt(selectedTab, draftContent)
-                                result.onSuccess {
-                                    originalContent = it.content
-                                    draftContent = it.content
-                                    snackbarHostState.showSnackbar("Saved successfully")
-                                }.onFailure {
-                                    snackbarHostState.showSnackbar("Error: ${it.message}")
+                                try {
+                                    val result = repository.updateSystemPrompt(selectedTab, draftContent)
+                                    result.onSuccess {
+                                        originalContent = it.content
+                                        draftContent = it.content
+                                        snackbarHostState.showSnackbar("Saved successfully")
+                                    }.onFailure {
+                                        snackbarHostState.showSnackbar("Error: ${it.message}")
+                                    }
+                                } finally {
+                                    isLoading = false
                                 }
-                                isLoading = false
                             }
                         },
                         enabled = !isLoading && draftContent != originalContent
