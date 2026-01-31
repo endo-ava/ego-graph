@@ -29,7 +29,7 @@ fun ModelSelector(
 ) {
     val state by store.states.collectAsState(initial = store.state)
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(state.models.isEmpty()) {
         if (state.models.isEmpty() && !state.isLoadingModels) {
             store.accept(ChatIntent.LoadModels)
         }

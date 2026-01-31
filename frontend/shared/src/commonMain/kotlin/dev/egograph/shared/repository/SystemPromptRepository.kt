@@ -1,5 +1,6 @@
 package dev.egograph.shared.repository
 
+import co.touchlab.kermit.Logger
 import dev.egograph.shared.dto.SystemPromptName
 import dev.egograph.shared.dto.SystemPromptResponse
 import dev.egograph.shared.dto.SystemPromptUpdateRequest
@@ -22,6 +23,8 @@ class SystemPromptRepositoryImpl(
     private val baseUrl: String
 ) : SystemPromptRepository {
 
+    private val logger = Logger.withTag("SystemPromptRepository")
+
     override suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse> {
         return try {
             val response = httpClient.get("$baseUrl/v1/system-prompts/${name.apiName}")
@@ -29,7 +32,10 @@ class SystemPromptRepositoryImpl(
             when (response.status) {
                 HttpStatusCode.OK -> Result.success(response.body())
                 else -> {
-                    val errorDetail = try { response.body<String>() } catch (e: Exception) { null }
+                    val errorDetail = try { response.body<String>() } catch (e: Exception) {
+                        logger.w(e) { "Failed to read error response body" }
+                        null
+                    }
                     Result.failure(
                         ApiError.HttpError(
                             code = response.status.value,
@@ -39,8 +45,6 @@ class SystemPromptRepositoryImpl(
                     )
                 }
             }
-        } catch (e: ApiError) {
-            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(ApiError.NetworkError(e))
         }
@@ -56,7 +60,10 @@ class SystemPromptRepositoryImpl(
             when (response.status) {
                 HttpStatusCode.OK -> Result.success(response.body())
                 else -> {
-                    val errorDetail = try { response.body<String>() } catch (e: Exception) { null }
+                    val errorDetail = try { response.body<String>() } catch (e: Exception) {
+                        logger.w(e) { "Failed to read error response body" }
+                        null
+                    }
                     Result.failure(
                         ApiError.HttpError(
                             code = response.status.value,
@@ -66,8 +73,6 @@ class SystemPromptRepositoryImpl(
                     )
                 }
             }
-        } catch (e: ApiError) {
-            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(ApiError.NetworkError(e))
         }

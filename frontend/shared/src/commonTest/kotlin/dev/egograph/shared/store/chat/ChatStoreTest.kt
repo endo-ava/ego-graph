@@ -44,8 +44,7 @@ class ChatStoreTest {
 
         store.accept(ChatIntent.LoadThreads)
 
-        // ストアは非同期で処理を開始するため、最初にローディング状態になる
-        // 実際のデータはリポジトリのモックが必要なので、ここでは状態遷移のみ確認
+        assertTrue(store.state.isLoadingThreads)
     }
 
     @Test
@@ -62,11 +61,9 @@ class ChatStoreTest {
             lastMessageAt = "2024-01-01"
         )
 
-        // 選択前にスレッドを状態に追加（実際の使用ではリポジトリから取得）
         store.accept(ChatIntent.SelectThread(thread.threadId))
 
-        // スレッド選択の副作用としてEffectが発行されることを検証
-        // 実際のアプリケーションではEffectを監視してUIを更新
+        assertEquals(thread, store.state.selectedThread)
     }
 
     @Test
@@ -121,6 +118,21 @@ class ChatStoreTest {
 
                     override fun executeIntent(intent: ChatIntent) {
                         when (intent) {
+                            is ChatIntent.LoadThreads -> {
+                                callbacks.onMessage(ChatView.ThreadsLoadingStarted)
+                            }
+                            is ChatIntent.SelectThread -> {
+                                val thread = Thread(
+                                    threadId = intent.threadId,
+                                    userId = "user1",
+                                    title = "Test Thread",
+                                    preview = "Preview",
+                                    messageCount = 5,
+                                    createdAt = "2024-01-01",
+                                    lastMessageAt = "2024-01-01"
+                                )
+                                callbacks.onMessage(ChatView.ThreadSelected(thread))
+                            }
                             is ChatIntent.SelectModel -> {
                                 callbacks.onMessage(ChatView.ModelSelected(intent.modelId))
                             }
@@ -142,6 +154,12 @@ class ChatStoreTest {
             },
             reducer = object : com.arkivanov.mvikotlin.core.store.Reducer<ChatState, ChatView> {
                 override fun ChatState.reduce(msg: ChatView): ChatState = when (msg) {
+                    is ChatView.ThreadsLoadingStarted -> copy(isLoadingThreads = true, threadsError = null)
+                    is ChatView.ThreadSelected -> copy(
+                        selectedThread = msg.thread,
+                        messages = emptyList(),
+                        messagesError = null
+                    )
                     is ChatView.ModelSelected -> copy(selectedModel = msg.modelId)
                     is ChatView.ThreadSelectionCleared -> copy(
                         selectedThread = null,

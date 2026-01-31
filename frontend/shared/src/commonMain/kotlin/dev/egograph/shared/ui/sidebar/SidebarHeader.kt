@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -42,7 +43,7 @@ fun SidebarHeader(
                 modifier = Modifier.padding(end = 4.dp)
             )
         }
-        Spacer(modifier = Modifier.padding(4.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         OutlinedButton(
             onClick = onNewChatClick,
             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,

@@ -35,7 +35,7 @@ EgoGraph エージェントと対話するための ChatGPT ライクなイン�
 
 1.  依存関係のインストール:
     ```bash
-    cd frontend
+    cd frontend-capacitor
     npm install
     ```
 2.  `.env` の設定:

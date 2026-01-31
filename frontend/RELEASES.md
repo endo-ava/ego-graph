@@ -78,7 +78,7 @@ EgoGraph Android アプリを **React + Capacitor** から **Kotlin Multiplatfor
 
 #### MVIKotlin パターン
 
-```
+```text
 User Action → Intent → Executor → Message → Reducer → State → UI
 ```
 
