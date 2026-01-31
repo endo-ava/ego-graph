@@ -31,7 +31,7 @@ if (updaterUrl) {
 }
 
 const config: CapacitorConfig = {
-  appId: 'com.egograph.app',
+  appId: 'com.egograph.app.legacy',
   appName: 'EgoGraph',
   webDir: 'dist',
   server: {
