@@ -71,11 +71,30 @@ android {
 
     defaultConfig {
         minSdk = 24
+        buildConfigField(
+            "String",
+            "DEBUG_BASE_URL",
+            "\"${project.findProperty("EGOGRAPH_BASE_URL_DEBUG") ?: "http://10.0.2.2:8000"}\""
+        )
+        buildConfigField(
+            "String",
+            "STAGING_BASE_URL",
+            "\"${project.findProperty("EGOGRAPH_BASE_URL_STAGING") ?: "http://192.168.0.2:8000"}\""
+        )
+        buildConfigField(
+            "String",
+            "RELEASE_BASE_URL",
+            "\"${project.findProperty("EGOGRAPH_BASE_URL_RELEASE") ?: "https://api.egograph.dev"}\""
+        )
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 }
 
