@@ -3,11 +3,9 @@ package dev.egograph.shared.repository
 import dev.egograph.shared.dto.ChatRequest
 import dev.egograph.shared.dto.ChatResponse
 import dev.egograph.shared.dto.LLMModel
-import dev.egograph.shared.dto.Message
 import dev.egograph.shared.dto.StreamChunk
 import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.dto.ThreadListResponse
-import dev.egograph.shared.dto.ThreadMessage
 import dev.egograph.shared.dto.ThreadMessagesResponse
 import kotlinx.coroutines.flow.Flow
 

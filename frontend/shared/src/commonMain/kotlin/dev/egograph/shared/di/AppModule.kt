@@ -4,6 +4,8 @@ import dev.egograph.shared.network.provideHttpClient
 import dev.egograph.shared.platform.PlatformPreferences
 import dev.egograph.shared.platform.PlatformPrefsDefaults
 import dev.egograph.shared.platform.PlatformPrefsKeys
+import dev.egograph.shared.repository.SystemPromptRepository
+import dev.egograph.shared.repository.SystemPromptRepositoryImpl
 import dev.egograph.shared.repository.ThreadRepository
 import dev.egograph.shared.repository.ThreadRepositoryImpl
 import io.ktor.client.HttpClient
@@ -35,8 +37,8 @@ val appModule = module {
         )
     }
 
-    single<dev.egograph.shared.repository.SystemPromptRepository> {
-        dev.egograph.shared.repository.SystemPromptRepositoryImpl(
+    single<SystemPromptRepository> {
+        SystemPromptRepositoryImpl(
             httpClient = get(),
             baseUrl = get(qualifier = org.koin.core.qualifier.named("BaseUrl"))
         )

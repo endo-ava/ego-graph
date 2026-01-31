@@ -17,6 +17,7 @@ import io.ktor.http.contentType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
+import co.touchlab.kermit.Logger
 import io.ktor.utils.io.readAvailable
 
 /**
@@ -71,6 +72,7 @@ class ChatRepositoryImpl(
                     val errorDetail = try {
                         response.body<String>()
                     } catch (e: Exception) {
+                        Logger.w(e) { "Failed to read error response body" }
                         response.status.description
                     }
                     emit(Result.failure(
@@ -148,7 +150,12 @@ class ChatRepositoryImpl(
             when (response.status) {
                 HttpStatusCode.OK -> Result.success(response.body<ChatResponse>())
                 else -> {
-                    val errorDetail = try { response.body<String>() } catch (e: Exception) { null }
+                    val errorDetail = try {
+                        response.body<String>()
+                    } catch (e: Exception) {
+                        Logger.w(e) { "Failed to read error response body" }
+                        null
+                    }
                     Result.failure(
                         ApiError.HttpError(
                             code = response.status.value,
@@ -175,7 +182,12 @@ class ChatRepositoryImpl(
                     Result.success(modelsResponse.models)
                 }
                 else -> {
-                    val errorDetail = try { response.body<String>() } catch (e: Exception) { null }
+                    val errorDetail = try {
+                        response.body<String>()
+                    } catch (e: Exception) {
+                        Logger.w(e) { "Failed to read error response body" }
+                        null
+                    }
                     Result.failure(
                         ApiError.HttpError(
                             code = response.status.value,
@@ -189,17 +201,6 @@ class ChatRepositoryImpl(
             Result.failure(e)
         } catch (e: Exception) {
             Result.failure(ApiError.NetworkError(e))
-        }
-    }
-
-    /**
-     * SSEチャンクをパースする
-     */
-    private fun parseSSEChunk(data: String): StreamChunk {
-        return try {
-            json.decodeFromString(StreamChunk.serializer(), data)
-        } catch (e: Exception) {
-            throw ApiError.SerializationError(e)
         }
     }
 }

@@ -1,5 +1,6 @@
 package dev.egograph.shared.repository
 
+import co.touchlab.kermit.Logger
 import dev.egograph.shared.dto.ThreadMessagesResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -27,7 +28,12 @@ class MessageRepositoryImpl(
                     emit(Result.success(response.body<ThreadMessagesResponse>()))
                 }
                 else -> {
-                    val errorDetail = try { response.body<String>() } catch (e: Exception) { null }
+                    val errorDetail = try {
+                        response.body<String>()
+                    } catch (e: Exception) {
+                        Logger.w(e) { "Failed to read error response body" }
+                        null
+                    }
                     emit(Result.failure(
                         ApiError.HttpError(
                             code = response.status.value,
