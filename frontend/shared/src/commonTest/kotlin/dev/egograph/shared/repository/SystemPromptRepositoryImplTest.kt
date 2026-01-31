@@ -18,7 +18,7 @@ class SystemPromptRepositoryImplTest {
 
         try {
             // When
-            val repository = SystemPromptRepositoryImpl(httpClient, "http://localhost:8000")
+            val repository = SystemPromptRepositoryImpl(httpClient, "http://localhost:8000", "")
 
             // Then
             assertTrue(repository is SystemPromptRepository)

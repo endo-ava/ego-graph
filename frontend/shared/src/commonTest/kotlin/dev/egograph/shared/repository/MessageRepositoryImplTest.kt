@@ -16,7 +16,7 @@ class MessageRepositoryImplTest {
         val httpClient = HttpClient()
 
         // When
-        val repository = MessageRepositoryImpl(httpClient, "http://localhost:8000")
+        val repository = MessageRepositoryImpl(httpClient, "http://localhost:8000", "")
 
         // Then
         assertTrue(repository is MessageRepository)

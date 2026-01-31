@@ -18,7 +18,7 @@ class ThreadRepositoryImplTest {
         val httpClient = HttpClient()
 
         // When
-        val repository = ThreadRepositoryImpl(httpClient, "http://localhost:8000")
+        val repository = ThreadRepositoryImpl(httpClient, "http://localhost:8000", "")
 
         // Then
         assertTrue(repository is ThreadRepository)
@@ -29,7 +29,7 @@ class ThreadRepositoryImplTest {
         runTest {
             // Given
             val httpClient = HttpClient()
-            val repository = ThreadRepositoryImpl(httpClient, "http://localhost:8000")
+            val repository = ThreadRepositoryImpl(httpClient, "http://localhost:8000", "")
 
             // When
             val result = repository.createThread("New Thread")
