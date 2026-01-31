@@ -83,6 +83,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Run unit tests with DI validation
+        run: ./gradlew :shared:testDebugUnitTest
+        working-directory: frontend
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: frontend/**/build/reports/tests/
+          if-no-files-found: warn
+
       - name: Build KMP project
         run: ./gradlew build
         working-directory: frontend
