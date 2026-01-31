@@ -7,6 +7,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.headers
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.flow
 class ThreadRepositoryImpl(
     private val httpClient: HttpClient,
     private val baseUrl: String,
+    private val apiKey: String = "",
 ) : ThreadRepository {
     private val logger = Logger.withTag("ThreadRepository")
 
@@ -32,6 +34,11 @@ class ThreadRepositoryImpl(
                     httpClient.get("$baseUrl/v1/threads") {
                         parameter("limit", limit)
                         parameter("offset", offset)
+                        if (apiKey.isNotEmpty()) {
+                            headers {
+                                append("X-API-Key", apiKey)
+                            }
+                        }
                     }
 
                 when (response.status) {
@@ -64,7 +71,14 @@ class ThreadRepositoryImpl(
 
     override fun getThread(threadId: String): Flow<RepositoryResult<Thread>> =
         flow {
-            val response = httpClient.get("$baseUrl/v1/threads/$threadId")
+            val response =
+                httpClient.get("$baseUrl/v1/threads/$threadId") {
+                    if (apiKey.isNotEmpty()) {
+                        headers {
+                            append("X-API-Key", apiKey)
+                        }
+                    }
+                }
 
             when (response.status) {
                 HttpStatusCode.OK -> {

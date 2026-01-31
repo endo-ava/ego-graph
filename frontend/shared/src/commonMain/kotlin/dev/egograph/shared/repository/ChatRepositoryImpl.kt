@@ -12,6 +12,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.request.headers
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -29,6 +30,7 @@ import kotlinx.serialization.json.Json
 class ChatRepositoryImpl(
     private val httpClient: HttpClient,
     private val baseUrl: String,
+    private val apiKey: String = "",
     private val json: Json =
         Json {
             ignoreUnknownKeys = true
@@ -43,6 +45,11 @@ class ChatRepositoryImpl(
                 val response =
                     httpClient.post("$baseUrl/v1/chat") {
                         contentType(io.ktor.http.ContentType.Application.Json)
+                        if (apiKey.isNotEmpty()) {
+                            headers {
+                                append("X-API-Key", apiKey)
+                            }
+                        }
                         setBody(request.copy(stream = true))
                     }
 
@@ -147,6 +154,11 @@ class ChatRepositoryImpl(
             val response =
                 httpClient.post("$baseUrl/v1/chat") {
                     contentType(io.ktor.http.ContentType.Application.Json)
+                    if (apiKey.isNotEmpty()) {
+                        headers {
+                            append("X-API-Key", apiKey)
+                        }
+                    }
                     setBody(request.copy(stream = false))
                 }
 
@@ -177,7 +189,13 @@ class ChatRepositoryImpl(
 
     override suspend fun getModels(): RepositoryResult<List<LLMModel>> =
         try {
-            val response = httpClient.get("$baseUrl/v1/chat/models")
+            val response = httpClient.get("$baseUrl/v1/chat/models") {
+                if (apiKey.isNotEmpty()) {
+                    headers {
+                        append("X-API-Key", apiKey)
+                    }
+                }
+            }
 
             when (response.status) {
                 HttpStatusCode.OK -> {

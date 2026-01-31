@@ -5,6 +5,7 @@ import dev.egograph.shared.dto.ThreadMessagesResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.headers
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -17,11 +18,19 @@ import kotlinx.coroutines.flow.flow
 class MessageRepositoryImpl(
     private val httpClient: HttpClient,
     private val baseUrl: String,
+    private val apiKey: String = "",
 ) : MessageRepository {
     override fun getMessages(threadId: String): Flow<RepositoryResult<ThreadMessagesResponse>> =
         flow {
             try {
-                val response = httpClient.get("$baseUrl/v1/threads/$threadId/messages")
+                val response =
+                    httpClient.get("$baseUrl/v1/threads/$threadId/messages") {
+                        if (apiKey.isNotEmpty()) {
+                            headers {
+                                append("X-API-Key", apiKey)
+                            }
+                        }
+                    }
 
                 when (response.status) {
                     HttpStatusCode.OK -> {
