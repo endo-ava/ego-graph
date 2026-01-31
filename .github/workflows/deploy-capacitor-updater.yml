@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "frontend/**"
+      - "frontend-capacitor/**"
       - ".github/workflows/deploy-capacitor-updater.yml"
 
 jobs:
@@ -25,11 +25,11 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: frontend-capacitor
         run: npm ci
 
       - name: Build web assets
-        working-directory: frontend
+        working-directory: frontend-capacitor
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
@@ -37,7 +37,7 @@ jobs:
         run: VITE_BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" npm run build
 
       - name: Package updater assets
-        working-directory: frontend
+        working-directory: frontend-capacitor
         run: |
           SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
           VERSION="$(node -p "require('./package.json').version")-${SHORT_SHA}"
@@ -46,7 +46,7 @@ jobs:
           zip -r "../app-${VERSION}.zip" .
 
       - name: Create latest.json
-        working-directory: frontend
+        working-directory: frontend-capacitor
         run: |
           echo "{\"version\":\"${VERSION}\",\"url\":\"${R2_PUBLIC_BASE_URL}/capacitor_updates/app-${VERSION}.zip\"}" > latest.json
           echo "📦 Created latest.json with content:"
@@ -55,7 +55,7 @@ jobs:
           echo "🔗 Update check URL: ${CAPACITOR_UPDATER_URL}"
 
       - name: Upload to R2
-        working-directory: frontend
+        working-directory: frontend-capacitor
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
