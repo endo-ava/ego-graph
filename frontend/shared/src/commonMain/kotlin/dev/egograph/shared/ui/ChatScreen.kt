@@ -10,14 +10,22 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import com.arkivanov.mvikotlin.extensions.coroutines.states
 import dev.egograph.shared.store.chat.ChatIntent
 import dev.egograph.shared.store.chat.ChatStore
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 class ChatScreen : Screen {
@@ -25,6 +33,24 @@ class ChatScreen : Screen {
     override fun Content() {
         val store = koinInject<ChatStore>()
         val state by store.states.collectAsState(initial = store.state)
+        val snackbarHostState = remember { SnackbarHostState() }
+        val scope = rememberCoroutineScope()
+
+        var lastShownError by remember { mutableStateOf<String?>(null) }
+        val currentError = state.threadsError ?: state.messagesError ?: state.modelsError
+
+        LaunchedEffect(currentError) {
+            if (currentError != null) {
+                if (currentError != lastShownError) {
+                    lastShownError = currentError
+                    scope.launch {
+                        snackbarHostState.showSnackbar(currentError)
+                    }
+                }
+            } else {
+                lastShownError = null
+            }
+        }
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -33,6 +59,7 @@ class ChatScreen : Screen {
             contentWindowInsets = ScaffoldDefaults.contentWindowInsets
                 .exclude(WindowInsets.navigationBars)
                 .exclude(WindowInsets.ime),
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 ChatInput(
                     onSendMessage = { text ->
