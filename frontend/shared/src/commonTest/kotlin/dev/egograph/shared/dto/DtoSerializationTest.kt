@@ -286,4 +286,33 @@ class DtoSerializationTest {
 
         assertEquals(decoded.content, "Updated content")
     }
+
+    @Test
+    fun `serialize and deserialize SystemPromptName`() {
+        val name = SystemPromptName.USER
+
+        val jsonString = json.encodeToString(name)
+        val decoded = json.decodeFromString<SystemPromptName>(jsonString)
+
+        assertEquals(SystemPromptName.USER, decoded)
+        assertEquals("user", decoded.apiName)
+    }
+
+    @Test
+    fun `serialize and deserialize all SystemPromptName values`() {
+        val names = listOf(
+            SystemPromptName.USER,
+            SystemPromptName.IDENTITY,
+            SystemPromptName.SOUL,
+            SystemPromptName.TOOLS
+        )
+
+        names.forEach { name ->
+            val jsonString = json.encodeToString(name)
+            val decoded = json.decodeFromString<SystemPromptName>(jsonString)
+
+            assertEquals(name, decoded)
+            assertEquals(name.apiName, decoded.apiName)
+        }
+    }
 }

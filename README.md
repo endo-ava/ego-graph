@@ -24,14 +24,15 @@ EgoGraph は、個人のデジタルライフログ（Spotify, Web, Bank, etc.�
 
 ## モノレポ構成
 
-このプロジェクトは、Python (uv workspace) + Node.js (npm) のモノレポです。
+このプロジェクトは、Python (uv workspace) + Kotlin Multiplatform のモノレポです。
 
 ```text
 ego-graph/
 ├── shared/                # 共有Pythonライブラリ（uv workspace メンバー）
 ├── ingest/                # データ収集ワーカー（uv workspace メンバー）
 ├── backend/               # FastAPI サーバー（uv workspace メンバー）
-├── frontend/              # React + Capacitor アプリ（npm 独立パッケージ）
+├── frontend/              # KMP Android アプリ（Gradle）
+├── frontend-capacitor/    # React + Capacitor アプリ（旧版、参照用）
 │
 ├── docs/                  # プロジェクトドキュメント
 ├── .github/workflows/     # CI/CD ワークフロー
@@ -41,12 +42,12 @@ ego-graph/
 
 ### コンポーネント概要
 
-| コンポーネント | 役割 | 技術スタック | 実行環境 |
-|--------------|------|------------|---------|
-| **shared/** | 共有ライブラリ（モデル、設定） | Python 3.13, Pydantic | ライブラリ |
-| **ingest/** | データ収集・変換・保存 | Python 3.13, Spotipy, DuckDB, boto3 | GitHub Actions (定期実行) |
-| **backend/** | Agent API・データアクセス | FastAPI, DuckDB, LLM (DeepSeek/OpenAI) | VPS/GCP (常駐サーバー) |
-| **frontend/** | チャット UI | React 19, Capacitor 8, TanStack Query | モバイル/Web (Vite) |
+| コンポーネント | 役割                           | 技術スタック                                 | 実行環境                  |
+| -------------- | ------------------------------ | -------------------------------------------- | ------------------------- |
+| **shared/**    | 共有ライブラリ（モデル、設定） | Python 3.13, Pydantic                        | ライブラリ                |
+| **ingest/**    | データ収集・変換・保存         | Python 3.13, Spotipy, DuckDB, boto3          | GitHub Actions (定期実行) |
+| **backend/**   | Agent API・データアクセス      | FastAPI, DuckDB, LLM (DeepSeek/OpenAI)       | VPS/GCP (常駐サーバー)    |
+| **frontend/**  | チャット UI                    | Kotlin 2.3, Compose Multiplatform, MVIKotlin | Android (Gradle)          |
 
 ---
 
@@ -55,7 +56,8 @@ ego-graph/
 ### 前提条件
 
 - **Python**: 3.13+ ([uv](https://github.com/astral-sh/uv) 推奨)
-- **Node.js**: 20+ (frontend のみ)
+- **JDK**: 17+ (Android アプリビルド用)
+- **Android SDK**: API 34 (Android アプリビルド用)
 - **環境変数**: `.env.example` を参考に `.env` を作成
 
 ### 1. 全体セットアップ
@@ -66,9 +68,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Python 依存関係の同期（shared, ingest, backend を一括）
 uv sync
-
-# Frontend 依存関係のインストール
-cd frontend && npm install && cd ..
 ```
 
 ### 2. コンポーネント別セットアップ
@@ -84,6 +83,7 @@ uv run pytest ingest/tests --cov=ingest
 ```
 
 **必要な環境変数**:
+
 - `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`
 - `R2_ENDPOINT_URL`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`
 
@@ -101,29 +101,26 @@ open http://localhost:8000/docs
 ```
 
 **必要な環境変数**:
+
 - `R2_*`（データアクセス）
 - `LLM_*`（チャット機能）
 
-#### C. Frontend（モバイル/Web アプリ）
+#### C. Frontend（Android アプリ）
 
 ```bash
 cd frontend
 
-# Web 開発サーバー
-npm run dev
-# -> http://localhost:5174
+# デバッグビルド
+./gradlew :androidApp:assembleDebug
+
+# デバイスにインストール
+./gradlew :androidApp:installDebug
 
 # テスト実行
-npm run test:run
-
-# Android ビルド（Capacitor）
-npm run build
-npm run android:sync
-npm run android:open  # Android Studio が開く
+./gradlew :shared:testDebugUnitTest
 ```
 
-**必要な環境変数**:
-- `VITE_API_URL=http://localhost:8000`
+**注意**: エミュレータから localhost にアクセスする場合は `10.0.2.2:8000` を使用してください。
 
 ---
 
@@ -139,8 +136,8 @@ uv run pytest
 uv run pytest ingest/tests --cov=ingest
 uv run pytest backend/tests --cov=backend
 
-# Frontend
-cd frontend && npm run test:run
+# Frontend (KMP)
+cd frontend && ./gradlew :shared:testDebugUnitTest
 ```
 
 ### Lint & Format
@@ -151,8 +148,9 @@ uv run ruff check .          # チェックのみ
 uv run ruff format .         # フォーマット
 uv run ruff check --fix .    # 自動修正
 
-# Frontend (ESLint)
-cd frontend && npm run lint
+# Frontend (KMP)
+cd frontend && ./gradlew ktlintCheck
+cd frontend && ./gradlew ktlintFormat
 ```
 
 ### CI/CD
@@ -187,4 +185,3 @@ GitHub Actions でコンポーネント別に自動テストが実行されま�
 ### 開発者向けガイド
 
 詳細な開発ガイドラインは [CLAUDE.md](./CLAUDE.md) を参照してください。
-

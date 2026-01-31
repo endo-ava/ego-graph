@@ -134,6 +134,8 @@ class RepositoryTest {
         val mockChatRepo = object : ChatRepository {
             override fun sendMessage(request: ChatRequest) = kotlinx.coroutines.flow.flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
             }
+            override fun streamChatResponse(request: ChatRequest) = kotlinx.coroutines.flow.flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
+            }
             override suspend fun sendMessageSync(request: ChatRequest) = Result.success(
                 ChatResponse("", Message(MessageRole.ASSISTANT, "Response"), null, null, "", null)
             )
