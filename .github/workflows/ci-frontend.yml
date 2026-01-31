@@ -3,16 +3,12 @@ name: Test Frontend
 on:
   workflow_dispatch:
   push:
-    branches:
-      - feat/migrate-kmp-cmp
-      - main
+    branches: [main]
     paths:
       - "frontend/**"
       - ".github/workflows/ci-frontend.yml"
   pull_request:
-    branches:
-      - feat/migrate-kmp-cmp
-      - main
+    branches: [main]
     paths:
       - "frontend/**"
       - ".github/workflows/ci-frontend.yml"
