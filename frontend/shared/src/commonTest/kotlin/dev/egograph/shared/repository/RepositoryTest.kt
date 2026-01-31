@@ -3,12 +3,11 @@ package dev.egograph.shared.repository
 import dev.egograph.shared.dto.ChatRequest
 import dev.egograph.shared.dto.ChatResponse
 import dev.egograph.shared.dto.LLMModel
-import dev.egograph.shared.dto.Message
 import dev.egograph.shared.dto.MessageRole
 import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.dto.ThreadListResponse
-import dev.egograph.shared.dto.ThreadMessage
 import dev.egograph.shared.dto.ThreadMessagesResponse
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -114,10 +113,10 @@ class RepositoryTest {
     fun `Repository interfaces - can be implemented`() {
         // Create mock implementations to verify interfaces are correctly defined
         val mockThreadRepo = object : ThreadRepository {
-            override fun getThreads(limit: Int, offset: Int) = kotlinx.coroutines.flow.flow<RepositoryResult<ThreadListResponse>> {
+            override fun getThreads(limit: Int, offset: Int) = flow<RepositoryResult<ThreadListResponse>> {
                 emit(Result.success(ThreadListResponse(emptyList(), 0, limit, offset)))
             }
-            override fun getThread(threadId: String) = kotlinx.coroutines.flow.flow<RepositoryResult<Thread>> {
+            override fun getThread(threadId: String) = flow<RepositoryResult<Thread>> {
                 emit(Result.success(Thread("", "", "", null, 0, "", "")))
             }
             override suspend fun createThread(title: String) = Result.success(
@@ -126,26 +125,21 @@ class RepositoryTest {
         }
 
         val mockMessageRepo = object : MessageRepository {
-            override fun getMessages(threadId: String) = kotlinx.coroutines.flow.flow<RepositoryResult<ThreadMessagesResponse>> {
+            override fun getMessages(threadId: String) = flow<RepositoryResult<ThreadMessagesResponse>> {
                 emit(Result.success(ThreadMessagesResponse(threadId, emptyList())))
             }
         }
 
         val mockChatRepo = object : ChatRepository {
-            override fun sendMessage(request: ChatRequest) = kotlinx.coroutines.flow.flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
+            override fun sendMessage(request: ChatRequest) = flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
             }
-            override fun streamChatResponse(request: ChatRequest) = kotlinx.coroutines.flow.flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
+            override fun streamChatResponse(request: ChatRequest) = flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
             }
             override suspend fun sendMessageSync(request: ChatRequest) = Result.success(
-                ChatResponse("", Message(MessageRole.ASSISTANT, "Response"), null, null, "", null)
+                ChatResponse("", dev.egograph.shared.dto.Message(MessageRole.ASSISTANT, "Response"), null, null, "", null)
             )
             override suspend fun getModels() = Result.success(emptyList<LLMModel>())
         }
-
-        // Verify repositories can be created
-        assertTrue(mockThreadRepo is ThreadRepository)
-        assertTrue(mockMessageRepo is MessageRepository)
-        assertTrue(mockChatRepo is ChatRepository)
     }
 
     /**
