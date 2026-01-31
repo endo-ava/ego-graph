@@ -23,11 +23,15 @@ class ChatRepositoryImplTest {
         // Given
         val httpClient = HttpClient()
 
-        // When
-        val repository = ChatRepositoryImpl(httpClient, "http://localhost:8000", json)
+        try {
+            // When
+            val repository = ChatRepositoryImpl(httpClient, "http://localhost:8000", json)
 
-        // Then
-        assertTrue(repository is ChatRepository)
+            // Then
+            assertTrue(repository is ChatRepository)
+        } finally {
+            httpClient.close()
+        }
     }
 
     @Test

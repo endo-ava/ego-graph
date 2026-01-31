@@ -12,12 +12,12 @@ EgoGraph Android アプリを **React + Capacitor** から **Kotlin Multiplatfor
 | カテゴリ                 | 技術                  | バージョン   |
 | ------------------------ | --------------------- | ------------ |
 | **Language**             | Kotlin                | 2.3.0        |
-| **UI Framework**         | Compose Multiplatform | 1.10.0       |
+| **UI Framework**         | Compose Multiplatform | 1.9.0        |
 | **State Management**     | MVIKotlin             | 4.2.0        |
-| **Navigation**           | Voyager               | 1.1.0-beta04 |
+| **Navigation**           | Voyager               | 1.1.0-beta03 |
 | **HTTP Client**          | Ktor                  | 3.4.0        |
 | **Dependency Injection** | Koin                  | 4.0.0        |
-| **Serialization**        | kotlinx.serialization | 1.8.0        |
+| **Serialization**        | kotlinx.serialization | 1.7.3        |
 | **Testing**              | kotlin.test + Kover   | -            |
 
 ### ✨ 新機能
@@ -131,7 +131,7 @@ KMP の基盤は整っているため、iOS/Web 対応は比較的容易です�
 #### 技術的負債
 
 - **Ktor MockEngine**: テスト依存関係に未追加（HTTP通信テスト不可）
-- **ProGuard/R8**: リリースビルドの最適化未設定
+- **ProGuard/R8**: リリースビルドでR8最適化有効化
 - **署名設定**: デバッグ署名のみ（本番署名は手動設定必要）
 
 ### 🔄 移行ガイド

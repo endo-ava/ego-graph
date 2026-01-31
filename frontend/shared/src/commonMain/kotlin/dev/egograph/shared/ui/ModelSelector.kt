@@ -58,7 +58,7 @@ fun ModelSelector(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    val selectedModel = models.find { it.id == selectedModelId } ?: models.firstOrNull()
+    val selectedModel = models.find { it.id == selectedModelId }
 
     val displayText = when {
         isLoading -> "Loading..."
