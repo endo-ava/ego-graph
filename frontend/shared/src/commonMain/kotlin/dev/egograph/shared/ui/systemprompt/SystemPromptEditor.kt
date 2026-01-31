@@ -1,0 +1,27 @@
+package dev.egograph.shared.ui.systemprompt
+
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+
+@Composable
+fun SystemPromptEditor(
+    content: String,
+    onContentChange: (String) -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = content,
+        onValueChange = onContentChange,
+        modifier = modifier
+            .fillMaxWidth()
+            .fillMaxHeight(),
+        enabled = enabled,
+        minLines = 5,
+        label = { Text("System Prompt") }
+    )
+}

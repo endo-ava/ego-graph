@@ -27,4 +27,11 @@ val appModule = module {
             baseUrl = get(qualifier = org.koin.core.qualifier.named("BaseUrl"))
         )
     }
+
+    single<dev.egograph.shared.repository.SystemPromptRepository> {
+        dev.egograph.shared.repository.SystemPromptRepositoryImpl(
+            httpClient = get(),
+            baseUrl = get(qualifier = org.koin.core.qualifier.named("BaseUrl"))
+        )
+    }
 }
