@@ -3,48 +3,58 @@ name: Test Frontend
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - feat/migrate-kmp-cmp
+      - main
     paths:
-      - "frontend-capacitor/**"
+      - "frontend/**"
+      - ".github/workflows/ci-frontend.yml"
   pull_request:
-    branches: [main]
+    branches:
+      - feat/migrate-kmp-cmp
+      - main
     paths:
-      - "frontend-capacitor/**"
+      - "frontend/**"
+      - ".github/workflows/ci-frontend.yml"
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  build-and-test:
+    runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "frontend-capacitor/package-lock.json"
+          distribution: "temurin"
+          java-version: "17"
 
-      - name: Install dependencies
-        run: npm ci
-        working-directory: frontend-capacitor
+      - name: Grant execute permission for gradlew
+        run: chmod +x frontend/gradlew
 
-      - name: Audit dependencies
-        run: npm audit --audit-level=moderate
-        working-directory: frontend-capacitor
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-      - name: Lint code
-        run: npm run lint
-        working-directory: frontend-capacitor
-
-      - name: Type check
-        run: npx tsc --noEmit
-        working-directory: frontend-capacitor
-
-      - name: Build
-        run: npm run build
-        working-directory: frontend-capacitor
+      - name: Build KMP project
+        run: ./gradlew build
+        working-directory: frontend
 
       - name: Run tests
-        run: npm run test:run
-        working-directory: frontend-capacitor
+        run: ./gradlew test
+        working-directory: frontend
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: frontend/androidApp/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
