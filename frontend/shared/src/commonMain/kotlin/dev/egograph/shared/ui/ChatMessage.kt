@@ -27,15 +27,16 @@ import dev.egograph.shared.dto.ThreadMessage
 @Composable
 fun ChatMessage(
     message: ThreadMessage,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val isUser = message.role == MessageRole.USER
-    
+
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
     ) {
         if (!isUser) {
             MessageAvatar(isUser = false)
@@ -44,26 +45,26 @@ fun ChatMessage(
 
         Column(
             horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
-            modifier = Modifier.weight(1f, fill = false)
+            modifier = Modifier.weight(1f, fill = false),
         ) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                color = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
             ) {
                 Text(
                     text = message.content,
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            
+
             if (message.modelName != null && !isUser) {
                 Text(
                     text = message.modelName,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp, start = 4.dp),
                 )
             }
         }
@@ -79,16 +80,17 @@ fun ChatMessage(
 private fun MessageAvatar(isUser: Boolean) {
     if (isUser) {
         Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.secondary),
-            contentAlignment = Alignment.Center
+            modifier =
+                Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.secondary),
+            contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "U",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondary
+                color = MaterialTheme.colorScheme.onSecondary,
             )
         }
     } else {
@@ -96,17 +98,18 @@ private fun MessageAvatar(isUser: Boolean) {
         Canvas(modifier = Modifier.size(32.dp)) {
             val width = size.width
             val height = size.height
-            
-            val path = Path().apply {
-                moveTo(width * 0.5f, 0f)
-                lineTo(width, height * 0.25f)
-                lineTo(width, height * 0.75f)
-                lineTo(width * 0.5f, height)
-                lineTo(0f, height * 0.75f)
-                lineTo(0f, height * 0.25f)
-                close()
-            }
-            
+
+            val path =
+                Path().apply {
+                    moveTo(width * 0.5f, 0f)
+                    lineTo(width, height * 0.25f)
+                    lineTo(width, height * 0.75f)
+                    lineTo(width * 0.5f, height)
+                    lineTo(0f, height * 0.75f)
+                    lineTo(0f, height * 0.25f)
+                    close()
+                }
+
             drawPath(path = path, color = color)
         }
     }

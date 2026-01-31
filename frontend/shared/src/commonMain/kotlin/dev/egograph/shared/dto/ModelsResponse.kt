@@ -8,5 +8,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ModelsResponse(
     val models: List<LLMModel>,
-    val defaultModel: String
+    val defaultModel: String,
 )

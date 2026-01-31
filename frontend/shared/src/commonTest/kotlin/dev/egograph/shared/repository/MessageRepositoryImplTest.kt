@@ -10,7 +10,6 @@ import kotlin.test.assertTrue
  * 注: Ktor MockEngineが利用可能でないため、構造検証のみ実施しています。
  */
 class MessageRepositoryImplTest {
-
     @Test
     fun `MessageRepositoryImpl can be instantiated`() {
         // Given

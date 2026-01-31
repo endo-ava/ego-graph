@@ -24,7 +24,7 @@ interface ThreadRepository {
      */
     fun getThreads(
         limit: Int = 20,
-        offset: Int = 0
+        offset: Int = 0,
     ): Flow<RepositoryResult<ThreadListResponse>>
 
     /**

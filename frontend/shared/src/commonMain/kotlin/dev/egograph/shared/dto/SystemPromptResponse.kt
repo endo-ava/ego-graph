@@ -8,5 +8,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SystemPromptResponse(
     val name: String,
-    val content: String
+    val content: String,
 )

@@ -25,7 +25,7 @@ fun ThreadList(
     error: String?,
     onThreadClick: (String) -> Unit,
     onRefresh: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val pullRefreshState = rememberPullToRefreshState()
 
@@ -37,21 +37,23 @@ fun ThreadList(
                 isRefreshing = isLoading,
                 onRefresh = onRefresh,
                 state = pullRefreshState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             ) {
                 if (error != null && threads.isEmpty()) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
                     ) {
                         ThreadListError(message = error)
                     }
                 } else if (threads.isEmpty()) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
                     ) {
                         ThreadListEmpty()
                     }
@@ -59,16 +61,16 @@ fun ThreadList(
                     LazyColumn(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
                     ) {
                         items(
                             items = threads,
-                            key = { it.threadId }
+                            key = { it.threadId },
                         ) { thread ->
                             ThreadItem(
                                 thread = thread,
                                 isActive = thread.threadId == selectedThreadId,
-                                onClick = { onThreadClick(thread.threadId) }
+                                onClick = { onThreadClick(thread.threadId) },
                             )
                         }
                     }

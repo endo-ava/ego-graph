@@ -10,7 +10,7 @@ enum class MessageRole {
     USER,
     ASSISTANT,
     SYSTEM,
-    TOOL
+    TOOL,
 }
 
 /**
@@ -22,5 +22,5 @@ data class Message(
     val content: String?,
     val toolCallId: String? = null,
     val name: String? = null,
-    val toolCalls: List<ToolCall>? = null
+    val toolCalls: List<ToolCall>? = null,
 )

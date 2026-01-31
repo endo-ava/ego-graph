@@ -12,7 +12,6 @@ import kotlin.test.assertTrue
  * 全てのChatViewメッセージに対する状態遷移を検証します。
  */
 class ChatReducerTest {
-
     @Test
     fun `ThreadsLoadingStarted sets isLoadingThreads to true and clears error`() {
         val initialState = ChatState(threadsError = "Previous error")
@@ -26,17 +25,18 @@ class ChatReducerTest {
 
     @Test
     fun `ThreadsLoaded updates threads and clears loading state`() {
-        val threads = listOf(
-            dev.egograph.shared.dto.Thread(
-                threadId = "thread-1",
-                userId = "user-1",
-                title = "Thread 1",
-                preview = "Preview",
-                messageCount = 5,
-                createdAt = "2026-01-30T00:00:00Z",
-                lastMessageAt = "2026-01-30T01:00:00Z"
+        val threads =
+            listOf(
+                dev.egograph.shared.dto.Thread(
+                    threadId = "thread-1",
+                    userId = "user-1",
+                    title = "Thread 1",
+                    preview = "Preview",
+                    messageCount = 5,
+                    createdAt = "2026-01-30T00:00:00Z",
+                    lastMessageAt = "2026-01-30T01:00:00Z",
+                ),
             )
-        )
 
         val initialState = ChatState(isLoadingThreads = true)
         val msg = ChatView.ThreadsLoaded(threads)
@@ -61,30 +61,33 @@ class ChatReducerTest {
 
     @Test
     fun `ThreadSelected updates selected thread and clears messages`() {
-        val thread = dev.egograph.shared.dto.Thread(
-            threadId = "thread-1",
-            userId = "user-1",
-            title = "Thread 1",
-            preview = "Preview",
-            messageCount = 5,
-            createdAt = "2026-01-30T00:00:00Z",
-            lastMessageAt = "2026-01-30T01:00:00Z"
-        )
+        val thread =
+            dev.egograph.shared.dto.Thread(
+                threadId = "thread-1",
+                userId = "user-1",
+                title = "Thread 1",
+                preview = "Preview",
+                messageCount = 5,
+                createdAt = "2026-01-30T00:00:00Z",
+                lastMessageAt = "2026-01-30T01:00:00Z",
+            )
 
-        val initialState = ChatState(
-            selectedThread = null,
-            messages = listOf(
-                dev.egograph.shared.dto.ThreadMessage(
-                    messageId = "msg-1",
-                    threadId = "old-thread",
-                    userId = "user-1",
-                    role = dev.egograph.shared.dto.MessageRole.USER,
-                    content = "Old message",
-                    createdAt = "2026-01-30T00:00:00Z"
-                )
-            ),
-            messagesError = "Previous error"
-        )
+        val initialState =
+            ChatState(
+                selectedThread = null,
+                messages =
+                    listOf(
+                        dev.egograph.shared.dto.ThreadMessage(
+                            messageId = "msg-1",
+                            threadId = "old-thread",
+                            userId = "user-1",
+                            role = dev.egograph.shared.dto.MessageRole.USER,
+                            content = "Old message",
+                            createdAt = "2026-01-30T00:00:00Z",
+                        ),
+                    ),
+                messagesError = "Previous error",
+            )
         val msg = ChatView.ThreadSelected(thread)
 
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
@@ -96,30 +99,33 @@ class ChatReducerTest {
 
     @Test
     fun `ThreadSelectionCleared clears selected thread and messages`() {
-        val thread = dev.egograph.shared.dto.Thread(
-            threadId = "thread-1",
-            userId = "user-1",
-            title = "Thread 1",
-            preview = "Preview",
-            messageCount = 5,
-            createdAt = "2026-01-30T00:00:00Z",
-            lastMessageAt = "2026-01-30T01:00:00Z"
-        )
+        val thread =
+            dev.egograph.shared.dto.Thread(
+                threadId = "thread-1",
+                userId = "user-1",
+                title = "Thread 1",
+                preview = "Preview",
+                messageCount = 5,
+                createdAt = "2026-01-30T00:00:00Z",
+                lastMessageAt = "2026-01-30T01:00:00Z",
+            )
 
-        val initialState = ChatState(
-            selectedThread = thread,
-            messages = listOf(
-                dev.egograph.shared.dto.ThreadMessage(
-                    messageId = "msg-1",
-                    threadId = "thread-1",
-                    userId = "user-1",
-                    role = dev.egograph.shared.dto.MessageRole.USER,
-                    content = "Message",
-                    createdAt = "2026-01-30T00:00:00Z"
-                )
-            ),
-            messagesError = "Previous error"
-        )
+        val initialState =
+            ChatState(
+                selectedThread = thread,
+                messages =
+                    listOf(
+                        dev.egograph.shared.dto.ThreadMessage(
+                            messageId = "msg-1",
+                            threadId = "thread-1",
+                            userId = "user-1",
+                            role = dev.egograph.shared.dto.MessageRole.USER,
+                            content = "Message",
+                            createdAt = "2026-01-30T00:00:00Z",
+                        ),
+                    ),
+                messagesError = "Previous error",
+            )
         val msg = ChatView.ThreadSelectionCleared
 
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
@@ -142,16 +148,17 @@ class ChatReducerTest {
 
     @Test
     fun `MessagesLoaded updates messages and clears loading state`() {
-        val messages = listOf(
-            dev.egograph.shared.dto.ThreadMessage(
-                messageId = "msg-1",
-                threadId = "thread-1",
-                userId = "user-1",
-                role = dev.egograph.shared.dto.MessageRole.USER,
-                content = "Hello!",
-                createdAt = "2026-01-30T00:00:00Z"
+        val messages =
+            listOf(
+                dev.egograph.shared.dto.ThreadMessage(
+                    messageId = "msg-1",
+                    threadId = "thread-1",
+                    userId = "user-1",
+                    role = dev.egograph.shared.dto.MessageRole.USER,
+                    content = "Hello!",
+                    createdAt = "2026-01-30T00:00:00Z",
+                ),
             )
-        )
 
         val initialState = ChatState(isLoadingMessages = true)
         val msg = ChatView.MessagesLoaded(messages)
@@ -187,16 +194,17 @@ class ChatReducerTest {
 
     @Test
     fun `ModelsLoaded updates models and default model`() {
-        val models = listOf(
-            dev.egograph.shared.dto.LLMModel(
-                id = "openai/gpt-4",
-                name = "GPT-4",
-                provider = "openai",
-                inputCostPer1m = 10.0,
-                outputCostPer1m = 20.0,
-                isFree = false
+        val models =
+            listOf(
+                dev.egograph.shared.dto.LLMModel(
+                    id = "openai/gpt-4",
+                    name = "GPT-4",
+                    provider = "openai",
+                    inputCostPer1m = 10.0,
+                    outputCostPer1m = 20.0,
+                    isFree = false,
+                ),
             )
-        )
 
         val initialState = ChatState(isLoadingModels = true)
         val msg = ChatView.ModelsLoaded(models, "openai/gpt-4")
@@ -243,16 +251,17 @@ class ChatReducerTest {
 
     @Test
     fun `MessageStreamUpdated updates messages and keeps sending state`() {
-        val messages = listOf(
-            dev.egograph.shared.dto.ThreadMessage(
-                messageId = "msg-1",
-                threadId = "thread-1",
-                userId = "user-1",
-                role = dev.egograph.shared.dto.MessageRole.USER,
-                content = "Hello!",
-                createdAt = "2026-01-30T00:00:00Z"
+        val messages =
+            listOf(
+                dev.egograph.shared.dto.ThreadMessage(
+                    messageId = "msg-1",
+                    threadId = "thread-1",
+                    userId = "user-1",
+                    role = dev.egograph.shared.dto.MessageRole.USER,
+                    content = "Hello!",
+                    createdAt = "2026-01-30T00:00:00Z",
+                ),
             )
-        )
 
         val initialState = ChatState(isSending = false)
         val msg = ChatView.MessageStreamUpdated(messages)
@@ -266,16 +275,17 @@ class ChatReducerTest {
 
     @Test
     fun `MessageSent updates messages and clears sending state`() {
-        val messages = listOf(
-            dev.egograph.shared.dto.ThreadMessage(
-                messageId = "msg-1",
-                threadId = "thread-1",
-                userId = "user-1",
-                role = dev.egograph.shared.dto.MessageRole.USER,
-                content = "Hello!",
-                createdAt = "2026-01-30T00:00:00Z"
+        val messages =
+            listOf(
+                dev.egograph.shared.dto.ThreadMessage(
+                    messageId = "msg-1",
+                    threadId = "thread-1",
+                    userId = "user-1",
+                    role = dev.egograph.shared.dto.MessageRole.USER,
+                    content = "Hello!",
+                    createdAt = "2026-01-30T00:00:00Z",
+                ),
             )
-        )
 
         val initialState = ChatState(isSending = true, messagesError = "Previous error")
         val msg = ChatView.MessageSent(messages, "thread-1")
@@ -300,11 +310,12 @@ class ChatReducerTest {
 
     @Test
     fun `ErrorsCleared clears all error fields`() {
-        val initialState = ChatState(
-            threadsError = "Threads error",
-            messagesError = "Messages error",
-            modelsError = "Models error"
-        )
+        val initialState =
+            ChatState(
+                threadsError = "Threads error",
+                messagesError = "Messages error",
+                modelsError = "Models error",
+            )
         val msg = ChatView.ErrorsCleared
 
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
@@ -316,15 +327,16 @@ class ChatReducerTest {
 
     @Test
     fun `State hasSelectedThread should be true when thread is selected`() {
-        val thread = dev.egograph.shared.dto.Thread(
-            threadId = "thread1",
-            userId = "user1",
-            title = "Thread 1",
-            preview = "Preview",
-            messageCount = 5,
-            createdAt = "2024-01-01",
-            lastMessageAt = "2024-01-01"
-        )
+        val thread =
+            dev.egograph.shared.dto.Thread(
+                threadId = "thread1",
+                userId = "user1",
+                title = "Thread 1",
+                preview = "Preview",
+                messageCount = 5,
+                createdAt = "2024-01-01",
+                lastMessageAt = "2024-01-01",
+            )
 
         val state = ChatState(selectedThread = thread)
         assertTrue(state.hasSelectedThread)

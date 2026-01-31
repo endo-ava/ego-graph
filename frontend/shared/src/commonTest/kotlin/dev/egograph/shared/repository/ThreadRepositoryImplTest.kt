@@ -12,7 +12,6 @@ import kotlin.test.assertTrue
  * HTTP通信のテストは統合テスト層で実施することを推奨します。
  */
 class ThreadRepositoryImplTest {
-
     @Test
     fun `ThreadRepositoryImpl can be instantiated`() {
         // Given
@@ -26,18 +25,19 @@ class ThreadRepositoryImplTest {
     }
 
     @Test
-    fun `createThread returns not implemented error`() = runTest {
-        // Given
-        val httpClient = HttpClient()
-        val repository = ThreadRepositoryImpl(httpClient, "http://localhost:8000")
+    fun `createThread returns not implemented error`() =
+        runTest {
+            // Given
+            val httpClient = HttpClient()
+            val repository = ThreadRepositoryImpl(httpClient, "http://localhost:8000")
 
-        // When
-        val result = repository.createThread("New Thread")
+            // When
+            val result = repository.createThread("New Thread")
 
-        // Then
-        assertTrue(result.isFailure)
-        val error = result.exceptionOrNull() as? ApiError.HttpError
-        assertTrue(error?.code == 501)
-        assertTrue(error?.errorMessage == "Not Implemented")
-    }
+            // Then
+            assertTrue(result.isFailure)
+            val error = result.exceptionOrNull() as? ApiError.HttpError
+            assertTrue(error?.code == 501)
+            assertTrue(error?.errorMessage == "Not Implemented")
+        }
 }

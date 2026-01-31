@@ -15,66 +15,77 @@ import io.ktor.http.contentType
 
 interface SystemPromptRepository {
     suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse>
-    suspend fun updateSystemPrompt(name: SystemPromptName, content: String): RepositoryResult<SystemPromptResponse>
+
+    suspend fun updateSystemPrompt(
+        name: SystemPromptName,
+        content: String,
+    ): RepositoryResult<SystemPromptResponse>
 }
 
 class SystemPromptRepositoryImpl(
     private val httpClient: HttpClient,
-    private val baseUrl: String
+    private val baseUrl: String,
 ) : SystemPromptRepository {
-
     private val logger = Logger.withTag("SystemPromptRepository")
 
-    override suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse> {
-        return try {
+    override suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse> =
+        try {
             val response = httpClient.get("$baseUrl/v1/system-prompts/${name.apiName}")
 
             when (response.status) {
                 HttpStatusCode.OK -> Result.success(response.body())
                 else -> {
-                    val errorDetail = try { response.body<String>() } catch (e: Exception) {
-                        logger.w(e) { "Failed to read error response body" }
-                        null
-                    }
+                    val errorDetail =
+                        try {
+                            response.body<String>()
+                        } catch (e: Exception) {
+                            logger.w(e) { "Failed to read error response body" }
+                            null
+                        }
                     Result.failure(
                         ApiError.HttpError(
                             code = response.status.value,
                             errorMessage = response.status.description,
-                            detail = errorDetail
-                        )
+                            detail = errorDetail,
+                        ),
                     )
                 }
             }
         } catch (e: Exception) {
             Result.failure(ApiError.NetworkError(e))
         }
-    }
 
-    override suspend fun updateSystemPrompt(name: SystemPromptName, content: String): RepositoryResult<SystemPromptResponse> {
-        return try {
-            val response = httpClient.put("$baseUrl/v1/system-prompts/${name.apiName}") {
-                contentType(ContentType.Application.Json)
-                setBody(SystemPromptUpdateRequest(content))
-            }
+    override suspend fun updateSystemPrompt(
+        name: SystemPromptName,
+        content: String,
+    ): RepositoryResult<SystemPromptResponse> =
+        try {
+            val response =
+                httpClient.put("$baseUrl/v1/system-prompts/${name.apiName}") {
+                    contentType(ContentType.Application.Json)
+                    setBody(SystemPromptUpdateRequest(content))
+                }
 
             when (response.status) {
                 HttpStatusCode.OK -> Result.success(response.body())
                 else -> {
-                    val errorDetail = try { response.body<String>() } catch (e: Exception) {
-                        logger.w(e) { "Failed to read error response body" }
-                        null
-                    }
+                    val errorDetail =
+                        try {
+                            response.body<String>()
+                        } catch (e: Exception) {
+                            logger.w(e) { "Failed to read error response body" }
+                            null
+                        }
                     Result.failure(
                         ApiError.HttpError(
                             code = response.status.value,
                             errorMessage = response.status.description,
-                            detail = errorDetail
-                        )
+                            detail = errorDetail,
+                        ),
                     )
                 }
             }
         } catch (e: Exception) {
             Result.failure(ApiError.NetworkError(e))
         }
-    }
 }

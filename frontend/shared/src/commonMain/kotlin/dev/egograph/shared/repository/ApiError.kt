@@ -9,7 +9,9 @@ sealed class ApiError : Exception {
     /**
      * ネットワークエラー（接続失敗、タイムアウト等）
      */
-    data class NetworkError(val exception: Throwable) : ApiError(exception) {
+    data class NetworkError(
+        val exception: Throwable,
+    ) : ApiError(exception) {
         override val message: String
             get() = "Network error: ${exception.message}"
     }
@@ -20,7 +22,7 @@ sealed class ApiError : Exception {
     data class HttpError(
         val code: Int,
         val errorMessage: String,
-        val detail: String? = null
+        val detail: String? = null,
     ) : ApiError() {
         override val message: String
             get() = "HTTP $code: $errorMessage${detail?.let { " - $it" } ?: ""}"
@@ -29,7 +31,9 @@ sealed class ApiError : Exception {
     /**
      * シリアライゼーションエラー
      */
-    data class SerializationError(val exception: Throwable) : ApiError(exception) {
+    data class SerializationError(
+        val exception: Throwable,
+    ) : ApiError(exception) {
         override val message: String
             get() = "Serialization error: ${exception.message}"
     }
@@ -37,7 +41,9 @@ sealed class ApiError : Exception {
     /**
      * 不明なエラー
      */
-    data class UnknownError(val exception: Throwable) : ApiError(exception) {
+    data class UnknownError(
+        val exception: Throwable,
+    ) : ApiError(exception) {
         override val message: String
             get() = "Unknown error: ${exception.message}"
     }
@@ -45,7 +51,9 @@ sealed class ApiError : Exception {
     /**
      * バリデーションエラー
      */
-    data class ValidationError(val errorMessage: String) : ApiError() {
+    data class ValidationError(
+        val errorMessage: String,
+    ) : ApiError() {
         override val message: String
             get() = errorMessage
     }

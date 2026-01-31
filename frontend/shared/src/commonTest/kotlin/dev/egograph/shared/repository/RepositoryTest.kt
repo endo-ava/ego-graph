@@ -8,7 +8,6 @@ import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.dto.ThreadListResponse
 import dev.egograph.shared.dto.ThreadMessagesResponse
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -20,7 +19,6 @@ import kotlin.test.assertTrue
  * ApiErrorとRepositoryResultの動作を検証します。
  */
 class RepositoryTest {
-
     /**
      * ApiError - sealed classのテスト
      */
@@ -96,9 +94,10 @@ class RepositoryTest {
      */
     @Test
     fun `RepositoryResult - exception message is preserved`() {
-        val result: RepositoryResult<String> = Result.failure(
-            ApiError.HttpError(404, "Not Found", "Resource not found")
-        )
+        val result: RepositoryResult<String> =
+            Result.failure(
+                ApiError.HttpError(404, "Not Found", "Resource not found"),
+            )
 
         assertTrue(result.isFailure)
         val exception = result.exceptionOrNull() as? ApiError.HttpError
@@ -112,34 +111,59 @@ class RepositoryTest {
     @Test
     fun `Repository interfaces - can be implemented`() {
         // Create mock implementations to verify interfaces are correctly defined
-        val mockThreadRepo = object : ThreadRepository {
-            override fun getThreads(limit: Int, offset: Int) = flow<RepositoryResult<ThreadListResponse>> {
-                emit(Result.success(ThreadListResponse(emptyList(), 0, limit, offset)))
-            }
-            override fun getThread(threadId: String) = flow<RepositoryResult<Thread>> {
-                emit(Result.success(Thread("", "", "", null, 0, "", "")))
-            }
-            override suspend fun createThread(title: String) = Result.success(
-                Thread("", "", title, null, 0, "", "")
-            )
-        }
+        val mockThreadRepo =
+            object : ThreadRepository {
+                override fun getThreads(
+                    limit: Int,
+                    offset: Int,
+                ) = flow<RepositoryResult<ThreadListResponse>> {
+                    emit(Result.success(ThreadListResponse(emptyList(), 0, limit, offset)))
+                }
 
-        val mockMessageRepo = object : MessageRepository {
-            override fun getMessages(threadId: String) = flow<RepositoryResult<ThreadMessagesResponse>> {
-                emit(Result.success(ThreadMessagesResponse(threadId, emptyList())))
-            }
-        }
+                override fun getThread(threadId: String) =
+                    flow<RepositoryResult<Thread>> {
+                        emit(Result.success(Thread("", "", "", null, 0, "", "")))
+                    }
 
-        val mockChatRepo = object : ChatRepository {
-            override fun sendMessage(request: ChatRequest) = flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
+                override suspend fun createThread(title: String) =
+                    Result.success(
+                        Thread("", "", title, null, 0, "", ""),
+                    )
             }
-            override fun streamChatResponse(request: ChatRequest) = flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
+
+        val mockMessageRepo =
+            object : MessageRepository {
+                override fun getMessages(threadId: String) =
+                    flow<RepositoryResult<ThreadMessagesResponse>> {
+                        emit(Result.success(ThreadMessagesResponse(threadId, emptyList())))
+                    }
             }
-            override suspend fun sendMessageSync(request: ChatRequest) = Result.success(
-                ChatResponse("", dev.egograph.shared.dto.Message(MessageRole.ASSISTANT, "Response"), null, null, "", null)
-            )
-            override suspend fun getModels() = Result.success(emptyList<LLMModel>())
-        }
+
+        val mockChatRepo =
+            object : ChatRepository {
+                override fun sendMessage(request: ChatRequest) =
+                    flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
+                    }
+
+                override fun streamChatResponse(request: ChatRequest) =
+                    flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
+                    }
+
+                override suspend fun sendMessageSync(request: ChatRequest) =
+                    Result.success(
+                        ChatResponse(
+                            "",
+                            dev.egograph.shared.dto
+                                .Message(MessageRole.ASSISTANT, "Response"),
+                            null,
+                            null,
+                            "",
+                            null,
+                        ),
+                    )
+
+                override suspend fun getModels() = Result.success(emptyList<LLMModel>())
+            }
     }
 
     /**
@@ -148,20 +172,23 @@ class RepositoryTest {
     @Test
     fun `RepositoryResult - fold works correctly`() {
         val successResult: RepositoryResult<String> = Result.success("value")
-        val failureResult: RepositoryResult<String> = Result.failure(
-            ApiError.ValidationError("error")
-        )
+        val failureResult: RepositoryResult<String> =
+            Result.failure(
+                ApiError.ValidationError("error"),
+            )
 
-        val successValue = successResult.fold(
-            onSuccess = { it },
-            onFailure = { "failure" }
-        )
+        val successValue =
+            successResult.fold(
+                onSuccess = { it },
+                onFailure = { "failure" },
+            )
         assertEquals("value", successValue)
 
-        val failureValue = failureResult.fold(
-            onSuccess = { "success" },
-            onFailure = { "failure: ${it.message}" }
-        )
+        val failureValue =
+            failureResult.fold(
+                onSuccess = { "success" },
+                onFailure = { "failure: ${it.message}" },
+            )
         assertEquals("failure: error", failureValue)
     }
 
@@ -182,9 +209,10 @@ class RepositoryTest {
      */
     @Test
     fun `RepositoryResult - mapCatches handles exceptions`() {
-        val result: RepositoryResult<Int> = Result.failure(
-            ApiError.NetworkError(Exception("Network error"))
-        )
+        val result: RepositoryResult<Int> =
+            Result.failure(
+                ApiError.NetworkError(Exception("Network error")),
+            )
         val mapped = result.mapCatching { it * 2 }
 
         assertTrue(mapped.isFailure)

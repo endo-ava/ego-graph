@@ -56,9 +56,10 @@ class ChatScreen : Screen {
             modifier = Modifier.fillMaxSize(),
             // Exclude navigationBars and ime from contentWindowInsets because we handle them manually.
             // Specifically, we want the bottom bar to move up with the IME, and the content to be padded accordingly.
-            contentWindowInsets = ScaffoldDefaults.contentWindowInsets
-                .exclude(WindowInsets.navigationBars)
-                .exclude(WindowInsets.ime),
+            contentWindowInsets =
+                ScaffoldDefaults.contentWindowInsets
+                    .exclude(WindowInsets.navigationBars)
+                    .exclude(WindowInsets.ime),
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 ChatInput(
@@ -66,17 +67,18 @@ class ChatScreen : Screen {
                         store.accept(ChatIntent.SendMessage(text))
                     },
                     isLoading = state.isSending,
-                    modifier = Modifier
-                        .navigationBarsPadding()
-                        .imePadding()
+                    modifier =
+                        Modifier
+                            .navigationBarsPadding()
+                            .imePadding(),
                 )
-            }
+            },
         ) { paddingValues ->
             MessageList(
                 messages = state.messages,
                 modifier = Modifier.padding(paddingValues),
                 isLoading = state.isLoadingMessages,
-                errorMessage = state.messagesError
+                errorMessage = state.messagesError,
             )
         }
     }

@@ -32,21 +32,21 @@ import dev.egograph.shared.platform.PlatformPrefsKeys
 import dev.egograph.shared.settings.AppTheme
 import dev.egograph.shared.settings.toAppTheme
 import dev.egograph.shared.settings.toStorageString
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     preferences: PlatformPreferences,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTheme by remember {
-        val savedTheme = preferences.getString(
-            PlatformPrefsKeys.KEY_THEME,
-            PlatformPrefsDefaults.DEFAULT_THEME
-        )
+        val savedTheme =
+            preferences.getString(
+                PlatformPrefsKeys.KEY_THEME,
+                PlatformPrefsDefaults.DEFAULT_THEME,
+            )
         mutableStateOf(savedTheme.toAppTheme())
     }
 
@@ -54,8 +54,8 @@ fun SettingsScreen(
         mutableStateOf(
             preferences.getString(
                 PlatformPrefsKeys.KEY_API_URL,
-                PlatformPrefsDefaults.DEFAULT_API_URL
-            )
+                PlatformPrefsDefaults.DEFAULT_API_URL,
+            ),
         )
     }
 
@@ -69,24 +69,26 @@ fun SettingsScreen(
                     Button(onClick = onBack) {
                         Text("← Back")
                     }
-                }
+                },
             )
-        }
+        },
     ) { paddingValues ->
         Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
             ) {
                 Text(
                     text = "Appearance",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
 
                 ThemeOption(
@@ -96,9 +98,9 @@ fun SettingsScreen(
                         selectedTheme = AppTheme.LIGHT
                         preferences.putString(
                             PlatformPrefsKeys.KEY_THEME,
-                            AppTheme.LIGHT.toStorageString()
+                            AppTheme.LIGHT.toStorageString(),
                         )
-                    }
+                    },
                 )
 
                 ThemeOption(
@@ -108,9 +110,9 @@ fun SettingsScreen(
                         selectedTheme = AppTheme.DARK
                         preferences.putString(
                             PlatformPrefsKeys.KEY_THEME,
-                            AppTheme.DARK.toStorageString()
+                            AppTheme.DARK.toStorageString(),
                         )
-                    }
+                    },
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -118,7 +120,7 @@ fun SettingsScreen(
                 Text(
                     text = "API Configuration",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
 
                 OutlinedTextField(
@@ -130,7 +132,7 @@ fun SettingsScreen(
                     placeholder = { Text("https://api.example.com") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    isError = inputUrl.isBlank() || (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://"))
+                    isError = inputUrl.isBlank() || (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://")),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -141,14 +143,15 @@ fun SettingsScreen(
                         if (urlToSave.isNotBlank() && (urlToSave.startsWith("http://") || urlToSave.startsWith("https://"))) {
                             preferences.putString(
                                 PlatformPrefsKeys.KEY_API_URL,
-                                urlToSave
+                                urlToSave,
                             )
                             apiUrl = urlToSave
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = inputUrl.trim().isNotEmpty() &&
-                             (inputUrl.trim().startsWith("http://") || inputUrl.trim().startsWith("https://"))
+                    enabled =
+                        inputUrl.trim().isNotEmpty() &&
+                            (inputUrl.trim().startsWith("http://") || inputUrl.trim().startsWith("https://")),
                 ) {
                     Text("Save Settings")
                 }
@@ -161,17 +164,18 @@ fun SettingsScreen(
 private fun ThemeOption(
     text: String,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
     ) {
         RadioButton(
             selected = selected,
-            onClick = onClick
+            onClick = onClick,
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(text)

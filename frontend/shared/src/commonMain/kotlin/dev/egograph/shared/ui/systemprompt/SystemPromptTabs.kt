@@ -13,17 +13,17 @@ import dev.egograph.shared.dto.SystemPromptName
 fun SystemPromptTabs(
     selectedTab: SystemPromptName,
     onTabSelected: (SystemPromptName) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     PrimaryScrollableTabRow(
         selectedTabIndex = selectedTab.ordinal,
-        modifier = modifier
+        modifier = modifier,
     ) {
         SystemPromptName.entries.forEach { tab ->
             Tab(
                 selected = selectedTab == tab,
                 onClick = { onTabSelected(tab) },
-                text = { Text(tab.name) }
+                text = { Text(tab.name) },
             )
         }
     }

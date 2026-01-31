@@ -13,5 +13,5 @@ data class ThreadMessage(
     val role: MessageRole,
     val content: String,
     val createdAt: String,
-    val modelName: String? = null
+    val modelName: String? = null,
 )

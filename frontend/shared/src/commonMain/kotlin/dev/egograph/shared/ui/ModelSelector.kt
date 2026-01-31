@@ -26,7 +26,7 @@ import dev.egograph.shared.store.chat.ChatStore
 @Composable
 fun ModelSelector(
     store: ChatStore,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val state by store.states.collectAsState(initial = store.state)
 
@@ -42,7 +42,7 @@ fun ModelSelector(
         isLoading = state.isLoadingModels,
         error = state.modelsError,
         onModelSelected = { store.accept(ChatIntent.SelectModel(it)) },
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -54,26 +54,27 @@ fun ModelSelector(
     isLoading: Boolean,
     error: String?,
     onModelSelected: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     val selectedModel = models.find { it.id == selectedModelId }
 
-    val displayText = when {
-        isLoading -> "Loading..."
-        error != null -> "Error"
-        models.isEmpty() -> "No models"
-        selectedModel != null -> selectedModel.name
-        else -> "Select Model"
-    }
+    val displayText =
+        when {
+            isLoading -> "Loading..."
+            error != null -> "Error"
+            models.isEmpty() -> "No models"
+            selectedModel != null -> selectedModel.name
+            else -> "Select Model"
+        }
 
     val isEnabled = !isLoading && error == null && models.isNotEmpty()
 
     Box(modifier = modifier) {
         ExposedDropdownMenuBox(
             expanded = expanded,
-            onExpandedChange = { if (isEnabled) expanded = !expanded }
+            onExpandedChange = { if (isEnabled) expanded = !expanded },
         ) {
             OutlinedTextField(
                 value = displayText,
@@ -83,13 +84,13 @@ fun ModelSelector(
                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                 modifier = Modifier.menuAnchor().fillMaxWidth(),
                 enabled = isEnabled,
-                singleLine = true
+                singleLine = true,
             )
 
             if (isEnabled) {
                 ExposedDropdownMenu(
                     expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    onDismissRequest = { expanded = false },
                 ) {
                     models.forEach { model ->
                         DropdownMenuItem(
@@ -97,12 +98,12 @@ fun ModelSelector(
                                 Column {
                                     Text(
                                         text = model.name,
-                                        style = MaterialTheme.typography.bodyLarge
+                                        style = MaterialTheme.typography.bodyLarge,
                                     )
                                     Text(
                                         text = formatCost(model),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             },
@@ -110,7 +111,7 @@ fun ModelSelector(
                                 onModelSelected(model.id)
                                 expanded = false
                             },
-                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                         )
                     }
                 }

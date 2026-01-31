@@ -1,14 +1,25 @@
 package dev.egograph.shared.platform
 
 expect class PlatformPreferences {
+    fun getString(
+        key: String,
+        default: String,
+    ): String
 
-    fun getString(key: String, default: String): String
+    fun putString(
+        key: String,
+        value: String,
+    )
 
-    fun putString(key: String, value: String)
+    fun getBoolean(
+        key: String,
+        default: Boolean,
+    ): Boolean
 
-    fun getBoolean(key: String, default: Boolean): Boolean
-
-    fun putBoolean(key: String, value: Boolean)
+    fun putBoolean(
+        key: String,
+        value: Boolean,
+    )
 }
 
 object PlatformPrefsKeys {

@@ -11,7 +11,6 @@ import kotlin.test.assertTrue
  * 注: Ktor MockEngineが利用可能でないため、構造検証のみ実施しています。
  */
 class SystemPromptRepositoryImplTest {
-
     @Test
     fun `SystemPromptRepositoryImpl can be instantiated`() {
         // Given
@@ -29,12 +28,13 @@ class SystemPromptRepositoryImplTest {
     }
 
     @Test
-    fun `network error type can be created`() = runTest {
-        // This test documents expected behavior without actual HTTP calls
-        // When MockEngine is available, add actual network error tests
+    fun `network error type can be created`() =
+        runTest {
+            // This test documents expected behavior without actual HTTP calls
+            // When MockEngine is available, add actual network error tests
 
-        val expectedError = ApiError.NetworkError(Exception("Network error"))
-        assertTrue(expectedError is ApiError.NetworkError)
-        assertTrue(expectedError.cause != null)
-    }
+            val expectedError = ApiError.NetworkError(Exception("Network error"))
+            assertTrue(expectedError is ApiError.NetworkError)
+            assertTrue(expectedError.cause != null)
+        }
 }

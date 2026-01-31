@@ -32,7 +32,7 @@ class ThreadListScreen : Screen {
             },
             onRefresh = {
                 store.accept(ChatIntent.RefreshThreads)
-            }
+            },
         )
     }
 }

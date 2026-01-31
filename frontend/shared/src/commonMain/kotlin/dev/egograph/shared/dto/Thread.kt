@@ -19,5 +19,5 @@ data class Thread(
     @SerialName("created_at")
     val createdAt: String,
     @SerialName("last_message_at")
-    val lastMessageAt: String
+    val lastMessageAt: String,
 )

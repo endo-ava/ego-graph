@@ -45,12 +45,13 @@ class SystemPromptEditorScreen : Screen {
             isLoading = true
             try {
                 val result = repository.getSystemPrompt(selectedTab)
-                result.onSuccess {
-                    originalContent = it.content
-                    draftContent = it.content
-                }.onFailure {
-                    snackbarHostState.showSnackbar("Error: ${it.message}")
-                }
+                result
+                    .onSuccess {
+                        originalContent = it.content
+                        draftContent = it.content
+                    }.onFailure {
+                        snackbarHostState.showSnackbar("Error: ${it.message}")
+                    }
             } finally {
                 isLoading = false
             }
@@ -66,18 +67,18 @@ class SystemPromptEditorScreen : Screen {
             topBar = {
                 SystemPromptTabs(
                     selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it }
+                    onTabSelected = { selectedTab = it },
                 )
             },
             bottomBar = {
                 Row(
                     modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Spacer(Modifier.weight(1f))
                     TextButton(
                         onClick = { scope.launch { fetchContent() } },
-                        enabled = !isLoading
+                        enabled = !isLoading,
                     ) {
                         Text("Cancel")
                     }
@@ -88,41 +89,44 @@ class SystemPromptEditorScreen : Screen {
                                 isLoading = true
                                 try {
                                     val result = repository.updateSystemPrompt(selectedTab, draftContent)
-                                    result.onSuccess {
-                                        originalContent = it.content
-                                        draftContent = it.content
-                                        snackbarHostState.showSnackbar("Saved successfully")
-                                    }.onFailure {
-                                        snackbarHostState.showSnackbar("Error: ${it.message}")
-                                    }
+                                    result
+                                        .onSuccess {
+                                            originalContent = it.content
+                                            draftContent = it.content
+                                            snackbarHostState.showSnackbar("Saved successfully")
+                                        }.onFailure {
+                                            snackbarHostState.showSnackbar("Error: ${it.message}")
+                                        }
                                 } finally {
                                     isLoading = false
                                 }
                             }
                         },
-                        enabled = !isLoading && draftContent != originalContent
+                        enabled = !isLoading && draftContent != originalContent,
                     ) {
                         Text("Save")
                     }
                 }
-            }
+            },
         ) { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
                 if (isLoading) {
                     CircularProgressIndicator(
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(16.dp)
+                        modifier =
+                            Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .padding(16.dp),
                     )
                 }
-                
+
                 SystemPromptEditor(
                     content = draftContent,
                     onContentChange = { draftContent = it },
                     enabled = !isLoading,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(16.dp)
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .padding(16.dp),
                 )
             }
         }

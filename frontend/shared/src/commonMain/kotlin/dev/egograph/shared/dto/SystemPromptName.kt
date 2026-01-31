@@ -7,7 +7,9 @@ import kotlinx.serialization.Serializable
  * System Prompt の種類
  */
 @Serializable
-enum class SystemPromptName(val apiName: String) {
+enum class SystemPromptName(
+    val apiName: String,
+) {
     @SerialName("user")
     USER("user"),
 
@@ -18,5 +20,5 @@ enum class SystemPromptName(val apiName: String) {
     SOUL("soul"),
 
     @SerialName("tools")
-    TOOLS("tools");
+    TOOLS("tools"),
 }

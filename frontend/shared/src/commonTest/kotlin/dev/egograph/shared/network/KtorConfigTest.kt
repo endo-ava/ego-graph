@@ -1,6 +1,5 @@
 package dev.egograph.shared.network
 
-import io.ktor.client.HttpClient
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue

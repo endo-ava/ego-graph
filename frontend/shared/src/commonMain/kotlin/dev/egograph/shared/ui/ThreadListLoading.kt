@@ -13,18 +13,19 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ThreadListLoading(
     modifier: Modifier = Modifier,
-    message: String = "Loading..."
+    message: String = "Loading...",
 ) {
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(128.dp),
-        contentAlignment = Alignment.Center
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(128.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

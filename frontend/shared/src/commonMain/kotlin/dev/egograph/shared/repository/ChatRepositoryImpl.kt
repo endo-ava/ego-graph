@@ -1,5 +1,6 @@
 package dev.egograph.shared.repository
 
+import co.touchlab.kermit.Logger
 import dev.egograph.shared.dto.ChatRequest
 import dev.egograph.shared.dto.ChatResponse
 import dev.egograph.shared.dto.LLMModel
@@ -14,11 +15,10 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
-import co.touchlab.kermit.Logger
-import io.ktor.utils.io.readAvailable
 
 /**
  * ChatRepositoryの実装
@@ -29,70 +29,74 @@ import io.ktor.utils.io.readAvailable
 class ChatRepositoryImpl(
     private val httpClient: HttpClient,
     private val baseUrl: String,
-    private val json: Json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
+    private val json: Json =
+        Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        },
 ) : ChatRepository {
+    override fun sendMessage(request: ChatRequest): Flow<RepositoryResult<StreamChunk>> = streamChatResponse(request)
 
-    override fun sendMessage(request: ChatRequest): Flow<RepositoryResult<StreamChunk>> =
-        streamChatResponse(request)
+    override fun streamChatResponse(request: ChatRequest): Flow<RepositoryResult<StreamChunk>> =
+        flow {
+            try {
+                val response =
+                    httpClient.post("$baseUrl/v1/chat") {
+                        contentType(io.ktor.http.ContentType.Application.Json)
+                        setBody(request.copy(stream = true))
+                    }
 
-    override fun streamChatResponse(request: ChatRequest): Flow<RepositoryResult<StreamChunk>> = flow {
-        try {
-            val response = httpClient.post("$baseUrl/v1/chat") {
-                contentType(io.ktor.http.ContentType.Application.Json)
-                setBody(request.copy(stream = true))
-            }
+                when (response.status) {
+                    HttpStatusCode.OK -> {
+                        val channel = response.bodyAsChannel()
+                        val buffer = StringBuilder()
+                        val chunkBuffer = ByteArray(8192)
 
-            when (response.status) {
-                HttpStatusCode.OK -> {
-                    val channel = response.bodyAsChannel()
-                    val buffer = StringBuilder()
-                    val chunkBuffer = ByteArray(8192)
+                        while (!channel.isClosedForRead) {
+                            val readCount = channel.readAvailable(chunkBuffer, 0, chunkBuffer.size)
+                            if (readCount == -1) {
+                                break
+                            }
+                            if (readCount == 0) {
+                                continue
+                            }
 
-                    while (!channel.isClosedForRead) {
-                        val readCount = channel.readAvailable(chunkBuffer, 0, chunkBuffer.size)
-                        if (readCount == -1) {
-                            break
+                            buffer.append(chunkBuffer.decodeToString(0, readCount))
+                            emitSseEventsFromBuffer(buffer)
                         }
-                        if (readCount == 0) {
-                            continue
+
+                        if (buffer.isNotBlank()) {
+                            emitSseEvent(buffer.toString())
                         }
-
-                        buffer.append(chunkBuffer.decodeToString(0, readCount))
-                        emitSseEventsFromBuffer(buffer)
                     }
-
-                    if (buffer.isNotBlank()) {
-                        emitSseEvent(buffer.toString())
-                    }
-                }
-                else -> {
-                    val errorDetail = try {
-                        response.body<String>()
-                    } catch (e: Exception) {
-                        Logger.w(e) { "Failed to read error response body" }
-                        response.status.description
-                    }
-                    emit(Result.failure(
-                        ApiError.HttpError(
-                            code = response.status.value,
-                            errorMessage = response.status.description,
-                            detail = errorDetail
+                    else -> {
+                        val errorDetail =
+                            try {
+                                response.body<String>()
+                            } catch (e: Exception) {
+                                Logger.w(e) { "Failed to read error response body" }
+                                response.status.description
+                            }
+                        emit(
+                            Result.failure(
+                                ApiError.HttpError(
+                                    code = response.status.value,
+                                    errorMessage = response.status.description,
+                                    detail = errorDetail,
+                                ),
+                            ),
                         )
-                    ))
+                    }
                 }
+            } catch (e: ApiError) {
+                emit(Result.failure(e))
+            } catch (e: Exception) {
+                emit(Result.failure(ApiError.NetworkError(e)))
             }
-        } catch (e: ApiError) {
-            emit(Result.failure(e))
-        } catch (e: Exception) {
-            emit(Result.failure(ApiError.NetworkError(e)))
         }
-    }
 
     private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEventsFromBuffer(
-        buffer: StringBuilder
+        buffer: StringBuilder,
     ) {
         var delimiterIndex = buffer.indexOf("\n\n")
         while (delimiterIndex >= 0) {
@@ -103,33 +107,31 @@ class ChatRepositoryImpl(
         }
     }
 
-    private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEvent(
-        event: String
-    ) {
+    private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEvent(event: String) {
         if (event.isBlank()) {
             return
         }
 
-        val dataLines = event.lineSequence()
-            .map { it.trimEnd() }
-            .filter { it.startsWith("data: ") }
-            .toList()
+        val dataLines =
+            event
+                .lineSequence()
+                .map { it.trimEnd() }
+                .filter { it.startsWith("data: ") }
+                .toList()
 
         for (line in dataLines) {
             emitChunk(line.removePrefix("data: "))
         }
     }
 
-    private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitChunk(
-        data: String
-    ) {
+    private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitChunk(data: String) {
         try {
             val chunk = json.decodeFromString(StreamChunk.serializer(), data)
             if (chunk.type == StreamChunkType.ERROR) {
                 throw ApiError.HttpError(
                     code = 500,
                     errorMessage = "Stream error",
-                    detail = chunk.error
+                    detail = chunk.error,
                 )
             }
 
@@ -140,28 +142,30 @@ class ChatRepositoryImpl(
         }
     }
 
-    override suspend fun sendMessageSync(request: ChatRequest): RepositoryResult<ChatResponse> {
-        return try {
-            val response = httpClient.post("$baseUrl/v1/chat") {
-                contentType(io.ktor.http.ContentType.Application.Json)
-                setBody(request.copy(stream = false))
-            }
+    override suspend fun sendMessageSync(request: ChatRequest): RepositoryResult<ChatResponse> =
+        try {
+            val response =
+                httpClient.post("$baseUrl/v1/chat") {
+                    contentType(io.ktor.http.ContentType.Application.Json)
+                    setBody(request.copy(stream = false))
+                }
 
             when (response.status) {
                 HttpStatusCode.OK -> Result.success(response.body<ChatResponse>())
                 else -> {
-                    val errorDetail = try {
-                        response.body<String>()
-                    } catch (e: Exception) {
-                        Logger.w(e) { "Failed to read error response body" }
-                        null
-                    }
+                    val errorDetail =
+                        try {
+                            response.body<String>()
+                        } catch (e: Exception) {
+                            Logger.w(e) { "Failed to read error response body" }
+                            null
+                        }
                     Result.failure(
                         ApiError.HttpError(
                             code = response.status.value,
                             errorMessage = response.status.description,
-                            detail = errorDetail
-                        )
+                            detail = errorDetail,
+                        ),
                     )
                 }
             }
@@ -170,10 +174,9 @@ class ChatRepositoryImpl(
         } catch (e: Exception) {
             Result.failure(ApiError.NetworkError(e))
         }
-    }
 
-    override suspend fun getModels(): RepositoryResult<List<LLMModel>> {
-        return try {
+    override suspend fun getModels(): RepositoryResult<List<LLMModel>> =
+        try {
             val response = httpClient.get("$baseUrl/v1/chat/models")
 
             when (response.status) {
@@ -182,18 +185,19 @@ class ChatRepositoryImpl(
                     Result.success(modelsResponse.models)
                 }
                 else -> {
-                    val errorDetail = try {
-                        response.body<String>()
-                    } catch (e: Exception) {
-                        Logger.w(e) { "Failed to read error response body" }
-                        null
-                    }
+                    val errorDetail =
+                        try {
+                            response.body<String>()
+                        } catch (e: Exception) {
+                            Logger.w(e) { "Failed to read error response body" }
+                            null
+                        }
                     Result.failure(
                         ApiError.HttpError(
                             code = response.status.value,
                             errorMessage = response.status.description,
-                            detail = errorDetail
-                        )
+                            detail = errorDetail,
+                        ),
                     )
                 }
             }
@@ -202,5 +206,4 @@ class ChatRepositoryImpl(
         } catch (e: Exception) {
             Result.failure(ApiError.NetworkError(e))
         }
-    }
 }

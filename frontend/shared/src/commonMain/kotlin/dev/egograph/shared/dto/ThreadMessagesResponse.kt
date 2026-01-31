@@ -8,5 +8,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ThreadMessagesResponse(
     val threadId: String,
-    val messages: List<ThreadMessage>
+    val messages: List<ThreadMessage>,
 )

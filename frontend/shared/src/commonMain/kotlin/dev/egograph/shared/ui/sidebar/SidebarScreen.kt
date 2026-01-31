@@ -30,7 +30,7 @@ import org.koin.compose.koinInject
 enum class SidebarView {
     Chat,
     SystemPrompt,
-    Settings
+    Settings,
 }
 
 class SidebarScreen : Screen {
@@ -57,9 +57,9 @@ class SidebarScreen : Screen {
                         onSettingsClick = {
                             activeView = SidebarView.Settings
                             scope.launch { drawerState.close() }
-                        }
+                        },
                     )
-                    
+
                     NavigationDrawerItem(
                         label = { Text("System Prompt") },
                         selected = activeView == SidebarView.SystemPrompt,
@@ -68,7 +68,7 @@ class SidebarScreen : Screen {
                             scope.launch { drawerState.close() }
                         },
                         icon = { Text("⚙") },
-                        modifier = Modifier.padding(horizontal = 12.dp)
+                        modifier = Modifier.padding(horizontal = 12.dp),
                     )
 
                     ThreadList(
@@ -84,11 +84,11 @@ class SidebarScreen : Screen {
                         onRefresh = {
                             store.accept(ChatIntent.RefreshThreads)
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                 }
             },
-            gesturesEnabled = true
+            gesturesEnabled = true,
         ) {
             when (activeView) {
                 SidebarView.Chat -> chatScreen.Content()
@@ -97,7 +97,7 @@ class SidebarScreen : Screen {
                     val preferences = koinInject<dev.egograph.shared.platform.PlatformPreferences>()
                     SettingsScreen(
                         preferences = preferences,
-                        onBack = { activeView = SidebarView.Chat }
+                        onBack = { activeView = SidebarView.Chat },
                     )
                 }
             }

@@ -18,40 +18,41 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SidebarHeader(
     onNewChatClick: () -> Unit,
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = "History",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.weight(1f))
         OutlinedButton(
             onClick = onSettingsClick,
             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-            modifier = Modifier.height(32.dp)
+            modifier = Modifier.height(32.dp),
         ) {
             Text(
                 text = "⚙",
-                style = MaterialTheme.typography.labelLarge
+                style = MaterialTheme.typography.labelLarge,
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
         OutlinedButton(
             onClick = onNewChatClick,
             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-            modifier = Modifier.height(32.dp)
+            modifier = Modifier.height(32.dp),
         ) {
             Text(
                 text = "+",
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(end = 4.dp)
+                modifier = Modifier.padding(end = 4.dp),
             )
             Text("New")
         }

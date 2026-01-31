@@ -11,14 +11,18 @@ import kotlinx.serialization.json.JsonObject
 enum class StreamChunkType {
     @SerialName("delta")
     DELTA,
+
     @SerialName("tool_call")
     TOOL_CALL,
+
     @SerialName("tool_result")
     TOOL_RESULT,
+
     @SerialName("done")
     DONE,
+
     @SerialName("error")
-    ERROR
+    ERROR,
 }
 
 /**
@@ -34,5 +38,5 @@ data class StreamChunk(
     val finishReason: String? = null,
     val usage: Usage? = null,
     val error: String? = null,
-    val threadId: String? = null
+    val threadId: String? = null,
 )

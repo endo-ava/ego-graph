@@ -13,5 +13,5 @@ data class Usage(
     @SerialName("completion_tokens")
     val completionTokens: Int,
     @SerialName("total_tokens")
-    val totalTokens: Int
+    val totalTokens: Int,
 )

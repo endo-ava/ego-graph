@@ -16,35 +16,38 @@ import kotlinx.coroutines.flow.flow
  */
 class MessageRepositoryImpl(
     private val httpClient: HttpClient,
-    private val baseUrl: String
+    private val baseUrl: String,
 ) : MessageRepository {
+    override fun getMessages(threadId: String): Flow<RepositoryResult<ThreadMessagesResponse>> =
+        flow {
+            try {
+                val response = httpClient.get("$baseUrl/v1/threads/$threadId/messages")
 
-    override fun getMessages(threadId: String): Flow<RepositoryResult<ThreadMessagesResponse>> = flow {
-        try {
-            val response = httpClient.get("$baseUrl/v1/threads/$threadId/messages")
-
-            when (response.status) {
-                HttpStatusCode.OK -> {
-                    emit(Result.success(response.body<ThreadMessagesResponse>()))
-                }
-                else -> {
-                    val errorDetail = try {
-                        response.body<String>()
-                    } catch (e: Exception) {
-                        Logger.w(e) { "Failed to read error response body" }
-                        null
+                when (response.status) {
+                    HttpStatusCode.OK -> {
+                        emit(Result.success(response.body<ThreadMessagesResponse>()))
                     }
-                    emit(Result.failure(
-                        ApiError.HttpError(
-                            code = response.status.value,
-                            errorMessage = response.status.description,
-                            detail = errorDetail
+                    else -> {
+                        val errorDetail =
+                            try {
+                                response.body<String>()
+                            } catch (e: Exception) {
+                                Logger.w(e) { "Failed to read error response body" }
+                                null
+                            }
+                        emit(
+                            Result.failure(
+                                ApiError.HttpError(
+                                    code = response.status.value,
+                                    errorMessage = response.status.description,
+                                    detail = errorDetail,
+                                ),
+                            ),
                         )
-                    ))
+                    }
                 }
+            } catch (e: Exception) {
+                emit(Result.failure(ApiError.NetworkError(e)))
             }
-        } catch (e: Exception) {
-            emit(Result.failure(ApiError.NetworkError(e)))
         }
-    }
 }

@@ -12,11 +12,11 @@ import kotlin.test.assertTrue
  * 注: Ktor MockEngineが利用可能でないため、構造検証のみ実施しています。
  */
 class ChatRepositoryImplTest {
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
+    private val json =
+        Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
 
     @Test
     fun `ChatRepositoryImpl can be instantiated`() {
@@ -35,12 +35,13 @@ class ChatRepositoryImplTest {
     }
 
     @Test
-    fun `handles network error gracefully`() = runTest {
-        // This test documents expected behavior without actual HTTP calls
-        // When MockEngine is available, add actual network error tests
+    fun `handles network error gracefully`() =
+        runTest {
+            // This test documents expected behavior without actual HTTP calls
+            // When MockEngine is available, add actual network error tests
 
-        val expectedError = ApiError.NetworkError(Exception("Network error"))
-        assertTrue(expectedError is ApiError.NetworkError)
-        assertTrue(expectedError.cause != null)
-    }
+            val expectedError = ApiError.NetworkError(Exception("Network error"))
+            assertTrue(expectedError is ApiError.NetworkError)
+            assertTrue(expectedError.cause != null)
+        }
 }

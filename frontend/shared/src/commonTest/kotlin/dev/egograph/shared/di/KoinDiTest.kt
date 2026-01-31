@@ -2,13 +2,13 @@ package dev.egograph.shared.di
 
 import dev.egograph.shared.repository.ThreadRepository
 import io.ktor.client.HttpClient
-import kotlin.test.Test
-import kotlin.test.assertNotNull
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.test.KoinTest
 import org.koin.test.check.checkModules
 import org.koin.test.inject
+import kotlin.test.Test
+import kotlin.test.assertNotNull
 
 /**
  * Koin DI Container Tests
@@ -16,7 +16,6 @@ import org.koin.test.inject
  * Verifies that all dependencies can be resolved and the module graph is correct.
  */
 class KoinDiTest : KoinTest {
-
     @Test
     fun `Koin modules check`() {
         try {

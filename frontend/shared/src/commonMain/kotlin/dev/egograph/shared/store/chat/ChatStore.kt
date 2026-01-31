@@ -38,7 +38,7 @@ data class ChatState(
     val isSending: Boolean = false,
     val threadsError: String? = null,
     val messagesError: String? = null,
-    val modelsError: String? = null
+    val modelsError: String? = null,
 ) {
     /**
      * スレッドが選択されているかどうか
@@ -80,7 +80,9 @@ sealed interface ChatIntent {
      *
      * @param threadId 選択するスレッドのID
      */
-    data class SelectThread(val threadId: String) : ChatIntent
+    data class SelectThread(
+        val threadId: String,
+    ) : ChatIntent
 
     /**
      * 選択中のスレッドを解除する
@@ -92,7 +94,9 @@ sealed interface ChatIntent {
      *
      * @param threadId スレッドID（nullの場合は選択中のスレッド）
      */
-    data class LoadMessages(val threadId: String? = null) : ChatIntent
+    data class LoadMessages(
+        val threadId: String? = null,
+    ) : ChatIntent
 
     /**
      * モデル一覧を読み込む
@@ -104,14 +108,18 @@ sealed interface ChatIntent {
      *
      * @param modelId 選択するモデルのID
      */
-    data class SelectModel(val modelId: String) : ChatIntent
+    data class SelectModel(
+        val modelId: String,
+    ) : ChatIntent
 
     /**
      * メッセージを送信する
      *
      * @param content メッセージ本文
      */
-    data class SendMessage(val content: String) : ChatIntent
+    data class SendMessage(
+        val content: String,
+    ) : ChatIntent
 
     /**
      * エラーをクリアする
@@ -130,21 +138,27 @@ sealed interface ChatEffect {
      *
      * @param threadId スレッドID
      */
-    data class NavigateToThread(val threadId: String) : ChatEffect
+    data class NavigateToThread(
+        val threadId: String,
+    ) : ChatEffect
 
     /**
      * トースト表示
      *
      * @param message 表示メッセージ
      */
-    data class ShowToast(val message: String) : ChatEffect
+    data class ShowToast(
+        val message: String,
+    ) : ChatEffect
 
     /**
      * エラートースト表示
      *
      * @param message エラーメッセージ
      */
-    data class ShowErrorToast(val message: String) : ChatEffect
+    data class ShowErrorToast(
+        val message: String,
+    ) : ChatEffect
 }
 
 /**
@@ -163,12 +177,16 @@ sealed interface ChatLabel {
      *
      * @param threadId スレッドID
      */
-    data class ThreadSelectionCompleted(val threadId: String) : ChatLabel
+    data class ThreadSelectionCompleted(
+        val threadId: String,
+    ) : ChatLabel
 
     /**
      * エラー発生
      *
      * @param error エラーメッセージ
      */
-    data class ErrorOccurred(val error: String) : ChatLabel
+    data class ErrorOccurred(
+        val error: String,
+    ) : ChatLabel
 }

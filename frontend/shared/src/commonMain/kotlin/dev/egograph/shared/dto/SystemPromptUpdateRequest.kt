@@ -7,5 +7,5 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class SystemPromptUpdateRequest(
-    val content: String
+    val content: String,
 )

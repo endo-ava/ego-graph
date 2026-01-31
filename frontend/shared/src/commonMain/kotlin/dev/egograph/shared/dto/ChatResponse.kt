@@ -16,5 +16,5 @@ data class ChatResponse(
     @SerialName("thread_id")
     val threadId: String,
     @SerialName("model_name")
-    val modelName: String? = null
+    val modelName: String? = null,
 )

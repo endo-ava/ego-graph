@@ -12,5 +12,5 @@ data class LLMModel(
     val provider: String,
     val inputCostPer1m: Double,
     val outputCostPer1m: Double,
-    val isFree: Boolean
+    val isFree: Boolean,
 )

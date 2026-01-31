@@ -10,5 +10,5 @@ data class ThreadListResponse(
     val threads: List<Thread>,
     val total: Int,
     val limit: Int,
-    val offset: Int
+    val offset: Int,
 )
