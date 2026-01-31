@@ -1,7 +1,6 @@
 package dev.egograph.shared.dto
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
 
 /**
  * チャットメッセージの役割

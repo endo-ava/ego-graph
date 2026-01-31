@@ -1,7 +1,5 @@
 package dev.egograph.shared.repository
 
-import dev.egograph.shared.dto.Thread
-import dev.egograph.shared.dto.ThreadListResponse
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -39,7 +37,7 @@ class ThreadRepositoryImplTest {
         // Then
         assertTrue(result.isFailure)
         val error = result.exceptionOrNull() as? ApiError.HttpError
-        assert(error?.code == 501)
-        assert(error?.errorMessage == "Not Implemented")
+        assertTrue(error?.code == 501)
+        assertTrue(error?.errorMessage == "Not Implemented")
     }
 }

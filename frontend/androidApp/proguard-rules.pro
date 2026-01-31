@@ -32,6 +32,5 @@
 -dontwarn io.ktor.**
 
 # Keep Kotlinx serialization
--keepattributes Signature
 -keep,allowobfuscation,allowshrinking class kotlinx.serialization.json.** { *; }
 -keep,allowobfuscation,allowshrinking class kotlinx.serialization.** { *; }

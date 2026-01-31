@@ -1,8 +1,5 @@
 package dev.egograph.shared.repository
 
-import dev.egograph.shared.dto.ChatRequest
-import dev.egograph.shared.dto.Message
-import dev.egograph.shared.dto.MessageRole
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -40,6 +37,6 @@ class ChatRepositoryImplTest {
 
         val expectedError = ApiError.NetworkError(Exception("Network error"))
         assertTrue(expectedError is ApiError.NetworkError)
-        assert(expectedError.cause != null)
+        assertTrue(expectedError.cause != null)
     }
 }

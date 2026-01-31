@@ -19,34 +19,40 @@ class KoinDiTest : KoinTest {
 
     @Test
     fun `Koin modules check`() {
-        startKoin {
-            modules(appModule)
-        }.checkModules()
-
-        stopKoin()
+        try {
+            startKoin {
+                modules(appModule)
+            }.checkModules()
+        } finally {
+            stopKoin()
+        }
     }
 
     @Test
     fun `ThreadRepository should be injectable`() {
-        startKoin {
-            modules(appModule)
+        try {
+            startKoin {
+                modules(appModule)
+            }
+
+            val repository: ThreadRepository by inject()
+            assertNotNull(repository, "ThreadRepository should be injected")
+        } finally {
+            stopKoin()
         }
-
-        val repository: ThreadRepository by inject()
-        assertNotNull(repository, "ThreadRepository should be injected")
-
-        stopKoin()
     }
 
     @Test
     fun `HttpClient should be injectable`() {
-        startKoin {
-            modules(appModule)
+        try {
+            startKoin {
+                modules(appModule)
+            }
+
+            val httpClient: HttpClient by inject()
+            assertNotNull(httpClient, "HttpClient should be injected")
+        } finally {
+            stopKoin()
         }
-
-        val httpClient: HttpClient by inject()
-        assertNotNull(httpClient, "HttpClient should be injected")
-
-        stopKoin()
     }
 }

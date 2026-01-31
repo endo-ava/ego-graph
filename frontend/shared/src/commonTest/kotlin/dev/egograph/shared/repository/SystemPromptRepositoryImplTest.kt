@@ -1,6 +1,5 @@
 package dev.egograph.shared.repository
 
-import dev.egograph.shared.dto.SystemPromptName
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -32,6 +31,6 @@ class SystemPromptRepositoryImplTest {
 
         val expectedError = ApiError.NetworkError(Exception("Network error"))
         assertTrue(expectedError is ApiError.NetworkError)
-        assert(expectedError.cause != null)
+        assertTrue(expectedError.cause != null)
     }
 }

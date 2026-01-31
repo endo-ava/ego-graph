@@ -138,12 +138,10 @@ fun SettingsScreen(
 
                 Button(
                     onClick = {
-                        coroutineScope.launch {
-                            preferences.putString(
-                                PlatformPrefsKeys.KEY_API_URL,
-                                apiUrl
-                            )
-                        }
+                        preferences.putString(
+                            PlatformPrefsKeys.KEY_API_URL,
+                            apiUrl
+                        )
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {

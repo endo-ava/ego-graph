@@ -283,10 +283,10 @@ python3 -m http.server 8080 --directory androidApp/build/outputs/apk/release/
 
 ## さらなる情報
 
-- **MVIKotlin**: https://github.com/arkivanov/MVIKotlin
-- **Compose Multiplatform**: https://www.jetbrains.com/lp/compose-multiplatform/
-- **Ktor**: https://ktor.io/
-- **Koin**: https://insert-koin.io/
+- **MVIKotlin**: <https://github.com/arkivanov/MVIKotlin>
+- **Compose Multiplatform**: <https://www.jetbrains.com/lp/compose-multiplatform/>
+- **Ktor**: <https://ktor.io/>
+- **Koin**: <https://insert-koin.io/>
 
 ## 旧バージョン（React + Capacitor）
 

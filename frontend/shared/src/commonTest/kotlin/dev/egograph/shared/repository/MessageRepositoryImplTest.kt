@@ -1,7 +1,6 @@
 package dev.egograph.shared.repository
 
 import io.ktor.client.HttpClient
-import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
 

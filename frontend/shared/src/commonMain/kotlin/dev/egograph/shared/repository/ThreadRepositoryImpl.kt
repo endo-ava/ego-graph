@@ -1,5 +1,6 @@
 package dev.egograph.shared.repository
 
+import co.touchlab.kermit.Logger
 import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.dto.ThreadListResponse
 import io.ktor.client.HttpClient
@@ -20,6 +21,8 @@ class ThreadRepositoryImpl(
     private val baseUrl: String
 ) : ThreadRepository {
 
+    private val logger = Logger.withTag("ThreadRepository")
+
     override fun getThreads(limit: Int, offset: Int): Flow<RepositoryResult<ThreadListResponse>> = flow {
         val response = httpClient.get("$baseUrl/v1/threads") {
             parameter("limit", limit)
@@ -31,7 +34,10 @@ class ThreadRepositoryImpl(
                 emit(Result.success(response.body<ThreadListResponse>()))
             }
             else -> {
-                val errorDetail = try { response.body<String>() } catch (e: Exception) { null }
+                val errorDetail = try { response.body<String>() } catch (e: Exception) {
+                    logger.w(e) { "Failed to read error response body" }
+                    null
+                }
                 emit(Result.failure(
                     ApiError.HttpError(
                         code = response.status.value,
@@ -51,7 +57,10 @@ class ThreadRepositoryImpl(
                 emit(Result.success(response.body<Thread>()))
             }
             else -> {
-                val errorDetail = try { response.body<String>() } catch (e: Exception) { null }
+                val errorDetail = try { response.body<String>() } catch (e: Exception) {
+                    logger.w(e) { "Failed to read error response body" }
+                    null
+                }
                 emit(Result.failure(
                     ApiError.HttpError(
                         code = response.status.value,

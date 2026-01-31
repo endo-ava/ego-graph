@@ -48,8 +48,7 @@ fun ChatMessage(
         ) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                color = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Text(
                     text = message.content,
