@@ -2,10 +2,10 @@
 
 ## プロジェクト概要
 
-**EgoGraph** は、個人のデジタルライフログを統合する「Personal Data Warehouse」です。
+**EgoGraph** は、個人のデジタルライフログを統合する「Personal AI Agent and Personal Data Warehouse」です。
 DuckDB を採用し、サーバーレス・ローカルファーストで動作します。
 
-**モノレポ構成**: Python (uv workspace) + Node.js (npm)
+**モノレポ構成**: Python (uv workspace) + Kotlin Multiplatform / Compose Multiplatform
 
 | コンポーネント | 役割           | 技術                                         | エントリポイント                     |
 | -------------- | -------------- | -------------------------------------------- | ------------------------------------ |
@@ -18,35 +18,25 @@ DuckDB を採用し、サーバーレス・ローカルファーストで動作�
 
 ## 開発コマンド
 
-### 全体（Python Workspace）
-
 ```bash
-uv sync                          # 依存関係同期
+# === 全体（Python Workspace）===
+uv sync                          # 依存関係同步
 uv run pytest                     # 全テスト
 uv run ruff check .               # Lint
 uv run ruff check . --fix .       # Lint & Fix
 uv run ruff format .              # Format
-```
 
-### Ingest（データ収集）
-
-```bash
+# === Ingest（データ収集）===
 uv run python -m ingest.spotify.main   # Spotify 収集
 uv run pytest ingest/tests --cov=ingest
-```
 
-### Backend（API サーバー）
-
-```bash
+# === Backend（API サーバー）===
 uv run python -m backend.main
 uv run pytest backend/tests --cov=backend
 open http://localhost:8000/docs
 uv run python -m backend.dev_tools.chat_cli # デバッグ用LLM CLIツール
-```
 
-### Frontend（モバイル/Web）
-
-```bash
+# === Frontend（モバイル/Web）===
 cd frontend
 ./gradlew :androidApp:installDebug    # デバッグ実行
 ./gradlew :shared:testDebugUnitTest   # テスト
@@ -68,60 +58,18 @@ External APIs → GitHub Actions (Ingest) → R2 (Parquet) → Backend (DuckDB) 
 - **DuckDB**: View レイヤー（`:memory:` で R2 直接クエリ）
 - **Qdrant**: 意味検索インデックス
 
-### コンポーネント依存
-
-```text
-shared/ ← 基盤ライブラリ
-  ↑
-  ├─ ingest/   (workspace依存)
-  └─ backend/  (workspace依存)
-
-frontend/  (独立、Backend API のみ利用)
-```
-
-詳細: [システムアーキテクチャ](./docs/10.architecture/1001_system_architecture.md)
-
----
-
-## 実装ルール
-
-### 1. Parquet 中心のデータ収集
-
-- GitHub Actions が R2 に Parquet 書き出し
-- DuckDB が `read_parquet('s3://...')` で直接読取（ステートレス）
-
-### 2. Mobile First API
-
-- FastAPI で REST API 提供（API Key）
-- ステートレス設計
-
-### 3. Python パッケージング
-
-- **shared/**: `__init__.py` で公開 API 再エクスポート、`__all__` で範囲明示
-- **ingest/, backend/**: 最小限の `__init__.py`（docstring のみ）
-- **バージョン**: `pyproject.toml` を単一ソース
-- **workspace 依存**: `shared @ {workspace = true}`
-
 ---
 
 ## CI/CD 規約
 
 ### ワークフロー命名
 
-| プレフィックス | 用途                    | 例                       |
-| -------------- | ----------------------- | ------------------------ |
-| `ci-*.yml`     | テスト・Lint（定常 CI） | `ci-backend.yml`         |
-| `job-*.yml`    | 定期実行・手動ジョブ    | `job-ingest-spotify.yml` |
-| `deploy-*.yml` | デプロイ                | `deploy-web-app.yml`     |
-
-### CI 構成
-
-| ファイル                 | トリガー                  | 備考               |
-| ------------------------ | ------------------------- | ------------------ |
-| `ci-backend.yml`         | `backend/**`, `shared/**` | Coverage → Codecov |
-| `ci-ingest.yml`          | `ingest/**`, `shared/**`  | Coverage → Codecov |
-| `ci-frontend.yml`        | `frontend/**`             | Test (JUnit)       |
-| `job-ingest-spotify.yml` | Cron: `0 2,14 * * *`      | 1日2回実行         |
+| プレフィックス  | 用途                    | 例                       |
+| --------------- | ----------------------- | ------------------------ |
+| `ci-*.yml`      | テスト・Lint（定常 CI） | `ci-backend.yml`         |
+| `job-*.yml`     | 定期実行・手動ジョブ    | `job-ingest-spotify.yml` |
+| `deploy-*.yml`  | デプロイ                | `deploy-web-app.yml`     |
+| `release-*.yml` | リリース                | `release-v1.0.0.yml`     |
 
 ---
 
@@ -133,17 +81,6 @@ frontend/  (独立、Backend API のみ利用)
 - **ブランチ命名**: `<type>/<short-description>`（例: `feat/add-sound-playback`）
 - **コミット規約**: Conventional Commits（`<type>: <subject>`）
 - **コミット言語**: 英語
-
-### PR
-
-- **単位**: 1 PR = 1 関心事
-- **テンプレート**: `.github/PULL_REQUEST_TEMPLATE.md` 使用
-- **レビュー**: 対応要否を自己判断、不要なら理由を説明
-
-### 言語
-
-- **日本語**: コードコメント、PR/Issue、レビュー
-- **英語**: コミットメッセージ
 
 ---
 
@@ -188,6 +125,46 @@ cursor.execute("SELECT * FROM events WHERE user_id = ?", (user_id,))
 - **フレームワーク**: Kotest + JUnit
 - **実行**: `cd frontend && ./gradlew :shared:testDebugUnitTest`
 
+### 共通
+
+- AAA パターンで記述すること
+
+---
+
+## デバッグ・テスト方針
+
+### スキル選択ガイド
+
+| シナリオ             | 使用スキル                             | 説明                                           |
+| -------------------- | -------------------------------------- | ---------------------------------------------- |
+| **APIのみ**          | `tmux-api-debug`                       | Backend APIの動作確認・デバッグ                |
+| **UI + API（E2E）**  | `android-adb-debug` + `tmux-api-debug` | フロントエンドからバックエンドまでの統合テスト |
+| **接続トラブル**     | `adb-connection-troubleshoot`          | ADB接続問題の診断・解決                        |
+| **LLM ToolCall検証** | `agent-tool-test`                      | 各LLMモデルの全ツール使用可否テスト            |
+
+### 環境構成
+
+```
+Linux (開発環境)
+  ├─ Backend (tmux session)     ← tmux-api-debug
+  └─ ADB Client                 ← android-adb-debug
+       ↓ (Tailscale: 100.x.x.x:5559)
+Windows (エミュレータホスト)
+  └─ Android Emulator
+```
+
+### クイックコマンド
+
+```bash
+# APIのみのデバッグ
+# → tmux-api-debug スキルをロード
+
+# UI + APIの統合デバッグ
+# 1. Backend起動（tmux）
+# 2. エミュレータ接続 & アプリインストール
+./.claude/skills/android-adb-debug/scripts/linux_connect_and_install.sh
+```
+
 ---
 
 ## CodeRabbit レビュー
@@ -209,7 +186,7 @@ gh pr view <PR_NUMBER> --json reviews,comments > pr_data.json
 
 ## その他
 
-- ユーザーの要望が曖昧な場合は、必ずまとめて質問すること。Claude Codeの場合は`AskUserQuestion`を活用すること。
+- ユーザーに質問をする場合は`AskUserQuestion`（またはそれに類するツール）を活用すること。
 
 - 積極的にサブエージェントを活用し、メインコンテキストをクリーンに保つこと。
 

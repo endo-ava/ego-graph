@@ -105,7 +105,7 @@ adb shell am start -n com.github.omo_dev.egograph/.MainActivity
 
 ```bash
 # Android Emulator がインストール済みの場合
-emulator -avd Pixel_7_API_34 &  # AVD 名は適宜変更
+emulator -avd Pixel_6_API_34 &  # AVD 名は適宜変更
 
 # インストールと起動
 ./gradlew :androidApp:installDebug
