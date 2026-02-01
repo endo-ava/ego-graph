@@ -1,139 +1,78 @@
 # EgoGraph 開発ガイドライン
 
-## プロジェクト概要
+## 概要
 
-**EgoGraph** は、個人のデジタルライフログを統合する「Personal AI Agent and Personal Data Warehouse」です。
-DuckDB を採用し、サーバーレス・ローカルファーストで動作します。
+**EgoGraph**: Personal AI Agent and Personal Data Warehouse（DuckDB, サーバーレス・ローカルファースト）
 
-**モノレポ構成**: Python (uv workspace) + Kotlin Multiplatform / Compose Multiplatform
+**構成**: Python (uv workspace) + Kotlin Multiplatform / Compose Multiplatform
 
 | コンポーネント | 役割           | 技術                                         | エントリポイント                     |
 | -------------- | -------------- | -------------------------------------------- | ------------------------------------ |
-| **shared/**    | 共有ライブラリ | Python 3.13, Pydantic                        | `__init__.py`（公開API）             |
+| **shared/**    | 共有ライブラリ | Python 3.13, Pydantic                        | `__init__.py`                        |
 | **ingest/**    | データ収集     | Spotipy, DuckDB, boto3                       | `ingest.spotify.main:main`           |
 | **backend/**   | Agent API      | FastAPI, DuckDB, LLM                         | `backend.main:create_app()`          |
 | **frontend/**  | チャット UI    | Kotlin 2.3, Compose Multiplatform, MVIKotlin | `./gradlew :androidApp:installDebug` |
 
----
-
 ## 開発コマンド
 
 ```bash
-# === 全体（Python Workspace）===
-uv sync                          # 依存関係同步
+# === Python Workspace ===
+uv sync                           # 依存関係同期
 uv run pytest                     # 全テスト
 uv run ruff check .               # Lint
-uv run ruff check . --fix .       # Lint & Fix
+uv run ruff check . --fix         # Lint & Fix
 uv run ruff format .              # Format
 
-# === Ingest（データ収集）===
-uv run python -m ingest.spotify.main   # Spotify 収集
+# === Ingest ===
+uv run python -m ingest.spotify.main
 uv run pytest ingest/tests --cov=ingest
 
-# === Backend（API サーバー）===
-uv run python -m backend.main
+# === Backend ===
+uv run python -m backend.main                 # http://localhost:8000/docs
 uv run pytest backend/tests --cov=backend
-open http://localhost:8000/docs
-uv run python -m backend.dev_tools.chat_cli # デバッグ用LLM CLIツール
+uv run python -m backend.dev_tools.chat_cli   # デバッグ用CLIツール
 
-# === Frontend（モバイル/Web）===
-cd frontend
-./gradlew :androidApp:installDebug    # デバッグ実行
-./gradlew :shared:testDebugUnitTest   # テスト
-./gradlew ktlintCheck                 # Lint チェック
-./gradlew ktlintFormat                # Format
+# === Frontend (cd frontend) ===
+cd frontend # PJルートからはgradlewは使えないことに注意
+./gradlew :androidApp:installDebug      # ビルド & インストール
+./gradlew :shared:testDebugUnitTest     # テスト
+./gradlew ktlintCheck                   # Lint
+./gradlew ktlintFormat                  # Format
 ```
-
----
 
 ## アーキテクチャ
 
-### データフロー
-
-External APIs → GitHub Actions (Ingest) → R2 (Parquet) → Backend (DuckDB) → Frontend (HTTPS)
-
-### データ配置
-
-- **R2**: 正本（Parquet/Raw JSON、年月パーティショニング）
-- **DuckDB**: View レイヤー（`:memory:` で R2 直接クエリ）
-- **Qdrant**: 意味検索インデックス
-
----
-
-## CI/CD 規約
-
-### ワークフロー命名
-
-| プレフィックス  | 用途                    | 例                       |
-| --------------- | ----------------------- | ------------------------ |
-| `ci-*.yml`      | テスト・Lint（定常 CI） | `ci-backend.yml`         |
-| `job-*.yml`     | 定期実行・手動ジョブ    | `job-ingest-spotify.yml` |
-| `deploy-*.yml`  | デプロイ                | `deploy-web-app.yml`     |
-| `release-*.yml` | リリース                | `release-v1.0.0.yml`     |
-
----
-
-## Git & PR 規約
-
-### ブランチ・コミット
-
-- **戦略**: GitHub Flow（`main` への直接コミット禁止）
-- **ブランチ命名**: `<type>/<short-description>`（例: `feat/add-sound-playback`）
-- **コミット規約**: Conventional Commits（`<type>: <subject>`）
-- **コミット言語**: 英語
-
----
-
-## コーディング規約
-
-### SQL
-
-- **プレースホルダ必須**: `execute(query, (param,))`
-
-```python
-# 例
-cursor.execute("SELECT * FROM events WHERE user_id = ?", (user_id,))
+```
+External APIs → GitHub Actions (Ingest) → R2 (Parquet) → Backend (DuckDB) → Frontend
 ```
 
-### Logging
+| ストレージ | 役割                                     |
+| ---------- | ---------------------------------------- |
+| R2         | 正本（Parquet/JSON、年月パーティション） |
+| DuckDB     | View（`:memory:` で R2 直接クエリ）      |
+| Qdrant     | 意味検索インデックス                     |
 
-- **遅延評価**: `logger.info("key=%s", value)`（f-string 禁止）
-- **機密情報**: API キー/トークン/個人情報を出力しない
-- **エラー**: 例外型とメッセージのみ（DEBUG で詳細スタック許可）
+## 規約
 
-### API エラーメッセージ
+### Git / CI
 
-- **統一フォーマット**: `invalid_<field>: <reason>`
-- **例**: `raise ValueError("invalid_date_range: start_date must be before end_date")`
+- **GitHub Flow**: `main` 直接コミット禁止、ブランチ `<type>/<desc>`
+- **コミット**: Conventional Commits（英語）
+- **ワークフロー**: `ci-*.yml`(テスト), `job-*.yml`(定期), `deploy-*.yml`, `release-*.yml`
 
-### Docstring/コメント
+### コーディング
 
-- **言語**: 日本語統一
+| 項目      | ルール                                          |
+| --------- | ----------------------------------------------- |
+| SQL       | プレースホルダ必須: `execute(query, (param,))`  |
+| Logging   | 遅延評価 `logger.info("k=%s", v)`, 機密情報禁止 |
+| APIエラー | 統一フォーマット `invalid_<field>: <reason>`      |
+| Docstring | 日本語                                          |
+| テスト    | AAA パターン必須、Python: pytest、Frontend: Kotest  |
 
----
+## デバッグ
 
-## テスト
-
-### Python
-
-- **フレームワーク**: pytest + pytest-cov
-- **実行**: `uv run pytest`
-- **統一設定**: ルート `pyproject.toml` で管理
-
-### Frontend
-
-- **フレームワーク**: Kotest + JUnit
-- **実行**: `cd frontend && ./gradlew :shared:testDebugUnitTest`
-
-### 共通
-
-- AAA パターンで記述すること
-
----
-
-## デバッグ・テスト方針
-
-### スキル選択ガイド
+### スキル選択
 
 | シナリオ             | 使用スキル                             | 説明                                           |
 | -------------------- | -------------------------------------- | ---------------------------------------------- |
@@ -145,51 +84,46 @@ cursor.execute("SELECT * FROM events WHERE user_id = ?", (user_id,))
 ### 環境構成
 
 ```
-Linux (開発環境)
-  ├─ Backend (tmux session)     ← tmux-api-debug
-  └─ ADB Client                 ← android-adb-debug
-       ↓ (Tailscale: 100.x.x.x:5559)
-Windows (エミュレータホスト)
-  └─ Android Emulator
+Linux ─ Backend (tmux) + ADB Client
+    ↓ Tailscale:100.x.x.x:5559
+Windows ─ netsh (0.0.0.0:5559→127.0.0.1:5555) ─ Android Emulator (:5555)
 ```
 
-### クイックコマンド
+※ 5559を外部公開する理由: エミュレータの:5555とのポート競合回避
+
+### Frontend開発フロー
+
+1. Windows側でエミュ起動（ユーザー作業、要確認）
+2. Linux から ADB 接続
+   ```bash
+   adb connect <WINDOWS_IP>:5559
+   adb devices
+   ```
+
+   - `<WINDOWS_IP>` は `frontend/.env.local` の `WINDOWS_IP`
+3. Backend を起動
+   ```bash
+   uv run python -m backend.main
+
+   - tmuxを使ってもよい
+   ```
+4. adb コマンドで現在の挙動を確認しながら実装
+   
+5. ビルド & インストール
+   ```bash
+   cd frontend && ./gradlew :androidApp:installDebug
+   ```
+6. adb コマンドでビルド内容の確認
+
+## CodeRabbit
 
 ```bash
-# APIのみのデバッグ
-# → tmux-api-debug スキルをロード
-
-# UI + APIの統合デバッグ
-# 1. Backend起動（tmux）
-# 2. エミュレータ接続 & アプリインストール
-./.claude/skills/android-adb-debug/scripts/linux_connect_and_install.sh
+coderabbit --prompt-only -t uncommitted              # Commit前
+coderabbit --prompt-only -t committed --base main    # PR作成前
 ```
-
----
-
-## CodeRabbit レビュー
-
-CodeRabbitは、コードレビューのためのAIツールです。以下のコマンドで使用できます。
-
-```bash
-# Commit 前
-coderabbit --prompt-only -t uncommitted
-
-# PR 作成前
-coderabbit --prompt-only -t committed --base main
-
-# PR 作成後（自動実行）
-gh pr view <PR_NUMBER> --json reviews,comments > pr_data.json
-```
-
----
 
 ## その他
 
-- ユーザーに質問をする場合は`AskUserQuestion`（またはそれに類するツール）を活用すること。
-
-- 積極的にサブエージェントを活用し、メインコンテキストをクリーンに保つこと。
-
-- コードを変更した後は、テストが通ることを確認すること。
-
-- OpenCodeでサブエージェントを呼ぶ場合は、必ず`delegate_task`を活用すること。`task`は使わない。
+- 質問は `AskUserQuestion` 等を活用
+- サブエージェント活用でコンテキストをクリーンに（`delegate_task` を使用、`task` は使わない）
+- コード変更後はテスト確認必須
