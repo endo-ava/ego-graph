@@ -8,6 +8,42 @@ plugins {
     alias(libs.plugins.ktlint)
 }
 
+fun loadDotenv(file: java.io.File): Map<String, String> {
+    if (!file.exists()) {
+        return emptyMap()
+    }
+
+    return file.readLines()
+        .asSequence()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
+        .mapNotNull { line ->
+            val index = line.indexOf("=")
+            if (index <= 0) {
+                return@mapNotNull null
+            }
+
+            val key = line.substring(0, index).trim()
+            var value = line.substring(index + 1).trim()
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith('\'') && value.endsWith('\''))) {
+                value = value.substring(1, value.length - 1)
+            }
+
+            if (key.isEmpty()) {
+                null
+            } else {
+                key to value
+            }
+        }
+        .toMap()
+}
+
+val dotenv = loadDotenv(rootProject.projectDir.resolve(".env"))
+val debugBaseUrl =
+    (dotenv["EGOGRAPH_BASE_URL_DEBUG"]?.takeIf { it.isNotBlank() }
+        ?: project.findProperty("EGOGRAPH_BASE_URL_DEBUG") as? String)
+        ?: "http://10.0.2.2:8000"
+
 kotlin {
     androidTarget {
         compilerOptions {
@@ -80,7 +116,7 @@ android {
         buildConfigField(
             "String",
             "DEBUG_BASE_URL",
-            "\"${project.findProperty("EGOGRAPH_BASE_URL_DEBUG") ?: "http://10.0.2.2:8000"}\"",
+            "\"${debugBaseUrl}\"",
         )
         buildConfigField(
             "String",
