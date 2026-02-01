@@ -42,11 +42,17 @@ jobs:
         run: ./gradlew :androidApp:assembleDebug
         working-directory: frontend
 
+      - name: Generate version
+        id: version
+        run: |
+          DATE=$(date +%Y%m%d)
+          echo "version=v${DATE}-${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: kmp-android-${{ github.run_number }}
-          name: KMP Android APK (Build ${{ github.run_number }})
+          tag_name: ${{ steps.version.outputs.version }}
+          name: KMP Android APK (${{ steps.version.outputs.version }})
           files: frontend/androidApp/build/outputs/apk/debug/androidApp-debug.apk
           generate_release_notes: true
         env:
