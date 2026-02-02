@@ -4,8 +4,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -40,9 +44,10 @@ fun ChatInput(
             placeholder = { Text("Type a message...") },
             maxLines = 5,
             enabled = !isLoading,
+            shape = RoundedCornerShape(24.dp),
         )
 
-        Button(
+        IconButton(
             onClick = {
                 if (text.isNotBlank()) {
                     onSendMessage(text)
@@ -54,12 +59,16 @@ fun ChatInput(
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.primary,
                     strokeWidth = 2.dp,
                 )
             } else {
-                Text("Send")
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "Send",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }

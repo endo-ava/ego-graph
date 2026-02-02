@@ -1,7 +1,10 @@
 package dev.egograph.shared.ui.sidebar
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
@@ -74,7 +77,7 @@ class SidebarScreen : Screen {
                             activeView = SidebarView.SystemPrompt
                             scope.launch { drawerState.close() }
                         },
-                        icon = { Text("⚙") },
+                        icon = { Icon(Icons.Default.Build, contentDescription = null) },
                         modifier = Modifier.padding(horizontal = 12.dp),
                     )
 

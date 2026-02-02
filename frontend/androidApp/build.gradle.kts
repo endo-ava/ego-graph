@@ -74,4 +74,5 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.voyager.navigator)
     implementation(libs.koin.android)
+    implementation(libs.koin.compose)
 }

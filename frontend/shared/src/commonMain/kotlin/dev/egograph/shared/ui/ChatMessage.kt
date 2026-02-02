@@ -1,6 +1,5 @@
 package dev.egograph.shared.ui
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -19,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.dto.MessageRole
 import dev.egograph.shared.dto.ThreadMessage
@@ -78,39 +80,30 @@ fun ChatMessage(
 
 @Composable
 private fun MessageAvatar(isUser: Boolean) {
-    if (isUser) {
-        Box(
-            modifier =
-                Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(MaterialTheme.colorScheme.secondary),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "U",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondary,
+    Box(
+        modifier =
+            Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (isUser) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = "User",
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(20.dp),
             )
-        }
-    } else {
-        val color = MaterialTheme.colorScheme.tertiary
-        Canvas(modifier = Modifier.size(32.dp)) {
-            val width = size.width
-            val height = size.height
-
-            val path =
-                Path().apply {
-                    moveTo(width * 0.5f, 0f)
-                    lineTo(width, height * 0.25f)
-                    lineTo(width, height * 0.75f)
-                    lineTo(width * 0.5f, height)
-                    lineTo(0f, height * 0.75f)
-                    lineTo(0f, height * 0.25f)
-                    close()
-                }
-
-            drawPath(path = path, color = color)
+        } else {
+            Icon(
+                imageVector = Icons.Default.Face,
+                contentDescription = "AI",
+                tint = MaterialTheme.colorScheme.onSecondary,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
