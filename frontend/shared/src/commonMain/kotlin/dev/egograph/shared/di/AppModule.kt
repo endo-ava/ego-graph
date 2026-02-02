@@ -26,7 +26,6 @@ import org.koin.dsl.module
  * Application-wide DI module
  *
  * Provides all application dependencies using Koin's traditional module definition.
- * TODO: Add ViewModel modules in next phase
  */
 val appModule =
     module {

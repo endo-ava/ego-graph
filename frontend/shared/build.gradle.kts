@@ -13,7 +13,8 @@ fun loadDotenv(file: java.io.File): Map<String, String> {
         return emptyMap()
     }
 
-    return file.readLines()
+    return file
+        .readLines()
         .asSequence()
         .map { it.trim() }
         .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
@@ -34,14 +35,13 @@ fun loadDotenv(file: java.io.File): Map<String, String> {
             } else {
                 key to value
             }
-        }
-        .toMap()
+        }.toMap()
 }
 
 val dotenv = loadDotenv(rootProject.projectDir.resolve(".env"))
 val debugBaseUrl =
-    (dotenv["EGOGRAPH_BASE_URL_DEBUG"]?.takeIf { it.isNotBlank() }
-        ?: project.findProperty("EGOGRAPH_BASE_URL_DEBUG") as? String)
+    dotenv["EGOGRAPH_BASE_URL_DEBUG"]?.takeIf { it.isNotBlank() }
+        ?: project.findProperty("EGOGRAPH_BASE_URL_DEBUG") as? String
         ?: "http://10.0.2.2:8000"
 
 kotlin {
