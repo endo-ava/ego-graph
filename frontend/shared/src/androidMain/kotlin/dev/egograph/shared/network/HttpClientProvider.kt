@@ -44,15 +44,15 @@ actual fun provideHttpClient(): HttpClient =
         }
 
         install(HttpRequestRetry) {
-            maxRetries = 3
-            retryOnServerErrors(maxRetries = 3)
+            maxRetries = 1
+            retryOnServerErrors(maxRetries = 1)
             retryIf { request, _ -> request.method in IDEMPOTENT_METHODS }
             retryOnExceptionIf { request, cause ->
                 val unwrapped = cause.unwrapCancellationException()
                 request.method in IDEMPOTENT_METHODS &&
                     (unwrapped is IOException || unwrapped is SocketTimeoutException)
             }
-            exponentialDelay()
+            constantDelay(100)
         }
 
         install(ContentNegotiation) {

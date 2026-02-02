@@ -33,13 +33,13 @@ actual class HttpClientFactory {
             }
 
             install(HttpRequestRetry) {
-                maxRetries = 3
-                retryOnServerErrors()
+                maxRetries = 1
+                retryOnServerErrors(maxRetries = 1)
                 retryOnExceptionIf { _, cause ->
                     val unwrapped = cause.unwrapCancellationException()
                     unwrapped is Exception
                 }
-                exponentialDelay()
+                constantDelay(100)
             }
 
             install(ContentNegotiation) {
