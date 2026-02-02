@@ -89,6 +89,7 @@ kotlin {
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.appcompat)
                 implementation(libs.ktor.client.android)
+                implementation("io.ktor:ktor-client-okhttp:3.4.0")
             }
         }
 

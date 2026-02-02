@@ -1,6 +1,7 @@
 package dev.egograph.shared.repository
 
 import co.touchlab.kermit.Logger
+import dev.egograph.shared.cache.DiskCache
 import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.dto.ThreadListResponse
 import io.ktor.client.HttpClient
@@ -24,6 +25,7 @@ class ThreadRepositoryImpl(
     private val httpClient: HttpClient,
     private val baseUrl: String,
     private val apiKey: String = "",
+    private val diskCache: DiskCache? = null,
 ) : ThreadRepository {
     private val logger = Logger.withTag("ThreadRepository")
 
@@ -34,7 +36,7 @@ class ThreadRepositoryImpl(
 
     private val threadsCache = AtomicReference<Map<String, CacheEntry<ThreadListResponse>>>(emptyMap())
     private val threadCache = AtomicReference<Map<String, CacheEntry<Thread>>>(emptyMap())
-    private val cacheDurationMs = 5000L
+    private val cacheDurationMs = 60000L
 
     override fun getThreads(
         limit: Int,
@@ -48,49 +50,29 @@ class ThreadRepositoryImpl(
                 return@flow
             }
             try {
-                val response =
-                    httpClient.get("$baseUrl/v1/threads") {
-                        parameter("limit", limit)
-                        parameter("offset", offset)
-                        if (apiKey.isNotEmpty()) {
-                            headers {
-                                append("X-API-Key", apiKey)
-                            }
+                val body =
+                    if (diskCache != null) {
+                        diskCache.getOrFetch(
+                            key = cacheKey,
+                            serializer = ThreadListResponse.serializer(),
+                        ) {
+                            fetchThreadList(limit, offset)
                         }
+                    } else {
+                        fetchThreadList(limit, offset)
                     }
-
-                when (response.status) {
-                    HttpStatusCode.OK -> {
-                        val body = response.body<ThreadListResponse>()
-                        threadsCache.updateAndGet { current -> current + (cacheKey to CacheEntry(body)) }
-                        emit(Result.success(body))
-                    }
-                    else -> {
-                        threadsCache.updateAndGet { current -> current - cacheKey }
-                        val errorDetail =
-                            try {
-                                response.body<String>()
-                            } catch (e: Exception) {
-                                logger.w(e) { "Failed to read error response body" }
-                                null
-                            }
-                        emit(
-                            Result.failure(
-                                ApiError.HttpError(
-                                    code = response.status.value,
-                                    errorMessage = response.status.description,
-                                    detail = errorDetail,
-                                ),
-                            ),
-                        )
-                    }
-                }
+                threadsCache.updateAndGet { current -> current + (cacheKey to CacheEntry(body)) }
+                emit(Result.success(body))
+            } catch (e: ApiError) {
+                threadsCache.updateAndGet { current -> current - cacheKey }
+                diskCache?.remove(cacheKey)
+                emit(Result.failure(e))
             } catch (e: Exception) {
                 threadsCache.updateAndGet { current -> current - cacheKey }
+                diskCache?.remove(cacheKey)
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
-        }
-            .flowOn(Dispatchers.IO)
+        }.flowOn(Dispatchers.IO)
 
     override fun getThread(threadId: String): Flow<RepositoryResult<Thread>> =
         flow {
@@ -100,47 +82,29 @@ class ThreadRepositoryImpl(
                 return@flow
             }
             try {
-                val response =
-                    httpClient.get("$baseUrl/v1/threads/$threadId") {
-                        if (apiKey.isNotEmpty()) {
-                            headers {
-                                append("X-API-Key", apiKey)
-                            }
+                val body =
+                    if (diskCache != null) {
+                        diskCache.getOrFetch(
+                            key = threadId,
+                            serializer = Thread.serializer(),
+                        ) {
+                            fetchThread(threadId)
                         }
+                    } else {
+                        fetchThread(threadId)
                     }
-
-                when (response.status) {
-                    HttpStatusCode.OK -> {
-                        val body = response.body<Thread>()
-                        threadCache.updateAndGet { current -> current + (threadId to CacheEntry(body)) }
-                        emit(Result.success(body))
-                    }
-                    else -> {
-                        threadCache.updateAndGet { current -> current - threadId }
-                        val errorDetail =
-                            try {
-                                response.body<String>()
-                            } catch (e: Exception) {
-                                logger.w(e) { "Failed to read error response body" }
-                                null
-                            }
-                        emit(
-                            Result.failure(
-                                ApiError.HttpError(
-                                    code = response.status.value,
-                                    errorMessage = response.status.description,
-                                    detail = errorDetail,
-                                ),
-                            ),
-                        )
-                    }
-                }
+                threadCache.updateAndGet { current -> current + (threadId to CacheEntry(body)) }
+                emit(Result.success(body))
+            } catch (e: ApiError) {
+                threadCache.updateAndGet { current -> current - threadId }
+                diskCache?.remove(threadId)
+                emit(Result.failure(e))
             } catch (e: Exception) {
                 threadCache.updateAndGet { current -> current - threadId }
+                diskCache?.remove(threadId)
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
-        }
-            .flowOn(Dispatchers.IO)
+        }.flowOn(Dispatchers.IO)
 
     override suspend fun createThread(title: String): RepositoryResult<Thread> =
         Result.failure(
@@ -150,4 +114,67 @@ class ThreadRepositoryImpl(
                 detail = "Thread creation is not yet supported",
             ),
         )
+
+    private suspend fun fetchThreadList(
+        limit: Int,
+        offset: Int,
+    ): ThreadListResponse {
+        val response =
+            httpClient.get("$baseUrl/v1/threads") {
+                parameter("limit", limit)
+                parameter("offset", offset)
+                if (apiKey.isNotEmpty()) {
+                    headers {
+                        append("X-API-Key", apiKey)
+                    }
+                }
+            }
+
+        return when (response.status) {
+            HttpStatusCode.OK -> response.body()
+            else -> {
+                val errorDetail =
+                    try {
+                        response.body<String>()
+                    } catch (e: Exception) {
+                        logger.w(e) { "Failed to read error response body" }
+                        null
+                    }
+                throw ApiError.HttpError(
+                    code = response.status.value,
+                    errorMessage = response.status.description,
+                    detail = errorDetail,
+                )
+            }
+        }
+    }
+
+    private suspend fun fetchThread(threadId: String): Thread {
+        val response =
+            httpClient.get("$baseUrl/v1/threads/$threadId") {
+                if (apiKey.isNotEmpty()) {
+                    headers {
+                        append("X-API-Key", apiKey)
+                    }
+                }
+            }
+
+        return when (response.status) {
+            HttpStatusCode.OK -> response.body()
+            else -> {
+                val errorDetail =
+                    try {
+                        response.body<String>()
+                    } catch (e: Exception) {
+                        logger.w(e) { "Failed to read error response body" }
+                        null
+                    }
+                throw ApiError.HttpError(
+                    code = response.status.value,
+                    errorMessage = response.status.description,
+                    detail = errorDetail,
+                )
+            }
+        }
+    }
 }

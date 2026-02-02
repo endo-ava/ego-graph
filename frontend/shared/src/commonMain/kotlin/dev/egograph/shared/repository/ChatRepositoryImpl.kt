@@ -104,8 +104,7 @@ class ChatRepositoryImpl(
             } catch (e: Exception) {
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
-        }
-            .flowOn(Dispatchers.IO)
+        }.flowOn(Dispatchers.IO)
 
     private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEventsFromBuffer(
         buffer: StringBuilder,

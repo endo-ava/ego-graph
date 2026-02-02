@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from backend.api import chat, data, health, system_prompts, threads, youtube
 from backend.config import BackendConfig
@@ -53,6 +54,12 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
+    )
+
+    app.add_middleware(
+        GZipMiddleware,
+        minimum_size=1000,
+        compresslevel=6,
     )
 
     # CORS設定（環境変数から読み取り）
