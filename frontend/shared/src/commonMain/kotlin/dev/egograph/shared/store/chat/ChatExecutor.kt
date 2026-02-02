@@ -7,6 +7,7 @@ import dev.egograph.shared.dto.Message
 import dev.egograph.shared.dto.MessageRole
 import dev.egograph.shared.dto.StreamChunkType
 import dev.egograph.shared.dto.ThreadMessage
+import dev.egograph.shared.platform.nowIsoTimestamp
 import dev.egograph.shared.repository.ChatRepository
 import dev.egograph.shared.repository.MessageRepository
 import dev.egograph.shared.repository.ThreadRepository
@@ -336,5 +337,5 @@ internal class ChatExecutor(
         }
     }
 
-    private fun getProvisionalIsoTimestamp(): String = "2025-01-01T00:00:00Z"
+    private fun getProvisionalIsoTimestamp(): String = nowIsoTimestamp()
 }
