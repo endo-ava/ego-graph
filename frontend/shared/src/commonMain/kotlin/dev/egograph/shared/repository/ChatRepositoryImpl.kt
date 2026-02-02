@@ -10,9 +10,9 @@ import dev.egograph.shared.dto.StreamChunkType
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.request.headers
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -105,13 +105,32 @@ class ChatRepositoryImpl(
     private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEventsFromBuffer(
         buffer: StringBuilder,
     ) {
-        var delimiterIndex = buffer.indexOf("\n\n")
-        while (delimiterIndex >= 0) {
-            val event = buffer.substring(0, delimiterIndex)
-            buffer.delete(0, delimiterIndex + 2)
+        var delimiter = findSseDelimiter(buffer)
+        while (delimiter != null) {
+            val (index, length) = delimiter
+            val event = buffer.substring(0, index)
+            buffer.delete(0, index + length)
             emitSseEvent(event)
-            delimiterIndex = buffer.indexOf("\n\n")
+            delimiter = findSseDelimiter(buffer)
         }
+    }
+
+    private fun findSseDelimiter(buffer: StringBuilder): Pair<Int, Int>? {
+        val lfIndex = buffer.indexOf("\n\n")
+        val crlfIndex = buffer.indexOf("\r\n\r\n")
+
+        val index =
+            when {
+                lfIndex >= 0 && crlfIndex >= 0 -> minOf(lfIndex, crlfIndex)
+                lfIndex >= 0 -> lfIndex
+                crlfIndex >= 0 -> crlfIndex
+                else -> -1
+            }
+
+        if (index < 0) return null
+
+        val length = if (index == crlfIndex) 4 else 2
+        return index to length
     }
 
     private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEvent(event: String) {
@@ -123,11 +142,15 @@ class ChatRepositoryImpl(
             event
                 .lineSequence()
                 .map { it.trimEnd() }
-                .filter { it.startsWith("data: ") }
+                .filter { it.startsWith("data:") }
                 .toList()
 
         for (line in dataLines) {
-            emitChunk(line.removePrefix("data: "))
+            val payload = line.removePrefix("data:").trimStart()
+            if (payload.isBlank() || payload == "[DONE]") {
+                continue
+            }
+            emitChunk(payload)
         }
     }
 
@@ -189,13 +212,14 @@ class ChatRepositoryImpl(
 
     override suspend fun getModels(): RepositoryResult<List<LLMModel>> =
         try {
-            val response = httpClient.get("$baseUrl/v1/chat/models") {
-                if (apiKey.isNotEmpty()) {
-                    headers {
-                        append("X-API-Key", apiKey)
+            val response =
+                httpClient.get("$baseUrl/v1/chat/models") {
+                    if (apiKey.isNotEmpty()) {
+                        headers {
+                            append("X-API-Key", apiKey)
+                        }
                     }
                 }
-            }
 
             when (response.status) {
                 HttpStatusCode.OK -> {
