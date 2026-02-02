@@ -41,10 +41,16 @@ DEVICE="100.x.x.x:5559"
 
 ### スクリーンショット
 
+**注意**: 画像を Read ツールで表示するのは時間がかかるため、デバッグには向きません。
+VS Code で `/tmp/screen.png` を直接開くか、uiautomator で UI 状態を確認してください。
+
 ```bash
 # デバイス上で撮影 → ローカルに転送
 adb -s $DEVICE shell screencap /sdcard/screen.png
 adb -s $DEVICE pull /sdcard/screen.png /tmp/screen.png
+
+# VS Code で /tmp/screen.png を直接開いて確認
+# code /tmp/screen.png
 ```
 
 ### ログ取得
@@ -82,6 +88,37 @@ adb -s $DEVICE uninstall dev.egograph.app
 ```
 
 ### UI操作
+
+#### 要素の座標を特定する (uiautomator) - **推奨**
+
+座標を推測するのではなく、UI 階層から正確な座標を取得します。
+
+```bash
+# UI 階層を XML でダンプ
+adb -s $DEVICE shell uiautomator dump
+adb -s $DEVICE pull /sdcard/window_dump.xml /tmp/ui.xml
+
+# 特定のテキストを持つ要素を検索
+cat /tmp/ui.xml | grep 'text="Save"'
+cat /tmp/ui.xml | grep 'text="Send"'
+
+# resource-id で検索
+cat /tmp/ui.xml | grep 'resource-id="dev.egograph.app:id/save_button"'
+
+# bounds 属性から座標を取得 [left,top][right,bottom]
+# 例: <node bounds="[960,100][1080,180]" ...> → x=1020, y=140 (中央)
+```
+
+```bash
+# ワンライナーで座標を特定してタップ
+adb -s $DEVICE shell uiautomator dump && \
+adb -s $DEVICE pull /sdcard/window_dump.xml - && \
+BOUNDS=$(grep -o 'bounds="\[[0-9]*,[0-9]*\]\[.*?\]' /tmp/ui.xml | head -1 | \
+  sed 's/bounds="\[\([0-9]*\),\([0-9]*\)\[.*\]"/\1 \2/') && \
+adb -s $DEVICE shell input tap $BOUNDS
+```
+
+#### 座標指定でタップ（上記で特定した座標を使用）
 
 ```bash
 # 座標タップ（x=540, y=1200）
