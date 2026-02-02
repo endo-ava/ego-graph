@@ -13,6 +13,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import java.util.concurrent.atomic.AtomicReference
 
 interface SystemPromptRepository {
     suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse>
@@ -30,8 +31,21 @@ class SystemPromptRepositoryImpl(
 ) : SystemPromptRepository {
     private val logger = Logger.withTag("SystemPromptRepository")
 
+    private data class CacheEntry<T>(
+        val data: T,
+        val timestamp: Long = System.currentTimeMillis(),
+    )
+
+    private val systemPromptCache =
+        AtomicReference<Map<SystemPromptName, CacheEntry<SystemPromptResponse>>>(emptyMap())
+    private val cacheDurationMs = 5000L
+
     override suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse> =
         try {
+            val cached = systemPromptCache.get()[name]
+            if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
+                return Result.success(cached.data)
+            }
             val response =
                 httpClient.get("$baseUrl/v1/system-prompts/${name.apiName}") {
                     if (apiKey.isNotEmpty()) {
@@ -42,8 +56,13 @@ class SystemPromptRepositoryImpl(
                 }
 
             when (response.status) {
-                HttpStatusCode.OK -> Result.success(response.body())
+                HttpStatusCode.OK -> {
+                    val body = response.body<SystemPromptResponse>()
+                    systemPromptCache.updateAndGet { current -> current + (name to CacheEntry(body)) }
+                    Result.success(body)
+                }
                 else -> {
+                    systemPromptCache.updateAndGet { current -> current - name }
                     val errorDetail =
                         try {
                             response.body<String>()
@@ -61,6 +80,7 @@ class SystemPromptRepositoryImpl(
                 }
             }
         } catch (e: Exception) {
+            systemPromptCache.updateAndGet { current -> current - name }
             Result.failure(ApiError.NetworkError(e))
         }
 

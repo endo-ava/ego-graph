@@ -17,8 +17,11 @@ import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.utils.io.readAvailable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.serialization.json.Json
 
 /**
@@ -65,6 +68,7 @@ class ChatRepositoryImpl(
                                 break
                             }
                             if (readCount == 0) {
+                                delay(1)
                                 continue
                             }
 
@@ -101,6 +105,7 @@ class ChatRepositoryImpl(
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
         }
+            .flowOn(Dispatchers.IO)
 
     private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEventsFromBuffer(
         buffer: StringBuilder,

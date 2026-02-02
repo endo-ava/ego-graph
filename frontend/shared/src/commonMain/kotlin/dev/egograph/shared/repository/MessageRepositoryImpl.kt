@@ -7,8 +7,11 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * MessageRepositoryの実装
@@ -20,8 +23,21 @@ class MessageRepositoryImpl(
     private val baseUrl: String,
     private val apiKey: String = "",
 ) : MessageRepository {
+    private data class CacheEntry<T>(
+        val data: T,
+        val timestamp: Long = System.currentTimeMillis(),
+    )
+
+    private val messagesCache = AtomicReference<Map<String, CacheEntry<ThreadMessagesResponse>>>(emptyMap())
+    private val cacheDurationMs = 5000L
+
     override fun getMessages(threadId: String): Flow<RepositoryResult<ThreadMessagesResponse>> =
         flow {
+            val cached = messagesCache.get()[threadId]
+            if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
+                emit(Result.success(cached.data))
+                return@flow
+            }
             try {
                 val response =
                     httpClient.get("$baseUrl/v1/threads/$threadId/messages") {
@@ -34,9 +50,12 @@ class MessageRepositoryImpl(
 
                 when (response.status) {
                     HttpStatusCode.OK -> {
-                        emit(Result.success(response.body<ThreadMessagesResponse>()))
+                        val body = response.body<ThreadMessagesResponse>()
+                        messagesCache.updateAndGet { current -> current + (threadId to CacheEntry(body)) }
+                        emit(Result.success(body))
                     }
                     else -> {
+                        messagesCache.updateAndGet { current -> current - threadId }
                         val errorDetail =
                             try {
                                 response.body<String>()
@@ -56,7 +75,9 @@ class MessageRepositoryImpl(
                     }
                 }
             } catch (e: Exception) {
+                messagesCache.updateAndGet { current -> current - threadId }
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
         }
+            .flowOn(Dispatchers.IO)
 }
