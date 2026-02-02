@@ -21,10 +21,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.platform.PlatformPreferences
 import dev.egograph.shared.platform.PlatformPrefsDefaults
@@ -40,8 +40,6 @@ fun SettingsScreen(
     preferences: PlatformPreferences,
     onBack: () -> Unit,
 ) {
-    val coroutineScope = rememberCoroutineScope()
-
     var selectedTheme by remember {
         val savedTheme =
             preferences.getString(
@@ -162,6 +160,7 @@ fun SettingsScreen(
                     },
                     label = { Text("API Key") },
                     placeholder = { Text("Optional: Enter your API key") },
+                    visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )

@@ -8,6 +8,7 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +44,12 @@ class SidebarScreen : Screen {
         var activeView by remember { mutableStateOf(SidebarView.Chat) }
         val chatScreen = remember { ChatScreen() }
         val promptScreen = remember { SystemPromptEditorScreen() }
+
+        LaunchedEffect(Unit) {
+            if (state.threads.isEmpty() && !state.isLoadingThreads) {
+                store.accept(ChatIntent.LoadThreads)
+            }
+        }
 
         ModalNavigationDrawer(
             drawerState = drawerState,
