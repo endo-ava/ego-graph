@@ -94,7 +94,10 @@ class SidebarScreen : Screen {
         ) {
             when (activeView) {
                 SidebarView.Chat -> chatScreen.Content()
-                SidebarView.SystemPrompt -> SystemPromptEditorScreen().Content()
+                SidebarView.SystemPrompt ->
+                    SystemPromptEditorScreen(
+                        onBack = { activeView = SidebarView.Chat },
+                    ).Content()
                 SidebarView.Settings -> {
                     val preferences = koinInject<dev.egograph.shared.platform.PlatformPreferences>()
                     SettingsScreen(

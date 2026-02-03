@@ -24,17 +24,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
-import cafe.adriel.voyager.navigator.LocalNavigator
-import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.egograph.shared.dto.SystemPromptName
 import dev.egograph.shared.repository.SystemPromptRepository
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-class SystemPromptEditorScreen : Screen {
+class SystemPromptEditorScreen(
+    private val onBack: () -> Unit = {},
+) : Screen {
     @Composable
     override fun Content() {
-        val navigator = LocalNavigator.currentOrThrow
         val repository = koinInject<SystemPromptRepository>()
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
@@ -67,47 +66,47 @@ class SystemPromptEditorScreen : Screen {
 
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
-            topBar = {
-                SystemPromptTabs(
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it },
-                )
-            },
             bottomBar = {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Spacer(Modifier.weight(1f))
-                    TextButton(
-                        onClick = { navigator.pop() },
-                        enabled = !isLoading,
+                Column {
+                    SystemPromptTabs(
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it },
+                    )
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Cancel")
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                isLoading = true
-                                try {
-                                    val result = repository.updateSystemPrompt(selectedTab, draftContent)
-                                    result
-                                        .onSuccess {
-                                            originalContent = it.content
-                                            draftContent = it.content
-                                            snackbarHostState.showSnackbar("Saved successfully")
-                                        }.onFailure {
-                                            snackbarHostState.showSnackbar("Error: ${it.message}")
-                                        }
-                                } finally {
-                                    isLoading = false
+                        Spacer(Modifier.weight(1f))
+                        TextButton(
+                            onClick = onBack,
+                            enabled = !isLoading,
+                        ) {
+                            Text("Cancel")
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    isLoading = true
+                                    try {
+                                        val result = repository.updateSystemPrompt(selectedTab, draftContent)
+                                        result
+                                            .onSuccess {
+                                                originalContent = it.content
+                                                draftContent = it.content
+                                                snackbarHostState.showSnackbar("Saved successfully")
+                                            }.onFailure {
+                                                snackbarHostState.showSnackbar("Error: ${it.message}")
+                                            }
+                                    } finally {
+                                        isLoading = false
+                                    }
                                 }
-                            }
-                        },
-                        enabled = !isLoading && draftContent != originalContent,
-                    ) {
-                        Text("Save")
+                            },
+                            enabled = !isLoading && draftContent != originalContent,
+                        ) {
+                            Text("Save")
+                        }
                     }
                 }
             },
