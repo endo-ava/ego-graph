@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * MessageRepositoryの実装
@@ -58,6 +59,8 @@ class MessageRepositoryImpl(
                     messagesCache = messagesCache + (threadId to CacheEntry(body))
                 }
                 emit(Result.success(body))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: ApiError) {
                 messagesCacheMutex.withLock {
                     messagesCache = messagesCache - threadId

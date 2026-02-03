@@ -30,6 +30,14 @@ class ThreadRepositoryImpl(
 ) : ThreadRepository {
     private val logger = Logger.withTag("ThreadRepository")
 
+    /**
+     * Generate a stable context hash from baseUrl and apiKey.
+     * This prevents cache collisions across different API configurations.
+     */
+    private val contextHash: String by lazy {
+        generateContextHash(baseUrl, apiKey)
+    }
+
     private data class CacheEntry<T>(
         val data: T,
         val timestamp: Long = System.currentTimeMillis(),
@@ -43,12 +51,25 @@ class ThreadRepositoryImpl(
 
     private val cacheDurationMs = 60000L
 
+    private fun generateContextHash(
+        baseUrl: String,
+        apiKey: String,
+    ): String {
+        val combined = "$baseUrl:$apiKey"
+        var hash = 0
+        for (char in combined) {
+            hash = 31 * hash + char.code
+        }
+        val positiveHash = hash.toLong() and 0xFFFFFFFFL
+        return positiveHash.toString(16).padStart(8, '0')
+    }
+
     override fun getThreads(
         limit: Int,
         offset: Int,
     ): Flow<RepositoryResult<ThreadListResponse>> =
         flow {
-            val cacheKey = "$limit:$offset"
+            val cacheKey = "$contextHash:list:$limit:$offset"
             val cached = threadsCacheMutex.withLock { threadsCache[cacheKey] }
             if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
                 emit(Result.success(cached.data))
@@ -87,7 +108,8 @@ class ThreadRepositoryImpl(
 
     override fun getThread(threadId: String): Flow<RepositoryResult<Thread>> =
         flow {
-            val cached = threadCacheMutex.withLock { threadCache[threadId] }
+            val cacheKey = "$contextHash:thread:$threadId"
+            val cached = threadCacheMutex.withLock { threadCache[cacheKey] }
             if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
                 emit(Result.success(cached.data))
                 return@flow
@@ -96,7 +118,7 @@ class ThreadRepositoryImpl(
                 val body =
                     if (diskCache != null) {
                         diskCache.getOrFetch(
-                            key = threadId,
+                            key = cacheKey,
                             serializer = Thread.serializer(),
                         ) {
                             fetchThread(threadId)
@@ -105,20 +127,20 @@ class ThreadRepositoryImpl(
                         fetchThread(threadId)
                     }
                 threadCacheMutex.withLock {
-                    threadCache = threadCache + (threadId to CacheEntry(body))
+                    threadCache = threadCache + (cacheKey to CacheEntry(body))
                 }
                 emit(Result.success(body))
             } catch (e: ApiError) {
                 threadCacheMutex.withLock {
-                    threadCache = threadCache - threadId
+                    threadCache = threadCache - cacheKey
                 }
-                diskCache?.remove(threadId)
+                diskCache?.remove(cacheKey)
                 emit(Result.failure(e))
             } catch (e: Exception) {
                 threadCacheMutex.withLock {
-                    threadCache = threadCache - threadId
+                    threadCache = threadCache - cacheKey
                 }
-                diskCache?.remove(threadId)
+                diskCache?.remove(cacheKey)
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
         }.flowOn(Dispatchers.IO)

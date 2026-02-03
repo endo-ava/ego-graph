@@ -16,6 +16,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.coroutines.cancellation.CancellationException
 
 interface SystemPromptRepository {
     suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse>
@@ -72,6 +73,8 @@ class SystemPromptRepositoryImpl(
             }
             diskCache?.remove(name.apiName)
             Result.failure(e)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             systemPromptCacheMutex.withLock {
                 systemPromptCache = systemPromptCache - name
@@ -121,6 +124,8 @@ class SystemPromptRepositoryImpl(
                     )
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(ApiError.NetworkError(e))
         }

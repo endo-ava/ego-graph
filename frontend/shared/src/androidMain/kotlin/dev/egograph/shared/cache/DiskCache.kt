@@ -1,5 +1,6 @@
 package dev.egograph.shared.cache
 
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -19,6 +20,7 @@ actual class DiskCache actual constructor(
 ) {
     private val cacheDir = File(context.cacheDirPath, "api_cache")
     private val ioMutex = Mutex()
+    private val logger = Logger.withTag("DiskCache")
     private val json =
         Json {
             ignoreUnknownKeys = true
@@ -44,7 +46,11 @@ actual class DiskCache actual constructor(
         }
 
         val result = fetch()
-        writeToDisk(key, serializer, result)
+        try {
+            writeToDisk(key, serializer, result)
+        } catch (e: Exception) {
+            logger.w(e) { "Failed to write to disk cache for key: $key" }
+        }
         return result
     }
 
