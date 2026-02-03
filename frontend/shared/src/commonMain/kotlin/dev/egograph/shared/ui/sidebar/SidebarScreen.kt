@@ -45,12 +45,6 @@ class SidebarScreen : Screen {
         val scope = rememberCoroutineScope()
         var activeView by remember { mutableStateOf(SidebarView.Chat) }
         val chatScreen = remember { ChatScreen() }
-        val systemPromptScreen =
-            remember {
-                SystemPromptEditorScreen(
-                    onBack = { activeView = SidebarView.Chat },
-                )
-            }
 
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -85,10 +79,8 @@ class SidebarScreen : Screen {
                         isLoading = state.isLoadingThreads,
                         error = state.threadsError,
                         onThreadClick = { threadId ->
-                            if (state.selectedThread?.threadId != threadId) {
-                                activeView = SidebarView.Chat
-                                store.accept(ChatIntent.SelectThread(threadId))
-                            }
+                            activeView = SidebarView.Chat
+                            store.accept(ChatIntent.SelectThread(threadId))
                             scope.launch { drawerState.close() }
                         },
                         onRefresh = {
@@ -102,7 +94,10 @@ class SidebarScreen : Screen {
         ) {
             when (activeView) {
                 SidebarView.Chat -> chatScreen.Content()
-                SidebarView.SystemPrompt -> systemPromptScreen.Content()
+                SidebarView.SystemPrompt ->
+                    SystemPromptEditorScreen(
+                        onBack = { activeView = SidebarView.Chat },
+                    ).Content()
                 SidebarView.Settings -> {
                     val preferences = koinInject<dev.egograph.shared.platform.PlatformPreferences>()
                     SettingsScreen(

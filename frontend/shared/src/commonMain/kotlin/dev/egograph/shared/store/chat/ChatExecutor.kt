@@ -26,13 +26,6 @@ internal class ChatExecutor(
 ) : CoroutineExecutor<ChatIntent, Unit, ChatState, ChatView, ChatLabel>(mainContext) {
     private val logger = Logger
     private val pageLimit = 50
-    private var loadingMessagesForThreadId: String? = null
-    private var lastLoadedThreadId: String? = null
-    private var lastLoadedAtMs: Long = 0
-    private val loadMessagesDebounceMs = 3000L
-    private var lastSelectedThreadId: String? = null
-    private var lastSelectedAtMs: Long = 0
-    private val selectThreadDebounceMs = 2500L
 
     override fun executeIntent(intent: ChatIntent) {
         when (intent) {
@@ -342,13 +335,6 @@ internal class ChatExecutor(
             return
         }
 
-        val now = System.currentTimeMillis()
-        if (lastSelectedThreadId == threadId && now - lastSelectedAtMs < selectThreadDebounceMs) {
-            return
-        }
-        lastSelectedThreadId = threadId
-        lastSelectedAtMs = now
-
         val thread = currentState.threads.find { it.threadId == threadId }
         if (thread != null) {
             dispatch(ChatView.ThreadSelected(thread))
@@ -377,32 +363,20 @@ internal class ChatExecutor(
     }
 
     private fun loadMessages(threadId: String?) {
-        val targetThreadId = threadId ?: state().selectedThread?.threadId
+        val currentState = state()
+        val targetThreadId = threadId ?: currentState.selectedThread?.threadId
 
         if (targetThreadId == null) {
             dispatch(ChatView.MessagesLoadFailed("スレッドが選択されていません"))
             return
         }
 
-        val now = System.currentTimeMillis()
-        if (loadingMessagesForThreadId == targetThreadId) {
-            return
-        }
-
-        if (lastLoadedThreadId == targetThreadId && now - lastLoadedAtMs < loadMessagesDebounceMs) {
-            return
-        }
-
-        loadingMessagesForThreadId = targetThreadId
-        lastLoadedThreadId = targetThreadId
-        lastLoadedAtMs = now
         dispatch(ChatView.MessagesLoadingStarted)
 
         scope.launch {
             messageRepository
                 .getMessages(targetThreadId)
                 .collect { result ->
-                    loadingMessagesForThreadId = null
                     result
                         .onSuccess { response ->
                             dispatch(ChatView.MessagesLoaded(response.messages))

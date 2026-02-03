@@ -8,7 +8,6 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -36,8 +35,6 @@ class MessageRepositoryImpl(
     private val messagesCacheMutex = Mutex()
     private var messagesCache: Map<String, CacheEntry<ThreadMessagesResponse>> = emptyMap()
     private val cacheDurationMs = 60000L
-    private val inFlightMutex = Mutex()
-    private var inFlightRequests: Map<String, CompletableDeferred<RepositoryResult<ThreadMessagesResponse>>> = emptyMap()
 
     override fun getMessages(threadId: String): Flow<RepositoryResult<ThreadMessagesResponse>> =
         flow {
@@ -46,64 +43,37 @@ class MessageRepositoryImpl(
                 emit(Result.success(cached.data))
                 return@flow
             }
-
-            val (deferred, isOwner) =
-                inFlightMutex.withLock {
-                    val existing = inFlightRequests[threadId]
-                    if (existing != null) {
-                        existing to false
-                    } else {
-                        val created = CompletableDeferred<RepositoryResult<ThreadMessagesResponse>>()
-                        inFlightRequests = inFlightRequests + (threadId to created)
-                        created to true
-                    }
-                }
-
-            if (isOwner) {
-                try {
-                    val result =
-                        try {
-                            val body =
-                                if (diskCache != null) {
-                                    diskCache.getOrFetch(
-                                        key = threadId,
-                                        serializer = ThreadMessagesResponse.serializer(),
-                                    ) {
-                                        fetchThreadMessages(threadId)
-                                    }
-                                } else {
-                                    fetchThreadMessages(threadId)
-                                }
-                            messagesCacheMutex.withLock {
-                                messagesCache = messagesCache + (threadId to CacheEntry(body))
-                            }
-                            Result.success(body)
-                        } catch (e: ApiError) {
-                            messagesCacheMutex.withLock {
-                                messagesCache = messagesCache - threadId
-                            }
-                            diskCache?.remove(threadId)
-                            Result.failure(e)
-                        } catch (e: Exception) {
-                            messagesCacheMutex.withLock {
-                                messagesCache = messagesCache - threadId
-                            }
-                            diskCache?.remove(threadId)
-                            Result.failure(ApiError.NetworkError(e))
+            try {
+                val body =
+                    if (diskCache != null) {
+                        diskCache.getOrFetch(
+                            key = threadId,
+                            serializer = ThreadMessagesResponse.serializer(),
+                        ) {
+                            fetchThreadMessages(threadId)
                         }
-
-                    deferred.complete(result)
-                } catch (e: CancellationException) {
-                    deferred.cancel(e)
-                    throw e
-                } finally {
-                    inFlightMutex.withLock {
-                        inFlightRequests = inFlightRequests - threadId
+                    } else {
+                        fetchThreadMessages(threadId)
                     }
+                messagesCacheMutex.withLock {
+                    messagesCache = messagesCache + (threadId to CacheEntry(body))
                 }
+                emit(Result.success(body))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ApiError) {
+                messagesCacheMutex.withLock {
+                    messagesCache = messagesCache - threadId
+                }
+                diskCache?.remove(threadId)
+                emit(Result.failure(e))
+            } catch (e: Exception) {
+                messagesCacheMutex.withLock {
+                    messagesCache = messagesCache - threadId
+                }
+                diskCache?.remove(threadId)
+                emit(Result.failure(ApiError.NetworkError(e)))
             }
-
-            emit(deferred.await())
         }.flowOn(Dispatchers.IO)
 
     private suspend fun fetchThreadMessages(threadId: String): ThreadMessagesResponse {
