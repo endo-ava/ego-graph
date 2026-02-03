@@ -32,7 +32,8 @@ private val IDEMPOTENT_METHODS =
  * Creates a Ktor HttpClient configured with:
  * - OkHttp engine
  * - Timeout settings (30s request, 10s connect)
- * - Retry logic (3 retries on server errors for idempotent methods, transient network exceptions only)
+ * - Retry logic (1 retry on server errors for idempotent methods only, I/O exceptions only)
+ * - Exponential delay between retries
  * - JSON content negotiation with kotlinx.serialization
  * - Request/response logging with Kermit
  */

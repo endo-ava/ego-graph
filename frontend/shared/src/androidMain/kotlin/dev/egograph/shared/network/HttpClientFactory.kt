@@ -46,9 +46,15 @@ actual class HttpClientFactory {
             install(HttpRequestRetry) {
                 maxRetries = 1
                 retryOnServerErrors(maxRetries = 1)
-                retryOnExceptionIf { _, cause ->
+                retryOnExceptionIf { request, cause ->
+                    // Only retry idempotent methods (GET, HEAD, PUT, DELETE) to avoid
+                    // re-sending non-idempotent requests like POST/PATCH
+                    val isIdempotent = request.method.value in listOf("GET", "HEAD", "PUT", "DELETE")
+                    if (!isIdempotent) return@retryOnExceptionIf false
+
                     val unwrapped = cause.unwrapCancellationException()
-                    unwrapped is Exception
+                    // Only retry I/O exceptions (network errors), not logic errors
+                    unwrapped is java.io.IOException || unwrapped is java.net.SocketException
                 }
                 constantDelay(100)
             }

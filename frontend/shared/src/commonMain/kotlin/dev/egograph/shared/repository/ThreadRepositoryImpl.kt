@@ -57,12 +57,14 @@ class ThreadRepositoryImpl(
         apiKey: String,
     ): String {
         val combined = "$baseUrl:$apiKey"
-        var hash = 0
-        for (char in combined) {
-            hash = 31 * hash + char.code
+        // Use 64-bit FNV-1a hash for better collision resistance than 32-bit
+        var hash: ULong = 0xcbf29ce484222325u // FNV offset basis
+        val fnvPrime: ULong = 0x100000001b3u
+        for (byte in combined.toByteArray(Charsets.UTF_8)) {
+            hash = hash xor byte.toULong()
+            hash = hash * fnvPrime
         }
-        val positiveHash = hash.toLong() and 0xFFFFFFFFL
-        return positiveHash.toString(16).padStart(8, '0')
+        return hash.toString(16).padStart(16, '0')
     }
 
     override fun getThreads(

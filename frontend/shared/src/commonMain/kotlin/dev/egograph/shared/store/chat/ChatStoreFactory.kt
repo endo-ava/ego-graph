@@ -221,6 +221,11 @@ internal object ChatReducerImpl :
 
 private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egograph.shared.dto.Thread? {
     selectedThread?.let { existing ->
+        // If messages is empty, preserve existing thread metadata
+        if (msg.messages.isEmpty()) {
+            return existing.copy(threadId = msg.threadId)
+        }
+
         val lastMessage = msg.messages.lastOrNull()
         val firstMessage = msg.messages.firstOrNull()
 
@@ -235,7 +240,7 @@ private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egog
             threadId = msg.threadId,
             preview = lastMessage?.content?.takeIf { it.isNotBlank() } ?: existing.preview,
             lastMessageAt = lastMessage?.createdAt ?: existing.lastMessageAt,
-            messageCount = msg.messages.size,
+            messageCount = existing.messageCount + msg.messages.size,
             title = newTitle,
         )
     }
