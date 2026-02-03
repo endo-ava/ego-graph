@@ -4,7 +4,8 @@ Google MyActivityからYouTube視聴履歴を収集します。
 Playwrightを使用してスクレイピングを行い、クッキー認証をサポートします。
 
 壊れやすいポイント (DOM変更に弱い箇所):
-- CSSクラス依存: ITEM_CLASS='k2bP7e', TITLE_CLASS='l8sGWb', HEADER_SELECTOR='h2, .ot996, .I67SDe'
+- CSSクラス依存: ITEM_CLASS='k2bP7e', TITLE_CLASS='l8sGWb',
+  HEADER_SELECTOR='h2, .ot996, .I67SDe'
 - 時刻抽出: .WFTFcf の親要素テキストから時刻を抜く（表示形式変更に弱い）
 - 日付ヘッダーの紐付け: DOM順にヘッダー→アイテムを読む前提
 - 認証判定: URL/テキスト判定（ログイン画面の文言変更に弱い）

@@ -2,6 +2,8 @@ package dev.egograph.shared.di
 
 import com.arkivanov.mvikotlin.core.store.StoreFactory
 import com.arkivanov.mvikotlin.main.store.DefaultStoreFactory
+import dev.egograph.shared.cache.DiskCache
+import dev.egograph.shared.cache.DiskCacheContext
 import dev.egograph.shared.network.provideHttpClient
 import dev.egograph.shared.platform.PlatformPreferences
 import dev.egograph.shared.platform.PlatformPrefsDefaults
@@ -26,7 +28,6 @@ import org.koin.dsl.module
  * Application-wide DI module
  *
  * Provides all application dependencies using Koin's traditional module definition.
- * TODO: Add ViewModel modules in next phase
  */
 val appModule =
     module {
@@ -56,11 +57,17 @@ val appModule =
             provideHttpClient()
         }
 
+        single<DiskCache?> {
+            val context = getOrNull<DiskCacheContext>()
+            context?.let { DiskCache(it) }
+        }
+
         single<ThreadRepository> {
             ThreadRepositoryImpl(
                 httpClient = get(),
                 baseUrl = get(qualifier = named("BaseUrl")),
                 apiKey = get(qualifier = named("ApiKey")),
+                diskCache = getOrNull(),
             )
         }
 
@@ -69,6 +76,7 @@ val appModule =
                 httpClient = get(),
                 baseUrl = get(qualifier = named("BaseUrl")),
                 apiKey = get(qualifier = named("ApiKey")),
+                diskCache = getOrNull(),
             )
         }
 
@@ -77,6 +85,7 @@ val appModule =
                 httpClient = get(),
                 baseUrl = get(qualifier = named("BaseUrl")),
                 apiKey = get(qualifier = named("ApiKey")),
+                diskCache = getOrNull(),
             )
         }
 

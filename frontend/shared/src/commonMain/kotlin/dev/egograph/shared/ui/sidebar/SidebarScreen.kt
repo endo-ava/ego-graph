@@ -1,13 +1,17 @@
 package dev.egograph.shared.ui.sidebar
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +48,12 @@ class SidebarScreen : Screen {
         val chatScreen = remember { ChatScreen() }
         val promptScreen = remember { SystemPromptEditorScreen() }
 
+        LaunchedEffect(state.threads, state.isLoadingThreads, state.threadsError) {
+            if (state.threads.isEmpty() && !state.isLoadingThreads && state.threadsError == null) {
+                store.accept(ChatIntent.LoadThreads)
+            }
+        }
+
         ModalNavigationDrawer(
             drawerState = drawerState,
             drawerContent = {
@@ -67,7 +77,7 @@ class SidebarScreen : Screen {
                             activeView = SidebarView.SystemPrompt
                             scope.launch { drawerState.close() }
                         },
-                        icon = { Text("⚙") },
+                        icon = { Icon(Icons.Default.Build, contentDescription = null) },
                         modifier = Modifier.padding(horizontal = 12.dp),
                     )
 

@@ -169,9 +169,9 @@ async def test_collect_watch_history_with_valid_params():
 @pytest.mark.asyncio
 async def test_collect_watch_history_retry_decorator():
     """リトライデコレータが適用されていることを確認する。"""
-    from unittest.mock import AsyncMock, patch
+    from unittest.mock import AsyncMock, patch  # noqa: PLC0415
 
-    from tenacity import RetryError
+    from tenacity import RetryError  # noqa: PLC0415
 
     mock_cookies = [
         {"name": "test", "value": "value", "domain": ".google.com", "path": "/"}

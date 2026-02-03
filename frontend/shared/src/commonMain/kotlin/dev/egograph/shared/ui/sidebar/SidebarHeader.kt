@@ -5,8 +5,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -38,9 +43,10 @@ fun SidebarHeader(
             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
             modifier = Modifier.height(32.dp),
         ) {
-            Text(
-                text = "⚙",
-                style = MaterialTheme.typography.labelLarge,
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Settings", // TODO: Use stringResource when i18n is fully set up
+                modifier = Modifier.size(16.dp),
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
@@ -49,10 +55,10 @@ fun SidebarHeader(
             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
             modifier = Modifier.height(32.dp),
         ) {
-            Text(
-                text = "+",
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(end = 4.dp),
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp).padding(end = 4.dp),
             )
             Text("New")
         }

@@ -160,7 +160,8 @@ def transform_watch_history_item(
         parsed = _parse_iso8601(watched_at)
         if parsed is None:
             logger.warning(
-                "invalid_watched_at: failed to parse datetime string '%s' for video_id=%s",
+                "invalid_watched_at: failed to parse datetime string '%s' "
+                "for video_id=%s",
                 watched_at,
                 video_id,
             )

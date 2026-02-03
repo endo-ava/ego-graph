@@ -13,7 +13,8 @@ fun loadDotenv(file: java.io.File): Map<String, String> {
         return emptyMap()
     }
 
-    return file.readLines()
+    return file
+        .readLines()
         .asSequence()
         .map { it.trim() }
         .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
@@ -34,14 +35,13 @@ fun loadDotenv(file: java.io.File): Map<String, String> {
             } else {
                 key to value
             }
-        }
-        .toMap()
+        }.toMap()
 }
 
 val dotenv = loadDotenv(rootProject.projectDir.resolve(".env"))
 val debugBaseUrl =
-    (dotenv["EGOGRAPH_BASE_URL_DEBUG"]?.takeIf { it.isNotBlank() }
-        ?: project.findProperty("EGOGRAPH_BASE_URL_DEBUG") as? String)
+    dotenv["EGOGRAPH_BASE_URL_DEBUG"]?.takeIf { it.isNotBlank() }
+        ?: project.findProperty("EGOGRAPH_BASE_URL_DEBUG") as? String
         ?: "http://10.0.2.2:8000"
 
 kotlin {
@@ -58,6 +58,7 @@ kotlin {
                 implementation(compose.ui)
                 implementation(compose.material3)
                 implementation(compose.foundation)
+                implementation(compose.materialIconsExtended)
                 implementation(compose.components.resources)
 
                 // Ktor Client
@@ -89,6 +90,7 @@ kotlin {
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.appcompat)
                 implementation(libs.ktor.client.android)
+                implementation(libs.ktor.client.okhttp)
             }
         }
 
@@ -137,6 +139,10 @@ android {
 
     buildFeatures {
         buildConfig = true
+    }
+
+    lint {
+        baseline = file("lint-baseline.xml")
     }
 }
 

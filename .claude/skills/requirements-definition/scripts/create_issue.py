@@ -219,7 +219,7 @@ def main() -> None:
         labels.extend(args.component)
 
     if args.labels:
-        labels.extend([l.strip() for l in args.labels.split(",")])
+        labels.extend([label.strip() for label in args.labels.split(",")])
 
     create_issue_with_gh(args.title, body, labels)
 

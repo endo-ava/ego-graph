@@ -96,7 +96,8 @@ async def get_watching_stats_endpoint(
         期間別統計のリスト
 
     Example:
-        GET /v1/data/youtube/stats/watching?start_date=2024-01-01&end_date=2024-01-31&granularity=week
+        GET /v1/data/youtube/stats/watching?start_date=2024-01-01\\
+            &end_date=2024-01-31&granularity=week
     """
     try:
         start, end = validate_date_range(start_date, end_date)
@@ -139,7 +140,8 @@ async def get_top_channels_endpoint(
         トップチャンネルのリスト（視聴時間降順）
 
     Example:
-        GET /v1/data/youtube/stats/top-channels?start_date=2024-01-01&end_date=2024-01-31&limit=10
+        GET /v1/data/youtube/stats/top-channels?start_date=2024-01-01\\
+            &end_date=2024-01-31&limit=10
     """
     try:
         start, end = validate_date_range(start_date, end_date)

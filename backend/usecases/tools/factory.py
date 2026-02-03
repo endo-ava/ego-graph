@@ -1,15 +1,14 @@
 """ツールレジストリの構築ヘルパー。"""
 
-from shared.config import R2Config
-
-from backend.infrastructure.repositories import SpotifyRepository, YouTubeRepository
-from backend.usecases.tools.registry import ToolRegistry
 from backend.domain.tools.spotify.stats import GetListeningStatsTool, GetTopTracksTool
 from backend.domain.tools.youtube.stats import (
     GetTopChannelsTool,
     GetWatchHistoryTool,
     GetWatchingStatsTool,
 )
+from backend.infrastructure.repositories import SpotifyRepository, YouTubeRepository
+from backend.usecases.tools.registry import ToolRegistry
+from shared.config import R2Config
 
 
 def build_tool_registry(r2_config: R2Config | None) -> ToolRegistry:

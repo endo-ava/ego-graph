@@ -193,10 +193,11 @@ def main():
         ]
     )
     unresolved_inline = len(coderabbit_inline)
-    print(
-        f"\n📊 Stats: {unresolved_inline} unresolved / {total_inline} total inline comments",
-        file=sys.stderr,
+    stats_msg = (
+        f"\n📊 Stats: {unresolved_inline} unresolved / "
+        f"{total_inline} total inline comments"
     )
+    print(stats_msg, file=sys.stderr)
 
 
 if __name__ == "__main__":

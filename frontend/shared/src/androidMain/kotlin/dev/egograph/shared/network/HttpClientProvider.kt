@@ -1,9 +1,10 @@
 package dev.egograph.shared.network
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.android.Android
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
@@ -29,14 +30,20 @@ private val IDEMPOTENT_METHODS =
  * Android-specific HttpClient provider
  *
  * Creates a Ktor HttpClient configured with:
- * - Android engine
+ * - OkHttp engine
  * - Timeout settings (30s request, 10s connect)
- * - Retry logic (3 retries on server errors for idempotent methods, transient network exceptions only)
+ * - Retry logic (1 retry on server errors for idempotent methods only, I/O exceptions only)
+ * - Exponential delay between retries
  * - JSON content negotiation with kotlinx.serialization
  * - Request/response logging with Kermit
  */
 actual fun provideHttpClient(): HttpClient =
-    HttpClient(Android) {
+    HttpClient(OkHttp) {
+        engine {
+            config {
+                retryOnConnectionFailure(true)
+            }
+        }
         install(HttpTimeout) {
             requestTimeoutMillis = 30_000
             connectTimeoutMillis = 10_000
@@ -44,8 +51,8 @@ actual fun provideHttpClient(): HttpClient =
         }
 
         install(HttpRequestRetry) {
-            maxRetries = 3
-            retryOnServerErrors(maxRetries = 3)
+            maxRetries = 1
+            retryOnServerErrors(maxRetries = 1)
             retryIf { request, _ -> request.method in IDEMPOTENT_METHODS }
             retryOnExceptionIf { request, cause ->
                 val unwrapped = cause.unwrapCancellationException()
@@ -53,6 +60,12 @@ actual fun provideHttpClient(): HttpClient =
                     (unwrapped is IOException || unwrapped is SocketTimeoutException)
             }
             exponentialDelay()
+        }
+
+        install(ContentEncoding) {
+            gzip()
+            deflate()
+            // brotli() // Only if backend supports Brotli
         }
 
         install(ContentNegotiation) {

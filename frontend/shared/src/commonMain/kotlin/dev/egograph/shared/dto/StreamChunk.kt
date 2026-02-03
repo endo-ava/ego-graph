@@ -32,11 +32,16 @@ enum class StreamChunkType {
 data class StreamChunk(
     val type: StreamChunkType,
     val delta: String? = null,
+    @SerialName("tool_calls")
     val toolCalls: List<ToolCall>? = null,
+    @SerialName("tool_name")
     val toolName: String? = null,
+    @SerialName("tool_result")
     val toolResult: JsonObject? = null,
+    @SerialName("finish_reason")
     val finishReason: String? = null,
     val usage: Usage? = null,
     val error: String? = null,
+    @SerialName("thread_id")
     val threadId: String? = null,
 )

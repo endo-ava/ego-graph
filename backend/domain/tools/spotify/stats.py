@@ -36,8 +36,8 @@ class GetTopTracksTool(ToolBase):
     @property
     def description(self) -> str:
         return (
-            "Spotifyの指定した期間（start_date から end_date）で最も再生された曲を取得します。"
-            "再生回数の多い順にソートされます。"
+            "Spotifyの指定した期間（start_date から end_date）で"
+            "最も再生された曲を取得します。再生回数の多い順にソートされます。"
         )
 
     @property

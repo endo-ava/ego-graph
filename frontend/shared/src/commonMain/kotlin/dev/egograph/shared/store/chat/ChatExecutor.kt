@@ -7,12 +7,15 @@ import dev.egograph.shared.dto.Message
 import dev.egograph.shared.dto.MessageRole
 import dev.egograph.shared.dto.StreamChunkType
 import dev.egograph.shared.dto.ThreadMessage
+import dev.egograph.shared.dto.ToolCall
+import dev.egograph.shared.platform.nowIsoTimestamp
 import dev.egograph.shared.repository.ChatRepository
 import dev.egograph.shared.repository.MessageRepository
 import dev.egograph.shared.repository.ThreadRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
 import kotlin.random.Random
 
 internal class ChatExecutor(
@@ -140,6 +143,66 @@ internal class ChatExecutor(
                                             userId = "assistant",
                                             role = MessageRole.ASSISTANT,
                                             content = delta,
+                                            createdAt = now,
+                                            modelName = currentState.selectedModel,
+                                        )
+                                    }
+
+                                assistantThreadMessage = updatedAssistant
+                                updatedMessages =
+                                    if (lastMessage?.role == MessageRole.ASSISTANT) {
+                                        updatedMessages.dropLast(1) + updatedAssistant
+                                    } else {
+                                        updatedMessages + updatedAssistant
+                                    }
+                                updated = true
+                            }
+                        }
+
+                        if (chunk.type == StreamChunkType.TOOL_CALL) {
+                            val toolCallText = formatToolCalls(chunk.toolCalls)
+                            if (toolCallText.isNotBlank()) {
+                                val lastMessage = updatedMessages.lastOrNull()
+                                val updatedAssistant =
+                                    if (lastMessage?.role == MessageRole.ASSISTANT) {
+                                        lastMessage.copy(content = lastMessage.content + "\n" + toolCallText)
+                                    } else {
+                                        ThreadMessage(
+                                            messageId = "temp-assistant-${Random.nextLong()}",
+                                            threadId = resolvedThreadId ?: provisionalThreadId,
+                                            userId = "assistant",
+                                            role = MessageRole.ASSISTANT,
+                                            content = toolCallText,
+                                            createdAt = now,
+                                            modelName = currentState.selectedModel,
+                                        )
+                                    }
+
+                                assistantThreadMessage = updatedAssistant
+                                updatedMessages =
+                                    if (lastMessage?.role == MessageRole.ASSISTANT) {
+                                        updatedMessages.dropLast(1) + updatedAssistant
+                                    } else {
+                                        updatedMessages + updatedAssistant
+                                    }
+                                updated = true
+                            }
+                        }
+
+                        if (chunk.type == StreamChunkType.TOOL_RESULT) {
+                            val toolResultText = formatToolResult(chunk.toolName, chunk.toolResult)
+                            if (toolResultText.isNotBlank()) {
+                                val lastMessage = updatedMessages.lastOrNull()
+                                val updatedAssistant =
+                                    if (lastMessage?.role == MessageRole.ASSISTANT) {
+                                        lastMessage.copy(content = lastMessage.content + "\n" + toolResultText)
+                                    } else {
+                                        ThreadMessage(
+                                            messageId = "temp-assistant-${Random.nextLong()}",
+                                            threadId = resolvedThreadId ?: provisionalThreadId,
+                                            userId = "assistant",
+                                            role = MessageRole.ASSISTANT,
+                                            content = toolResultText,
                                             createdAt = now,
                                             modelName = currentState.selectedModel,
                                         )
@@ -336,5 +399,24 @@ internal class ChatExecutor(
         }
     }
 
-    private fun getProvisionalIsoTimestamp(): String = "2025-01-01T00:00:00Z"
+    private fun getProvisionalIsoTimestamp(): String = nowIsoTimestamp()
+
+    private fun formatToolCalls(toolCalls: List<ToolCall>?): String {
+        val calls = toolCalls.orEmpty()
+        if (calls.isEmpty()) return ""
+
+        return calls.joinToString("\n") { call ->
+            val params = call.parameters.toString()
+            "Tool call: ${call.name} $params"
+        }
+    }
+
+    private fun formatToolResult(
+        toolName: String?,
+        toolResult: JsonObject?,
+    ): String {
+        val result = toolResult?.toString()?.takeIf { it.isNotBlank() } ?: return ""
+        val label = toolName?.let { "Tool result ($it): " } ?: "Tool result: "
+        return label + result
+    }
 }

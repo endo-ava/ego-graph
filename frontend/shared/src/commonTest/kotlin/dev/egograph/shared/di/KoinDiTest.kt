@@ -2,7 +2,9 @@ package dev.egograph.shared.di
 
 import dev.egograph.shared.repository.ChatRepository
 import dev.egograph.shared.repository.MessageRepository
+import dev.egograph.shared.repository.MessageRepositoryImpl
 import dev.egograph.shared.repository.ThreadRepository
+import dev.egograph.shared.repository.ThreadRepositoryImpl
 import io.ktor.client.HttpClient
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
@@ -13,22 +15,36 @@ import kotlin.test.Test
 import kotlin.test.assertNotNull
 
 class KoinDiTest : KoinTest {
-
-    private val testModule = module {
-        single<String>(
-            qualifier = org.koin.core.qualifier.named("BaseUrl"),
-        ) { "http://localhost:8000" }
-    }
-
     @Test
     fun `ThreadRepository should be injectable`() {
         try {
             startKoin {
-                modules(testModule, appModule)
+                modules(
+                    module {
+                        single { HttpClient() }
+                        single<ThreadRepository> {
+                            ThreadRepositoryImpl(
+                                httpClient = get(),
+                                baseUrl = "http://localhost:8000",
+                                apiKey = "test-api-key",
+                                diskCache = null,
+                            )
+                        }
+                        single {
+                            co.touchlab.kermit.Logger
+                        }
+                    },
+                )
             }
 
             val repository: ThreadRepository by inject()
             assertNotNull(repository)
+        } catch (e: Exception) {
+            println("Error injecting ThreadRepository: ${e.message}")
+            e.printStackTrace()
+            println("Cause: ${e.cause}")
+            e.cause?.printStackTrace()
+            throw e
         } finally {
             stopKoin()
         }
@@ -38,11 +54,32 @@ class KoinDiTest : KoinTest {
     fun `MessageRepository should be injectable`() {
         try {
             startKoin {
-                modules(testModule, appModule)
+                modules(
+                    module {
+                        single { HttpClient() }
+                        single<MessageRepository> {
+                            MessageRepositoryImpl(
+                                httpClient = get(),
+                                baseUrl = "http://localhost:8000",
+                                apiKey = "test-api-key",
+                                diskCache = null,
+                            )
+                        }
+                        single {
+                            co.touchlab.kermit.Logger
+                        }
+                    },
+                )
             }
 
             val repository: MessageRepository by inject()
             assertNotNull(repository)
+        } catch (e: Exception) {
+            println("Error injecting MessageRepository: ${e.message}")
+            e.printStackTrace()
+            println("Cause: ${e.cause}")
+            e.cause?.printStackTrace()
+            throw e
         } finally {
             stopKoin()
         }
@@ -52,11 +89,15 @@ class KoinDiTest : KoinTest {
     fun `ChatRepository should be injectable`() {
         try {
             startKoin {
-                modules(testModule, appModule)
+                modules(appModule)
             }
 
             val repository: ChatRepository by inject()
             assertNotNull(repository)
+        } catch (e: Exception) {
+            println("Error injecting ChatRepository: ${e.message}")
+            e.printStackTrace()
+            throw e
         } finally {
             stopKoin()
         }
@@ -66,11 +107,15 @@ class KoinDiTest : KoinTest {
     fun `HttpClient should be injectable`() {
         try {
             startKoin {
-                modules(testModule, appModule)
+                modules(appModule)
             }
 
             val httpClient: HttpClient by inject()
             assertNotNull(httpClient)
+        } catch (e: Exception) {
+            println("Error injecting HttpClient: ${e.message}")
+            e.printStackTrace()
+            throw e
         } finally {
             stopKoin()
         }

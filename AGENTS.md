@@ -34,10 +34,13 @@ uv run python -m backend.dev_tools.chat_cli   # デバッグ用CLIツール
 
 # === Frontend (cd frontend) ===
 cd frontend # PJルートからはgradlewは使えないことに注意
-./gradlew :androidApp:installDebug      # ビルド & インストール
+./gradlew :androidApp:assembleDebug      # ビルド
+./gradlew :androidApp:installDebug      # インストール
 ./gradlew :shared:testDebugUnitTest     # テスト
 ./gradlew ktlintCheck                   # Lint
 ./gradlew ktlintFormat                  # Format
+./gradlew detekt                        # 静的解析
+# NOTE: ktlintFormat/ktlintCheck は同一コマンドで連続実行せず、先に ktlintFormat 単体で実行する（同一Gradle実行内だと ktlintCheck が先に走って失敗することがあるため）
 ```
 
 ## アーキテクチャ

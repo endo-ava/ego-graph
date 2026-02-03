@@ -192,8 +192,10 @@ def _load_cookies(env_var: str) -> list[dict] | None:
                     cookies.append({"name": key.strip(), "value": value.strip()})
             # 少なくとも1つのcookieがパースされたことを検証
             if not cookies:
+                value_preview = cookies_str[:100]
                 raise ValueError(
-                    f"invalid_cookies: no valid key=value pairs found in {env_var} (value: {cookies_str[:100]}...)"
+                    f"invalid_cookies: no valid key=value pairs found in {env_var} "
+                    f"(value: {value_preview}...)"
                 )
             return _normalize_cookies(cookies)
     except ValueError:
@@ -211,11 +213,13 @@ def _normalize_cookies(parsed: object) -> list[dict]:
         for idx, item in enumerate(parsed):
             if not isinstance(item, dict):
                 raise ValueError(
-                    f"invalid_cookie_list_item: element {idx} is not a dict (got {type(item).__name__})"
+                    f"invalid_cookie_list_item: element {idx} is not a dict "
+                    f"(got {type(item).__name__})"
                 )
             if "name" not in item or "value" not in item:
                 raise ValueError(
-                    f"invalid_cookie_list_item: element {idx} missing required keys 'name' or 'value'"
+                    "invalid_cookie_list_item: element "
+                    f"{idx} missing required keys 'name' or 'value'"
                 )
             cookie = dict(item)
             cookie["name"] = str(cookie["name"]).strip()

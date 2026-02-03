@@ -200,7 +200,7 @@ internal object ChatReducerImpl :
                 copy(
                     isSending = false,
                     messages = msg.messages,
-                    selectedThread = selectedThread?.copy(threadId = msg.threadId) ?: selectedThread, // If threadId changed (new thread)
+                    selectedThread = resolveSelectedThread(msg),
                     messagesError = null,
                 )
 
@@ -217,6 +217,60 @@ internal object ChatReducerImpl :
                     modelsError = null,
                 )
         }
+}
+
+private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egograph.shared.dto.Thread? {
+    selectedThread?.let { existing ->
+        // If messages is empty, preserve existing thread metadata
+        if (msg.messages.isEmpty()) {
+            return existing.copy(threadId = msg.threadId)
+        }
+
+        val lastMessage = msg.messages.lastOrNull()
+        val firstMessage = msg.messages.firstOrNull()
+
+        val newTitle =
+            if (existing.title.isBlank() && firstMessage != null) {
+                buildThreadTitle(firstMessage.content)
+            } else {
+                existing.title
+            }
+
+        return existing.copy(
+            threadId = msg.threadId,
+            preview = lastMessage?.content?.takeIf { it.isNotBlank() } ?: existing.preview,
+            lastMessageAt = lastMessage?.createdAt ?: existing.lastMessageAt,
+            messageCount = existing.messageCount + msg.messages.size,
+            title = newTitle,
+        )
+    }
+
+    val firstMessage = msg.messages.firstOrNull() ?: return null
+    val lastMessage = msg.messages.lastOrNull() ?: return null
+
+    val title = buildThreadTitle(firstMessage.content)
+    val preview = lastMessage.content.takeIf { it.isNotBlank() }
+
+    return dev.egograph.shared.dto.Thread(
+        threadId = msg.threadId,
+        userId = firstMessage.userId,
+        title = title,
+        preview = preview,
+        messageCount = msg.messages.size,
+        createdAt = firstMessage.createdAt,
+        lastMessageAt = lastMessage.createdAt,
+    )
+}
+
+private fun buildThreadTitle(content: String): String {
+    val trimmed = content.trim()
+    if (trimmed.isEmpty()) return "New chat"
+    val maxLength = 48
+    return if (trimmed.length <= maxLength) {
+        trimmed
+    } else {
+        trimmed.take(maxLength).trimEnd() + "..."
+    }
 }
 
 /**
