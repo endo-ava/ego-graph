@@ -9,22 +9,9 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
-import io.ktor.client.utils.unwrapCancellationException
-import io.ktor.http.HttpMethod
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import java.io.IOException
-import java.net.SocketTimeoutException
 import co.touchlab.kermit.Logger as KermitLogger
-
-private val IDEMPOTENT_METHODS =
-    setOf(
-        HttpMethod.Get,
-        HttpMethod.Head,
-        HttpMethod.Options,
-        HttpMethod.Put,
-        HttpMethod.Delete,
-    )
 
 /**
  * Android-specific HttpClient provider
@@ -32,8 +19,7 @@ private val IDEMPOTENT_METHODS =
  * Creates a Ktor HttpClient configured with:
  * - OkHttp engine
  * - Timeout settings (30s request, 10s connect)
- * - Retry logic (1 retry on server errors for idempotent methods only, I/O exceptions only)
- * - Exponential delay between retries
+ * - Retry logic disabled (explicitly no automatic retries)
  * - JSON content negotiation with kotlinx.serialization
  * - Request/response logging with Kermit
  */
@@ -41,7 +27,7 @@ actual fun provideHttpClient(): HttpClient =
     HttpClient(OkHttp) {
         engine {
             config {
-                retryOnConnectionFailure(true)
+                retryOnConnectionFailure(false)
             }
         }
         install(HttpTimeout) {
@@ -51,15 +37,10 @@ actual fun provideHttpClient(): HttpClient =
         }
 
         install(HttpRequestRetry) {
-            maxRetries = 1
-            retryOnServerErrors(maxRetries = 1)
-            retryIf { request, _ -> request.method in IDEMPOTENT_METHODS }
-            retryOnExceptionIf { request, cause ->
-                val unwrapped = cause.unwrapCancellationException()
-                request.method in IDEMPOTENT_METHODS &&
-                    (unwrapped is IOException || unwrapped is SocketTimeoutException)
-            }
-            exponentialDelay()
+            maxRetries = 0
+            retryOnServerErrors(maxRetries = 0)
+            retryIf { _, _ -> false }
+            retryOnExceptionIf { _, _ -> false }
         }
 
         install(ContentEncoding) {

@@ -1,8 +1,8 @@
 package dev.egograph.shared.ui.systemprompt
 
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -15,7 +15,7 @@ fun SystemPromptTabs(
     onTabSelected: (SystemPromptName) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PrimaryScrollableTabRow(
+    TabRow(
         selectedTabIndex = selectedTab.ordinal,
         modifier = modifier,
     ) {
