@@ -13,7 +13,6 @@ import io.ktor.client.utils.unwrapCancellationException
 import io.ktor.http.HttpMethod
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-
 import java.io.IOException
 import java.net.SocketTimeoutException
 import co.touchlab.kermit.Logger as KermitLogger

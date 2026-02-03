@@ -10,6 +10,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.parameter
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -97,6 +98,8 @@ class ThreadRepositoryImpl(
                 }
                 diskCache?.remove(cacheKey)
                 emit(Result.failure(e))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 threadsCacheMutex.withLock {
                     threadsCache = threadsCache - cacheKey
@@ -136,6 +139,8 @@ class ThreadRepositoryImpl(
                 }
                 diskCache?.remove(cacheKey)
                 emit(Result.failure(e))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 threadCacheMutex.withLock {
                     threadCache = threadCache - cacheKey
