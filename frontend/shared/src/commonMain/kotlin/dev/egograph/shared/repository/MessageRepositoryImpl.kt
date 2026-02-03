@@ -12,7 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * MessageRepositoryの実装
@@ -30,12 +31,13 @@ class MessageRepositoryImpl(
         val timestamp: Long = System.currentTimeMillis(),
     )
 
-    private val messagesCache = AtomicReference<Map<String, CacheEntry<ThreadMessagesResponse>>>(emptyMap())
+    private val messagesCacheMutex = Mutex()
+    private var messagesCache: Map<String, CacheEntry<ThreadMessagesResponse>> = emptyMap()
     private val cacheDurationMs = 60000L
 
     override fun getMessages(threadId: String): Flow<RepositoryResult<ThreadMessagesResponse>> =
         flow {
-            val cached = messagesCache.get()[threadId]
+            val cached = messagesCacheMutex.withLock { messagesCache[threadId] }
             if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
                 emit(Result.success(cached.data))
                 return@flow
@@ -52,14 +54,20 @@ class MessageRepositoryImpl(
                     } else {
                         fetchThreadMessages(threadId)
                     }
-                messagesCache.updateAndGet { current -> current + (threadId to CacheEntry(body)) }
+                messagesCacheMutex.withLock {
+                    messagesCache = messagesCache + (threadId to CacheEntry(body))
+                }
                 emit(Result.success(body))
             } catch (e: ApiError) {
-                messagesCache.updateAndGet { current -> current - threadId }
+                messagesCacheMutex.withLock {
+                    messagesCache = messagesCache - threadId
+                }
                 diskCache?.remove(threadId)
                 emit(Result.failure(e))
             } catch (e: Exception) {
-                messagesCache.updateAndGet { current -> current - threadId }
+                messagesCacheMutex.withLock {
+                    messagesCache = messagesCache - threadId
+                }
                 diskCache?.remove(threadId)
                 emit(Result.failure(ApiError.NetworkError(e)))
             }

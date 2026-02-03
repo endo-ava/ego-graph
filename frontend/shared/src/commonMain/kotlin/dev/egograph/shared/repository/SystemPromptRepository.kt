@@ -14,7 +14,8 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 interface SystemPromptRepository {
     suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse>
@@ -38,13 +39,13 @@ class SystemPromptRepositoryImpl(
         val timestamp: Long = System.currentTimeMillis(),
     )
 
-    private val systemPromptCache =
-        AtomicReference<Map<SystemPromptName, CacheEntry<SystemPromptResponse>>>(emptyMap())
+    private val systemPromptCacheMutex = Mutex()
+    private var systemPromptCache: Map<SystemPromptName, CacheEntry<SystemPromptResponse>> = emptyMap()
     private val cacheDurationMs = 60000L
 
     override suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse> =
         try {
-            val cached = systemPromptCache.get()[name]
+            val cached = systemPromptCacheMutex.withLock { systemPromptCache[name] }
             if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
                 return Result.success(cached.data)
             }
@@ -60,14 +61,20 @@ class SystemPromptRepositoryImpl(
                 } else {
                     fetchSystemPrompt(name)
                 }
-            systemPromptCache.updateAndGet { current -> current + (name to CacheEntry(body)) }
+            systemPromptCacheMutex.withLock {
+                systemPromptCache = systemPromptCache + (name to CacheEntry(body))
+            }
             Result.success(body)
         } catch (e: ApiError) {
-            systemPromptCache.updateAndGet { current -> current - name }
+            systemPromptCacheMutex.withLock {
+                systemPromptCache = systemPromptCache - name
+            }
             diskCache?.remove(name.apiName)
             Result.failure(e)
         } catch (e: Exception) {
-            systemPromptCache.updateAndGet { current -> current - name }
+            systemPromptCacheMutex.withLock {
+                systemPromptCache = systemPromptCache - name
+            }
             diskCache?.remove(name.apiName)
             Result.failure(ApiError.NetworkError(e))
         }
@@ -90,7 +97,9 @@ class SystemPromptRepositoryImpl(
 
             when (response.status) {
                 HttpStatusCode.OK -> {
-                    systemPromptCache.updateAndGet { current -> current - name }
+                    systemPromptCacheMutex.withLock {
+                        systemPromptCache = systemPromptCache - name
+                    }
                     diskCache?.remove(name.apiName)
                     Result.success(response.body())
                 }

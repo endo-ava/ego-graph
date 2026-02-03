@@ -14,7 +14,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * ThreadRepositoryの実装
@@ -34,8 +35,12 @@ class ThreadRepositoryImpl(
         val timestamp: Long = System.currentTimeMillis(),
     )
 
-    private val threadsCache = AtomicReference<Map<String, CacheEntry<ThreadListResponse>>>(emptyMap())
-    private val threadCache = AtomicReference<Map<String, CacheEntry<Thread>>>(emptyMap())
+    private val threadsCacheMutex = Mutex()
+    private var threadsCache: Map<String, CacheEntry<ThreadListResponse>> = emptyMap()
+
+    private val threadCacheMutex = Mutex()
+    private var threadCache: Map<String, CacheEntry<Thread>> = emptyMap()
+
     private val cacheDurationMs = 60000L
 
     override fun getThreads(
@@ -44,7 +49,7 @@ class ThreadRepositoryImpl(
     ): Flow<RepositoryResult<ThreadListResponse>> =
         flow {
             val cacheKey = "$limit:$offset"
-            val cached = threadsCache.get()[cacheKey]
+            val cached = threadsCacheMutex.withLock { threadsCache[cacheKey] }
             if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
                 emit(Result.success(cached.data))
                 return@flow
@@ -61,14 +66,20 @@ class ThreadRepositoryImpl(
                     } else {
                         fetchThreadList(limit, offset)
                     }
-                threadsCache.updateAndGet { current -> current + (cacheKey to CacheEntry(body)) }
+                threadsCacheMutex.withLock {
+                    threadsCache = threadsCache + (cacheKey to CacheEntry(body))
+                }
                 emit(Result.success(body))
             } catch (e: ApiError) {
-                threadsCache.updateAndGet { current -> current - cacheKey }
+                threadsCacheMutex.withLock {
+                    threadsCache = threadsCache - cacheKey
+                }
                 diskCache?.remove(cacheKey)
                 emit(Result.failure(e))
             } catch (e: Exception) {
-                threadsCache.updateAndGet { current -> current - cacheKey }
+                threadsCacheMutex.withLock {
+                    threadsCache = threadsCache - cacheKey
+                }
                 diskCache?.remove(cacheKey)
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
@@ -76,7 +87,7 @@ class ThreadRepositoryImpl(
 
     override fun getThread(threadId: String): Flow<RepositoryResult<Thread>> =
         flow {
-            val cached = threadCache.get()[threadId]
+            val cached = threadCacheMutex.withLock { threadCache[threadId] }
             if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
                 emit(Result.success(cached.data))
                 return@flow
@@ -93,14 +104,20 @@ class ThreadRepositoryImpl(
                     } else {
                         fetchThread(threadId)
                     }
-                threadCache.updateAndGet { current -> current + (threadId to CacheEntry(body)) }
+                threadCacheMutex.withLock {
+                    threadCache = threadCache + (threadId to CacheEntry(body))
+                }
                 emit(Result.success(body))
             } catch (e: ApiError) {
-                threadCache.updateAndGet { current -> current - threadId }
+                threadCacheMutex.withLock {
+                    threadCache = threadCache - threadId
+                }
                 diskCache?.remove(threadId)
                 emit(Result.failure(e))
             } catch (e: Exception) {
-                threadCache.updateAndGet { current -> current - threadId }
+                threadCacheMutex.withLock {
+                    threadCache = threadCache - threadId
+                }
                 diskCache?.remove(threadId)
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
