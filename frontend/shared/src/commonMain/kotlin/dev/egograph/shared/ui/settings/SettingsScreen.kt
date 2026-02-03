@@ -169,10 +169,12 @@ fun SettingsScreen(
                     placeholder = { Text("Optional: Enter your API key") },
                     visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
-                        val image = if (isKeyVisible)
-                            Icons.Filled.Visibility
-                        else
-                            Icons.Filled.VisibilityOff
+                        val image =
+                            if (isKeyVisible) {
+                                Icons.Filled.Visibility
+                            } else {
+                                Icons.Filled.VisibilityOff
+                            }
 
                         val description = if (isKeyVisible) "Hide API Key" else "Show API Key"
 

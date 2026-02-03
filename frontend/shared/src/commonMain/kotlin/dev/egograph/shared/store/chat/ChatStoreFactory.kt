@@ -224,17 +224,18 @@ private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egog
         val lastMessage = msg.messages.lastOrNull()
         val firstMessage = msg.messages.firstOrNull()
 
-        val newTitle = if (existing.title.isBlank() && firstMessage != null) {
-            buildThreadTitle(firstMessage.content)
-        } else {
-            existing.title
-        }
+        val newTitle =
+            if (existing.title.isBlank() && firstMessage != null) {
+                buildThreadTitle(firstMessage.content)
+            } else {
+                existing.title
+            }
 
         return existing.copy(
             threadId = msg.threadId,
-            preview = lastMessage?.content?.takeIf { it.isNotBlank() },
+            preview = lastMessage?.content?.takeIf { it.isNotBlank() } ?: existing.preview,
             lastMessageAt = lastMessage?.createdAt ?: existing.lastMessageAt,
-            messageCount = existing.messageCount + msg.messages.size,
+            messageCount = msg.messages.size,
             title = newTitle,
         )
     }
