@@ -13,11 +13,9 @@ import io.ktor.client.utils.unwrapCancellationException
 import io.ktor.http.HttpMethod
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import okhttp3.ConnectionPool
-import okhttp3.Protocol
+
 import java.io.IOException
 import java.net.SocketTimeoutException
-import java.util.concurrent.TimeUnit
 import co.touchlab.kermit.Logger as KermitLogger
 
 private val IDEMPOTENT_METHODS =
@@ -43,8 +41,6 @@ actual fun provideHttpClient(): HttpClient =
     HttpClient(OkHttp) {
         engine {
             config {
-                connectionPool(ConnectionPool(10, 5, TimeUnit.MINUTES))
-                protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
                 retryOnConnectionFailure(true)
             }
         }
@@ -63,7 +59,7 @@ actual fun provideHttpClient(): HttpClient =
                 request.method in IDEMPOTENT_METHODS &&
                     (unwrapped is IOException || unwrapped is SocketTimeoutException)
             }
-            constantDelay(100)
+            exponentialDelay()
         }
 
         install(ContentEncoding) {

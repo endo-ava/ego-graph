@@ -23,7 +23,7 @@ import co.touchlab.kermit.Logger as KermitLogger
  * Creates a Ktor HttpClient configured with:
  * - OkHttp engine
  * - Timeout settings (30s request, 10s connect)
- * - Retry logic (3 retries on server errors or exceptions)
+ * - Retry logic (1 retry with 100ms constant delay on server errors or exceptions)
  * - JSON content negotiation with kotlinx.serialization
  * - Request/response logging with Kermit
  */
