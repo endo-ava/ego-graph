@@ -221,7 +221,22 @@ internal object ChatReducerImpl :
 
 private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egograph.shared.dto.Thread? {
     selectedThread?.let { existing ->
-        return existing.copy(threadId = msg.threadId)
+        val lastMessage = msg.messages.lastOrNull()
+        val firstMessage = msg.messages.firstOrNull()
+
+        val newTitle = if (existing.title.isBlank() && firstMessage != null) {
+            buildThreadTitle(firstMessage.content)
+        } else {
+            existing.title
+        }
+
+        return existing.copy(
+            threadId = msg.threadId,
+            preview = lastMessage?.content?.takeIf { it.isNotBlank() },
+            lastMessageAt = lastMessage?.createdAt ?: existing.lastMessageAt,
+            messageCount = existing.messageCount + msg.messages.size,
+            title = newTitle,
+        )
     }
 
     val firstMessage = msg.messages.firstOrNull() ?: return null

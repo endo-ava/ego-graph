@@ -45,7 +45,7 @@ fun SidebarHeader(
         ) {
             Icon(
                 imageVector = Icons.Default.Settings,
-                contentDescription = "Settings",
+                contentDescription = "Settings", // TODO: Use stringResource when i18n is fully set up
                 modifier = Modifier.size(16.dp),
             )
         }

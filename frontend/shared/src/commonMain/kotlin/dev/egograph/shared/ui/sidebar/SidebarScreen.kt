@@ -48,7 +48,7 @@ class SidebarScreen : Screen {
         val chatScreen = remember { ChatScreen() }
         val promptScreen = remember { SystemPromptEditorScreen() }
 
-        LaunchedEffect(Unit) {
+        LaunchedEffect(state.threads, state.isLoadingThreads) {
             if (state.threads.isEmpty() && !state.isLoadingThreads) {
                 store.accept(ChatIntent.LoadThreads)
             }
