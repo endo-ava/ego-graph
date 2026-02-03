@@ -1,6 +1,6 @@
 package dev.egograph.shared.repository
 
-import dev.egograph.shared.network.HttpClientFactory
+import dev.egograph.shared.network.provideHttpClient
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -14,7 +14,7 @@ class SystemPromptRepositoryImplTest {
     @Test
     fun `SystemPromptRepositoryImpl can be instantiated`() {
         // Given
-        val httpClient = HttpClientFactory().create()
+        val httpClient = provideHttpClient()
 
         try {
             // When
