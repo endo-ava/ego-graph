@@ -335,4 +335,7 @@ async def _stream_chat(
     except Exception as e:
         logger.exception("Chat request failed")
         yield "event: error\n"
-        yield f"data: {json.dumps({'type': 'error', 'error': f'LLM API error: {str(e)}'})}\n\n"
+        error_payload = json.dumps(
+            {"type": "error", "error": f"LLM API error: {str(e)}"}
+        )
+        yield f"data: {error_payload}\n\n"

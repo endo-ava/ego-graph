@@ -107,7 +107,8 @@ def verify_r2_data():
             # 4. 直近5件の詳細表示 (デバッグ用)
             logger.info("\n🔍 Detailed View (Latest 5):")
             query_detail = """
-                SELECT watched_at_utc, video_id, video_title, channel_name, channel_id, video_url
+                SELECT watched_at_utc, video_id, video_title, channel_name,
+                    channel_id, video_url
                 FROM read_parquet(?)
                 ORDER BY watched_at_utc DESC
                 LIMIT 5

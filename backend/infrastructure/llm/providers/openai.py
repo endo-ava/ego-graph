@@ -352,11 +352,12 @@ class OpenAIProvider(BaseLLMProvider):
                                             parameters=params,
                                         )
                                     )
-                                except json.JSONDecodeError as e:
+                                except json.JSONDecodeError as err:
                                     logger.warning(
-                                        "Failed to parse buffered tool arguments at index %s: %s",
+                                        "Failed to parse buffered tool arguments "
+                                        "at index %s: %s",
                                         idx,
-                                        e,
+                                        err,
                                     )
                             if tool_calls:
                                 yield StreamChunk(
@@ -374,11 +375,12 @@ class OpenAIProvider(BaseLLMProvider):
                     if "content" in delta and delta["content"]:
                         yield StreamChunk(type="delta", delta=delta["content"])
 
-                    # ツール呼び出しのデルタを蓄積（finish_reasonがない場合でもバッファリングして完了したらyield）
+                    # ツール呼び出しのデルタを蓄積
+                    # （finish_reasonがない場合でもバッファリングして完了したらyield）
                     if "tool_calls" in delta:
                         tool_calls_delta = delta["tool_calls"]
                         if tool_calls_delta:
-                            # OpenAI のストリーミングでは tool_calls は複数のチャンクに分割される
+                            # OpenAI ストリーミングでは tool_calls は複数チャンクに分割
                             for tc_delta in tool_calls_delta:
                                 tc_index = tc_delta.get("index")
                                 if tc_index is None:
@@ -446,7 +448,8 @@ class OpenAIProvider(BaseLLMProvider):
                 # ストリームが[DONE]なしで終了した場合のバッファ処理
                 if tool_args_buffer:
                     logger.warning(
-                        "Stream ended without [DONE] marker, flushing buffered tool calls"
+                        "Stream ended without [DONE] marker, "
+                        "flushing buffered tool calls"
                     )
                     tool_calls = []
                     for idx in sorted(tool_args_buffer.keys()):
@@ -459,11 +462,12 @@ class OpenAIProvider(BaseLLMProvider):
                                     parameters=params,
                                 )
                             )
-                        except json.JSONDecodeError as e:
+                        except json.JSONDecodeError as err:
                             logger.warning(
-                                "Failed to parse buffered tool arguments at index %s: %s",
+                                "Failed to parse buffered tool arguments "
+                                "at index %s: %s",
                                 idx,
-                                e,
+                                err,
                             )
                     if tool_calls:
                         yield StreamChunk(type="tool_call", tool_calls=tool_calls)

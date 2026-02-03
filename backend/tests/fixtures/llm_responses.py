@@ -204,7 +204,8 @@ def mock_stream_chunk(
     Returns:
         StreamChunkオブジェクト
     """
-    from backend.domain.models.llm import StreamChunk
+    # モジュール内で循環インポートを避けるため、関数内でインポート
+    from backend.domain.models.llm import StreamChunk  # noqa: PLC0415
 
     return StreamChunk(
         type=type,

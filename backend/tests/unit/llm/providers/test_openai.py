@@ -431,7 +431,10 @@ class TestOpenAIProvider:
             assert tool_call_chunk.tool_calls[0].parameters == {"limit": 10}
 
     @pytest.mark.asyncio
-    async def test_chat_completion_stream_handles_done_marker(self, mock_streaming_context):
+    async def test_chat_completion_stream_handles_done_marker(
+        self,
+        mock_streaming_context,
+    ):
         """ストリーミングで[DONE]マーカーを正しく処理する。"""
         # Arrange: プロバイダーとメッセージを準備
         provider = OpenAIProvider("test-key", "gpt-4o-mini")

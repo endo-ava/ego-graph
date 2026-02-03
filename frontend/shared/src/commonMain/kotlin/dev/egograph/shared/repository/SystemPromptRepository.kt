@@ -47,24 +47,25 @@ class SystemPromptRepositoryImpl(
         try {
             val cached = systemPromptCacheMutex.withLock { systemPromptCache[name] }
             if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
-                return Result.success(cached.data)
-            }
-            val cacheKey = name.apiName
-            val body =
-                if (diskCache != null) {
-                    diskCache.getOrFetch(
-                        key = cacheKey,
-                        serializer = SystemPromptResponse.serializer(),
-                    ) {
+                Result.success(cached.data)
+            } else {
+                val cacheKey = name.apiName
+                val body =
+                    if (diskCache != null) {
+                        diskCache.getOrFetch(
+                            key = cacheKey,
+                            serializer = SystemPromptResponse.serializer(),
+                        ) {
+                            fetchSystemPrompt(name)
+                        }
+                    } else {
                         fetchSystemPrompt(name)
                     }
-                } else {
-                    fetchSystemPrompt(name)
+                systemPromptCacheMutex.withLock {
+                    systemPromptCache = systemPromptCache + (name to CacheEntry(body))
                 }
-            systemPromptCacheMutex.withLock {
-                systemPromptCache = systemPromptCache + (name to CacheEntry(body))
+                Result.success(body)
             }
-            Result.success(body)
         } catch (e: ApiError) {
             systemPromptCacheMutex.withLock {
                 systemPromptCache = systemPromptCache - name

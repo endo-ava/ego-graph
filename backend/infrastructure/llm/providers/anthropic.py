@@ -396,9 +396,15 @@ class AnthropicProvider(BaseLLMProvider):
                                             logger.warning(
                                                 "Failed to parse tool input JSON"
                                             )
+                                            tool_name = tool_use_meta.get(
+                                                "name", "unknown"
+                                            )
+                                            error_msg = (
+                                                f"Failed to parse tool input JSON "
+                                                f"for tool '{tool_name}'"
+                                            )
                                             yield StreamChunk(
-                                                type="error",
-                                                error=f"Failed to parse tool input JSON for tool '{tool_use_meta.get('name', 'unknown')}'",
+                                                type="error", error=error_msg
                                             )
                                             tool_use_meta = None
                                             json_parts = []
