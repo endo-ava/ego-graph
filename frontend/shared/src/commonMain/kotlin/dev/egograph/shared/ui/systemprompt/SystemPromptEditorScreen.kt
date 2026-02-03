@@ -42,8 +42,16 @@ class SystemPromptEditorScreen(
         var originalContent by remember { mutableStateOf("") }
         var draftContent by remember { mutableStateOf("") }
         var isLoading by remember { mutableStateOf(false) }
+        var lastFetchTab by remember { mutableStateOf<SystemPromptName?>(null) }
+        var lastFetchAtMs by remember { mutableStateOf(0L) }
+        val fetchDebounceMs = 2500L
 
         suspend fun fetchContent() {
+            val now = System.currentTimeMillis()
+            if (isLoading) return
+            if (lastFetchTab == selectedTab && now - lastFetchAtMs < fetchDebounceMs) return
+            lastFetchTab = selectedTab
+            lastFetchAtMs = now
             isLoading = true
             try {
                 val result = repository.getSystemPrompt(selectedTab)

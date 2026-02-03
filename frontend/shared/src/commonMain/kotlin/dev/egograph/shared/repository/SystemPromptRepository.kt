@@ -14,6 +14,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
@@ -43,6 +44,8 @@ class SystemPromptRepositoryImpl(
     private val systemPromptCacheMutex = Mutex()
     private var systemPromptCache: Map<SystemPromptName, CacheEntry<SystemPromptResponse>> = emptyMap()
     private val cacheDurationMs = 60000L
+    private val inFlightMutex = Mutex()
+    private var inFlightRequests: Map<SystemPromptName, CompletableDeferred<RepositoryResult<SystemPromptResponse>>> = emptyMap()
 
     override suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse> =
         try {
@@ -50,22 +53,64 @@ class SystemPromptRepositoryImpl(
             if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
                 Result.success(cached.data)
             } else {
-                val cacheKey = name.apiName
-                val body =
-                    if (diskCache != null) {
-                        diskCache.getOrFetch(
-                            key = cacheKey,
-                            serializer = SystemPromptResponse.serializer(),
-                        ) {
-                            fetchSystemPrompt(name)
+                val (deferred, isOwner) =
+                    inFlightMutex.withLock {
+                        val existing = inFlightRequests[name]
+                        if (existing != null) {
+                            existing to false
+                        } else {
+                            val created = CompletableDeferred<RepositoryResult<SystemPromptResponse>>()
+                            inFlightRequests = inFlightRequests + (name to created)
+                            created to true
                         }
-                    } else {
-                        fetchSystemPrompt(name)
                     }
-                systemPromptCacheMutex.withLock {
-                    systemPromptCache = systemPromptCache + (name to CacheEntry(body))
+
+                if (isOwner) {
+                    try {
+                        val cacheKey = name.apiName
+                        val result =
+                            try {
+                                val body =
+                                    if (diskCache != null) {
+                                        diskCache.getOrFetch(
+                                            key = cacheKey,
+                                            serializer = SystemPromptResponse.serializer(),
+                                        ) {
+                                            fetchSystemPrompt(name)
+                                        }
+                                    } else {
+                                        fetchSystemPrompt(name)
+                                    }
+                                systemPromptCacheMutex.withLock {
+                                    systemPromptCache = systemPromptCache + (name to CacheEntry(body))
+                                }
+                                Result.success(body)
+                            } catch (e: ApiError) {
+                                systemPromptCacheMutex.withLock {
+                                    systemPromptCache = systemPromptCache - name
+                                }
+                                diskCache?.remove(name.apiName)
+                                Result.failure(e)
+                            } catch (e: Exception) {
+                                systemPromptCacheMutex.withLock {
+                                    systemPromptCache = systemPromptCache - name
+                                }
+                                diskCache?.remove(name.apiName)
+                                Result.failure(ApiError.NetworkError(e))
+                            }
+
+                        deferred.complete(result)
+                    } catch (e: CancellationException) {
+                        deferred.cancel(e)
+                        throw e
+                    } finally {
+                        inFlightMutex.withLock {
+                            inFlightRequests = inFlightRequests - name
+                        }
+                    }
                 }
-                Result.success(body)
+
+                deferred.await()
             }
         } catch (e: ApiError) {
             systemPromptCacheMutex.withLock {
