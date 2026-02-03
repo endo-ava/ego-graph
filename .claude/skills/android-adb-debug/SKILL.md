@@ -62,6 +62,9 @@ adb -s $DEVICE logcat -d -t 50
 # エラーのみ
 adb -s $DEVICE logcat -d "*:E" | tail -30
 
+# クラッシュ専用バッファ（最新200件）
+adb -s $DEVICE logcat -b crash -d -t 200
+
 # アプリ固有のログ（タグ指定）
 adb -s $DEVICE logcat -s EgoGraph:* | tail -50
 
@@ -196,6 +199,10 @@ adb -s $DEVICE logcat -d "*:E" | tail -50
 
 # クラッシュログ（FATAL含む）
 adb -s $DEVICE logcat -d | grep -E "FATAL|Exception|Error" | tail -30
+
+# PIDで絞り込み（再現直後に取得）
+PID=$(adb -s $DEVICE shell pidof dev.egograph.app)
+adb -s $DEVICE logcat -d --pid=$PID | tail -50
 ```
 
 ### 3. 操作テスト

@@ -58,6 +58,7 @@ kotlin {
                 implementation(compose.ui)
                 implementation(compose.material3)
                 implementation(compose.foundation)
+                implementation(compose.materialIconsExtended)
                 implementation(compose.components.resources)
 
                 // Ktor Client
