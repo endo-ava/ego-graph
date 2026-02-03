@@ -1,9 +1,12 @@
 """モックLLMレスポンス。"""
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from backend.domain.models.llm import ChatResponse, Message, StreamChunk
+from backend.domain.models.llm import ChatResponse, Message
+
+if TYPE_CHECKING:
+    from backend.domain.models.llm import StreamChunk
 
 
 def get_mock_openai_response(

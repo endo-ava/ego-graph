@@ -35,9 +35,9 @@ class OpenAIProvider(BaseLLMProvider):
 
         Args:
             api_key: API認証キー
-            model_name: モデル名（例: "gpt-4o-mini"）
-            base_url: APIエンドポイントURL（OpenRouterの場合は変更）
-            enable_web_search: Web検索を有効にするか（OpenRouterのみ）
+            model_name: モデル名(例: "gpt-4o-mini")
+            base_url: APIエンドポイントURL(OpenRouterの場合は変更)
+            enable_web_search: Web検索を有効にするか(OpenRouterのみ)
         """
         super().__init__(api_key, model_name)
         self.base_url = base_url.rstrip("/")
@@ -160,7 +160,7 @@ class OpenAIProvider(BaseLLMProvider):
                 }
                 converted.append(message_dict)
             else:
-                # 通常のメッセージ（user, system, tool_callsのないassistant）
+                # 通常のメッセージ(user, system, tool_callsのないassistant)
                 converted.append({"role": msg.role, "content": msg.content or ""})
 
         return converted
@@ -302,7 +302,7 @@ class OpenAIProvider(BaseLLMProvider):
                             error_message = body_text
                     except (json.JSONDecodeError, ValueError):
                         error_message = body_text
-                    # エラーチャンクをyieldして終了（例外は投げない）
+                    # エラーチャンクをyieldして終了(例外は投げない)
                     yield StreamChunk(type="error", error=error_message)
                     return
 
@@ -376,7 +376,7 @@ class OpenAIProvider(BaseLLMProvider):
                         yield StreamChunk(type="delta", delta=delta["content"])
 
                     # ツール呼び出しのデルタを蓄積
-                    # （finish_reasonがない場合でもバッファリングして完了したらyield）
+                    # (finish_reasonがない場合でもバッファリングして完了したらyield)
                     if "tool_calls" in delta:
                         tool_calls_delta = delta["tool_calls"]
                         if tool_calls_delta:
