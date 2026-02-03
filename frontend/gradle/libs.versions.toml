@@ -1,14 +1,14 @@
 [versions]
 # Core versions
-kotlin = "2.2.0"
+kotlin = "2.2.20"
 compose = "1.9.0"
-agp = "8.6.0"
+agp = "8.10.0"
 
 # Libraries
 ktor = "3.3.3"
 voyager = "1.1.0-beta03"
 koin = "4.0.0"
-ksp = "2.3.5"
+ksp = "2.2.0-2.0.2"
 mvikotlin = "4.2.0"
 kotlinx-coroutines = "1.9.0"
 kotlinx-serialization = "1.7.3"
