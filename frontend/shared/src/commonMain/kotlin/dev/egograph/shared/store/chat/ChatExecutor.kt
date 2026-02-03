@@ -25,6 +25,7 @@ internal class ChatExecutor(
     mainContext: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) : CoroutineExecutor<ChatIntent, Unit, ChatState, ChatView, ChatLabel>(mainContext) {
     private val logger = Logger
+    private val pageLimit = 50
 
     override fun executeIntent(intent: ChatIntent) {
         when (intent) {
@@ -239,7 +240,6 @@ internal class ChatExecutor(
 
                 if (resolvedThreadId != null && currentThreadId != resolvedThreadId) {
                     publish(ChatLabel.ThreadSelectionCompleted(resolvedThreadId))
-                    loadThreads()
                 }
             } catch (error: Exception) {
                 val message = "ストリーミングに失敗しました: ${error.message}"
@@ -293,7 +293,6 @@ internal class ChatExecutor(
 
                 if (currentThreadId != response.threadId) {
                     publish(ChatLabel.ThreadSelectionCompleted(response.threadId))
-                    loadThreads()
                 }
             }.onFailure { error ->
                 val message = "メッセージの送信に失敗しました: ${error.message}"
@@ -303,15 +302,23 @@ internal class ChatExecutor(
     }
 
     private fun loadThreads() {
+        val currentState = state()
+        if (currentState.isLoadingThreads) {
+            return
+        }
         dispatch(ChatView.ThreadsLoadingStarted)
 
         scope.launch {
             threadRepository
-                .getThreads()
+                .getThreads(limit = pageLimit, offset = 0)
                 .collect { result ->
                     result
                         .onSuccess { response ->
-                            dispatch(ChatView.ThreadsLoaded(response.threads))
+                            dispatch(
+                                ChatView.ThreadsLoaded(
+                                    threads = response.threads,
+                                ),
+                            )
                         }.onFailure { error ->
                             val message = "スレッドの読み込みに失敗しました: ${error.message}"
                             logger.e(message, error)

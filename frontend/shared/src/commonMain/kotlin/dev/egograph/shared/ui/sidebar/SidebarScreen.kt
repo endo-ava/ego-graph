@@ -11,7 +11,6 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,13 +45,6 @@ class SidebarScreen : Screen {
         val scope = rememberCoroutineScope()
         var activeView by remember { mutableStateOf(SidebarView.Chat) }
         val chatScreen = remember { ChatScreen() }
-        val promptScreen = remember { SystemPromptEditorScreen() }
-
-        LaunchedEffect(state.threads, state.isLoadingThreads, state.threadsError) {
-            if (state.threads.isEmpty() && !state.isLoadingThreads && state.threadsError == null) {
-                store.accept(ChatIntent.LoadThreads)
-            }
-        }
 
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -102,7 +94,7 @@ class SidebarScreen : Screen {
         ) {
             when (activeView) {
                 SidebarView.Chat -> chatScreen.Content()
-                SidebarView.SystemPrompt -> promptScreen.Content()
+                SidebarView.SystemPrompt -> SystemPromptEditorScreen().Content()
                 SidebarView.Settings -> {
                     val preferences = koinInject<dev.egograph.shared.platform.PlatformPreferences>()
                     SettingsScreen(

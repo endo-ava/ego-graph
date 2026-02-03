@@ -46,8 +46,9 @@ fun SidebarHeader(
             Icon(
                 imageVector = Icons.Default.Settings,
                 contentDescription = "Settings", // TODO: Use stringResource when i18n is fully set up
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(16.dp).padding(end = 4.dp),
             )
+            Text("Settings")
         }
         Spacer(modifier = Modifier.width(8.dp))
         OutlinedButton(

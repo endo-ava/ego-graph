@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.egograph.shared.dto.SystemPromptName
 import dev.egograph.shared.repository.SystemPromptRepository
 import kotlinx.coroutines.launch
@@ -32,6 +34,7 @@ import org.koin.compose.koinInject
 class SystemPromptEditorScreen : Screen {
     @Composable
     override fun Content() {
+        val navigator = LocalNavigator.currentOrThrow
         val repository = koinInject<SystemPromptRepository>()
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
@@ -77,7 +80,7 @@ class SystemPromptEditorScreen : Screen {
                 ) {
                     Spacer(Modifier.weight(1f))
                     TextButton(
-                        onClick = { scope.launch { fetchContent() } },
+                        onClick = { navigator.pop() },
                         enabled = !isLoading,
                     ) {
                         Text("Cancel")

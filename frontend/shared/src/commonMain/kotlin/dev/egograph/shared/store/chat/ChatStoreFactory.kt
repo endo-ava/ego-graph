@@ -92,6 +92,7 @@ internal class ChatStoreFactory(
                 },
                 reducer = ChatReducerImpl,
             )
+        store.accept(ChatIntent.LoadThreads)
         return store
     }
 }

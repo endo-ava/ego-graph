@@ -7,11 +7,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -78,8 +86,17 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text("Settings") },
                 navigationIcon = {
-                    Button(onClick = onBack) {
-                        Text("← Back")
+                    OutlinedButton(
+                        onClick = onBack,
+                        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                        modifier = Modifier.height(32.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            modifier = Modifier.size(16.dp).padding(end = 4.dp),
+                        )
+                        Text("Back")
                     }
                 },
             )
@@ -166,9 +183,10 @@ fun SettingsScreen(
                     visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         val description = if (isKeyVisible) "Hide API Key" else "Show API Key"
+                        val icon = if (isKeyVisible) Icons.Default.LockOpen else Icons.Default.Lock
 
                         IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
-                            Text(if (isKeyVisible) "Hide" else "Show")
+                            Icon(imageVector = icon, contentDescription = description)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
