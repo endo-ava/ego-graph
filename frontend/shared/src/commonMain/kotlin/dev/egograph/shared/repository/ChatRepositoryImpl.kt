@@ -3,7 +3,6 @@ package dev.egograph.shared.repository
 import co.touchlab.kermit.Logger
 import dev.egograph.shared.dto.ChatRequest
 import dev.egograph.shared.dto.ChatResponse
-import dev.egograph.shared.dto.LLMModel
 import dev.egograph.shared.dto.ModelsResponse
 import dev.egograph.shared.dto.StreamChunk
 import dev.egograph.shared.dto.StreamChunkType
@@ -214,7 +213,7 @@ class ChatRepositoryImpl(
             Result.failure(ApiError.NetworkError(e))
         }
 
-    override suspend fun getModels(): RepositoryResult<List<LLMModel>> =
+    override suspend fun getModels(): RepositoryResult<ModelsResponse> =
         try {
             val response =
                 httpClient.get("$baseUrl/v1/chat/models") {
@@ -226,10 +225,7 @@ class ChatRepositoryImpl(
                 }
 
             when (response.status) {
-                HttpStatusCode.OK -> {
-                    val modelsResponse = response.body<ModelsResponse>()
-                    Result.success(modelsResponse.models)
-                }
+                HttpStatusCode.OK -> Result.success(response.body<ModelsResponse>())
                 else -> {
                     val errorDetail =
                         try {

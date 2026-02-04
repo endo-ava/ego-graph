@@ -1,5 +1,6 @@
 package dev.egograph.shared.dto
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -8,5 +9,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ModelsResponse(
     val models: List<LLMModel>,
+    @SerialName("default_model")
     val defaultModel: String,
 )

@@ -395,9 +395,13 @@ internal class ChatExecutor(
         scope.launch {
             val result = chatRepository.getModels()
             result
-                .onSuccess { models ->
-                    val defaultModel = models.firstOrNull { it.isFree }?.id
-                    dispatch(ChatView.ModelsLoaded(models, defaultModel))
+                .onSuccess { modelsResponse ->
+                    dispatch(
+                        ChatView.ModelsLoaded(
+                            models = modelsResponse.models,
+                            defaultModel = modelsResponse.defaultModel,
+                        ),
+                    )
                 }.onFailure { error ->
                     val message = "モデルの読み込みに失敗しました: ${error.message}"
                     logger.e(message, error)

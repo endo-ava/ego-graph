@@ -1,6 +1,6 @@
 package dev.egograph.shared.store.chat
 
-import dev.egograph.shared.dto.LLMModel
+import dev.egograph.shared.dto.ModelsResponse
 import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.dto.ThreadListResponse
 import dev.egograph.shared.dto.ThreadMessagesResponse
@@ -202,7 +202,13 @@ class ChatExecutorTest {
                 request: dev.egograph.shared.dto.ChatRequest,
             ): RepositoryResult<dev.egograph.shared.dto.ChatResponse> = Result.failure(Exception("Not implemented"))
 
-            override suspend fun getModels(): RepositoryResult<List<LLMModel>> = Result.success(emptyList())
+            override suspend fun getModels(): RepositoryResult<ModelsResponse> =
+                Result.success(
+                    ModelsResponse(
+                        models = emptyList(),
+                        defaultModel = "deepseek/deepseek-v3.2",
+                    ),
+                )
         }
 
     private fun createTestCallbacks(
