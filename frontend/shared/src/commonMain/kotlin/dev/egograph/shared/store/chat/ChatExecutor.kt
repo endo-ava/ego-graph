@@ -452,7 +452,11 @@ internal class ChatExecutor(
 
         return calls.joinToString("\n") { call ->
             val params = call.parameters.toString()
-            "Tool call: ${call.name} $params"
+            """Tool call: ${call.name}
+```json
+$params
+```
+"""
         }
     }
 
@@ -461,7 +465,11 @@ internal class ChatExecutor(
         toolResult: JsonObject?,
     ): String {
         val result = toolResult?.toString()?.takeIf { it.isNotBlank() } ?: return ""
-        val label = toolName?.let { "Tool result ($it): " } ?: "Tool result: "
-        return label + result
+        val label = toolName?.let { "Tool result ($it)" } ?: "Tool result"
+        return """$label
+```json
+$result
+```
+"""
     }
 }

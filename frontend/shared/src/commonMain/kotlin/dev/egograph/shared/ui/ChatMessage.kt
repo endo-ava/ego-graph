@@ -65,14 +65,23 @@ fun ChatMessage(
                     )
                 } else {
                     val textColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    Markdown(
-                        content = message.content,
-                        modifier = Modifier.padding(12.dp),
-                        colors =
-                            markdownColor(
-                                text = textColor,
-                            ),
-                    )
+                    try {
+                        Markdown(
+                            content = message.content,
+                            modifier = Modifier.padding(12.dp),
+                            colors =
+                                markdownColor(
+                                    text = textColor,
+                                ),
+                        )
+                    } catch (e: Exception) {
+                        Text(
+                            text = message.content,
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textColor,
+                        )
+                    }
                 }
             }
 
