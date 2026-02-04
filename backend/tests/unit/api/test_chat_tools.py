@@ -693,10 +693,10 @@ class TestChatToolsEndpoint:
         assert any(t["name"] == "get_top_tracks" for t in tools)
         assert any(t["name"] == "get_listening_stats" for t in tools)
 
-        # YouTubeツール
-        assert any(t["name"] == "get_watch_history" for t in tools)
-        assert any(t["name"] == "get_watching_stats" for t in tools)
-        assert any(t["name"] == "get_top_channels" for t in tools)
+        # YouTubeツールは一時非推奨 (2025-02-04) ため含まれない
+        assert not any(t["name"] == "get_watch_history" for t in tools)
+        assert not any(t["name"] == "get_watching_stats" for t in tools)
+        assert not any(t["name"] == "get_top_channels" for t in tools)
 
         # 各ツールにdescriptionが含まれる
         for tool in tools:
@@ -742,7 +742,7 @@ class TestChatToolsEndpoint:
         assert len(spotify_tools) >= 2
 
     def test_tools_includes_youtube_tools(self, test_client, mock_backend_config):
-        """YouTubeツールが含まれる。"""
+        """YouTubeツールは一時非推奨のため含まれない。"""
         # Arrange
         # Act
         response = test_client.get(
@@ -755,6 +755,6 @@ class TestChatToolsEndpoint:
         data = response.json()
         tools = data["tools"]
 
-        # YouTubeツール
+        # YouTubeツールは一時非推奨 (2025-02-04) のため含まれない
         youtube_tools = [t for t in tools if "youtube" in t["description"].lower()]
-        assert len(youtube_tools) >= 3
+        assert len(youtube_tools) == 0

@@ -115,7 +115,8 @@ async def get_tools_endpoint(
 ):
     """利用可能なツール一覧を取得する。
 
-    R2設定が有効な場合、Spotifyツール群とYouTubeツール群を返します。
+    R2設定が有効な場合、Spotifyツール群を返します。
+    ※ YouTubeツールは一時非推奨 (2025-02-04)
 
     Returns:
         ツール情報のリストを含む辞書
