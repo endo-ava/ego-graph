@@ -77,6 +77,8 @@ class SidebarScreen : Screen {
                         threads = state.threads,
                         selectedThreadId = state.selectedThread?.threadId,
                         isLoading = state.isLoadingThreads,
+                        isLoadingMore = state.isLoadingMoreThreads,
+                        hasMore = state.hasMoreThreads,
                         error = state.threadsError,
                         onThreadClick = { threadId ->
                             activeView = SidebarView.Chat
@@ -85,6 +87,9 @@ class SidebarScreen : Screen {
                         },
                         onRefresh = {
                             store.accept(ChatIntent.RefreshThreads)
+                        },
+                        onLoadMore = {
+                            store.accept(ChatIntent.LoadMoreThreads)
                         },
                         modifier = Modifier.weight(1f),
                     )

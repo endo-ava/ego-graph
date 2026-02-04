@@ -17,6 +17,18 @@ internal sealed interface ChatView {
 
     data class ThreadsLoaded(
         val threads: List<dev.egograph.shared.dto.Thread>,
+        val hasMore: Boolean,
+    ) : ChatView
+
+    data object ThreadsLoadMoreStarted : ChatView
+
+    data class ThreadsAppended(
+        val threads: List<dev.egograph.shared.dto.Thread>,
+        val hasMore: Boolean,
+    ) : ChatView
+
+    data class ThreadsLoadMoreFailed(
+        val error: String,
     ) : ChatView
 
     data class ThreadsLoadFailed(
@@ -110,6 +122,7 @@ internal object ChatReducerImpl :
             is ChatView.ThreadsLoadingStarted ->
                 copy(
                     isLoadingThreads = true,
+                    isLoadingMoreThreads = false,
                     threadsError = null,
                 )
 
@@ -117,12 +130,36 @@ internal object ChatReducerImpl :
                 copy(
                     threads = msg.threads,
                     isLoadingThreads = false,
+                    isLoadingMoreThreads = false,
+                    hasMoreThreads = msg.hasMore,
                     threadsError = null,
+                )
+
+            is ChatView.ThreadsLoadMoreStarted ->
+                copy(
+                    isLoadingMoreThreads = true,
+                    threadsError = null,
+                )
+
+            is ChatView.ThreadsAppended ->
+                copy(
+                    threads = threads + msg.threads,
+                    isLoadingMoreThreads = false,
+                    hasMoreThreads = msg.hasMore,
+                    threadsError = null,
+                )
+
+            is ChatView.ThreadsLoadMoreFailed ->
+                copy(
+                    isLoadingMoreThreads = false,
+                    threadsError = msg.error,
                 )
 
             is ChatView.ThreadsLoadFailed ->
                 copy(
                     isLoadingThreads = false,
+                    isLoadingMoreThreads = false,
+                    hasMoreThreads = false,
                     threadsError = msg.error,
                 )
 

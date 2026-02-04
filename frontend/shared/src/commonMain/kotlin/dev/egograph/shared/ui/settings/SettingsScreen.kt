@@ -1,5 +1,6 @@
 package dev.egograph.shared.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,9 +46,9 @@ import dev.egograph.shared.platform.PlatformPrefsDefaults
 import dev.egograph.shared.platform.PlatformPrefsKeys
 import dev.egograph.shared.platform.normalizeBaseUrl
 import dev.egograph.shared.settings.AppTheme
-import dev.egograph.shared.settings.toAppTheme
-import dev.egograph.shared.settings.toStorageString
+import dev.egograph.shared.settings.ThemeRepository
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,16 +56,10 @@ fun SettingsScreen(
     preferences: PlatformPreferences,
     onBack: () -> Unit,
 ) {
+    val themeRepository = koinInject<ThemeRepository>()
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    var selectedTheme by remember {
-        val savedTheme =
-            preferences.getString(
-                PlatformPrefsKeys.KEY_THEME,
-                PlatformPrefsDefaults.DEFAULT_THEME,
-            )
-        mutableStateOf(savedTheme.toAppTheme())
-    }
+    val selectedTheme by themeRepository.theme.collectAsState()
 
     var apiUrl by remember {
         mutableStateOf(
@@ -130,11 +126,7 @@ fun SettingsScreen(
                     text = AppTheme.LIGHT.displayName,
                     selected = selectedTheme == AppTheme.LIGHT,
                     onClick = {
-                        selectedTheme = AppTheme.LIGHT
-                        preferences.putString(
-                            PlatformPrefsKeys.KEY_THEME,
-                            AppTheme.LIGHT.toStorageString(),
-                        )
+                        themeRepository.setTheme(AppTheme.LIGHT)
                     },
                 )
 
@@ -142,11 +134,7 @@ fun SettingsScreen(
                     text = AppTheme.DARK.displayName,
                     selected = selectedTheme == AppTheme.DARK,
                     onClick = {
-                        selectedTheme = AppTheme.DARK
-                        preferences.putString(
-                            PlatformPrefsKeys.KEY_THEME,
-                            AppTheme.DARK.toStorageString(),
-                        )
+                        themeRepository.setTheme(AppTheme.DARK)
                     },
                 )
 
@@ -224,6 +212,7 @@ fun SettingsScreen(
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar("Settings saved")
                         }
+                        onBack()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled =
@@ -248,6 +237,7 @@ private fun ThemeOption(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .clickable(onClick = onClick)
                 .padding(vertical = 4.dp),
     ) {
         RadioButton(

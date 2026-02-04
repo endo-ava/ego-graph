@@ -13,6 +13,8 @@ import dev.egograph.shared.dto.ThreadMessage
  * @property models 利用可能なモデル一覧
  * @property selectedModel 選択中のモデルID
  * @property isLoadingThreads スレッド一覧読み込み中
+ * @property isLoadingMoreThreads スレッド追加読み込み中
+ * @property hasMoreThreads さらにスレッドが存在するか
  * @property isLoadingMessages メッセージ一覧読み込み中
  * @property isLoadingModels モデル一覧読み込み中
  * @property threadsError スレッド関連のエラーメッセージ
@@ -26,6 +28,8 @@ data class ChatState(
     val models: List<LLMModel> = emptyList(),
     val selectedModel: String? = null,
     val isLoadingThreads: Boolean = false,
+    val isLoadingMoreThreads: Boolean = false,
+    val hasMoreThreads: Boolean = false,
     val isLoadingMessages: Boolean = false,
     val isLoadingModels: Boolean = false,
     val isSending: Boolean = false,
@@ -43,7 +47,12 @@ data class ChatState(
      * いずれかの読み込み中フラグが有効かどうか
      */
     val isLoading: Boolean
-        get() = isLoadingThreads || isLoadingMessages || isLoadingModels || isSending
+        get() =
+            isLoadingThreads ||
+                isLoadingMoreThreads ||
+                isLoadingMessages ||
+                isLoadingModels ||
+                isSending
 
     /**
      * いずれかのエラーが存在するかどうか
@@ -67,6 +76,11 @@ sealed interface ChatIntent {
      * スレッド一覧を再読み込みする
      */
     data object RefreshThreads : ChatIntent
+
+    /**
+     * スレッド一覧を追加読み込みする
+     */
+    data object LoadMoreThreads : ChatIntent
 
     /**
      * スレッドを選択する

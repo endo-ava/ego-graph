@@ -39,7 +39,7 @@ class ChatReducerTest {
             )
 
         val initialState = ChatState(isLoadingThreads = true)
-        val msg = ChatView.ThreadsLoaded(threads)
+        val msg = ChatView.ThreadsLoaded(threads, hasMore = false)
 
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 

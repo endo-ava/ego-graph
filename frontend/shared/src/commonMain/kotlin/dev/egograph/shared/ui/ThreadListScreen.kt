@@ -26,12 +26,17 @@ class ThreadListScreen : Screen {
             threads = state.threads,
             selectedThreadId = state.selectedThread?.threadId,
             isLoading = state.isLoadingThreads,
+            isLoadingMore = state.isLoadingMoreThreads,
+            hasMore = state.hasMoreThreads,
             error = state.threadsError,
             onThreadClick = { threadId ->
                 store.accept(ChatIntent.SelectThread(threadId))
             },
             onRefresh = {
                 store.accept(ChatIntent.RefreshThreads)
+            },
+            onLoadMore = {
+                store.accept(ChatIntent.LoadMoreThreads)
             },
         )
     }

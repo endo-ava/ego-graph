@@ -31,6 +31,7 @@ internal class ChatExecutor(
         when (intent) {
             is ChatIntent.LoadThreads -> loadThreads()
             is ChatIntent.RefreshThreads -> loadThreads()
+            is ChatIntent.LoadMoreThreads -> loadMoreThreads()
             is ChatIntent.SelectThread -> selectThread(intent.threadId)
             is ChatIntent.ClearThreadSelection -> clearThreadSelection()
             is ChatIntent.LoadMessages -> loadMessages(intent.threadId)
@@ -314,15 +315,48 @@ internal class ChatExecutor(
                 .collect { result ->
                     result
                         .onSuccess { response ->
+                            val hasMore = response.offset + response.threads.size < response.total
                             dispatch(
                                 ChatView.ThreadsLoaded(
                                     threads = response.threads,
+                                    hasMore = hasMore,
                                 ),
                             )
                         }.onFailure { error ->
                             val message = "スレッドの読み込みに失敗しました: ${error.message}"
                             logger.e(message, error)
                             dispatch(ChatView.ThreadsLoadFailed(message))
+                        }
+                }
+        }
+    }
+
+    private fun loadMoreThreads() {
+        val currentState = state()
+        if (currentState.isLoadingThreads || currentState.isLoadingMoreThreads || !currentState.hasMoreThreads) {
+            return
+        }
+        dispatch(ChatView.ThreadsLoadMoreStarted)
+
+        val offset = currentState.threads.size
+
+        scope.launch {
+            threadRepository
+                .getThreads(limit = pageLimit, offset = offset)
+                .collect { result ->
+                    result
+                        .onSuccess { response ->
+                            val hasMore = response.offset + response.threads.size < response.total
+                            dispatch(
+                                ChatView.ThreadsAppended(
+                                    threads = response.threads,
+                                    hasMore = hasMore,
+                                ),
+                            )
+                        }.onFailure { error ->
+                            val message = "スレッドの追加読み込みに失敗しました: ${error.message}"
+                            logger.e(message, error)
+                            dispatch(ChatView.ThreadsLoadMoreFailed(message))
                         }
                 }
         }
