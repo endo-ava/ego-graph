@@ -23,6 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.arkivanov.mvikotlin.extensions.coroutines.states
@@ -90,6 +93,8 @@ fun ModelSelector(
             shape = MaterialTheme.shapes.small,
             modifier =
                 Modifier
+                    .semantics { testTagsAsResourceId = true }
+                    .testTag("model_selector")
                     .widthIn(max = 160.dp)
                     .clickable(enabled = isEnabled) { expanded = !expanded },
         ) {
