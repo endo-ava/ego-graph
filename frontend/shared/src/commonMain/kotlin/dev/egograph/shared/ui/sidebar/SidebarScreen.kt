@@ -73,10 +73,11 @@ class SidebarScreen : Screen {
                             scope.launch { drawerState.close() }
                         },
                         icon = { Icon(Icons.Default.Build, contentDescription = null) },
-                        modifier = Modifier
-    .semantics { testTagsAsResourceId = true }
-    .testTag("system_prompt_menu")
-    .padding(horizontal = 12.dp),
+                        modifier =
+                            Modifier
+                                .semantics { testTagsAsResourceId = true }
+                                .testTag("system_prompt_menu")
+                                .padding(horizontal = 12.dp),
                     )
 
                     ThreadList(
