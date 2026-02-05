@@ -38,6 +38,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -153,7 +156,11 @@ fun SettingsScreen(
                     },
                     label = { Text("API URL") },
                     placeholder = { Text("https://api.egograph.dev") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier =
+                        Modifier
+                            .semantics { testTagsAsResourceId = true }
+                            .testTag("api_url_input")
+                            .fillMaxWidth(),
                     singleLine = true,
                     isError = inputUrl.isNotBlank() && (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://")),
                     supportingText = {
@@ -183,7 +190,11 @@ fun SettingsScreen(
                             Icon(imageVector = icon, contentDescription = description)
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier =
+                        Modifier
+                            .semantics { testTagsAsResourceId = true }
+                            .testTag("api_key_input")
+                            .fillMaxWidth(),
                     singleLine = true,
                 )
 
@@ -214,7 +225,11 @@ fun SettingsScreen(
                             onBack()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier =
+                        Modifier
+                            .semantics { testTagsAsResourceId = true }
+                            .testTag("save_settings_button")
+                            .fillMaxWidth(),
                     enabled =
                         inputUrl.trim().isNotEmpty() &&
                             (inputUrl.trim().startsWith("http://") || inputUrl.trim().startsWith("https://")),
