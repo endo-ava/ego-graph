@@ -24,6 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.dto.Thread
 
@@ -108,7 +111,11 @@ fun ThreadList(
                         state = listState,
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize(),
+                        modifier =
+                            Modifier
+                                .semantics { testTagsAsResourceId = true }
+                                .testTag("thread_list")
+                                .fillMaxSize(),
                     ) {
                         items(
                             items = threads,
