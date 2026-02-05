@@ -430,12 +430,20 @@ internal class ChatExecutor(
             val result = chatRepository.getModels()
             result
                 .onSuccess { modelsResponse ->
+                    val currentSelectedModel = state().selectedModel
+                    val isValid = modelsResponse.models.any { it.id == currentSelectedModel }
+                    val fallback = if (isValid) currentSelectedModel else modelsResponse.defaultModel
+
                     dispatch(
                         ChatView.ModelsLoaded(
                             models = modelsResponse.models,
                             defaultModel = modelsResponse.defaultModel,
                         ),
                     )
+
+                    if (fallback != null && fallback != modelsResponse.defaultModel) {
+                        dispatch(ChatView.ModelSelected(fallback))
+                    }
                 }.onFailure { error ->
                     val message = "モデルの読み込みに失敗しました: ${error.message}"
                     logger.e(message, error)

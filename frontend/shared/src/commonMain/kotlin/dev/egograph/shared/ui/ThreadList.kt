@@ -52,6 +52,12 @@ fun ThreadList(
         }
     }
 
+    LaunchedEffect(error) {
+        if (error != null) {
+            lastRequestedSize = 0
+        }
+    }
+
     LaunchedEffect(lastVisibleIndex, threads.size, isLoading, isLoadingMore, hasMore) {
         val lastIndex = lastVisibleIndex
         val size = threads.size
