@@ -31,6 +31,7 @@ internal class ChatExecutor(
         when (intent) {
             is ChatIntent.LoadThreads -> loadThreads()
             is ChatIntent.RefreshThreads -> loadThreads()
+            is ChatIntent.LoadMoreThreads -> loadMoreThreads()
             is ChatIntent.SelectThread -> selectThread(intent.threadId)
             is ChatIntent.ClearThreadSelection -> clearThreadSelection()
             is ChatIntent.LoadMessages -> loadMessages(intent.threadId)
@@ -314,15 +315,48 @@ internal class ChatExecutor(
                 .collect { result ->
                     result
                         .onSuccess { response ->
+                            val hasMore = response.offset + response.threads.size < response.total
                             dispatch(
                                 ChatView.ThreadsLoaded(
                                     threads = response.threads,
+                                    hasMore = hasMore,
                                 ),
                             )
                         }.onFailure { error ->
                             val message = "スレッドの読み込みに失敗しました: ${error.message}"
                             logger.e(message, error)
                             dispatch(ChatView.ThreadsLoadFailed(message))
+                        }
+                }
+        }
+    }
+
+    private fun loadMoreThreads() {
+        val currentState = state()
+        if (currentState.isLoadingThreads || currentState.isLoadingMoreThreads || !currentState.hasMoreThreads) {
+            return
+        }
+        dispatch(ChatView.ThreadsLoadMoreStarted)
+
+        val offset = currentState.threads.size
+
+        scope.launch {
+            threadRepository
+                .getThreads(limit = pageLimit, offset = offset)
+                .collect { result ->
+                    result
+                        .onSuccess { response ->
+                            val hasMore = response.offset + response.threads.size < response.total
+                            dispatch(
+                                ChatView.ThreadsAppended(
+                                    threads = response.threads,
+                                    hasMore = hasMore,
+                                ),
+                            )
+                        }.onFailure { error ->
+                            val message = "スレッドの追加読み込みに失敗しました: ${error.message}"
+                            logger.e(message, error)
+                            dispatch(ChatView.ThreadsLoadMoreFailed(message))
                         }
                 }
         }
@@ -395,9 +429,21 @@ internal class ChatExecutor(
         scope.launch {
             val result = chatRepository.getModels()
             result
-                .onSuccess { models ->
-                    val defaultModel = models.firstOrNull { it.isFree }?.id
-                    dispatch(ChatView.ModelsLoaded(models, defaultModel))
+                .onSuccess { modelsResponse ->
+                    val currentSelectedModel = state().selectedModel
+                    val isValid = modelsResponse.models.any { it.id == currentSelectedModel }
+                    val fallback = if (isValid) currentSelectedModel else modelsResponse.defaultModel
+
+                    dispatch(
+                        ChatView.ModelsLoaded(
+                            models = modelsResponse.models,
+                            defaultModel = modelsResponse.defaultModel,
+                        ),
+                    )
+
+                    if (fallback != null && fallback != modelsResponse.defaultModel) {
+                        dispatch(ChatView.ModelSelected(fallback))
+                    }
                 }.onFailure { error ->
                     val message = "モデルの読み込みに失敗しました: ${error.message}"
                     logger.e(message, error)
@@ -414,7 +460,11 @@ internal class ChatExecutor(
 
         return calls.joinToString("\n") { call ->
             val params = call.parameters.toString()
-            "Tool call: ${call.name} $params"
+            """Tool call: ${call.name}
+```json
+$params
+```
+"""
         }
     }
 
@@ -423,7 +473,11 @@ internal class ChatExecutor(
         toolResult: JsonObject?,
     ): String {
         val result = toolResult?.toString()?.takeIf { it.isNotBlank() } ?: return ""
-        val label = toolName?.let { "Tool result ($it): " } ?: "Tool result: "
-        return label + result
+        val label = toolName?.let { "Tool result ($it)" } ?: "Tool result"
+        return """$label
+```json
+$result
+```
+"""
     }
 }

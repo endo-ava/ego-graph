@@ -18,6 +18,9 @@ import dev.egograph.shared.repository.SystemPromptRepository
 import dev.egograph.shared.repository.SystemPromptRepositoryImpl
 import dev.egograph.shared.repository.ThreadRepository
 import dev.egograph.shared.repository.ThreadRepositoryImpl
+import dev.egograph.shared.settings.ThemeRepository
+import dev.egograph.shared.settings.ThemeRepositoryImpl
+import dev.egograph.shared.store.chat.ChatIntent
 import dev.egograph.shared.store.chat.ChatStore
 import dev.egograph.shared.store.chat.ChatStoreFactory
 import io.ktor.client.HttpClient
@@ -51,6 +54,10 @@ val appModule =
         ) {
             val preferences = getOrNull<PlatformPreferences>()
             preferences?.getString(PlatformPrefsKeys.KEY_API_KEY, PlatformPrefsDefaults.DEFAULT_API_KEY) ?: ""
+        }
+
+        single<ThemeRepository> {
+            ThemeRepositoryImpl(preferences = get())
         }
 
         single<HttpClient> {
@@ -102,11 +109,24 @@ val appModule =
         }
 
         single<ChatStore> {
-            ChatStoreFactory(
-                storeFactory = get(),
-                threadRepository = get(),
-                messageRepository = get(),
-                chatRepository = get(),
-            ).create()
+            val store =
+                ChatStoreFactory(
+                    storeFactory = get(),
+                    threadRepository = get(),
+                    messageRepository = get(),
+                    chatRepository = get(),
+                ).create()
+
+            val preferences = getOrNull<PlatformPreferences>()
+            val savedModelId =
+                preferences?.getString(
+                    PlatformPrefsKeys.KEY_SELECTED_MODEL,
+                    PlatformPrefsDefaults.DEFAULT_SELECTED_MODEL,
+                )
+            if (!savedModelId.isNullOrBlank()) {
+                store.accept(ChatIntent.SelectModel(savedModelId))
+            }
+
+            store
         }
     }

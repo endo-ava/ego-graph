@@ -1,7 +1,9 @@
 package dev.egograph.shared.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,9 +23,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.egograph.shared.platform.PlatformPreferences
+import dev.egograph.shared.store.chat.ChatStore
 
 @Composable
 fun ChatInput(
+    store: ChatStore,
+    preferences: PlatformPreferences,
     onSendMessage: (String) -> Unit,
     isLoading: Boolean = false,
     modifier: Modifier = Modifier,
@@ -34,18 +40,35 @@ fun ChatInput(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Bottom,
     ) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
+        Box(
             modifier = Modifier.weight(1f),
-            placeholder = { Text("Type a message...") },
-            maxLines = 5,
-            enabled = !isLoading,
-            shape = RoundedCornerShape(24.dp),
-        )
+        ) {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 96.dp),
+                placeholder = { Text("Type a message...") },
+                minLines = 2,
+                maxLines = 4,
+                enabled = !isLoading,
+                shape = RoundedCornerShape(22.dp),
+            )
+
+            ModelSelector(
+                store = store,
+                preferences = preferences,
+                modifier =
+                    Modifier
+                        .padding(start = 12.dp, bottom = 8.dp)
+                        .align(Alignment.BottomStart),
+            )
+        }
 
         IconButton(
             onClick = {

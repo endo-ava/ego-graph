@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.m3.markdownColor
 import dev.egograph.shared.dto.MessageRole
 import dev.egograph.shared.dto.ThreadMessage
 
@@ -30,6 +32,7 @@ import dev.egograph.shared.dto.ThreadMessage
 fun ChatMessage(
     message: ThreadMessage,
     modifier: Modifier = Modifier,
+    isStreaming: Boolean = false,
 ) {
     val isUser = message.role == MessageRole.USER
 
@@ -53,12 +56,21 @@ fun ChatMessage(
                 shape = RoundedCornerShape(12.dp),
                 color = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
             ) {
-                Text(
-                    text = message.content,
-                    modifier = Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (isUser || isStreaming) {
+                    Text(
+                        text = message.content,
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    val textColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    Markdown(
+                        content = message.content,
+                        modifier = Modifier.padding(12.dp),
+                        colors = markdownColor(text = textColor),
+                    )
+                }
             }
 
             if (message.modelName != null && !isUser) {
@@ -92,14 +104,14 @@ private fun MessageAvatar(isUser: Boolean) {
     ) {
         if (isUser) {
             Icon(
-                imageVector = Icons.Default.Person,
+                imageVector = Icons.Default.Face,
                 contentDescription = "User",
                 tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(20.dp),
             )
         } else {
             Icon(
-                imageVector = Icons.Default.Face,
+                imageVector = Icons.Default.Person,
                 contentDescription = "AI",
                 tint = MaterialTheme.colorScheme.onSecondary,
                 modifier = Modifier.size(20.dp),

@@ -2,8 +2,8 @@ package dev.egograph.shared.repository
 
 import dev.egograph.shared.dto.ChatRequest
 import dev.egograph.shared.dto.ChatResponse
-import dev.egograph.shared.dto.LLMModel
 import dev.egograph.shared.dto.MessageRole
+import dev.egograph.shared.dto.ModelsResponse
 import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.dto.ThreadListResponse
 import dev.egograph.shared.dto.ThreadMessagesResponse
@@ -162,7 +162,13 @@ class RepositoryTest {
                         ),
                     )
 
-                override suspend fun getModels() = Result.success(emptyList<LLMModel>())
+                override suspend fun getModels() =
+                    Result.success(
+                        ModelsResponse(
+                            models = emptyList(),
+                            defaultModel = "deepseek/deepseek-v3.2",
+                        ),
+                    )
             }
     }
 

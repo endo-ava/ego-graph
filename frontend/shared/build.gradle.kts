@@ -79,6 +79,9 @@ kotlin {
                 // Kermit Logging
                 implementation(libs.kermit)
 
+                // Markdown Renderer
+                implementation(libs.markdown.renderer.m3)
+
                 // Kotlinx
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
@@ -111,7 +114,7 @@ kotlin {
 
 android {
     namespace = "dev.egograph.shared"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24

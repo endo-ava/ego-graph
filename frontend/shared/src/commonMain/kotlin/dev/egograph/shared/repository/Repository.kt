@@ -2,7 +2,7 @@ package dev.egograph.shared.repository
 
 import dev.egograph.shared.dto.ChatRequest
 import dev.egograph.shared.dto.ChatResponse
-import dev.egograph.shared.dto.LLMModel
+import dev.egograph.shared.dto.ModelsResponse
 import dev.egograph.shared.dto.StreamChunk
 import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.dto.ThreadListResponse
@@ -95,7 +95,7 @@ interface ChatRepository {
     /**
      * 利用可能なモデル一覧を取得する
      *
-     * @return モデル一覧
+     * @return モデル一覧とデフォルトモデルIDを含むレスポンス
      */
-    suspend fun getModels(): RepositoryResult<List<LLMModel>>
+    suspend fun getModels(): RepositoryResult<ModelsResponse>
 }

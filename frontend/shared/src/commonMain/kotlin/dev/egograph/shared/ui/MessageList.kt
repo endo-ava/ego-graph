@@ -24,6 +24,7 @@ fun MessageList(
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
     errorMessage: String? = null,
+    streamingMessageId: String? = null,
 ) {
     val listState = rememberLazyListState()
 
@@ -52,7 +53,10 @@ fun MessageList(
                     items = messages,
                     key = { it.messageId },
                 ) { message ->
-                    ChatMessage(message = message)
+                    ChatMessage(
+                        message = message,
+                        isStreaming = message.messageId == streamingMessageId,
+                    )
                 }
 
                 if (isLoading) {

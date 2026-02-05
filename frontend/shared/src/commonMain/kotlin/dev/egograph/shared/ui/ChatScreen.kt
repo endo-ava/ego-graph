@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import com.arkivanov.mvikotlin.extensions.coroutines.states
+import dev.egograph.shared.platform.PlatformPreferences
 import dev.egograph.shared.store.chat.ChatIntent
 import dev.egograph.shared.store.chat.ChatStore
 import kotlinx.coroutines.launch
@@ -32,6 +33,7 @@ class ChatScreen : Screen {
     @Composable
     override fun Content() {
         val store = koinInject<ChatStore>()
+        val preferences = koinInject<PlatformPreferences>()
         val state by store.states.collectAsState(initial = store.state)
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
@@ -63,6 +65,8 @@ class ChatScreen : Screen {
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 ChatInput(
+                    store = store,
+                    preferences = preferences,
                     onSendMessage = { text ->
                         store.accept(ChatIntent.SendMessage(text))
                     },
@@ -79,6 +83,7 @@ class ChatScreen : Screen {
                 modifier = Modifier.padding(paddingValues),
                 isLoading = state.isLoadingMessages,
                 errorMessage = state.messagesError,
+                streamingMessageId = state.streamingMessageId,
             )
         }
     }

@@ -3,7 +3,6 @@ package dev.egograph.shared.repository
 import co.touchlab.kermit.Logger
 import dev.egograph.shared.dto.ChatRequest
 import dev.egograph.shared.dto.ChatResponse
-import dev.egograph.shared.dto.LLMModel
 import dev.egograph.shared.dto.ModelsResponse
 import dev.egograph.shared.dto.StreamChunk
 import dev.egograph.shared.dto.StreamChunkType
@@ -18,7 +17,9 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -63,6 +64,7 @@ class ChatRepositoryImpl(
                         val chunkBuffer = ByteArray(8192)
 
                         while (!channel.isClosedForRead) {
+                            currentCoroutineContext().ensureActive() // Check for cancellation
                             val readCount = channel.readAvailable(chunkBuffer, 0, chunkBuffer.size)
                             if (readCount == -1) {
                                 break
@@ -111,6 +113,7 @@ class ChatRepositoryImpl(
     ) {
         var delimiter = findSseDelimiter(buffer)
         while (delimiter != null) {
+            currentCoroutineContext().ensureActive() // Check for cancellation
             val (index, length) = delimiter
             val event = buffer.substring(0, index)
             buffer.delete(0, index + length)
@@ -138,6 +141,7 @@ class ChatRepositoryImpl(
     }
 
     private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEvent(event: String) {
+        currentCoroutineContext().ensureActive() // Check for cancellation
         if (event.isBlank()) {
             return
         }
@@ -150,6 +154,7 @@ class ChatRepositoryImpl(
                 .toList()
 
         for (line in dataLines) {
+            currentCoroutineContext().ensureActive() // Check for cancellation
             val payload = line.removePrefix("data:").trimStart()
             if (payload.isBlank() || payload == "[DONE]") {
                 continue
@@ -159,6 +164,7 @@ class ChatRepositoryImpl(
     }
 
     private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitChunk(data: String) {
+        currentCoroutineContext().ensureActive() // Check for cancellation
         try {
             val chunk = json.decodeFromString(StreamChunk.serializer(), data)
             if (chunk.type == StreamChunkType.ERROR) {
@@ -214,7 +220,7 @@ class ChatRepositoryImpl(
             Result.failure(ApiError.NetworkError(e))
         }
 
-    override suspend fun getModels(): RepositoryResult<List<LLMModel>> =
+    override suspend fun getModels(): RepositoryResult<ModelsResponse> =
         try {
             val response =
                 httpClient.get("$baseUrl/v1/chat/models") {
@@ -226,10 +232,7 @@ class ChatRepositoryImpl(
                 }
 
             when (response.status) {
-                HttpStatusCode.OK -> {
-                    val modelsResponse = response.body<ModelsResponse>()
-                    Result.success(modelsResponse.models)
-                }
+                HttpStatusCode.OK -> Result.success(response.body<ModelsResponse>())
                 else -> {
                     val errorDetail =
                         try {

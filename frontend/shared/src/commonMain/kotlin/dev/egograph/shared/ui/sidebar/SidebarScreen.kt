@@ -77,6 +77,8 @@ class SidebarScreen : Screen {
                         threads = state.threads,
                         selectedThreadId = state.selectedThread?.threadId,
                         isLoading = state.isLoadingThreads,
+                        isLoadingMore = state.isLoadingMoreThreads,
+                        hasMore = state.hasMoreThreads,
                         error = state.threadsError,
                         onThreadClick = { threadId ->
                             activeView = SidebarView.Chat
@@ -86,6 +88,9 @@ class SidebarScreen : Screen {
                         onRefresh = {
                             store.accept(ChatIntent.RefreshThreads)
                         },
+                        onLoadMore = {
+                            store.accept(ChatIntent.LoadMoreThreads)
+                        },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -94,10 +99,15 @@ class SidebarScreen : Screen {
         ) {
             when (activeView) {
                 SidebarView.Chat -> chatScreen.Content()
-                SidebarView.SystemPrompt ->
-                    SystemPromptEditorScreen(
-                        onBack = { activeView = SidebarView.Chat },
-                    ).Content()
+                SidebarView.SystemPrompt -> {
+                    val promptScreen =
+                        remember {
+                            SystemPromptEditorScreen(
+                                onBack = { activeView = SidebarView.Chat },
+                            )
+                        }
+                    promptScreen.Content()
+                }
                 SidebarView.Settings -> {
                     val preferences = koinInject<dev.egograph.shared.platform.PlatformPreferences>()
                     SettingsScreen(

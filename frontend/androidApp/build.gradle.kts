@@ -14,7 +14,7 @@ kotlin {
 
 android {
     namespace = "dev.egograph.app"
-    compileSdk = 35
+    compileSdk = 36
 
     val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
     val keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
