@@ -1,5 +1,6 @@
 package dev.egograph.shared.ui.sidebar
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -7,10 +8,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -25,6 +27,10 @@ fun SidebarHeader(
     onNewChatClick: () -> Unit,
     onSettingsClick: () -> Unit = {},
 ) {
+    val buttonHeight = 32.dp
+    val buttonPadding = PaddingValues(horizontal = 12.dp)
+    val iconSize = 16.dp
+
     Row(
         modifier =
             Modifier
@@ -40,26 +46,35 @@ fun SidebarHeader(
         Spacer(modifier = Modifier.weight(1f))
         OutlinedButton(
             onClick = onSettingsClick,
-            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-            modifier = Modifier.height(32.dp),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = buttonPadding,
+            modifier =
+                Modifier
+                    .height(buttonHeight)
+                    .widthIn(min = 72.dp),
         ) {
             Icon(
                 imageVector = Icons.Default.Settings,
                 contentDescription = "Settings", // TODO: Use stringResource when i18n is fully set up
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(iconSize),
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
         OutlinedButton(
             onClick = onNewChatClick,
-            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-            modifier = Modifier.height(32.dp),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = buttonPadding,
+            modifier =
+                Modifier
+                    .height(buttonHeight)
+                    .widthIn(min = 72.dp),
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp).padding(end = 4.dp),
+                modifier = Modifier.size(iconSize),
             )
+            Spacer(modifier = Modifier.width(4.dp))
             Text("New")
         }
     }

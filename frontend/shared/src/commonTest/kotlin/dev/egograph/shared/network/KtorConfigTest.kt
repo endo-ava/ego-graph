@@ -14,11 +14,8 @@ import kotlin.test.assertTrue
 class KtorConfigTest {
     @Test
     fun `HttpClient initializes successfully`() {
-        // Arrange
-        val factory = HttpClientFactory()
-
         // Act
-        val client = factory.create()
+        val client = provideHttpClient()
 
         // Assert
         assertNotNull(client, "HttpClient should be initialized")
@@ -28,8 +25,7 @@ class KtorConfigTest {
     @Test
     fun `HttpClient can be closed without errors`() {
         // Arrange
-        val factory = HttpClientFactory()
-        val client = factory.create()
+        val client = provideHttpClient()
 
         // Act & Assert
         // This should not throw an exception
@@ -37,13 +33,10 @@ class KtorConfigTest {
     }
 
     @Test
-    fun `HttpClientFactory creates multiple independent instances`() {
-        // Arrange
-        val factory = HttpClientFactory()
-
+    fun `HttpClient provider creates multiple independent instances`() {
         // Act
-        val client1 = factory.create()
-        val client2 = factory.create()
+        val client1 = provideHttpClient()
+        val client2 = provideHttpClient()
 
         // Assert
         assertNotNull(client1)
