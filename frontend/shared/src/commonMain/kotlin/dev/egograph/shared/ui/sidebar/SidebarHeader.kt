@@ -20,6 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -50,6 +53,8 @@ fun SidebarHeader(
             contentPadding = buttonPadding,
             modifier =
                 Modifier
+                    .semantics { testTagsAsResourceId = true }
+                    .testTag("settings_button")
                     .height(buttonHeight)
                     .widthIn(min = 72.dp),
         ) {
@@ -66,6 +71,8 @@ fun SidebarHeader(
             contentPadding = buttonPadding,
             modifier =
                 Modifier
+                    .semantics { testTagsAsResourceId = true }
+                    .testTag("new_chat_button")
                     .height(buttonHeight)
                     .widthIn(min = 72.dp),
         ) {
