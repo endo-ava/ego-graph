@@ -29,6 +29,11 @@ appId: dev.egograph.app
 ---
 
 # Scenario A: Network Error
+# Note: To properly test network errors, disable network before running this test
+# This can be done via:
+#   - adb shell svc wifi disable
+#   - adb shell svc data disable
+#   - Or use Maestro's network condition feature if available
 # This scenario tests the app's behavior when network is unavailable
 - launchApp
 
@@ -72,7 +77,7 @@ appId: dev.egograph.app
     id: "save_settings_button"
 
 # Return to chat screen
-- pressBack: "Back to chat"
+- back
 
 # Create new chat with invalid API key
 - tapOn:
