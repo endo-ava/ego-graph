@@ -56,10 +56,10 @@ appId: dev.egograph.app
 - tapOn:
     id: "save_settings_button"
 
-# 11. 保存成功を確認（トーストまたは画面遷移）
-# 設定が保存され、チャット画面に戻ることを確認
-- assertVisible:
+# 11. 保存成功を確認（チャット画面に遷移するまで待機）
+- waitFor:
     id: "chat_input_field"
+    timeout: 10000
 
 # ========================================
 # RESTORATION: テスト後の設定復元
@@ -87,9 +87,8 @@ appId: dev.egograph.app
 # 17. テスト用キーをクリア
 - clearText
 
-# 18. 元のAPIキーに戻す（実際の値は環境に合わせて要調整）
-# 注: ここでは空文字に戻すが、必要に応じて実際のキーを設定
-- inputText: ""
+# 18. 元のAPIキーに戻す（空のまま）
+# 注: clearTextでクリア済み
 
 # 19. 設定保存ボタンをタップして復元を確定
 - tapOn:
