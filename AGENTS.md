@@ -41,6 +41,9 @@ cd frontend # PJルートからはgradlewは使えないことに注意
 ./gradlew ktlintFormat                  # Format
 ./gradlew detekt                        # 静的解析
 # NOTE: ktlintFormat/ktlintCheck は同一コマンドで連続実行せず、先に ktlintFormat 単体で実行する（同一Gradle実行内だと ktlintCheck が先に走って失敗することがあるため）
+
+# === E2E Test (Maestro) ===
+maestro test maestro/flows/           # 全テスト一括実行
 ```
 
 ## アーキテクチャ
@@ -65,13 +68,13 @@ External APIs → GitHub Actions (Ingest) → R2 (Parquet) → Backend (DuckDB) 
 
 ### コーディング
 
-| 項目      | ルール                                          |
-| --------- | ----------------------------------------------- |
-| SQL       | プレースホルダ必須: `execute(query, (param,))`  |
-| Logging   | 遅延評価 `logger.info("k=%s", v)`, 機密情報禁止 |
-| APIエラー | 統一フォーマット `invalid_<field>: <reason>`      |
-| Docstring | 日本語                                          |
-| テスト    | AAA パターン必須、Python: pytest、Frontend: Kotest  |
+| 項目      | ルール                                             |
+| --------- | -------------------------------------------------- |
+| SQL       | プレースホルダ必須: `execute(query, (param,))`     |
+| Logging   | 遅延評価 `logger.info("k=%s", v)`, 機密情報禁止    |
+| APIエラー | 統一フォーマット `invalid_<field>: <reason>`       |
+| Docstring | 日本語                                             |
+| テスト    | AAA パターン必須、Python: pytest、Frontend: Kotest |
 
 ## デバッグ
 
@@ -98,20 +101,23 @@ Windows ─ netsh (0.0.0.0:5559→127.0.0.1:5555) ─ Android Emulator (:5555)
 
 1. Windows側でエミュ起動（ユーザー作業、要確認）
 2. Linux から ADB 接続
+
    ```bash
    adb connect <WINDOWS_IP>:5559
    adb devices
    ```
 
    - `<WINDOWS_IP>` は `frontend/.env.local` の `WINDOWS_IP`
+
 3. Backend を起動
+
    ```bash
    uv run python -m backend.main
 
    - tmuxを使ってもよい
    ```
+
 4. adb コマンドで現在の挙動を確認しながら実装
-   
 5. ビルド & インストール
    ```bash
    cd frontend && ./gradlew :androidApp:installDebug
