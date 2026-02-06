@@ -36,7 +36,6 @@ appId: dev.egograph.app
 # 2. サイドバーを開く（左端から右へスワイプ）
 # Note: ModalNavigationDrawerを開くために左端からスワイプ
 - swipe:
-    direction: RIGHT
     start: "5%,50%"
     end: "50%,50%"
 
@@ -110,9 +109,9 @@ appId: dev.egograph.app
     id: "save_prompt_button"
 
 # 18. 保存成功確認（Snackbarメッセージ）
-# Note: "Saved successfully" というテキストが表示されることを確認
-- assertVisible:
+- waitFor:
     text: "Saved successfully"
+    timeout: 5000
 
 # ========================================
 # PHASE 4: チャット画面に戻る
@@ -128,18 +127,41 @@ appId: dev.egograph.app
     id: "chat_input_field"
 
 # ========================================
-# RESTORATION: テスト後の復元手順
+# PHASE 5: テスト後の復元
 # ========================================
-# 重要: テストで変更したシステムプロンプトを元に戻す
-#
-# 手順:
-# 1. サイドバーを開く
-# 2. System Promptメニュータップ
-# 3. Soulタブ選択
-# 4. テキストを元の内容に戻す（テスト前の内容を入力）
-# 5. Saveボタンタップ
-# 6. Backボタンで戻る
-#
-# Note: この復元手順は手動で実行するか、別の復元用フローを作成すること
-# 自動化する場合は、テスト前に元のプロンプト内容を変数に保存し、
-# テスト後にその内容を入力するロジックを追加すること
+
+# 21. サイドバーを開く
+- swipe:
+    start: "5%,50%"
+    end: "50%,50%"
+
+# 22. システムプロンプトメニュータップ
+- tapOn:
+    id: "system_prompt_menu"
+
+# 23. Soulタブ選択
+- tapOn:
+    id: "prompt_tab_soul"
+
+# 24. プロンプトエディタで元の内容に戻す
+- tapOn:
+    id: "prompt_editor"
+- clearText
+- inputText: "元のプロンプト内容に戻す"
+
+# 25. Saveボタンタップ
+- tapOn:
+    id: "save_prompt_button"
+
+# 26. 保存成功を待機
+- waitFor:
+    text: "Saved successfully"
+    timeout: 5000
+
+# 27. Backボタンで戻る
+- tapOn:
+    id: "back_button"
+
+# 28. チャット画面に戻ったことを確認
+- assertVisible:
+    id: "chat_input_field"
