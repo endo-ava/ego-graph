@@ -46,6 +46,7 @@ Modifier
 | `chat_input_field` | メッセージ入力フィールド | `ChatInput.kt`   | 58     |
 | `send_button`      | 送信ボタン               | `ChatInput.kt`   | 89     |
 | `message_list`     | メッセージ一覧           | `MessageList.kt` | 55     |
+| `error_message`    | エラーメッセージ表示     | `ChatInput.kt`   | -      |
 
 ### 2. スレッド一覧 (Thread List)
 
