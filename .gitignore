@@ -103,6 +103,6 @@ wt1/
 .sisyphus/
 
 # Maestro (mobile UI testing)
-.maestro/
+.maestro/reports/
 maestro/reports/
 *.mp4
