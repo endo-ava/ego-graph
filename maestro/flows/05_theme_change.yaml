@@ -1,13 +1,16 @@
-appId: dev.egograph.android
+appId: dev.egograph.app
 ---
 # テーマ変更フロー
 # 
 # 注意: テーマの視覚的確認（Dark/Lightモードの色変化等）はDesktop環境では困難です。
 # このテストでは、テーマ選択UIの操作と選択状態の確認に焦点を当てます。
 - launchApp
-# サイドバーメニューを開く
-- tapOn:
-    id: "system_prompt_menu"
+
+# サイドバーを開く（左端からスワイプ）
+- swipe:
+    start: "5%,50%"
+    end: "50%,50%"
+
 # 設定ボタンをタップ（サイドバーヘッダー）
 - tapOn:
     id: "settings_button"
