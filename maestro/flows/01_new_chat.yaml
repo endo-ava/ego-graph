@@ -23,8 +23,12 @@ appId: dev.egograph.app
 ---
 - launchApp
 
-# Open sidebar to access new chat button
-# Note: Assuming app starts with collapsed sidebar or navigation drawer
+# Open sidebar to access navigation
+- swipe:
+    from: { x: 50, y: 500 }
+    to: { x: 300, y: 500 }
+
+# Tap new chat button
 - tapOn:
     id: "new_chat_button"
   
