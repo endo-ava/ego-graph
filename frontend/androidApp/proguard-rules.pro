@@ -33,3 +33,11 @@
 
 # Keep Kotlinx serialization
 -keep,allowobfuscation,allowshrinking class kotlinx.serialization.** { *; }
+
+# Keep Koin
+-keep class org.koin.** { *; }
+-keep class * extends org.koin.core.module.Module
+-keepclassmembers class * {
+    @org.koin.core.annotation.* *;
+}
+-dontwarn org.koin.**

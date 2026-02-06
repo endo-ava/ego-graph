@@ -10,24 +10,27 @@ import dev.egograph.shared.settings.AppTheme
 import dev.egograph.shared.settings.ThemeRepository
 import dev.egograph.shared.ui.sidebar.SidebarScreen
 import dev.egograph.shared.ui.theme.EgoGraphTheme
+import org.koin.compose.KoinContext
 import org.koin.compose.koinInject
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val themeRepository = koinInject<ThemeRepository>()
-            val theme by themeRepository.theme.collectAsState()
+            KoinContext {
+                val themeRepository = koinInject<ThemeRepository>()
+                val theme by themeRepository.theme.collectAsState()
 
-            val darkTheme =
-                when (theme) {
-                    AppTheme.LIGHT -> false
-                    AppTheme.DARK -> true
-                    AppTheme.SYSTEM -> isSystemInDarkTheme()
+                val darkTheme =
+                    when (theme) {
+                        AppTheme.LIGHT -> false
+                        AppTheme.DARK -> true
+                        AppTheme.SYSTEM -> isSystemInDarkTheme()
+                    }
+
+                EgoGraphTheme(darkTheme = darkTheme) {
+                    SidebarScreen().Content()
                 }
-
-            EgoGraphTheme(darkTheme = darkTheme) {
-                SidebarScreen().Content()
             }
         }
     }
