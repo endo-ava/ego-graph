@@ -44,8 +44,8 @@ appId: dev.egograph.app
     id: "send_button"
 
 # 8. AI応答を待機
-# アシスタントからのメッセージバブルまたはメッセージ一覧の更新を確認
-# タイムアウト30秒で応待機
+# メッセージ一覧の更新を確認（アシスタント応答の表示）
+# タイムアウト30秒で応答待機
 - waitFor:
     id: "message_list"
     timeout: 30000
