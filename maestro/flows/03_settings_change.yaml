@@ -1,0 +1,100 @@
+# Maestro Flow Case 3: Settings Change
+#
+# 前提条件 (Prerequisites):
+# - アプリがインストールされていること
+# - 初期設定が完了していること
+# - 設定変更前の値を保持し、テスト後に復元すること
+#
+# フロー概要 (Flow Overview):
+# 1. アプリ起動
+# 2. 設定画面を開く
+# 3. API URLを変更
+# 4. APIキーをテスト用に変更
+# 5. 保存して反映確認
+# 6. 【重要】設定を元に戻す（復元）
+#
+# 注意事項 (Notes):
+# - このテストではテスト用APIキーのみを使用すること
+# - テスト後は必ず元の設定に復元すること
+# - 実際の本番APIキーをテストに使用しないこと
+
+appId: dev.egograph.app
+
+---
+# 1. アプリ起動
+- launchApp
+
+# 2. 設定ボタンをタップして設定画面を開く
+- tapOn:
+    id: "settings_button"
+
+# 3. API URL入力フィールドが表示されていることを確認
+- assertVisible:
+    id: "api_url_input"
+
+# 4. API URL入力フィールドをタップ
+- tapOn:
+    id: "api_url_input"
+
+# 5. 既存のテキストをクリア
+- clearText
+
+# 6. 新しいAPI URLを入力（テスト用）
+- inputText: "http://localhost:8000"
+
+# 7. APIキー入力フィールドをタップ
+- tapOn:
+    id: "api_key_input"
+
+# 8. 既存のテキストをクリア
+- clearText
+
+# 9. テスト用APIキーを入力（実際の本番キーを使用しないこと）
+- inputText: "test-api-key"
+
+# 10. 設定保存ボタンをタップ
+- tapOn:
+    id: "save_settings_button"
+
+# 11. 保存成功を確認（トーストまたは画面遷移）
+# 設定が保存され、チャット画面に戻ることを確認
+- assertVisible:
+    id: "chat_input_field"
+
+# ========================================
+# RESTORATION: テスト後の設定復元
+# ========================================
+# 重要: テストで変更した設定を元に戻す
+
+# 12. 再度設定ボタンをタップ
+- tapOn:
+    id: "settings_button"
+
+# 13. API URL入力フィールドをタップ
+- tapOn:
+    id: "api_url_input"
+
+# 14. テスト用URLをクリア
+- clearText
+
+# 15. 元のAPI URLに戻す（デフォルト値）
+- inputText: "http://10.0.2.2:8000"
+
+# 16. APIキー入力フィールドをタップ
+- tapOn:
+    id: "api_key_input"
+
+# 17. テスト用キーをクリア
+- clearText
+
+# 18. 元のAPIキーに戻す（実際の値は環境に合わせて要調整）
+# 注: ここでは空文字に戻すが、必要に応じて実際のキーを設定
+- inputText: ""
+
+# 19. 設定保存ボタンをタップして復元を確定
+- tapOn:
+    id: "save_settings_button"
+
+# 20. 復元成功を確認（チャット画面に戻る）
+- assertVisible:
+    id: "chat_input_field"

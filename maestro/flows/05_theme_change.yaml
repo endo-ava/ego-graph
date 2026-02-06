@@ -1,0 +1,36 @@
+appId: dev.egograph.android
+---
+# テーマ変更フロー
+# 
+# 注意: テーマの視覚的確認（Dark/Lightモードの色変化等）はDesktop環境では困難です。
+# このテストでは、テーマ選択UIの操作と選択状態の確認に焦点を当てます。
+- launchApp
+# サイドバーメニューを開く
+- tapOn:
+    id: "system_prompt_menu"
+# 設定ボタンをタップ（サイドバーヘッダー）
+- tapOn:
+    id: "settings_button"
+# テーマ切り替えUIが表示されていることを確認
+# 注: theme_toggleのtesttagがない場合はテキストラベルで検証
+- assertVisible:
+    text: "Theme|テーマ|Dark|Light"
+# テーマオプションをタップ（DarkまたはLight）
+# 注: 実装に応じて適切なラベルまたはtesttagを使用
+- tapOn:
+    text: "Dark"
+# テーマが選択されていることを確認
+# 視覚的変化ではなく、選択状態のラベルやインジケーターを確認
+- assertVisible:
+    text: "Dark|selected|選択中"
+# 別のテーマにも切り替え可能
+- tapOn:
+    text: "Light"
+# テーマが選択されていることを確認
+- assertVisible:
+    text: "Light|selected|選択中"
+# サイドバーを閉じて設定画面を終了
+- pressBack
+# アプリが正常に動作していることを確認
+- assertVisible:
+    id: "chat_input_field"

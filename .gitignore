@@ -101,3 +101,8 @@ scripts/curl-prod-api.sh
 wt1/
 
 .sisyphus/
+
+# Maestro (mobile UI testing)
+.maestro/
+maestro/reports/
+*.mp4

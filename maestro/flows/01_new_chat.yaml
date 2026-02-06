@@ -1,0 +1,54 @@
+# Maestro Flow: New Chat Creation
+#
+# Preconditions:
+# - App is installed and API server is running (http://localhost:8000)
+# - User has valid API credentials configured
+# - Backend is accessible from device/emulator
+#
+# Flow:
+# 1. Launch app
+# 2. Open sidebar (if needed)
+# 3. Tap new chat button
+# 4. Input message
+# 5. Send message
+# 6. Verify AI response appears
+#
+# Notes:
+# - LLM responses are non-deterministic, so we verify UI state changes, not exact text
+# - This flow assumes the app starts in a state where sidebar navigation is available
+# - waitFor with extended timeout accounts for LLM API latency
+
+appId: dev.egograph.app
+
+---
+- launchApp
+
+# Open sidebar to access new chat button
+# Note: Assuming app starts with collapsed sidebar or navigation drawer
+- tapOn:
+    id: "new_chat_button"
+  
+# Verify chat input field is available (new chat created)
+- assertVisible:
+    id: "chat_input_field"
+
+# Tap on chat input field
+- tapOn:
+    id: "chat_input_field"
+
+# Input test message
+- inputText: "こんにちは"
+
+# Tap send button
+- tapOn:
+    id: "send_button"
+
+# Wait for AI response (extended timeout for LLM processing)
+# Note: We verify the UI state change (message list updates), not specific response text
+- waitFor:
+    id: "message_list"
+    timeout: 30000
+
+# Assert that message list is visible (indicating response received)
+- assertVisible:
+    id: "message_list"

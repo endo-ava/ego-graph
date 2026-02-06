@@ -1,0 +1,13 @@
+appId: dev.egograph.app
+---
+# Maestro Configuration for EgoGraph
+
+# Base configuration
+baseUrl: http://localhost:8000
+
+# Default timeout for commands (in milliseconds)
+timeout: 30000
+
+# Environment variables for flows
+env:
+  API_URL: http://localhost:8000

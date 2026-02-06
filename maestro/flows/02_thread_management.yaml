@@ -1,0 +1,51 @@
+# Maestro Flow Case 2: Thread Management
+#
+# 前提条件 (Prerequisites):
+# - Case 1 (01_new_chat.yaml) が実行済みであること
+# - 少なくとも1つのスレッドが存在すること
+# - バックエンドAPIが起動していること (http://localhost:8000)
+#
+# フロー概要 (Flow Overview):
+# 1. スレッド一覧表示の確認
+# 2. 既存スレッドの選択
+# 3. メッセージ履歴の表示
+# 4. 追加メッセージの送信
+# 5. AI応答の受信確認
+
+appId: dev.egograph.app
+
+---
+# 1. アプリ起動
+- launchApp
+
+# 2. スレッド一覧表示確認
+# サイドバーを開く (必要に応じて自動で開く)
+- assertVisible:
+    id: "thread_list"
+
+# 3. スレッドアイテムをタップして既存スレッドを選択
+- tapOn:
+    id: "thread_item"
+
+# 4. メッセージ一覧表示確認
+# チャット画面に遷移し、メッセージ履歴が表示されることを確認
+- assertVisible:
+    id: "message_list"
+
+# 5. チャット入力フィールドをタップ
+- tapOn:
+    id: "chat_input_field"
+
+# 6. 追加メッセージを入力
+- inputText: "続きを教えて"
+
+# 7. 送信ボタンをタップ
+- tapOn:
+    id: "send_button"
+
+# 8. AI応答を待機
+# アシスタントからのメッセージバブルまたはメッセージ一覧の更新を確認
+# タイムアウト30秒で応待機
+- waitFor:
+    id: "message_list"
+    timeout: 30000

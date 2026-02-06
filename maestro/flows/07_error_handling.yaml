@@ -1,0 +1,114 @@
+# Maestro Flow: Error Handling Scenarios
+#
+# Preconditions:
+# - App is installed
+# - Valid API key is available for restoration
+#
+# Flow:
+# Scenario A: Network Error
+# 1. Launch app
+# 2. Create new chat
+# 3. Send message (network unavailable)
+# 4. Verify error message appears
+#
+# Scenario B: Invalid API Key
+# 1. Navigate to settings
+# 2. Set invalid API key
+# 3. Create new chat and send message
+# 4. Verify error message appears
+# 5. Restore valid API key
+#
+# Notes:
+# - This test confirms error messages are displayed
+# - Error message text content may vary due to localization
+# - We verify error message element appears, not specific text
+# - Valid API key restoration uses ${VALID_API_KEY} placeholder
+
+appId: dev.egograph.app
+
+---
+
+# Scenario A: Network Error
+# This scenario tests the app's behavior when network is unavailable
+- launchApp
+
+# Create new chat
+- tapOn:
+    id: "new_chat_button"
+
+# Input test message
+- tapOn:
+    id: "chat_input_field"
+- inputText: "ネットワークエラーテスト"
+
+# Send message (network should be unavailable for this test)
+- tapOn:
+    id: "send_button"
+
+# Verify error message appears
+- waitFor:
+    id: "error_message"
+    timeout: 10000
+
+# Assert error message is visible
+- assertVisible:
+    id: "error_message"
+
+# Scenario B: Invalid API Key
+# This scenario tests the app's behavior when an invalid API key is configured
+
+# Navigate to settings
+- tapOn:
+    id: "settings_button"
+
+# Clear and set invalid API key
+- tapOn:
+    id: "api_key_input"
+- clearText
+- inputText: "invalid-api-key"
+
+# Save settings
+- tapOn:
+    id: "save_settings_button"
+
+# Return to chat screen
+- pressBack: "Back to chat"
+
+# Create new chat with invalid API key
+- tapOn:
+    id: "new_chat_button"
+
+# Input test message
+- tapOn:
+    id: "chat_input_field"
+- inputText: "APIキーテスト"
+
+# Send message
+- tapOn:
+    id: "send_button"
+
+# Verify error message appears
+- waitFor:
+    id: "error_message"
+    timeout: 10000
+
+# Assert error message is visible
+- assertVisible:
+    id: "error_message"
+
+# Restore valid API key (Recovery step)
+# IMPORTANT: Test runner must provide a valid API key via environment variable or config
+- tapOn:
+    id: "settings_button"
+
+# Clear invalid API key
+- tapOn:
+    id: "api_key_input"
+- clearText
+
+# Input valid API key (placeholder - should be injected during test execution)
+- inputText: "${VALID_API_KEY}"
+
+# Save settings to restore valid API key
+- tapOn:
+    id: "save_settings_button"

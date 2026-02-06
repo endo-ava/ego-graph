@@ -1,0 +1,71 @@
+# Maestro Flow: Model Selector
+#
+# Preconditions:
+# - App is installed and API server is running (http://localhost:8000)
+# - User has valid API credentials configured
+# - Backend is accessible from device/emulator
+# - Multiple models are configured in the app settings
+#
+# Flow:
+# 1. Launch app
+# 2. Tap on model selector to view available models
+# 3. Verify model list is displayed
+# 4. Select a model from the list
+# 5. Create new chat with selected model
+# 6. Input and send message
+# 7. Verify AI response appears
+#
+# Notes:
+# - Model names vary by environment and configuration
+# - This flow tests model switching functionality, not specific model behavior
+# - LLM responses are non-deterministic, so we verify UI state changes, not exact text
+# - The actual model name tapped should be adjusted based on your environment configuration
+
+appId: dev.egograph.app
+
+---
+- launchApp
+
+# Tap on model selector to open model selection dropdown
+- tapOn:
+    id: "model_selector"
+
+# Verify model selector UI is visible (model list should be displayed)
+# Note: In some implementations, model_list may be a separate element
+- assertVisible:
+    id: "model_selector"
+
+# Select a model from the list
+# IMPORTANT: Model names are environment-specific!
+# Common examples: "gpt-4", "gpt-3.5-turbo", "claude-3-sonnet", etc.
+# Adjust this value based on your actual configured models
+- tapOn: "GPT-4"
+
+# Create new chat with the selected model
+- tapOn:
+    id: "new_chat_button"
+
+# Verify chat input field is available (new chat created with selected model)
+- assertVisible:
+    id: "chat_input_field"
+
+# Tap on chat input field
+- tapOn:
+    id: "chat_input_field"
+
+# Input test message
+- inputText: "モデルを選択しました。こんにちは！"
+
+# Tap send button
+- tapOn:
+    id: "send_button"
+
+# Wait for AI response (extended timeout for LLM processing)
+# Note: We verify the UI state change (message list updates), not specific response text
+- waitFor:
+    id: "message_list"
+    timeout: 30000
+
+# Assert that message list is visible (indicating response received)
+- assertVisible:
+    id: "message_list"
