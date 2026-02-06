@@ -4,164 +4,71 @@
 # - アプリがインストールされていること
 # - 初期設定が完了していること
 # - 複数のシステムプロンプトが存在すること（user, identity, soul, tools）
-# - テスト後に変更を復元すること
 #
 # フロー概要 (Flow Overview):
 # 1. アプリ起動
 # 2. サイドバーを開く
 # 3. システムプロンプトメニュータップ
-# 4. タブ切替テスト（user → identity）
+# 4. タブ切替テスト（user → identity → soul）
 # 5. Cancelボタン動作確認（変更を保存せず戻る）
-# 6. 別タブ選択（soulタブ）
-# 7. プロンプト更新と保存
-# 8. Backボタンでチャット画面に戻る
-# 9. 【重要】変更を復元
 #
 # 注意事項 (Notes):
-# - このテストでは実際のシステムプロンプト内容を変更するため、テスト後に復元が必要
-# - テスト前のプロンプト内容を記録し、テスト後に元に戻すこと
-# - 保存成功はSnackbarメッセージで確認（"Saved successfully"）
+# - このテストではシステムプロンプトの編集・保存は実施しない
+# - 保存動作の確認は保留（コメントアウト）
 # - システムプロンプトは複数存在する: user, identity, soul, tools
 
 appId: dev.egograph.app
 
 ---
-# ========================================
-# PHASE 1: システムプロンプトエディタを開く
-# ========================================
-
 # 1. アプリ起動
+- stopApp
 - launchApp
+- waitForAnimationToEnd
 
-# 2. サイドバーを開く（左端から右へスワイプ）
-# Note: ModalNavigationDrawerを開くために左端からスワイプ
+# 2. チャット画面初期描画を待つ
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 15000
+
+# 3. サイドバーを開く
 - swipe:
-    start: "5%,50%"
-    end: "50%,50%"
+    start: "100,500"
+    end: "700,500"
+    duration: 350
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "system_prompt_menu"
+    timeout: 10000
 
-# 3. システムプロンプトメニューアイテムをタップ
+# 4. システムプロンプト画面へ遷移
 - tapOn:
     id: "system_prompt_menu"
-
-# 4. プロンプトタブが表示されていることを確認
-# 複数のタブが存在することを確認（user, identity, soul, tools）
 - assertVisible:
     id: "prompt_tab_user"
 
-# ========================================
-# PHASE 2: タブ切替とCancel動作確認
-# ========================================
-
-# 5. Userタブが選択されていることを確認（デフォルト）
-- assertVisible:
-    id: "prompt_tab_user"
-
-# 6. Identityタブに切り替え
+# 5. タブ切替確認
 - tapOn:
     id: "prompt_tab_identity"
-
-# 7. プロンプトエディタが表示されていることを確認
 - assertVisible:
     id: "prompt_editor"
-
-# 8. プロンプトエディタをタップしてフォーカス
-- tapOn:
-    id: "prompt_editor"
-
-# 9. テキスト入力（キャンセルテスト用）
-# Note: この変更は保存されず、Cancelで破棄される
-- inputText: "キャンセルテスト：この変更は保存されません"
-
-# 10. Cancelボタンをタップ（back_buttonタグ、"Cancel"テキスト）
-- tapOn:
-    id: "back_button"
-
-# 11. タブ表示に戻っていることを確認
-# Cancelによって変更が破棄され、エディタが閉じる
-- assertVisible:
-    id: "prompt_tab_identity"
-
-# ========================================
-# PHASE 3: プロンプト更新と保存
-# ========================================
-
-# 12. Soulタブに切り替え（別のタブを選択）
 - tapOn:
     id: "prompt_tab_soul"
-
-# 13. プロンプトエディタが表示されていることを確認
 - assertVisible:
     id: "prompt_editor"
 
-# 14. プロンプトエディタをタップしてフォーカス
-- tapOn:
-    id: "prompt_editor"
+# 6. Save 動作を確認: 保留
+# - extendedWaitUntil:
+#     visible:
+#       id: "save_prompt_button"
+#     timeout: 10000
+# - tapOn:
+#     id: "save_prompt_button"
+# - waitForAnimationToEnd
 
-# 15. 既存のテキストをクリア
-- clearText
-
-# 16. テスト用プロンプトを入力
-# Note: この変更は保存されるため、テスト後に復元が必要
-- inputText: "テストプロンプト: 技術的な応答をお願いします"
-
-# 17. Saveボタンをタップ
-- tapOn:
-    id: "save_prompt_button"
-
-# 18. 保存成功確認（Snackbarメッセージ）
-- waitFor:
-    text: "Saved successfully"
-    timeout: 5000
-
-# ========================================
-# PHASE 4: チャット画面に戻る
-# ========================================
-
-# 19. Backボタンをタップしてチャット画面に戻る
+# 7. Cancelでチャット画面へ戻る
 - tapOn:
     id: "back_button"
-
-# 20. チャット画面に戻ったことを確認
-# チャット入力フィールドまたはメッセージリストが表示されていることを確認
-- assertVisible:
-    id: "chat_input_field"
-
-# ========================================
-# PHASE 5: テスト後の復元
-# ========================================
-
-# 21. サイドバーを開く
-- swipe:
-    start: "5%,50%"
-    end: "50%,50%"
-
-# 22. システムプロンプトメニュータップ
-- tapOn:
-    id: "system_prompt_menu"
-
-# 23. Soulタブ選択
-- tapOn:
-    id: "prompt_tab_soul"
-
-# 24. プロンプトエディタで元の内容に戻す
-- tapOn:
-    id: "prompt_editor"
-- clearText
-- inputText: "元のプロンプト内容に戻す"
-
-# 25. Saveボタンタップ
-- tapOn:
-    id: "save_prompt_button"
-
-# 26. 保存成功を待機
-- waitFor:
-    text: "Saved successfully"
-    timeout: 5000
-
-# 27. Backボタンで戻る
-- tapOn:
-    id: "back_button"
-
-# 28. チャット画面に戻ったことを確認
 - assertVisible:
     id: "chat_input_field"

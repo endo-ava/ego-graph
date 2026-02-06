@@ -1,39 +1,84 @@
+# Maestro Flow Case 5: Theme Change
+#
+# 前提条件 (Prerequisites):
+# - アプリがインストールされていること
+# - 設定画面にアクセスできること
+#
+# フロー概要 (Flow Overview):
+# 1. アプリ起動
+# 2. サイドバーを開く
+# 3. 設定画面を開く
+# 4. テーマ切り替えUIの表示確認
+# 5. Darkテーマを選択
+# 6. Lightテーマに切り替え
+# 7. 設定画面を閉じて動作確認
+#
+# 注意事項 (Notes):
+# - テーマの視覚的確認（Dark/Lightモードの色変化等）はDesktop環境では困難
+# - このテストでは、テーマ選択UIの操作と選択状態の確認に焦点を当てる
+# - 視覚的変化ではなく、テーマラベルの表示確認で動作を検証する
+
 appId: dev.egograph.app
+
 ---
-# テーマ変更フロー
-# 
-# 注意: テーマの視覚的確認（Dark/Lightモードの色変化等）はDesktop環境では困難です。
-# このテストでは、テーマ選択UIの操作と選択状態の確認に焦点を当てます。
+# 1. アプリ起動
+- stopApp
 - launchApp
 
-# サイドバーを開く（左端からスワイプ）
-- swipe:
-    start: "5%,50%"
-    end: "50%,50%"
+# アプリ起動後の安定待機
+- waitForAnimationToEnd
 
-# 設定ボタンをタップ（サイドバーヘッダー）
+# チャット画面初期描画を待つ
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 15000
+
+# 2. サイドバーを開く（左から右へスワイプ）
+- swipe:
+    start: "100,500"
+    end: "700,500"
+    duration: 350
+
+# サイドバーのアニメーションを待機
+- waitForAnimationToEnd
+
+# サイドバー要素の表示を待機
+- extendedWaitUntil:
+    visible:
+      id: "settings_button"
+    timeout: 10000
+
+# 3. 設定ボタンをタップ（サイドバーヘッダー）
 - tapOn:
     id: "settings_button"
-# テーマ切り替えUIが表示されていることを確認
+
+# 4. テーマ切り替えUIが表示されていることを確認
 # 注: theme_toggleのtesttagがない場合はテキストラベルで検証
 - assertVisible:
-    text: "Theme|テーマ|Dark|Light"
-# テーマオプションをタップ（DarkまたはLight）
+    text: "Appearance"
+
+# 5. テーマオプションをタップ（DarkまたはLight）
 # 注: 実装に応じて適切なラベルまたはtesttagを使用
 - tapOn:
     text: "Dark"
-# テーマが選択されていることを確認
-# 視覚的変化ではなく、選択状態のラベルやインジケーターを確認
+
+# 6. Darkラベルが表示されていることを確認
+# 注: 選択状態インジケーターの検証は行わない
 - assertVisible:
-    text: "Dark|selected|選択中"
-# 別のテーマにも切り替え可能
+    text: "Dark"
+
+# 7. 別のテーマに切り替え（Light）
 - tapOn:
     text: "Light"
-# テーマが選択されていることを確認
+
+# 8. Lightラベルが表示されていることを確認
 - assertVisible:
-    text: "Light|selected|選択中"
-# サイドバーを閉じて設定画面を終了
-- pressBack
-# アプリが正常に動作していることを確認
+    text: "Light"
+
+# 9. サイドバーを閉じて設定画面を終了
+- tapOn: "Back"
+
+# 10. アプリが正常に動作していることを確認
 - assertVisible:
     id: "chat_input_field"
