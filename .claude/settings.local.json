@@ -1,4 +1,7 @@
 {
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
   "permissions": {
     "allow": [
       "Read",
@@ -23,6 +26,7 @@
       "Bash(git branch:*)",
       "Bash(git blame:*)",
       "Bash(git reflog:*)",
+      "Bash(git checkout:*)",
       "Bash(uv sync:*)",
       "Bash(uv run python:*)",
       "Bash(uv pip:*)",
@@ -57,7 +61,8 @@
       "Bash(./gradlew ktlintCheck:*)",
       "Bash(./gradlew test:*)",
       "Bash(./gradlew :shared:test)",
-      "Bash(./gradlew:*)"
+      "Bash(./gradlew:*)",
+      "Bash(maestro test:*)"
     ],
     "deny": [
       "Read(.env)",
