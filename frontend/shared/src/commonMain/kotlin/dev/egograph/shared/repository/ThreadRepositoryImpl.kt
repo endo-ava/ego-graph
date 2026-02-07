@@ -5,11 +5,8 @@ import dev.egograph.shared.cache.DiskCache
 import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.dto.ThreadListResponse
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.client.request.headers
 import io.ktor.client.request.parameter
-import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -169,58 +166,18 @@ class ThreadRepositoryImpl(
             httpClient.get("$baseUrl/v1/threads") {
                 parameter("limit", limit)
                 parameter("offset", offset)
-                if (apiKey.isNotEmpty()) {
-                    headers {
-                        append("X-API-Key", apiKey)
-                    }
-                }
+                configureAuth(apiKey)
             }
 
-        return when (response.status) {
-            HttpStatusCode.OK -> response.body()
-            else -> {
-                val errorDetail =
-                    try {
-                        response.body<String>()
-                    } catch (e: Exception) {
-                        logger.w(e) { "Failed to read error response body" }
-                        null
-                    }
-                throw ApiError.HttpError(
-                    code = response.status.value,
-                    errorMessage = response.status.description,
-                    detail = errorDetail,
-                )
-            }
-        }
+        return response.bodyOrThrow(logError = { e -> logger.w(e) { "Failed to read error response body" } })
     }
 
     private suspend fun fetchThread(threadId: String): Thread {
         val response =
             httpClient.get("$baseUrl/v1/threads/$threadId") {
-                if (apiKey.isNotEmpty()) {
-                    headers {
-                        append("X-API-Key", apiKey)
-                    }
-                }
+                configureAuth(apiKey)
             }
 
-        return when (response.status) {
-            HttpStatusCode.OK -> response.body()
-            else -> {
-                val errorDetail =
-                    try {
-                        response.body<String>()
-                    } catch (e: Exception) {
-                        logger.w(e) { "Failed to read error response body" }
-                        null
-                    }
-                throw ApiError.HttpError(
-                    code = response.status.value,
-                    errorMessage = response.status.description,
-                    detail = errorDetail,
-                )
-            }
-        }
+        return response.bodyOrThrow(logError = { e -> logger.w(e) { "Failed to read error response body" } })
     }
 }
