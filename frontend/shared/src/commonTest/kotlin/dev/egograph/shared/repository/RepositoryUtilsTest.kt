@@ -82,7 +82,7 @@ class RepositoryUtilsTest {
             val cache = InMemoryCache<String, String>(expirationMs = shortExpiration)
             cache.put("key", "value")
 
-            delay(shortExpiration + 50)
+            delay(shortExpiration + 100)
             val result = cache.get("key")
 
             assertNull(result)
@@ -162,7 +162,7 @@ class RepositoryUtilsTest {
         val hash1 = generateContextHash(baseUrl1, apiKey1)
         val hash2 = generateContextHash(baseUrl2, apiKey2)
 
-        assertTrue(hash1 != hash2) { "Hashes should be different: $hash1 vs $hash2" }
+        assertTrue(hash1 != hash2, "Hashes should be different: $hash1 vs $hash2")
     }
 
     @Test
@@ -174,7 +174,7 @@ class RepositoryUtilsTest {
         val hash1 = generateContextHash(baseUrl1, apiKey)
         val hash2 = generateContextHash(baseUrl2, apiKey)
 
-        assertTrue(hash1 != hash2) { "Hashes should be different: $hash1 vs $hash2" }
+        assertTrue(hash1 != hash2, "Hashes should be different: $hash1 vs $hash2")
     }
 
     @Test
@@ -220,9 +220,11 @@ class RepositoryUtilsTest {
             }
 
         val uniqueHashes = hashes.toSet()
-        assertEquals(inputs.size, uniqueHashes.size) {
-            "Collision detected. Expected ${inputs.size} unique hashes but got ${uniqueHashes.size}"
-        }
+        assertEquals(
+            inputs.size,
+            uniqueHashes.size,
+            "Collision detected. Expected ${inputs.size} unique hashes but got ${uniqueHashes.size}",
+        )
     }
 
     @Test
