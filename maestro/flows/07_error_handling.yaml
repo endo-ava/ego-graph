@@ -1,0 +1,96 @@
+# Maestro Flow Case 7: Backend Connection Error (Preserve/Restore API URL)
+#
+# 前提条件 (Prerequisites):
+# - アプリがインストールされていること
+# - バックエンドが通常は利用可能であること
+#
+# フロー概要 (Flow Overview):
+# 1. アプリ起動
+# 2. 現在の API URL を保持
+# 3. 不正 URL を設定して接続エラーを発生
+# 4. 保持した API URL を復元
+
+appId: dev.egograph.app
+
+---
+# 1. アプリ起動
+- stopApp
+- launchApp
+- waitForAnimationToEnd
+
+# 2. チャット画面初期描画を待つ
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 15000
+
+# 3. サイドバーから設定画面へ
+- swipe:
+    start: "100,500"
+    end: "700,500"
+    duration: 350
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "settings_button"
+    timeout: 10000
+- tapOn:
+    id: "settings_button"
+- assertVisible:
+    id: "api_url_input"
+
+# 4. 現在の API URL を保持（復元用）
+- tapOn:
+    id: "api_url_input"
+- copyTextFrom:
+    id: "api_url_input"
+
+# 5. 不正 URL を設定して保存
+- eraseText
+- inputText: "http://127.0.0.1:65535"
+- tapOn:
+    id: "save_settings_button"
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 10000
+
+# 6. 再起動して接続エラー状態を確認（モデル取得失敗でエラー表示）
+- stopApp
+- launchApp
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "error_message"
+    timeout: 15000
+
+# 7. 設定画面へ戻って API URL を復元
+- swipe:
+    start: "100,500"
+    end: "700,500"
+    duration: 350
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "settings_button"
+    timeout: 10000
+- tapOn:
+    id: "settings_button"
+- tapOn:
+    id: "api_url_input"
+- eraseText
+- pasteText
+- tapOn:
+    id: "save_settings_button"
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 10000
+
+# 8. 復元成功の確認 - エラー表示が消え、正常に接続できることを検証
+- assertNotVisible:
+    id: "error_message"

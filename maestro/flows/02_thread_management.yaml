@@ -1,0 +1,78 @@
+# Maestro Flow Case 2: Thread Management
+#
+# 前提条件 (Prerequisites):
+# - Case 1 (01_new_chat.yaml) が実行済みであること
+# - 少なくとも1つのスレッドが存在すること
+# - バックエンドAPIが起動していること (http://localhost:8000)
+#
+# フロー概要 (Flow Overview):
+# 1. アプリ起動
+# 2. スレッド一覧表示の確認
+# 3. 既存スレッドの選択
+# 4. メッセージ履歴の表示確認
+# 5. 追加メッセージの送信
+# 6. AI応答の受信確認
+#
+# 注意事項 (Notes):
+# - 既存スレッドへの追加メッセージ送信を検証する
+# - 応答待機は waitForAnimationToEnd により UI の安定化を確認する
+
+appId: dev.egograph.app
+
+---
+# 1. アプリ起動
+- stopApp
+- waitForAnimationToEnd
+- launchApp
+- waitForAnimationToEnd
+
+# チャット画面初期描画を待つ
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 15000
+
+# 1.1. サイドバーを開く（左から右へスワイプ）
+- swipe:
+    start: "100,500"
+    end: "700,500"
+    duration: 350
+
+# サイドバーのアニメーションを待機
+- waitForAnimationToEnd
+
+# サイドバー要素を待機
+- extendedWaitUntil:
+    visible:
+      id: "thread_item"
+    timeout: 10000
+
+# 3. スレッドアイテムをタップして既存スレッドを選択
+- tapOn:
+    id: "thread_item"
+
+# 4. メッセージ一覧表示確認
+# チャット画面に遷移し、メッセージ履歴が表示されることを確認
+- assertVisible:
+    id: "chat_input_field"
+
+# 5. チャット入力フィールドをタップ
+- tapOn:
+    id: "chat_input_field"
+
+# 6. 追加メッセージを入力
+- inputText: "continue please"
+
+# 7. 送信ボタンをタップ
+- tapOn:
+    id: "send_button"
+
+# 8. AI応答を待機
+# アシスタント応答バブルの表示を確認（新規応答の到着を検証）
+- extendedWaitUntil:
+    visible:
+      id: "assistant_message_bubble"
+    timeout: 60000
+
+- assertVisible:
+    id: "message_list"

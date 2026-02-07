@@ -86,7 +86,12 @@ fun ModelSelector(
 
     val isEnabled = !isLoading && error == null && models.isNotEmpty()
 
-    Box(modifier = modifier) {
+    Box(
+        modifier =
+            modifier
+                .semantics { testTagsAsResourceId = true }
+                .testTag("model_selector"),
+    ) {
         Surface(
             color = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -94,7 +99,7 @@ fun ModelSelector(
             modifier =
                 Modifier
                     .semantics { testTagsAsResourceId = true }
-                    .testTag("model_selector")
+                    .testTag("model_selector_surface")
                     .widthIn(max = 160.dp)
                     .clickable(enabled = isEnabled) { expanded = !expanded },
         ) {
@@ -107,6 +112,10 @@ fun ModelSelector(
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier =
+                        Modifier
+                            .semantics { testTagsAsResourceId = true }
+                            .testTag("model_selector_label"),
                 )
                 Icon(
                     imageVector = Icons.Filled.ArrowDropDown,

@@ -1,0 +1,56 @@
+# Maestro Flow Case 4: Model Selector
+#
+# 前提条件 (Prerequisites):
+# - アプリがインストールされていること
+# - APIサーバーが起動していること (http://localhost:8000)
+# - 有効なAPI認証情報が設定されていること
+# - デバイス/エミュレータからバックエンドにアクセスできること
+# - アプリ設定に複数のモデルが構成されていること
+#
+# フロー概要 (Flow Overview):
+# 1. アプリ起動
+# 2. モデルセレクターをタップして利用可能なモデルを表示
+# 3. Backキーで閉じる
+# 4. モデルセレクターの開閉操作を確認
+#
+# 注意事項 (Notes):
+# - モデル名は環境と設定によって異なる
+# - このフローはモデル切り替え機能をテストし、特定のモデルの動作はテストしない
+# - 具体的なモデル選択は行わず、セレクターのタップによる開閉を検証する
+# - LLMの応答は非決定的であるため、正確なテキストではなくUI状態の変化を検証する
+# - 実際にタップするモデル名は環境設定に基づいて調整すること
+
+appId: dev.egograph.app
+
+---
+# 1. アプリ起動
+- stopApp
+- launchApp
+
+# アプリ起動後の安定待機
+- waitForAnimationToEnd
+
+# チャット画面初期描画を待つ
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 10000
+
+# 2. モデルセレクターをタップしてモデル選択ドロップダウンを開く
+- extendedWaitUntil:
+    visible:
+      id: "model_selector_surface"
+    timeout: 10000
+- tapOn:
+    id: "model_selector_surface"
+
+# 3. ドロップダウン外をタップして閉じる（プラットフォーム非依存）
+- tapOn:
+    id: "chat_input_field"
+- waitForAnimationToEnd
+
+# 4. 開閉後もチャット入力UIが表示されていることを確認
+- assertVisible:
+    id: "model_selector_surface"
+- assertVisible:
+    id: "chat_input_field"

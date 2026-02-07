@@ -1,0 +1,74 @@
+# Maestro Flow Case 6: System Prompt Details
+#
+# 前提条件 (Prerequisites):
+# - アプリがインストールされていること
+# - 初期設定が完了していること
+# - 複数のシステムプロンプトが存在すること（user, identity, soul, tools）
+#
+# フロー概要 (Flow Overview):
+# 1. アプリ起動
+# 2. サイドバーを開く
+# 3. システムプロンプトメニュータップ
+# 4. タブ切替テスト（user → identity → soul）
+# 5. Cancelボタン動作確認（変更を保存せず戻る）
+#
+# 注意事項 (Notes):
+# - このテストではシステムプロンプトの編集・保存は実施しない
+# - 保存動作の確認は保留（コメントアウト）
+# - システムプロンプトは複数存在する: user, identity, soul, tools
+
+appId: dev.egograph.app
+
+---
+# 1. アプリ起動
+- stopApp
+- launchApp
+- waitForAnimationToEnd
+
+# 2. チャット画面初期描画を待つ
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 15000
+
+# 3. サイドバーを開く
+- swipe:
+    start: "100,500"
+    end: "700,500"
+    duration: 350
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "system_prompt_menu"
+    timeout: 10000
+
+# 4. システムプロンプト画面へ遷移
+- tapOn:
+    id: "system_prompt_menu"
+- assertVisible:
+    id: "prompt_tab_user"
+
+# 5. タブ切替確認
+- tapOn:
+    id: "prompt_tab_identity"
+- assertVisible:
+    id: "prompt_editor"
+- tapOn:
+    id: "prompt_tab_soul"
+- assertVisible:
+    id: "prompt_editor"
+
+# 6. Save 動作を確認: 保留
+# - extendedWaitUntil:
+#     visible:
+#       id: "save_prompt_button"
+#     timeout: 10000
+# - tapOn:
+#     id: "save_prompt_button"
+# - waitForAnimationToEnd
+
+# 7. Cancelでチャット画面へ戻る
+- tapOn:
+    id: "back_button"
+- assertVisible:
+    id: "chat_input_field"

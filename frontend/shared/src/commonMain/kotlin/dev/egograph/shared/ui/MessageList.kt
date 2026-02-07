@@ -44,7 +44,11 @@ fun MessageList(
             Text(
                 text = errorMessage,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.align(Alignment.Center),
+                modifier =
+                    Modifier
+                        .semantics { testTagsAsResourceId = true }
+                        .testTag("error_message")
+                        .align(Alignment.Center),
             )
         } else {
             LazyColumn(

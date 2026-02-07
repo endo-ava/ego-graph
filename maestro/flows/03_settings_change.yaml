@@ -1,0 +1,139 @@
+# Maestro Flow Case 3: Settings Change
+#
+# 前提条件 (Prerequisites):
+# - アプリがインストールされていること
+# - 初期設定が完了していること
+# - テスト後に API URL を復元し、APIキーをクリアすること
+#
+# フロー概要 (Flow Overview):
+# 1. アプリ起動
+# 2. 設定画面を開く
+# 3. API URLを変更
+# 4. APIキーをテスト用に変更
+# 5. 保存して反映確認
+# 6. 【重要】API URLを復元し、APIキーをクリア
+#
+# 注意事項 (Notes):
+# - このテストではテスト用APIキーのみを使用すること
+# - テスト後は API URL を元に戻し、APIキーは空に戻すこと
+# - 実際の本番APIキーをテストに使用しないこと
+
+appId: dev.egograph.app
+
+---
+# 1. アプリ起動
+- stopApp
+- launchApp
+
+# アプリ起動後の安定待機
+- waitForAnimationToEnd
+
+# チャット画面初期描画を待つ
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 15000
+
+# 1.1. サイドバーを開く（左から右へスワイプ）
+- swipe:
+    start: "100,500"
+    end: "700,500"
+    duration: 350
+
+# サイドバーのアニメーションを待機
+- waitForAnimationToEnd
+
+# サイドバー要素の表示を待機
+- extendedWaitUntil:
+    visible:
+      id: "settings_button"
+    timeout: 10000
+
+# 2. 設定ボタンをタップして設定画面を開く
+- tapOn:
+    id: "settings_button"
+
+# 3. API URL入力フィールドが表示されていることを確認
+- assertVisible:
+    id: "api_url_input"
+
+# 4. API URL入力フィールドをタップ
+- tapOn:
+    id: "api_url_input"
+
+# 4.1. 現在のAPI URLを保持（復元用）
+- copyTextFrom:
+    id: "api_url_input"
+
+# 5. 既存のテキストをクリア
+- eraseText
+
+# 6. 新しいAPI URLを入力（テスト用）
+- inputText: "http://localhost:8000"
+
+# 7. APIキー入力フィールドをタップ
+- tapOn:
+    id: "api_key_input"
+
+# 8. 既存のテキストをクリア
+- eraseText
+
+# 9. テスト用APIキーを入力（実際の本番キーを使用しないこと）
+- inputText: "test-api-key"
+
+# 10. 設定保存ボタンをタップ
+- tapOn:
+    id: "save_settings_button"
+
+# 11. 保存成功を確認（チャット画面に遷移するまで待機）
+- waitForAnimationToEnd
+
+# 12. チャット入力フィールドが表示されていることを確認
+- assertVisible:
+    id: "chat_input_field"
+
+# ========================================
+# RESTORATION: テスト後の設定復元
+# ========================================
+# 重要: テストで変更した設定を元に戻す
+
+# 13. 再度設定ボタンをタップ
+- swipe:
+    start: "100,500"
+    end: "700,500"
+    duration: 350
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "settings_button"
+    timeout: 10000
+- tapOn:
+    id: "settings_button"
+
+# 13. API URL入力フィールドをタップ
+- tapOn:
+    id: "api_url_input"
+
+# 14. テスト用URLをクリア
+- eraseText
+
+# 15. 元のAPI URLに戻す（実行時の保持値）
+- pasteText
+
+# 16. APIキー入力フィールドをタップ
+- tapOn:
+    id: "api_key_input"
+
+# 17. テスト用キーをクリア
+- eraseText
+
+# 18. APIキーを空に戻す
+# 注: eraseTextでクリア済み（このフローでは元値の復元は行わない）
+
+# 19. 設定保存ボタンをタップして復元を確定
+- tapOn:
+    id: "save_settings_button"
+
+# 20. 復元成功を確認（チャット画面に戻る）
+- assertVisible:
+    id: "chat_input_field"

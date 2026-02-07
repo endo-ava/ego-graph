@@ -22,6 +22,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
@@ -55,6 +58,10 @@ fun ChatMessage(
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                modifier =
+                    Modifier
+                        .semantics { testTagsAsResourceId = true }
+                        .testTag(if (isUser) "user_message_bubble" else "assistant_message_bubble"),
             ) {
                 if (isUser || isStreaming) {
                     Text(
