@@ -1,0 +1,341 @@
+package dev.egograph.shared.repository
+
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.headers
+import io.ktor.http.headers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class RepositoryUtilsTest {
+    @Test
+    fun `InMemoryCache - put and get returns stored value`() =
+        runTest {
+            val cache = InMemoryCache<String, String>()
+            val key = "test-key"
+            val value = "test-value"
+
+            cache.put(key, value)
+            val result = cache.get(key)
+
+            assertEquals(value, result)
+        }
+
+    @Test
+    fun `InMemoryCache - get returns null for non-existent key`() =
+        runTest {
+            val cache = InMemoryCache<String, String>()
+
+            val result = cache.get("non-existent")
+
+            assertNull(result)
+        }
+
+    @Test
+    fun `InMemoryCache - remove deletes entry`() =
+        runTest {
+            val cache = InMemoryCache<String, String>()
+            cache.put("key", "value")
+
+            cache.remove("key")
+            val result = cache.get("key")
+
+            assertNull(result)
+        }
+
+    @Test
+    fun `InMemoryCache - clear removes all entries`() =
+        runTest {
+            val cache = InMemoryCache<String, String>()
+            cache.put("key1", "value1")
+            cache.put("key2", "value2")
+
+            cache.clear()
+            val result1 = cache.get("key1")
+            val result2 = cache.get("key2")
+
+            assertNull(result1)
+            assertNull(result2)
+        }
+
+    @Test
+    fun `InMemoryCache - overwriting existing key replaces value`() =
+        runTest {
+            val cache = InMemoryCache<String, String>()
+            cache.put("key", "old-value")
+
+            cache.put("key", "new-value")
+            val result = cache.get("key")
+
+            assertEquals("new-value", result)
+        }
+
+    @Test
+    fun `InMemoryCache - expired entry returns null`() =
+        runTest {
+            val shortExpiration = 100L
+            val cache = InMemoryCache<String, String>(expirationMs = shortExpiration)
+            cache.put("key", "value")
+
+            delay(shortExpiration + 50)
+            val result = cache.get("key")
+
+            assertNull(result)
+        }
+
+    @Test
+    fun `InMemoryCache - non-expired entry returns value`() =
+        runTest {
+            val longExpiration = 1000L
+            val cache = InMemoryCache<String, String>(expirationMs = longExpiration)
+            cache.put("key", "value")
+
+            delay(100)
+            val result = cache.get("key")
+
+            assertEquals("value", result)
+        }
+
+    @Test
+    fun `InMemoryCache - concurrent access is thread-safe`() =
+        runTest {
+            val cache = InMemoryCache<String, Int>()
+            val iterations = 100
+
+            val jobs =
+                List(10) {
+                    launch {
+                        repeat(iterations) { i ->
+                            cache.put("counter", i)
+                        }
+                    }
+                }
+            jobs.forEach { it.join() }
+
+            val result = cache.get("counter")
+            assertNotNull(result)
+            assertTrue(result >= 0 && result < iterations)
+        }
+
+    @Test
+    fun `InMemoryCache - concurrent reads do not block`() =
+        runTest {
+            val cache = InMemoryCache<String, String>()
+            cache.put("key", "value")
+
+            val results = mutableListOf<String?>()
+            val jobs =
+                List(10) {
+                    launch {
+                        results.add(cache.get("key"))
+                    }
+                }
+            jobs.forEach { it.join() }
+
+            assertEquals(10, results.size)
+            assertTrue(results.all { it == "value" })
+        }
+
+    @Test
+    fun `generateContextHash - produces consistent hash for same input`() {
+        val baseUrl = "http://localhost:8000"
+        val apiKey = "test-key"
+
+        val hash1 = generateContextHash(baseUrl, apiKey)
+        val hash2 = generateContextHash(baseUrl, apiKey)
+
+        assertEquals(hash1, hash2)
+    }
+
+    @Test
+    fun `generateContextHash - produces different hashes for different inputs`() {
+        val baseUrl1 = "http://localhost:8000"
+        val apiKey1 = "key1"
+        val baseUrl2 = "http://localhost:8000"
+        val apiKey2 = "key2"
+
+        val hash1 = generateContextHash(baseUrl1, apiKey1)
+        val hash2 = generateContextHash(baseUrl2, apiKey2)
+
+        assertTrue(hash1 != hash2) { "Hashes should be different: $hash1 vs $hash2" }
+    }
+
+    @Test
+    fun `generateContextHash - different baseUrl produces different hash`() {
+        val baseUrl1 = "http://localhost:8000"
+        val baseUrl2 = "http://localhost:9000"
+        val apiKey = "same-key"
+
+        val hash1 = generateContextHash(baseUrl1, apiKey)
+        val hash2 = generateContextHash(baseUrl2, apiKey)
+
+        assertTrue(hash1 != hash2) { "Hashes should be different: $hash1 vs $hash2" }
+    }
+
+    @Test
+    fun `generateContextHash - empty strings produce valid hash`() {
+        val baseUrl = ""
+        val apiKey = ""
+
+        val hash = generateContextHash(baseUrl, apiKey)
+
+        assertTrue(hash.isNotEmpty())
+        assertEquals(16, hash.length)
+    }
+
+    @Test
+    fun `generateContextHash - special characters are handled correctly`() {
+        val baseUrl = "http://localhost:8000/api/v1"
+        val apiKey = "key-with-special-chars-!@#$%^&*()"
+
+        val hash = generateContextHash(baseUrl, apiKey)
+
+        assertTrue(hash.isNotEmpty())
+        assertTrue(hash.all { it.isDigit() || it in 'a'..'f' })
+    }
+
+    @Test
+    fun `generateContextHash - collision resistance with similar inputs`() {
+        val inputs =
+            listOf(
+                "http://localhost:8000:key1",
+                "http://localhost:8000:key2",
+                "http://localhost:8000:key3",
+                "http://localhost:8001:key1",
+                "http://localhost:8002:key1",
+                "https://localhost:8000:key1",
+            )
+
+        val hashes =
+            inputs.map { input ->
+                val parts = input.split(":")
+                val baseUrl = parts.take(parts.size - 1).joinToString(":")
+                val apiKey = parts.last()
+                generateContextHash(baseUrl, apiKey)
+            }
+
+        val uniqueHashes = hashes.toSet()
+        assertEquals(inputs.size, uniqueHashes.size) {
+            "Collision detected. Expected ${inputs.size} unique hashes but got ${uniqueHashes.size}"
+        }
+    }
+
+    @Test
+    fun `generateContextHash - produces fixed-length hexadecimal string`() {
+        val baseUrl = "http://localhost:8000"
+        val apiKey = "test-key-12345"
+
+        val hash = generateContextHash(baseUrl, apiKey)
+
+        assertEquals(16, hash.length)
+        assertTrue(hash.all { it.isDigit() || it in 'a'..'f' })
+    }
+
+    @Test
+    fun `configureAuth - adds X-API-Key header when apiKey is non-empty`() {
+        val apiKey = "test-api-key"
+        val builder = HttpRequestBuilder()
+
+        builder.configureAuth(apiKey)
+
+        val headers = builder.headers
+        assertEquals(apiKey, headers["X-API-Key"])
+    }
+
+    @Test
+    fun `configureAuth - does not add header when apiKey is empty`() {
+        val apiKey = ""
+        val builder = HttpRequestBuilder()
+
+        builder.configureAuth(apiKey)
+
+        val headers = builder.headers
+        assertNull(headers["X-API-Key"])
+    }
+
+    @Test
+    fun `configureAuth - replaces existing X-API-Key header`() {
+        val apiKey = "new-api-key"
+        val builder = HttpRequestBuilder()
+        builder.headers {
+            append("X-API-Key", "old-api-key")
+        }
+
+        builder.configureAuth(apiKey)
+
+        val headers = builder.headers
+        assertEquals(apiKey, headers["X-API-Key"])
+    }
+
+    @Test
+    fun `bodyOrThrow - HTTP error type can be created`() {
+        val httpError =
+            ApiError.HttpError(
+                code = 200,
+                errorMessage = "OK",
+                detail = null,
+            )
+
+        assertTrue(httpError is ApiError.HttpError)
+        assertEquals(200, httpError.code)
+    }
+
+    @Test
+    fun `bodyOrThrow - HttpError with status code`() {
+        val httpError =
+            ApiError.HttpError(
+                code = 404,
+                errorMessage = "Not Found",
+                detail = "Resource not found",
+            )
+
+        assertTrue(httpError is ApiError.HttpError)
+        assertEquals(404, httpError.code)
+        assertEquals("Not Found", httpError.errorMessage)
+        assertEquals("Resource not found", httpError.detail)
+    }
+
+    @Test
+    fun `bodyOrThrow - error message includes detail`() {
+        val httpError =
+            ApiError.HttpError(
+                code = 500,
+                errorMessage = "Internal Server Error",
+                detail = "Database connection failed",
+            )
+
+        val expectedMessage = "HTTP 500: Internal Server Error - Database connection failed"
+        assertEquals(expectedMessage, httpError.message)
+    }
+
+    @Test
+    fun `bodyOrThrow - error message without detail`() {
+        val httpError =
+            ApiError.HttpError(
+                code = 503,
+                errorMessage = "Service Unavailable",
+                detail = "Fallback error message",
+            )
+
+        val expectedMessage = "HTTP 503: Service Unavailable - Fallback error message"
+        assertEquals(expectedMessage, httpError.message)
+    }
+
+    @Test
+    fun `bodyOrThrow - null detail is handled gracefully`() {
+        val httpError =
+            ApiError.HttpError(
+                code = 401,
+                errorMessage = "Unauthorized",
+                detail = null,
+            )
+
+        val expectedMessage = "HTTP 401: Unauthorized"
+        assertEquals(expectedMessage, httpError.message)
+    }
+}
