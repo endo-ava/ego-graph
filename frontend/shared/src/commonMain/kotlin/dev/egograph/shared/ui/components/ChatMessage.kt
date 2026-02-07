@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
+import com.mikepenz.markdown.model.rememberMarkdownState
 import dev.egograph.shared.dto.MessageRole
 import dev.egograph.shared.dto.ThreadMessage
 
@@ -103,8 +104,13 @@ private fun AssistantMessage(
                     )
                 } else {
                     val textColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    val markdownState =
+                        rememberMarkdownState(
+                            content = message.content,
+                            retainState = true,
+                        )
                     Markdown(
-                        content = message.content,
+                        markdownState = markdownState,
                         modifier = Modifier.padding(12.dp),
                         colors = markdownColor(text = textColor),
                     )

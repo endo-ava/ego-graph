@@ -12,7 +12,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -30,12 +30,7 @@ fun MessageList(
     streamingMessageId: String? = null,
 ) {
     val listState = rememberLazyListState()
-
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
-        }
-    }
+    val reversedMessages = remember(messages) { messages.asReversed() }
 
     Box(modifier = modifier.fillMaxSize()) {
         if (messages.isEmpty() && !isLoading && errorMessage == null) {
@@ -53,23 +48,14 @@ fun MessageList(
         } else {
             LazyColumn(
                 state = listState,
+                reverseLayout = true,
                 modifier =
                     Modifier
                         .semantics { testTagsAsResourceId = true }
                         .testTag("message_list")
                         .fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 16.dp),
+                contentPadding = PaddingValues(vertical = 16.dp),
             ) {
-                items(
-                    items = messages,
-                    key = { it.messageId },
-                ) { message ->
-                    ChatMessage(
-                        message = message,
-                        isStreaming = message.messageId == streamingMessageId,
-                    )
-                }
-
                 if (isLoading) {
                     item {
                         Box(
@@ -85,6 +71,17 @@ fun MessageList(
                             )
                         }
                     }
+                }
+
+                items(
+                    items = reversedMessages,
+                    key = { it.messageId },
+                    contentType = { it.role },
+                ) { message ->
+                    ChatMessage(
+                        message = message,
+                        isStreaming = message.messageId == streamingMessageId,
+                    )
                 }
             }
         }
