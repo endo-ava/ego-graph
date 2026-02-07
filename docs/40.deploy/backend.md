@@ -147,7 +147,8 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/egograph/repo
-EnvironmentFile=/opt/egograph/repo/.env
+EnvironmentFile=/opt/egograph/repo/backend/.env
+Environment=USE_ENV_FILE=false
 ExecStart=/root/.local/bin/uv run uvicorn backend.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=10
@@ -158,10 +159,10 @@ Group=root
 WantedBy=multi-user.target
 ```
 
-起動前に.envを作成
+起動前に `backend/.env` を作成
 
 ```bash
-sudo nano /opt/egograph/repo/.env
+sudo nano /opt/egograph/repo/backend/.env
 ```
 
 起動:

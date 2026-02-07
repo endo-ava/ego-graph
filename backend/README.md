@@ -38,9 +38,10 @@ Backend サービスは主に 2 つの目的を果たします：
     ```bash
     uv sync
     ```
-2.  `.env` の設定（`.env.example`を参照）:
-    - `R2_*` のクレデンシャルを設定（データアクセスに必須）。
+2.  `backend/.env` に設定（`.env.example`を参照）:
+    - `R2_*` のクレデンシャルを設定（データアクセス用）。
     - `LLM_*` のクレデンシャルを設定（チャット機能に必須）。
+    - 本番では `USE_ENV_FILE=false` を指定し、systemd の `EnvironmentFile` からのみ読み込む。
 
 ### Running the Server
 
