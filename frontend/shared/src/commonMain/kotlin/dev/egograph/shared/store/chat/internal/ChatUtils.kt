@@ -13,6 +13,6 @@ internal fun String.toThreadTitle(maxLength: Int = 48): String {
     return if (trimmed.length <= maxLength) {
         trimmed
     } else {
-        trimmed.take(maxLength).trimEnd() + "..."
+        trimmed.take((maxLength - 3).coerceAtLeast(0)).trimEnd() + "..."
     }
 }

@@ -178,21 +178,15 @@ private fun AppearanceSection(
         modifier = Modifier.padding(bottom = 8.dp),
     )
 
-    ThemeOption(
-        text = AppTheme.LIGHT.displayName,
-        selected = selectedTheme == AppTheme.LIGHT,
-        onClick = {
-            onThemeSelected(AppTheme.LIGHT)
-        },
-    )
-
-    ThemeOption(
-        text = AppTheme.DARK.displayName,
-        selected = selectedTheme == AppTheme.DARK,
-        onClick = {
-            onThemeSelected(AppTheme.DARK)
-        },
-    )
+    AppTheme.entries.forEach { theme ->
+        ThemeOption(
+            text = theme.displayName,
+            selected = selectedTheme == theme,
+            onClick = {
+                onThemeSelected(theme)
+            },
+        )
+    }
 }
 
 @Composable
@@ -299,5 +293,7 @@ private fun ThemeOption(
 
 private fun isValidUrl(url: String): Boolean {
     val trimmed = url.trim()
-    return trimmed.isNotEmpty() && (trimmed.startsWith("http://") || trimmed.startsWith("https://"))
+    val hasValidScheme = trimmed.startsWith("http://") || trimmed.startsWith("https://")
+    val hostPortPart = trimmed.substringAfter("://", missingDelimiterValue = "")
+    return trimmed.isNotEmpty() && hasValidScheme && hostPortPart.isNotBlank()
 }
