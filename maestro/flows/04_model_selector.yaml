@@ -44,8 +44,9 @@ appId: dev.egograph.app
 - tapOn:
     id: "model_selector_surface"
 
-# 3. Backキーでドロップダウンを閉じる
-- pressKey: back
+# 3. ドロップダウン外をタップして閉じる（プラットフォーム非依存）
+- tapOn:
+    id: "chat_input_field"
 - waitForAnimationToEnd
 
 # 4. 開閉後もチャット入力UIが表示されていることを確認

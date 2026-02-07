@@ -50,10 +50,12 @@ appId: dev.egograph.app
 - inputText: "http://127.0.0.1:65535"
 - tapOn:
     id: "save_settings_button"
-- assertVisible:
-    id: "chat_input_field"
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 10000
 
-# 6. 再起動して接続エラー状態を確認（モデル取得失敗で "Error" 表示）
+# 6. 再起動して接続エラー状態を確認（モデル取得失敗でエラー表示）
 - stopApp
 - launchApp
 - waitForAnimationToEnd
@@ -63,7 +65,7 @@ appId: dev.egograph.app
     timeout: 15000
 - extendedWaitUntil:
     visible:
-      text: "Error"
+      id: "error_message"
     timeout: 15000
 
 # 7. 設定画面へ戻って API URL を復元
@@ -84,5 +86,11 @@ appId: dev.egograph.app
 - pasteText
 - tapOn:
     id: "save_settings_button"
-- assertVisible:
-    id: "chat_input_field"
+- extendedWaitUntil:
+    visible:
+      id: "chat_input_field"
+    timeout: 10000
+
+# 8. 復元成功の確認 - エラー表示が消え、正常に接続できることを検証
+- assertNotVisible:
+    id: "error_message"

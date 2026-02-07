@@ -68,8 +68,11 @@ appId: dev.egograph.app
     id: "send_button"
 
 # 8. AI応答を待機
-# メッセージ一覧の更新を確認（アシスタント応答の表示）
-- waitForAnimationToEnd
+# アシスタント応答バブルの表示を確認（新規応答の到着を検証）
+- extendedWaitUntil:
+    visible:
+      id: "assistant_message_bubble"
+    timeout: 60000
 
 - assertVisible:
     id: "message_list"

@@ -68,8 +68,11 @@ appId: dev.egograph.app
     id: "send_button"
 
 # 8. AI応答を待機（LLM処理のため長めのタイムアウト）
-# Note: UI状態の変化（メッセージリストの更新）を確認し、特定の応答テキストは検証しない
-- waitForAnimationToEnd
+# アシスタント応答バブルの表示を検証
+- extendedWaitUntil:
+    visible:
+      id: "assistant_message_bubble"
+    timeout: 60000
 
 # 9. 送信後もチャット入力が利用可能であることを確認
 - assertVisible:
