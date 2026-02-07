@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,10 +39,11 @@ fun ChatMessage(
     message: ThreadMessage,
     modifier: Modifier = Modifier,
     isStreaming: Boolean = false,
+    activeAssistantTask: String? = null,
 ) {
     when (message.role) {
         MessageRole.USER -> UserMessage(message, modifier)
-        MessageRole.ASSISTANT -> AssistantMessage(message, modifier, isStreaming)
+        MessageRole.ASSISTANT -> AssistantMessage(message, modifier, isStreaming, activeAssistantTask)
         MessageRole.SYSTEM,
         MessageRole.TOOL,
         -> Unit
@@ -83,6 +85,7 @@ private fun AssistantMessage(
     message: ThreadMessage,
     modifier: Modifier = Modifier,
     isStreaming: Boolean = false,
+    activeAssistantTask: String? = null,
 ) {
     val contentBlocks = remember(message.content) { splitAssistantContent(message.content) }
     val markdownTextStyles =
@@ -141,13 +144,33 @@ private fun AssistantMessage(
                     }
                 }
             } else {
-                MessageBubble(isUser = false) {
-                    Text(
-                        text = message.content,
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                if (message.content.isBlank()) {
+                    val statusText = activeAssistantTask?.let { "Running $it..." } ?: "Thinking..."
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    MessageBubble(isUser = false) {
+                        Text(
+                            text = message.content,
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 

@@ -80,10 +80,19 @@ internal class ChatExecutor(
                 createdAt = now,
             )
 
-        var assistantThreadMessage: ThreadMessage? = null
+        var assistantThreadMessage =
+            ThreadMessage(
+                messageId = "temp-assistant-${Random.nextLong()}",
+                threadId = provisionalThreadId,
+                userId = "assistant",
+                role = MessageRole.ASSISTANT,
+                content = "",
+                createdAt = now,
+                modelName = currentState.selectedModel,
+            )
 
         val baseMessages = currentState.messages
-        dispatch(ChatView.MessageStreamUpdated(baseMessages + userThreadMessage))
+        dispatch(ChatView.MessageStreamUpdated(baseMessages + userThreadMessage + assistantThreadMessage))
 
         scope.launch {
             val request =
@@ -119,7 +128,7 @@ internal class ChatExecutor(
                         if (chunkThreadId != null && chunkThreadId != resolvedThreadId) {
                             resolvedThreadId = chunkThreadId
                             userThreadMessage = userThreadMessage.copy(threadId = chunkThreadId)
-                            assistantThreadMessage = assistantThreadMessage?.copy(threadId = chunkThreadId)
+                            assistantThreadMessage = assistantThreadMessage.copy(threadId = chunkThreadId)
                             updatedMessages =
                                 updatedMessages.map { message ->
                                     when (message.messageId) {
@@ -134,8 +143,18 @@ internal class ChatExecutor(
                         val (contentToAppend, prefix) =
                             when (chunk.type) {
                                 StreamChunkType.DELTA -> chunk.delta.orEmpty() to ""
-                                StreamChunkType.TOOL_CALL -> formatToolCalls(chunk.toolCalls) to "\n"
-                                StreamChunkType.TOOL_RESULT -> formatToolResult(chunk.toolName, chunk.toolResult) to "\n"
+                                StreamChunkType.TOOL_CALL -> {
+                                    val toolName = chunk.toolCalls?.firstOrNull()?.name
+                                    if (!toolName.isNullOrBlank()) {
+                                        dispatch(ChatView.AssistantTaskStarted(toolName))
+                                    }
+                                    formatToolCalls(chunk.toolCalls) to "\n"
+                                }
+
+                                StreamChunkType.TOOL_RESULT -> {
+                                    dispatch(ChatView.AssistantTaskFinished)
+                                    formatToolResult(chunk.toolName, chunk.toolResult) to "\n"
+                                }
                                 else -> "" to ""
                             }
 
@@ -161,12 +180,12 @@ internal class ChatExecutor(
                     }
 
                 val finalThreadId = resolvedThreadId ?: provisionalThreadId
-                val finalAssistantMessage = assistantThreadMessage?.copy(threadId = finalThreadId)
+                val finalAssistantMessage = assistantThreadMessage.copy(threadId = finalThreadId)
                 val finalMessages =
                     state().messages.map { message ->
                         when (message.messageId) {
                             userThreadMessage.messageId -> userThreadMessage.copy(threadId = finalThreadId)
-                            finalAssistantMessage?.messageId -> finalAssistantMessage
+                            finalAssistantMessage.messageId -> finalAssistantMessage
                             else -> message
                         }
                     }

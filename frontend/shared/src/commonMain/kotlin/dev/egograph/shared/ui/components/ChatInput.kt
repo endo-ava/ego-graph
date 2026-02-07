@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -64,7 +63,6 @@ fun ChatInput(
 
         SendButton(
             enabled = text.isNotBlank() && !isLoading,
-            isLoading = isLoading,
             onClick = {
                 onSendMessage(text)
                 text = ""
@@ -98,7 +96,6 @@ private fun ChatTextField(
 @Composable
 private fun SendButton(
     enabled: Boolean,
-    isLoading: Boolean,
     onClick: () -> Unit,
 ) {
     IconButton(
@@ -109,18 +106,10 @@ private fun SendButton(
                 .testTagResourceId("send_button")
                 .padding(start = 8.dp),
     ) {
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 2.dp,
-            )
-        } else {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Send,
-                contentDescription = "Send",
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.Send,
+            contentDescription = "Send",
+            tint = MaterialTheme.colorScheme.primary,
+        )
     }
 }

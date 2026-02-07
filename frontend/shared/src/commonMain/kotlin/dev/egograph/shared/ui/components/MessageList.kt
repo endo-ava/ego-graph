@@ -35,6 +35,7 @@ fun MessageList(
     isLoading: Boolean = false,
     errorMessage: String? = null,
     streamingMessageId: String? = null,
+    activeAssistantTask: String? = null,
 ) {
     val listState = rememberLazyListState()
     val reversedMessages = remember(messages) { messages.asReversed() }
@@ -108,6 +109,7 @@ fun MessageList(
                     ChatMessage(
                         message = message,
                         isStreaming = message.messageId == streamingMessageId,
+                        activeAssistantTask = activeAssistantTask,
                     )
                 }
             }
