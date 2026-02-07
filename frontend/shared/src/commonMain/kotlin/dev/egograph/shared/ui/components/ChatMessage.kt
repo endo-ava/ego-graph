@@ -128,7 +128,7 @@ private fun AssistantMessage(
                     when (block) {
                         is AssistantContentBlock.Markdown -> {
                             Markdown(
-                                content = block.content.trim(),
+                                content = block.content,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                                 colors = markdownColors,
                                 typography = markdownTextStyles,

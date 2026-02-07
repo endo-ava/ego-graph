@@ -273,8 +273,7 @@ internal object ChatReducerImpl :
     private fun ChatState.reduceAssistantTaskStarted(msg: ChatView.AssistantTaskStarted): ChatState =
         copy(activeAssistantTask = msg.taskName)
 
-    private fun ChatState.reduceAssistantTaskFinished(): ChatState =
-        copy(activeAssistantTask = null)
+    private fun ChatState.reduceAssistantTaskFinished(): ChatState = copy(activeAssistantTask = null)
 
     private fun ChatState.reduceMessageSent(msg: ChatView.MessageSent): ChatState =
         copy(

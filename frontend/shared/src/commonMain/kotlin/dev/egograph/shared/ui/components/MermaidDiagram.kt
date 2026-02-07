@@ -16,9 +16,13 @@ private val mermaidFenceRegex =
     )
 
 internal sealed interface AssistantContentBlock {
-    data class Markdown(val content: String) : AssistantContentBlock
+    data class Markdown(
+        val content: String,
+    ) : AssistantContentBlock
 
-    data class Mermaid(val code: String) : AssistantContentBlock
+    data class Mermaid(
+        val code: String,
+    ) : AssistantContentBlock
 }
 
 internal fun extractMermaidCode(content: String): String? {

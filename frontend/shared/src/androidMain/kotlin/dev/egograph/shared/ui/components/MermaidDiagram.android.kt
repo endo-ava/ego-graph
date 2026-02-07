@@ -1,7 +1,6 @@
 package dev.egograph.shared.ui
 
 import android.annotation.SuppressLint
-import android.graphics.Color as AndroidColor
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
@@ -28,8 +27,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.graphics.Color as AndroidColor
 
-private const val mermaidCdnUrl = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"
+private const val MERMAID_CDN_URL = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -172,7 +172,7 @@ private fun buildMermaidHtml(
             #diagram { width: 100%; }
             #diagram svg { width: 100% !important; height: auto !important; display: block; }
           </style>
-          <script src="$mermaidCdnUrl"></script>
+          <script src="$MERMAID_CDN_URL"></script>
         </head>
         <body>
           <div id="container">
@@ -190,7 +190,7 @@ private fun buildMermaidHtml(
               try {
                 mermaid.initialize({
                   startOnLoad: false,
-                  securityLevel: 'loose',
+                  securityLevel: 'strict',
                   theme: '$theme'
                 });
                 await mermaid.run({ querySelector: '#diagram' });
@@ -207,7 +207,7 @@ private fun buildMermaidHtml(
           </script>
         </body>
         </html>
-    """.trimIndent()
+        """.trimIndent()
 }
 
 private fun escapeHtml(input: String): String =
@@ -216,5 +216,4 @@ private fun escapeHtml(input: String): String =
         .replace("<", "&lt;")
         .replace(">", "&gt;")
 
-private fun toHex(color: Color): String =
-    String.format("#%06X", 0xFFFFFF and color.toArgb())
+private fun toHex(color: Color): String = String.format("#%06X", 0xFFFFFF and color.toArgb())
