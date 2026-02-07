@@ -19,13 +19,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
-import com.mikepenz.markdown.model.rememberMarkdownState
+import com.mikepenz.markdown.m3.markdownTypography
 import dev.egograph.shared.dto.MessageRole
 import dev.egograph.shared.dto.ThreadMessage
 
@@ -80,6 +81,19 @@ private fun AssistantMessage(
     modifier: Modifier = Modifier,
     isStreaming: Boolean = false,
 ) {
+    val contentBlocks = remember(message.content) { splitAssistantContent(message.content) }
+    val markdownTextStyles =
+        markdownTypography(
+            h1 = MaterialTheme.typography.titleLarge,
+            h2 = MaterialTheme.typography.titleMedium,
+            h3 = MaterialTheme.typography.titleSmall,
+            h4 = MaterialTheme.typography.bodyLarge,
+            h5 = MaterialTheme.typography.bodyMedium,
+            h6 = MaterialTheme.typography.bodyMedium,
+            text = MaterialTheme.typography.bodyMedium,
+            paragraph = MaterialTheme.typography.bodyMedium,
+        )
+
     Row(
         modifier =
             modifier
@@ -92,27 +106,36 @@ private fun AssistantMessage(
 
         Column(
             horizontalAlignment = Alignment.Start,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(1f),
         ) {
-            MessageBubble(isUser = false) {
-                if (isStreaming) {
+            if (!isStreaming) {
+                contentBlocks.forEach { block ->
+                    when (block) {
+                        is AssistantContentBlock.Markdown -> {
+                            val textColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            Markdown(
+                                content = block.content.trim(),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                                colors = markdownColor(text = textColor),
+                                typography = markdownTextStyles,
+                            )
+                        }
+
+                        is AssistantContentBlock.Mermaid -> {
+                            MermaidDiagram(
+                                mermaidCode = block.code,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            } else {
+                MessageBubble(isUser = false) {
                     Text(
                         text = message.content,
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    val textColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    val markdownState =
-                        rememberMarkdownState(
-                            content = message.content,
-                            retainState = true,
-                        )
-                    Markdown(
-                        markdownState = markdownState,
-                        modifier = Modifier.padding(12.dp),
-                        colors = markdownColor(text = textColor),
                     )
                 }
             }

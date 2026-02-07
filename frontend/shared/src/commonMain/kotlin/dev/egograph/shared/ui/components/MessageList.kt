@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
+import dev.egograph.shared.dto.MessageRole
 import dev.egograph.shared.dto.ThreadMessage
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
@@ -93,7 +94,16 @@ fun MessageList(
                 items(
                     items = reversedMessages,
                     key = { it.messageId },
-                    contentType = { it.role },
+                    contentType = {
+                        if (
+                            it.role == MessageRole.ASSISTANT &&
+                            splitAssistantContent(it.content).any { block -> block is AssistantContentBlock.Mermaid }
+                        ) {
+                            "assistant_mermaid"
+                        } else {
+                            it.role
+                        }
+                    },
                 ) { message ->
                     ChatMessage(
                         message = message,
