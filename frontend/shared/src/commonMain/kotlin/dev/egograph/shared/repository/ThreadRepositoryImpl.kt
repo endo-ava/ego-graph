@@ -42,8 +42,6 @@ class ThreadRepositoryImpl(
     private val threadCacheMutex = Mutex()
     private var threadCache: Map<String, CacheEntry<Thread>> = emptyMap()
 
-    private val cacheDurationMs = 60000L
-
     override fun getThreads(
         limit: Int,
         offset: Int,
@@ -51,7 +49,7 @@ class ThreadRepositoryImpl(
         flow {
             val cacheKey = "$contextHash:list:$limit:$offset"
             val cached = threadsCacheMutex.withLock { threadsCache[cacheKey] }
-            if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
+            if (cached != null && System.currentTimeMillis() - cached.timestamp < DEFAULT_CACHE_DURATION_MS) {
                 emit(Result.success(cached.data))
                 return@flow
             }
@@ -92,7 +90,7 @@ class ThreadRepositoryImpl(
         flow {
             val cacheKey = "$contextHash:thread:$threadId"
             val cached = threadCacheMutex.withLock { threadCache[cacheKey] }
-            if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
+            if (cached != null && System.currentTimeMillis() - cached.timestamp < DEFAULT_CACHE_DURATION_MS) {
                 emit(Result.success(cached.data))
                 return@flow
             }

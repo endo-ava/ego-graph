@@ -60,14 +60,7 @@ private fun UserMessage(
             horizontalAlignment = Alignment.End,
             modifier = Modifier.weight(1f, fill = false),
         ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier =
-                    Modifier
-                        .semantics { testTagsAsResourceId = true }
-                        .testTag("user_message_bubble"),
-            ) {
+            MessageBubble(isUser = true) {
                 Text(
                     text = message.content,
                     modifier = Modifier.padding(12.dp),
@@ -101,14 +94,7 @@ private fun AssistantMessage(
             horizontalAlignment = Alignment.Start,
             modifier = Modifier.weight(1f, fill = false),
         ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier =
-                    Modifier
-                        .semantics { testTagsAsResourceId = true }
-                        .testTag("assistant_message_bubble"),
-            ) {
+            MessageBubble(isUser = false) {
                 if (isStreaming) {
                     Text(
                         text = message.content,
@@ -139,31 +125,50 @@ private fun AssistantMessage(
 }
 
 @Composable
+private fun MessageBubble(
+    isUser: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color =
+            if (isUser) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
+        modifier =
+            modifier
+                .semantics { testTagsAsResourceId = true }
+                .testTag(if (isUser) "user_message_bubble" else "assistant_message_bubble"),
+    ) {
+        content()
+    }
+}
+
+@Composable
 private fun MessageAvatar(isUser: Boolean) {
+    val backgroundColor =
+        if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+    val contentColor =
+        if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondary
+    val icon = if (isUser) Icons.Default.Face else Icons.Default.Person
+    val description = if (isUser) "User" else "AI"
+
     Box(
         modifier =
             Modifier
                 .size(32.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(
-                    if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-                ),
+                .background(backgroundColor),
         contentAlignment = Alignment.Center,
     ) {
-        if (isUser) {
-            Icon(
-                imageVector = Icons.Default.Face,
-                contentDescription = "User",
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(20.dp),
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = "AI",
-                tint = MaterialTheme.colorScheme.onSecondary,
-                modifier = Modifier.size(20.dp),
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            tint = contentColor,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }

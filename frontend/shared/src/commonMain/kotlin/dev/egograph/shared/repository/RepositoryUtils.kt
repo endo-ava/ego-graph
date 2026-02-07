@@ -7,6 +7,8 @@ import io.ktor.client.request.headers
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 
+internal const val DEFAULT_CACHE_DURATION_MS = 60000L
+
 internal data class CacheEntry<T>(
     val data: T,
     val timestamp: Long = System.currentTimeMillis(),

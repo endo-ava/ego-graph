@@ -293,7 +293,7 @@ private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egog
 
         val newTitle =
             if (existing.title.isBlank() && firstMessage != null) {
-                buildThreadTitle(firstMessage.content)
+                firstMessage.content.toThreadTitle()
             } else {
                 existing.title
             }
@@ -310,7 +310,7 @@ private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egog
     val firstMessage = msg.messages.firstOrNull() ?: return null
     val lastMessage = msg.messages.lastOrNull() ?: return null
 
-    val title = buildThreadTitle(firstMessage.content)
+    val title = firstMessage.content.toThreadTitle()
     val preview = lastMessage.content.takeIf { it.isNotBlank() }
 
     return dev.egograph.shared.dto.Thread(
@@ -322,17 +322,6 @@ private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egog
         createdAt = firstMessage.createdAt,
         lastMessageAt = lastMessage.createdAt,
     )
-}
-
-private fun buildThreadTitle(content: String): String {
-    val trimmed = content.trim()
-    if (trimmed.isEmpty()) return "New chat"
-    val maxLength = 48
-    return if (trimmed.length <= maxLength) {
-        trimmed
-    } else {
-        trimmed.take(maxLength).trimEnd() + "..."
-    }
 }
 
 /**

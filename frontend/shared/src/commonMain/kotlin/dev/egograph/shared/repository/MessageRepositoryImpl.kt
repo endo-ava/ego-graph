@@ -24,19 +24,13 @@ class MessageRepositoryImpl(
     private val apiKey: String = "",
     private val diskCache: DiskCache? = null,
 ) : MessageRepository {
-    private data class CacheEntry<T>(
-        val data: T,
-        val timestamp: Long = System.currentTimeMillis(),
-    )
-
     private val messagesCacheMutex = Mutex()
     private var messagesCache: Map<String, CacheEntry<ThreadMessagesResponse>> = emptyMap()
-    private val cacheDurationMs = 60000L
 
     override fun getMessages(threadId: String): Flow<RepositoryResult<ThreadMessagesResponse>> =
         flow {
             val cached = messagesCacheMutex.withLock { messagesCache[threadId] }
-            if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
+            if (cached != null && System.currentTimeMillis() - cached.timestamp < DEFAULT_CACHE_DURATION_MS) {
                 emit(Result.success(cached.data))
                 return@flow
             }
