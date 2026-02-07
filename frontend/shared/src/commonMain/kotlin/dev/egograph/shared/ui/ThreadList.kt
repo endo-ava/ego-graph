@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -46,6 +47,121 @@ fun ThreadList(
 ) {
     val pullRefreshState = rememberPullToRefreshState()
     val listState = rememberLazyListState()
+
+    InfiniteScrollEffect(
+        listState = listState,
+        itemCount = threads.size,
+        isLoading = isLoading,
+        isLoadingMore = isLoadingMore,
+        hasMore = hasMore,
+        error = error,
+        onLoadMore = onLoadMore,
+    )
+
+    Box(modifier = modifier.fillMaxSize()) {
+        if (isLoading && threads.isEmpty()) {
+            ThreadListLoading()
+        } else {
+            PullToRefreshBox(
+                isRefreshing = isLoading,
+                onRefresh = onRefresh,
+                state = pullRefreshState,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                ThreadListContent(
+                    threads = threads,
+                    selectedThreadId = selectedThreadId,
+                    isLoadingMore = isLoadingMore,
+                    error = error,
+                    listState = listState,
+                    onThreadClick = onThreadClick,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThreadListContent(
+    threads: List<Thread>,
+    selectedThreadId: String?,
+    isLoadingMore: Boolean,
+    error: String?,
+    listState: LazyListState,
+    onThreadClick: (String) -> Unit,
+) {
+    if (error != null && threads.isEmpty()) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+        ) {
+            ThreadListError(message = error)
+        }
+    } else if (threads.isEmpty()) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+        ) {
+            ThreadListEmpty()
+        }
+    } else {
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier =
+                Modifier
+                    .semantics { testTagsAsResourceId = true }
+                    .testTag("thread_list")
+                    .fillMaxSize(),
+        ) {
+            items(
+                items = threads,
+                key = { it.threadId },
+            ) { thread ->
+                ThreadItem(
+                    thread = thread,
+                    isActive = thread.threadId == selectedThreadId,
+                    onClick = { onThreadClick(thread.threadId) },
+                )
+            }
+
+            if (isLoadingMore) {
+                item {
+                    LoadingMoreIndicator()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingMoreIndicator() {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
+private fun InfiniteScrollEffect(
+    listState: LazyListState,
+    itemCount: Int,
+    isLoading: Boolean,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    error: String?,
+    onLoadMore: () -> Unit,
+) {
     var lastRequestedSize by remember { mutableIntStateOf(0) }
     val lastVisibleIndex by remember {
         derivedStateOf {
@@ -61,89 +177,19 @@ fun ThreadList(
         }
     }
 
-    LaunchedEffect(lastVisibleIndex, threads.size, isLoading, isLoadingMore, hasMore) {
+    LaunchedEffect(lastVisibleIndex, itemCount, isLoading, isLoadingMore, hasMore) {
         val lastIndex = lastVisibleIndex
-        val size = threads.size
         if (
             lastIndex != null &&
-            size > 0 &&
-            lastIndex >= size - 4 &&
+            itemCount > 0 &&
+            lastIndex >= itemCount - 4 &&
             hasMore &&
             !isLoading &&
             !isLoadingMore &&
-            size != lastRequestedSize
+            itemCount != lastRequestedSize
         ) {
-            lastRequestedSize = size
+            lastRequestedSize = itemCount
             onLoadMore()
-        }
-    }
-
-    Box(modifier = modifier.fillMaxSize()) {
-        if (isLoading && threads.isEmpty()) {
-            ThreadListLoading()
-        } else {
-            PullToRefreshBox(
-                isRefreshing = isLoading,
-                onRefresh = onRefresh,
-                state = pullRefreshState,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                if (error != null && threads.isEmpty()) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
-                    ) {
-                        ThreadListError(message = error)
-                    }
-                } else if (threads.isEmpty()) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
-                    ) {
-                        ThreadListEmpty()
-                    }
-                } else {
-                    LazyColumn(
-                        state = listState,
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier =
-                            Modifier
-                                .semantics { testTagsAsResourceId = true }
-                                .testTag("thread_list")
-                                .fillMaxSize(),
-                    ) {
-                        items(
-                            items = threads,
-                            key = { it.threadId },
-                        ) { thread ->
-                            ThreadItem(
-                                thread = thread,
-                                isActive = thread.threadId == selectedThreadId,
-                                onClick = { onThreadClick(thread.threadId) },
-                            )
-                        }
-
-                        if (isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(12.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
