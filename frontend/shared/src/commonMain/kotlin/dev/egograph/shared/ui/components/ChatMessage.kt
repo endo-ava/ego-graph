@@ -88,6 +88,7 @@ private fun AssistantMessage(
     activeAssistantTask: String? = null,
 ) {
     val contentBlocks = remember(message.content) { splitAssistantContent(message.content) }
+    val textColor = MaterialTheme.colorScheme.onSurfaceVariant
     val markdownTextStyles =
         markdownTypography(
             h1 = MaterialTheme.typography.titleLarge,
@@ -99,6 +100,7 @@ private fun AssistantMessage(
             text = MaterialTheme.typography.bodyMedium,
             paragraph = MaterialTheme.typography.bodyMedium,
         )
+    val markdownColors = markdownColor(text = textColor)
     val markdownRendererComponents =
         remember {
             markdownComponents(
@@ -125,11 +127,10 @@ private fun AssistantMessage(
                 contentBlocks.forEach { block ->
                     when (block) {
                         is AssistantContentBlock.Markdown -> {
-                            val textColor = MaterialTheme.colorScheme.onSurfaceVariant
                             Markdown(
                                 content = block.content.trim(),
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                                colors = markdownColor(text = textColor),
+                                colors = markdownColors,
                                 typography = markdownTextStyles,
                                 components = markdownRendererComponents,
                             )

@@ -197,6 +197,8 @@ internal object ChatReducerImpl :
         copy(
             selectedThread = msg.thread,
             messages = emptyList(),
+            isLoadingMessages = true,
+            streamingMessageId = null,
             messagesError = null,
         )
 
@@ -204,6 +206,8 @@ internal object ChatReducerImpl :
         copy(
             selectedThread = null,
             messages = emptyList(),
+            isLoadingMessages = false,
+            streamingMessageId = null,
             messagesError = null,
         )
 

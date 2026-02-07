@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
-import dev.egograph.shared.dto.MessageRole
 import dev.egograph.shared.dto.ThreadMessage
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
@@ -54,6 +53,11 @@ fun MessageList(
     Box(modifier = modifier.fillMaxSize()) {
         if (messages.isEmpty() && !isLoading && errorMessage == null) {
             MessageListEmpty(modifier = Modifier.align(Alignment.Center))
+        } else if (messages.isEmpty() && isLoading) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.align(Alignment.Center),
+            )
         } else if (errorMessage != null) {
             Text(
                 text = errorMessage,
@@ -95,16 +99,6 @@ fun MessageList(
                 items(
                     items = reversedMessages,
                     key = { it.messageId },
-                    contentType = {
-                        if (
-                            it.role == MessageRole.ASSISTANT &&
-                            splitAssistantContent(it.content).any { block -> block is AssistantContentBlock.Mermaid }
-                        ) {
-                            "assistant_mermaid"
-                        } else {
-                            it.role
-                        }
-                    },
                 ) { message ->
                     ChatMessage(
                         message = message,
