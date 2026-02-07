@@ -24,6 +24,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.mikepenz.markdown.compose.components.markdownComponents
+import com.mikepenz.markdown.compose.elements.highlightedCodeBlock
+import com.mikepenz.markdown.compose.elements.highlightedCodeFence
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
@@ -93,6 +96,13 @@ private fun AssistantMessage(
             text = MaterialTheme.typography.bodyMedium,
             paragraph = MaterialTheme.typography.bodyMedium,
         )
+    val markdownRendererComponents =
+        remember {
+            markdownComponents(
+                codeBlock = highlightedCodeBlock,
+                codeFence = highlightedCodeFence,
+            )
+        }
 
     Row(
         modifier =
@@ -118,6 +128,7 @@ private fun AssistantMessage(
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                                 colors = markdownColor(text = textColor),
                                 typography = markdownTextStyles,
+                                components = markdownRendererComponents,
                             )
                         }
 
