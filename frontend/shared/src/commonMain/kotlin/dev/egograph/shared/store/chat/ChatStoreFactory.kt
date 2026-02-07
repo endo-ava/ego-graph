@@ -302,7 +302,7 @@ private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egog
             threadId = msg.threadId,
             preview = lastMessage?.content?.takeIf { it.isNotBlank() } ?: existing.preview,
             lastMessageAt = lastMessage?.createdAt ?: existing.lastMessageAt,
-            messageCount = existing.messageCount + msg.messages.size,
+            messageCount = msg.messages.size,
             title = newTitle,
         )
     }

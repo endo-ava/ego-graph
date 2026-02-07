@@ -34,10 +34,12 @@ fun ChatMessage(
     modifier: Modifier = Modifier,
     isStreaming: Boolean = false,
 ) {
-    if (message.role == MessageRole.USER) {
-        UserMessage(message, modifier)
-    } else {
-        AssistantMessage(message, modifier, isStreaming)
+    when (message.role) {
+        MessageRole.USER -> UserMessage(message, modifier)
+        MessageRole.ASSISTANT -> AssistantMessage(message, modifier, isStreaming)
+        MessageRole.SYSTEM,
+        MessageRole.TOOL,
+        -> Unit
     }
 }
 

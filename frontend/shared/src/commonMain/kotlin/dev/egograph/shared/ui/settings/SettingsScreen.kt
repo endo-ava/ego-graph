@@ -103,8 +103,8 @@ fun SettingsScreen(
 
         coroutineScope.launch {
             snackbarHostState.showSnackbar("Settings saved")
-            onBack()
         }
+        onBack()
     }
 
     Scaffold(

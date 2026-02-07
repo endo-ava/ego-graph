@@ -59,7 +59,7 @@ internal fun generateContextHash(
     var hash: ULong = 0xcbf29ce484222325u // FNV offset basis
     val fnvPrime: ULong = 0x100000001b3u
     for (byte in combined.toByteArray(Charsets.UTF_8)) {
-        hash = hash xor byte.toULong()
+        hash = hash xor byte.toUByte().toULong()
         hash = hash * fnvPrime
     }
     return hash.toString(16).padStart(16, '0')

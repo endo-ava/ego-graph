@@ -1,6 +1,5 @@
 package dev.egograph.shared.repository
 
-import co.touchlab.kermit.Logger
 import dev.egograph.shared.cache.DiskCache
 import dev.egograph.shared.dto.SystemPromptName
 import dev.egograph.shared.dto.SystemPromptResponse
@@ -12,8 +11,6 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
 
 interface SystemPromptRepository {
@@ -31,22 +28,13 @@ class SystemPromptRepositoryImpl(
     private val apiKey: String = "",
     private val diskCache: DiskCache? = null,
 ) : SystemPromptRepository {
-    private val logger = Logger.withTag("SystemPromptRepository")
-
-    private data class CacheEntry<T>(
-        val data: T,
-        val timestamp: Long = System.currentTimeMillis(),
-    )
-
-    private val systemPromptCacheMutex = Mutex()
-    private var systemPromptCache: Map<SystemPromptName, CacheEntry<SystemPromptResponse>> = emptyMap()
-    private val cacheDurationMs = 60000L
+    private val systemPromptCache = InMemoryCache<SystemPromptName, SystemPromptResponse>()
 
     override suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse> =
         try {
-            val cached = systemPromptCacheMutex.withLock { systemPromptCache[name] }
-            if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
-                Result.success(cached.data)
+            val cached = systemPromptCache.get(name)
+            if (cached != null) {
+                Result.success(cached)
             } else {
                 val body =
                     diskCache?.getOrFetch(
@@ -56,9 +44,7 @@ class SystemPromptRepositoryImpl(
                         fetchSystemPrompt(name)
                     } ?: fetchSystemPrompt(name)
 
-                systemPromptCacheMutex.withLock {
-                    systemPromptCache = systemPromptCache + (name to CacheEntry(body))
-                }
+                systemPromptCache.put(name, body)
                 Result.success(body)
             }
         } catch (e: CancellationException) {
@@ -95,9 +81,7 @@ class SystemPromptRepositoryImpl(
         }
 
     private suspend fun invalidateCache(name: SystemPromptName) {
-        systemPromptCacheMutex.withLock {
-            systemPromptCache = systemPromptCache - name
-        }
+        systemPromptCache.remove(name)
         diskCache?.remove(name.apiName)
     }
 
