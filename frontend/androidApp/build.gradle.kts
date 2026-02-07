@@ -16,23 +16,16 @@ android {
     namespace = "dev.egograph.app"
     compileSdk = 36
 
-    val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
-    val keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-    val keyAlias = System.getenv("ANDROID_KEY_ALIAS")
-    val keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+    val keystorePath = "debug.keystore"
+    val keystorePassword = System.getenv("KEYSTORE_PASSWORD")
 
     signingConfigs {
-        if (
-            keystorePath != null &&
-            keystorePassword != null &&
-            keyAlias != null &&
-            keyPassword != null
-        ) {
+        if (keystorePassword != null) {
             create("release") {
                 storeFile = file(keystorePath)
                 storePassword = keystorePassword
-                this.keyAlias = keyAlias
-                this.keyPassword = keyPassword
+                keyAlias = "egograph_debug"
+                keyPassword = keystorePassword
             }
         }
     }
@@ -41,11 +34,16 @@ android {
         applicationId = "dev.egograph.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
+        versionName = System.getenv("VERSION_NAME") ?: "1.0-dev"
     }
 
     buildTypes {
+        debug {
+            if (signingConfigs.findByName("release") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
         release {
             isMinifyEnabled = true
             if (signingConfigs.findByName("release") != null) {

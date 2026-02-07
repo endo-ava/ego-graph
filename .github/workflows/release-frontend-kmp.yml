@@ -38,22 +38,39 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Build Debug APK
-        run: ./gradlew :androidApp:assembleDebug
-        working-directory: frontend
-
       - name: Generate version
         id: version
         run: |
           DATE=$(date +%Y%m%d)
-          echo "version=v${DATE}-${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          VERSION_NAME="v${DATE}-${{ github.run_number }}"
+          echo "version=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "VERSION_NAME=${VERSION_NAME}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=${{ github.run_number }}" >> "$GITHUB_ENV"
+
+      - name: Setup Debug Keystore
+        run: |
+          mkdir -p frontend/androidApp
+          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > frontend/androidApp/debug.keystore
+
+      - name: Build Debug APK
+        run: ./gradlew :androidApp:assembleDebug
+        working-directory: frontend
+        env:
+          VERSION_NAME: ${{ env.VERSION_NAME }}
+          VERSION_CODE: ${{ github.run_number }}
+          KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
+
+      - name: Rename APK with version
+        run: |
+          mv frontend/androidApp/build/outputs/apk/debug/androidApp-debug.apk \
+             frontend/androidApp/build/outputs/apk/debug/egograph-${{ env.VERSION_NAME }}.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: KMP Android APK (${{ steps.version.outputs.version }})
-          files: frontend/androidApp/build/outputs/apk/debug/androidApp-debug.apk
+          files: frontend/androidApp/build/outputs/apk/debug/egograph-*.apk
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
