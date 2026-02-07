@@ -131,94 +131,28 @@ internal class ChatExecutor(
                             updated = true
                         }
 
-                        if (chunk.type == StreamChunkType.DELTA) {
-                            val delta = chunk.delta.orEmpty()
-                            if (delta.isNotEmpty()) {
-                                val lastMessage = updatedMessages.lastOrNull()
-                                val updatedAssistant =
-                                    if (lastMessage?.role == MessageRole.ASSISTANT) {
-                                        lastMessage.copy(content = lastMessage.content + delta)
-                                    } else {
-                                        ThreadMessage(
-                                            messageId = "temp-assistant-${Random.nextLong()}",
-                                            threadId = resolvedThreadId ?: provisionalThreadId,
-                                            userId = "assistant",
-                                            role = MessageRole.ASSISTANT,
-                                            content = delta,
-                                            createdAt = now,
-                                            modelName = currentState.selectedModel,
-                                        )
-                                    }
-
-                                assistantThreadMessage = updatedAssistant
-                                updatedMessages =
-                                    if (lastMessage?.role == MessageRole.ASSISTANT) {
-                                        updatedMessages.dropLast(1) + updatedAssistant
-                                    } else {
-                                        updatedMessages + updatedAssistant
-                                    }
-                                updated = true
+                        val (contentToAppend, prefix) =
+                            when (chunk.type) {
+                                StreamChunkType.DELTA -> chunk.delta.orEmpty() to ""
+                                StreamChunkType.TOOL_CALL -> formatToolCalls(chunk.toolCalls) to "\n"
+                                StreamChunkType.TOOL_RESULT -> formatToolResult(chunk.toolName, chunk.toolResult) to "\n"
+                                else -> "" to ""
                             }
-                        }
 
-                        if (chunk.type == StreamChunkType.TOOL_CALL) {
-                            val toolCallText = formatToolCalls(chunk.toolCalls)
-                            if (toolCallText.isNotBlank()) {
-                                val lastMessage = updatedMessages.lastOrNull()
-                                val updatedAssistant =
-                                    if (lastMessage?.role == MessageRole.ASSISTANT) {
-                                        lastMessage.copy(content = lastMessage.content + "\n" + toolCallText)
-                                    } else {
-                                        ThreadMessage(
-                                            messageId = "temp-assistant-${Random.nextLong()}",
-                                            threadId = resolvedThreadId ?: provisionalThreadId,
-                                            userId = "assistant",
-                                            role = MessageRole.ASSISTANT,
-                                            content = toolCallText,
-                                            createdAt = now,
-                                            modelName = currentState.selectedModel,
-                                        )
-                                    }
-
-                                assistantThreadMessage = updatedAssistant
-                                updatedMessages =
-                                    if (lastMessage?.role == MessageRole.ASSISTANT) {
-                                        updatedMessages.dropLast(1) + updatedAssistant
-                                    } else {
-                                        updatedMessages + updatedAssistant
-                                    }
-                                updated = true
-                            }
-                        }
-
-                        if (chunk.type == StreamChunkType.TOOL_RESULT) {
-                            val toolResultText = formatToolResult(chunk.toolName, chunk.toolResult)
-                            if (toolResultText.isNotBlank()) {
-                                val lastMessage = updatedMessages.lastOrNull()
-                                val updatedAssistant =
-                                    if (lastMessage?.role == MessageRole.ASSISTANT) {
-                                        lastMessage.copy(content = lastMessage.content + "\n" + toolResultText)
-                                    } else {
-                                        ThreadMessage(
-                                            messageId = "temp-assistant-${Random.nextLong()}",
-                                            threadId = resolvedThreadId ?: provisionalThreadId,
-                                            userId = "assistant",
-                                            role = MessageRole.ASSISTANT,
-                                            content = toolResultText,
-                                            createdAt = now,
-                                            modelName = currentState.selectedModel,
-                                        )
-                                    }
-
-                                assistantThreadMessage = updatedAssistant
-                                updatedMessages =
-                                    if (lastMessage?.role == MessageRole.ASSISTANT) {
-                                        updatedMessages.dropLast(1) + updatedAssistant
-                                    } else {
-                                        updatedMessages + updatedAssistant
-                                    }
-                                updated = true
-                            }
+                        if (contentToAppend.isNotEmpty()) {
+                            val (newAssistant, newMessages) =
+                                appendAssistantContent(
+                                    content = contentToAppend,
+                                    prefixIfAppending = prefix,
+                                    messages = updatedMessages,
+                                    resolvedThreadId = resolvedThreadId,
+                                    provisionalThreadId = provisionalThreadId,
+                                    modelName = currentState.selectedModel,
+                                    timestamp = now,
+                                )
+                            assistantThreadMessage = newAssistant
+                            updatedMessages = newMessages
+                            updated = true
                         }
 
                         if (updated) {
@@ -324,8 +258,7 @@ internal class ChatExecutor(
                             )
                         }.onFailure { error ->
                             val message = "スレッドの読み込みに失敗しました: ${error.message}"
-                            logger.e(message, error)
-                            dispatch(ChatView.ThreadsLoadFailed(message))
+                            logAndDispatchError(message, error, ChatView.ThreadsLoadFailed(message))
                         }
                 }
         }
@@ -355,8 +288,7 @@ internal class ChatExecutor(
                             )
                         }.onFailure { error ->
                             val message = "スレッドの追加読み込みに失敗しました: ${error.message}"
-                            logger.e(message, error)
-                            dispatch(ChatView.ThreadsLoadMoreFailed(message))
+                            logAndDispatchError(message, error, ChatView.ThreadsLoadMoreFailed(message))
                         }
                 }
         }
@@ -384,8 +316,7 @@ internal class ChatExecutor(
                                 loadMessages(threadId)
                             }.onFailure { error ->
                                 val message = "スレッドの取得に失敗しました: ${error.message}"
-                                logger.e(message, error)
-                                dispatch(ChatView.ThreadsLoadFailed(message))
+                                logAndDispatchError(message, error, ChatView.ThreadsLoadFailed(message))
                             }
                     }
             }
@@ -416,8 +347,7 @@ internal class ChatExecutor(
                             dispatch(ChatView.MessagesLoaded(response.messages))
                         }.onFailure { error ->
                             val message = "メッセージの読み込みに失敗しました: ${error.message}"
-                            logger.e(message, error)
-                            dispatch(ChatView.MessagesLoadFailed(message))
+                            logAndDispatchError(message, error, ChatView.MessagesLoadFailed(message))
                         }
                 }
         }
@@ -446,10 +376,55 @@ internal class ChatExecutor(
                     }
                 }.onFailure { error ->
                     val message = "モデルの読み込みに失敗しました: ${error.message}"
-                    logger.e(message, error)
-                    dispatch(ChatView.ModelsLoadFailed(message))
+                    logAndDispatchError(message, error, ChatView.ModelsLoadFailed(message))
                 }
         }
+    }
+
+    private fun logAndDispatchError(
+        message: String,
+        error: Throwable,
+        view: ChatView,
+    ) {
+        logger.e(message, error)
+        dispatch(view)
+    }
+
+    private fun appendAssistantContent(
+        content: String,
+        prefixIfAppending: String,
+        messages: List<ThreadMessage>,
+        resolvedThreadId: String?,
+        provisionalThreadId: String,
+        modelName: String?,
+        timestamp: String,
+    ): Pair<ThreadMessage, List<ThreadMessage>> {
+        val lastMessage = messages.lastOrNull()
+        val isLastAssistant = lastMessage?.role == MessageRole.ASSISTANT
+
+        val updatedAssistant =
+            if (isLastAssistant) {
+                lastMessage.copy(content = lastMessage.content + prefixIfAppending + content)
+            } else {
+                ThreadMessage(
+                    messageId = "temp-assistant-${Random.nextLong()}",
+                    threadId = resolvedThreadId ?: provisionalThreadId,
+                    userId = "assistant",
+                    role = MessageRole.ASSISTANT,
+                    content = content,
+                    createdAt = timestamp,
+                    modelName = modelName,
+                )
+            }
+
+        val updatedMessages =
+            if (isLastAssistant) {
+                messages.dropLast(1) + updatedAssistant
+            } else {
+                messages + updatedAssistant
+            }
+
+        return updatedAssistant to updatedMessages
     }
 
     private fun getProvisionalIsoTimestamp(): String = nowIsoTimestamp()

@@ -1,6 +1,5 @@
 package dev.egograph.shared.repository
 
-import co.touchlab.kermit.Logger
 import dev.egograph.shared.cache.DiskCache
 import dev.egograph.shared.dto.SystemPromptName
 import dev.egograph.shared.dto.SystemPromptResponse
@@ -8,14 +7,10 @@ import dev.egograph.shared.dto.SystemPromptUpdateRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.client.request.headers
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
 
 interface SystemPromptRepository {
@@ -33,53 +28,32 @@ class SystemPromptRepositoryImpl(
     private val apiKey: String = "",
     private val diskCache: DiskCache? = null,
 ) : SystemPromptRepository {
-    private val logger = Logger.withTag("SystemPromptRepository")
-
-    private data class CacheEntry<T>(
-        val data: T,
-        val timestamp: Long = System.currentTimeMillis(),
-    )
-
-    private val systemPromptCacheMutex = Mutex()
-    private var systemPromptCache: Map<SystemPromptName, CacheEntry<SystemPromptResponse>> = emptyMap()
-    private val cacheDurationMs = 60000L
+    private val systemPromptCache = InMemoryCache<SystemPromptName, SystemPromptResponse>()
 
     override suspend fun getSystemPrompt(name: SystemPromptName): RepositoryResult<SystemPromptResponse> =
         try {
-            val cached = systemPromptCacheMutex.withLock { systemPromptCache[name] }
-            if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
-                Result.success(cached.data)
+            val cached = systemPromptCache.get(name)
+            if (cached != null) {
+                Result.success(cached)
             } else {
-                val cacheKey = name.apiName
                 val body =
-                    if (diskCache != null) {
-                        diskCache.getOrFetch(
-                            key = cacheKey,
-                            serializer = SystemPromptResponse.serializer(),
-                        ) {
-                            fetchSystemPrompt(name)
-                        }
-                    } else {
+                    diskCache?.getOrFetch(
+                        key = name.apiName,
+                        serializer = SystemPromptResponse.serializer(),
+                    ) {
                         fetchSystemPrompt(name)
-                    }
-                systemPromptCacheMutex.withLock {
-                    systemPromptCache = systemPromptCache + (name to CacheEntry(body))
-                }
+                    } ?: fetchSystemPrompt(name)
+
+                systemPromptCache.put(name, body)
                 Result.success(body)
             }
-        } catch (e: ApiError) {
-            systemPromptCacheMutex.withLock {
-                systemPromptCache = systemPromptCache - name
-            }
-            diskCache?.remove(name.apiName)
-            Result.failure(e)
         } catch (e: CancellationException) {
             throw e
+        } catch (e: ApiError) {
+            invalidateCache(name)
+            Result.failure(e)
         } catch (e: Exception) {
-            systemPromptCacheMutex.withLock {
-                systemPromptCache = systemPromptCache - name
-            }
-            diskCache?.remove(name.apiName)
+            invalidateCache(name)
             Result.failure(ApiError.NetworkError(e))
         }
 
@@ -91,71 +65,29 @@ class SystemPromptRepositoryImpl(
             val response =
                 httpClient.put("$baseUrl/v1/system-prompts/${name.apiName}") {
                     contentType(ContentType.Application.Json)
-                    if (apiKey.isNotEmpty()) {
-                        headers {
-                            append("X-API-Key", apiKey)
-                        }
-                    }
+                    configureAuth(apiKey)
                     setBody(SystemPromptUpdateRequest(content))
                 }
 
-            when (response.status) {
-                HttpStatusCode.OK -> {
-                    systemPromptCacheMutex.withLock {
-                        systemPromptCache = systemPromptCache - name
-                    }
-                    diskCache?.remove(name.apiName)
-                    Result.success(response.body())
-                }
-                else -> {
-                    val errorDetail =
-                        try {
-                            response.body<String>()
-                        } catch (e: Exception) {
-                            logger.w(e) { "Failed to read error response body" }
-                            null
-                        }
-                    Result.failure(
-                        ApiError.HttpError(
-                            code = response.status.value,
-                            errorMessage = response.status.description,
-                            detail = errorDetail,
-                        ),
-                    )
-                }
-            }
+            val body = response.bodyOrThrow<SystemPromptResponse>()
+            invalidateCache(name)
+            Result.success(body)
         } catch (e: CancellationException) {
             throw e
+        } catch (e: ApiError) {
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(ApiError.NetworkError(e))
         }
 
-    private suspend fun fetchSystemPrompt(name: SystemPromptName): SystemPromptResponse {
-        val response =
-            httpClient.get("$baseUrl/v1/system-prompts/${name.apiName}") {
-                if (apiKey.isNotEmpty()) {
-                    headers {
-                        append("X-API-Key", apiKey)
-                    }
-                }
-            }
-
-        return when (response.status) {
-            HttpStatusCode.OK -> response.body()
-            else -> {
-                val errorDetail =
-                    try {
-                        response.body<String>()
-                    } catch (e: Exception) {
-                        logger.w(e) { "Failed to read error response body" }
-                        null
-                    }
-                throw ApiError.HttpError(
-                    code = response.status.value,
-                    errorMessage = response.status.description,
-                    detail = errorDetail,
-                )
-            }
-        }
+    private suspend fun invalidateCache(name: SystemPromptName) {
+        systemPromptCache.remove(name)
+        diskCache?.remove(name.apiName)
     }
+
+    private suspend fun fetchSystemPrompt(name: SystemPromptName): SystemPromptResponse =
+        httpClient
+            .get("$baseUrl/v1/system-prompts/${name.apiName}") {
+                configureAuth(apiKey)
+            }.bodyOrThrow()
 }

@@ -22,9 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
@@ -37,38 +34,72 @@ fun ChatMessage(
     modifier: Modifier = Modifier,
     isStreaming: Boolean = false,
 ) {
-    val isUser = message.role == MessageRole.USER
+    when (message.role) {
+        MessageRole.USER -> UserMessage(message, modifier)
+        MessageRole.ASSISTANT -> AssistantMessage(message, modifier, isStreaming)
+        MessageRole.SYSTEM,
+        MessageRole.TOOL,
+        -> Unit
+    }
+}
 
+@Composable
+private fun UserMessage(
+    message: ThreadMessage,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
+        horizontalArrangement = Arrangement.End,
     ) {
-        if (!isUser) {
-            MessageAvatar(isUser = false)
-            Spacer(modifier = Modifier.width(8.dp))
-        }
-
         Column(
-            horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
+            horizontalAlignment = Alignment.End,
             modifier = Modifier.weight(1f, fill = false),
         ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                modifier =
-                    Modifier
-                        .semantics { testTagsAsResourceId = true }
-                        .testTag(if (isUser) "user_message_bubble" else "assistant_message_bubble"),
-            ) {
-                if (isUser || isStreaming) {
+            MessageBubble(isUser = true) {
+                Text(
+                    text = message.content,
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        MessageAvatar(isUser = true)
+    }
+}
+
+@Composable
+private fun AssistantMessage(
+    message: ThreadMessage,
+    modifier: Modifier = Modifier,
+    isStreaming: Boolean = false,
+) {
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        MessageAvatar(isUser = false)
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Column(
+            horizontalAlignment = Alignment.Start,
+            modifier = Modifier.weight(1f, fill = false),
+        ) {
+            MessageBubble(isUser = false) {
+                if (isStreaming) {
                     Text(
                         text = message.content,
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
                     val textColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -80,7 +111,7 @@ fun ChatMessage(
                 }
             }
 
-            if (message.modelName != null && !isUser) {
+            if (message.modelName != null) {
                 Text(
                     text = message.modelName,
                     style = MaterialTheme.typography.labelSmall,
@@ -89,40 +120,53 @@ fun ChatMessage(
                 )
             }
         }
+    }
+}
 
-        if (isUser) {
-            Spacer(modifier = Modifier.width(8.dp))
-            MessageAvatar(isUser = true)
-        }
+@Composable
+private fun MessageBubble(
+    isUser: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color =
+            if (isUser) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
+        modifier =
+            modifier
+                .testTagResourceId(if (isUser) "user_message_bubble" else "assistant_message_bubble"),
+    ) {
+        content()
     }
 }
 
 @Composable
 private fun MessageAvatar(isUser: Boolean) {
+    val backgroundColor =
+        if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+    val contentColor =
+        if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondary
+    val icon = if (isUser) Icons.Default.Face else Icons.Default.Person
+    val description = if (isUser) "User" else "AI"
+
     Box(
         modifier =
             Modifier
                 .size(32.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(
-                    if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-                ),
+                .background(backgroundColor),
         contentAlignment = Alignment.Center,
     ) {
-        if (isUser) {
-            Icon(
-                imageVector = Icons.Default.Face,
-                contentDescription = "User",
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(20.dp),
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = "AI",
-                tint = MaterialTheme.colorScheme.onSecondary,
-                modifier = Modifier.size(20.dp),
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            tint = contentColor,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }

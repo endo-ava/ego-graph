@@ -119,145 +119,166 @@ internal object ChatReducerImpl :
     com.arkivanov.mvikotlin.core.store.Reducer<ChatState, ChatView> {
     override fun ChatState.reduce(msg: ChatView): ChatState =
         when (msg) {
-            is ChatView.ThreadsLoadingStarted ->
-                copy(
-                    isLoadingThreads = true,
-                    isLoadingMoreThreads = false,
-                    threadsError = null,
-                )
-
-            is ChatView.ThreadsLoaded ->
-                copy(
-                    threads = msg.threads,
-                    isLoadingThreads = false,
-                    isLoadingMoreThreads = false,
-                    hasMoreThreads = msg.hasMore,
-                    threadsError = null,
-                )
-
-            is ChatView.ThreadsLoadMoreStarted ->
-                copy(
-                    isLoadingMoreThreads = true,
-                    threadsError = null,
-                )
-
-            is ChatView.ThreadsAppended ->
-                copy(
-                    threads = threads + msg.threads,
-                    isLoadingMoreThreads = false,
-                    hasMoreThreads = msg.hasMore,
-                    threadsError = null,
-                )
-
-            is ChatView.ThreadsLoadMoreFailed ->
-                copy(
-                    isLoadingMoreThreads = false,
-                    threadsError = msg.error,
-                )
-
-            is ChatView.ThreadsLoadFailed ->
-                copy(
-                    isLoadingThreads = false,
-                    isLoadingMoreThreads = false,
-                    hasMoreThreads = false,
-                    threadsError = msg.error,
-                )
-
-            is ChatView.ThreadSelected ->
-                copy(
-                    selectedThread = msg.thread,
-                    messages = emptyList(),
-                    messagesError = null,
-                )
-
-            is ChatView.ThreadSelectionCleared ->
-                copy(
-                    selectedThread = null,
-                    messages = emptyList(),
-                    messagesError = null,
-                )
-
-            is ChatView.MessagesLoadingStarted ->
-                copy(
-                    isLoadingMessages = true,
-                    messagesError = null,
-                )
-
-            is ChatView.MessagesLoaded ->
-                copy(
-                    messages = msg.messages,
-                    isLoadingMessages = false,
-                    messagesError = null,
-                )
-
-            is ChatView.MessagesLoadFailed ->
-                copy(
-                    isLoadingMessages = false,
-                    messagesError = msg.error,
-                )
-
-            is ChatView.ModelsLoadingStarted ->
-                copy(
-                    isLoadingModels = true,
-                    modelsError = null,
-                )
-
-            is ChatView.ModelsLoaded ->
-                copy(
-                    models = msg.models,
-                    selectedModel = msg.defaultModel,
-                    isLoadingModels = false,
-                    modelsError = null,
-                )
-
-            is ChatView.ModelsLoadFailed ->
-                copy(
-                    isLoadingModels = false,
-                    modelsError = msg.error,
-                )
-
-            is ChatView.ModelSelected ->
-                copy(
-                    selectedModel = msg.modelId,
-                )
-
-            is ChatView.MessageSendingStarted ->
-                copy(
-                    isSending = true,
-                    messagesError = null,
-                )
-
-            is ChatView.MessageStreamUpdated ->
-                copy(
-                    isSending = true,
-                    messages = msg.messages,
-                    streamingMessageId = msg.messages.lastOrNull()?.messageId,
-                    messagesError = null,
-                )
-
-            is ChatView.MessageSent ->
-                copy(
-                    isSending = false,
-                    messages = msg.messages,
-                    streamingMessageId = null,
-                    selectedThread = resolveSelectedThread(msg),
-                    messagesError = null,
-                )
-
-            is ChatView.MessageSendFailed ->
-                copy(
-                    isSending = false,
-                    streamingMessageId = null,
-                    messagesError = msg.error,
-                )
-
-            is ChatView.ErrorsCleared ->
-                copy(
-                    threadsError = null,
-                    messagesError = null,
-                    modelsError = null,
-                )
+            is ChatView.ThreadsLoadingStarted -> reduceThreadsLoadingStarted()
+            is ChatView.ThreadsLoaded -> reduceThreadsLoaded(msg)
+            is ChatView.ThreadsLoadMoreStarted -> reduceThreadsLoadMoreStarted()
+            is ChatView.ThreadsAppended -> reduceThreadsAppended(msg)
+            is ChatView.ThreadsLoadMoreFailed -> reduceThreadsLoadMoreFailed(msg)
+            is ChatView.ThreadsLoadFailed -> reduceThreadsLoadFailed(msg)
+            is ChatView.ThreadSelected -> reduceThreadSelected(msg)
+            is ChatView.ThreadSelectionCleared -> reduceThreadSelectionCleared()
+            is ChatView.MessagesLoadingStarted -> reduceMessagesLoadingStarted()
+            is ChatView.MessagesLoaded -> reduceMessagesLoaded(msg)
+            is ChatView.MessagesLoadFailed -> reduceMessagesLoadFailed(msg)
+            is ChatView.ModelsLoadingStarted -> reduceModelsLoadingStarted()
+            is ChatView.ModelsLoaded -> reduceModelsLoaded(msg)
+            is ChatView.ModelsLoadFailed -> reduceModelsLoadFailed(msg)
+            is ChatView.ModelSelected -> reduceModelSelected(msg)
+            is ChatView.MessageSendingStarted -> reduceMessageSendingStarted()
+            is ChatView.MessageStreamUpdated -> reduceMessageStreamUpdated(msg)
+            is ChatView.MessageSent -> reduceMessageSent(msg)
+            is ChatView.MessageSendFailed -> reduceMessageSendFailed(msg)
+            is ChatView.ErrorsCleared -> reduceErrorsCleared()
         }
+
+    private fun ChatState.reduceThreadsLoadingStarted(): ChatState =
+        copy(
+            isLoadingThreads = true,
+            isLoadingMoreThreads = false,
+            threadsError = null,
+        )
+
+    private fun ChatState.reduceThreadsLoaded(msg: ChatView.ThreadsLoaded): ChatState =
+        copy(
+            threads = msg.threads,
+            isLoadingThreads = false,
+            isLoadingMoreThreads = false,
+            hasMoreThreads = msg.hasMore,
+            threadsError = null,
+        )
+
+    private fun ChatState.reduceThreadsLoadMoreStarted(): ChatState =
+        copy(
+            isLoadingMoreThreads = true,
+            threadsError = null,
+        )
+
+    private fun ChatState.reduceThreadsAppended(msg: ChatView.ThreadsAppended): ChatState =
+        copy(
+            threads = threads + msg.threads,
+            isLoadingMoreThreads = false,
+            hasMoreThreads = msg.hasMore,
+            threadsError = null,
+        )
+
+    private fun ChatState.reduceThreadsLoadMoreFailed(msg: ChatView.ThreadsLoadMoreFailed): ChatState =
+        copy(
+            isLoadingMoreThreads = false,
+            threadsError = msg.error,
+        )
+
+    private fun ChatState.reduceThreadsLoadFailed(msg: ChatView.ThreadsLoadFailed): ChatState =
+        copy(
+            isLoadingThreads = false,
+            isLoadingMoreThreads = false,
+            hasMoreThreads = false,
+            threadsError = msg.error,
+        )
+
+    private fun ChatState.reduceThreadSelected(msg: ChatView.ThreadSelected): ChatState =
+        copy(
+            selectedThread = msg.thread,
+            messages = emptyList(),
+            messagesError = null,
+        )
+
+    private fun ChatState.reduceThreadSelectionCleared(): ChatState =
+        copy(
+            selectedThread = null,
+            messages = emptyList(),
+            messagesError = null,
+        )
+
+    private fun ChatState.reduceMessagesLoadingStarted(): ChatState =
+        copy(
+            isLoadingMessages = true,
+            messagesError = null,
+        )
+
+    private fun ChatState.reduceMessagesLoaded(msg: ChatView.MessagesLoaded): ChatState =
+        copy(
+            messages = msg.messages,
+            isLoadingMessages = false,
+            messagesError = null,
+        )
+
+    private fun ChatState.reduceMessagesLoadFailed(msg: ChatView.MessagesLoadFailed): ChatState =
+        copy(
+            isLoadingMessages = false,
+            messagesError = msg.error,
+        )
+
+    private fun ChatState.reduceModelsLoadingStarted(): ChatState =
+        copy(
+            isLoadingModels = true,
+            modelsError = null,
+        )
+
+    private fun ChatState.reduceModelsLoaded(msg: ChatView.ModelsLoaded): ChatState =
+        copy(
+            models = msg.models,
+            selectedModel = msg.defaultModel,
+            isLoadingModels = false,
+            modelsError = null,
+        )
+
+    private fun ChatState.reduceModelsLoadFailed(msg: ChatView.ModelsLoadFailed): ChatState =
+        copy(
+            isLoadingModels = false,
+            modelsError = msg.error,
+        )
+
+    private fun ChatState.reduceModelSelected(msg: ChatView.ModelSelected): ChatState =
+        copy(
+            selectedModel = msg.modelId,
+        )
+
+    private fun ChatState.reduceMessageSendingStarted(): ChatState =
+        copy(
+            isSending = true,
+            messagesError = null,
+        )
+
+    private fun ChatState.reduceMessageStreamUpdated(msg: ChatView.MessageStreamUpdated): ChatState =
+        copy(
+            isSending = true,
+            messages = msg.messages,
+            streamingMessageId = msg.messages.lastOrNull()?.messageId,
+            messagesError = null,
+        )
+
+    private fun ChatState.reduceMessageSent(msg: ChatView.MessageSent): ChatState =
+        copy(
+            isSending = false,
+            messages = msg.messages,
+            streamingMessageId = null,
+            selectedThread = resolveSelectedThread(msg),
+            messagesError = null,
+        )
+
+    private fun ChatState.reduceMessageSendFailed(msg: ChatView.MessageSendFailed): ChatState =
+        copy(
+            isSending = false,
+            streamingMessageId = null,
+            messagesError = msg.error,
+        )
+
+    private fun ChatState.reduceErrorsCleared(): ChatState =
+        copy(
+            threadsError = null,
+            messagesError = null,
+            modelsError = null,
+        )
 }
 
 private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egograph.shared.dto.Thread? {
@@ -272,7 +293,7 @@ private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egog
 
         val newTitle =
             if (existing.title.isBlank() && firstMessage != null) {
-                buildThreadTitle(firstMessage.content)
+                firstMessage.content.toThreadTitle()
             } else {
                 existing.title
             }
@@ -281,7 +302,7 @@ private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egog
             threadId = msg.threadId,
             preview = lastMessage?.content?.takeIf { it.isNotBlank() } ?: existing.preview,
             lastMessageAt = lastMessage?.createdAt ?: existing.lastMessageAt,
-            messageCount = existing.messageCount + msg.messages.size,
+            messageCount = msg.messages.size,
             title = newTitle,
         )
     }
@@ -289,7 +310,7 @@ private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egog
     val firstMessage = msg.messages.firstOrNull() ?: return null
     val lastMessage = msg.messages.lastOrNull() ?: return null
 
-    val title = buildThreadTitle(firstMessage.content)
+    val title = firstMessage.content.toThreadTitle()
     val preview = lastMessage.content.takeIf { it.isNotBlank() }
 
     return dev.egograph.shared.dto.Thread(
@@ -301,17 +322,6 @@ private fun ChatState.resolveSelectedThread(msg: ChatView.MessageSent): dev.egog
         createdAt = firstMessage.createdAt,
         lastMessageAt = lastMessage.createdAt,
     )
-}
-
-private fun buildThreadTitle(content: String): String {
-    val trimmed = content.trim()
-    if (trimmed.isEmpty()) return "New chat"
-    val maxLength = 48
-    return if (trimmed.length <= maxLength) {
-        trimmed
-    } else {
-        trimmed.take(maxLength).trimEnd() + "..."
-    }
 }
 
 /**

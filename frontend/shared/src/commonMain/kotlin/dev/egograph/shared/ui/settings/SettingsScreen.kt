@@ -64,7 +64,7 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val selectedTheme by themeRepository.theme.collectAsState()
 
-    var apiUrl by remember {
+    var inputUrl by remember {
         mutableStateOf(
             preferences.getString(
                 PlatformPrefsKeys.KEY_API_URL,
@@ -73,7 +73,7 @@ fun SettingsScreen(
         )
     }
 
-    var apiKey by remember {
+    var inputKey by remember {
         mutableStateOf(
             preferences.getString(
                 PlatformPrefsKeys.KEY_API_KEY,
@@ -82,9 +82,30 @@ fun SettingsScreen(
         )
     }
 
-    var inputUrl by remember { mutableStateOf(apiUrl) }
-    var inputKey by remember { mutableStateOf(apiKey) }
     var isKeyVisible by remember { mutableStateOf(false) }
+
+    fun saveSettings() {
+        val urlToSave = inputUrl.trim()
+        if (isValidUrl(urlToSave)) {
+            val normalizedUrl = normalizeBaseUrl(urlToSave)
+            preferences.putString(
+                PlatformPrefsKeys.KEY_API_URL,
+                normalizedUrl,
+            )
+            inputUrl = normalizedUrl
+        }
+        val keyToSave = inputKey.trim()
+        preferences.putString(
+            PlatformPrefsKeys.KEY_API_KEY,
+            keyToSave,
+        )
+        inputKey = keyToSave
+
+        coroutineScope.launch {
+            snackbarHostState.showSnackbar("Settings saved")
+        }
+        onBack()
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -119,125 +140,131 @@ fun SettingsScreen(
                         .fillMaxSize()
                         .padding(16.dp),
             ) {
-                Text(
-                    text = "Appearance",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-
-                ThemeOption(
-                    text = AppTheme.LIGHT.displayName,
-                    selected = selectedTheme == AppTheme.LIGHT,
-                    onClick = {
-                        themeRepository.setTheme(AppTheme.LIGHT)
-                    },
-                )
-
-                ThemeOption(
-                    text = AppTheme.DARK.displayName,
-                    selected = selectedTheme == AppTheme.DARK,
-                    onClick = {
-                        themeRepository.setTheme(AppTheme.DARK)
-                    },
+                AppearanceSection(
+                    selectedTheme = selectedTheme,
+                    onThemeSelected = { themeRepository.setTheme(it) },
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Text(
-                    text = "API Configuration",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-
-                OutlinedTextField(
-                    value = inputUrl,
-                    onValueChange = { newValue ->
-                        inputUrl = newValue
-                    },
-                    label = { Text("API URL") },
-                    placeholder = { Text("https://api.egograph.dev") },
-                    modifier =
-                        Modifier
-                            .semantics { testTagsAsResourceId = true }
-                            .testTag("api_url_input")
-                            .fillMaxWidth(),
-                    singleLine = true,
-                    isError = inputUrl.isNotBlank() && (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://")),
-                    supportingText = {
-                        Text(
-                            text = "Production: https://api.egograph.dev | Tailscale: http://100.x.x.x:8000",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
+                ApiConfigurationSection(
+                    inputUrl = inputUrl,
+                    onUrlChange = { inputUrl = it },
+                    inputKey = inputKey,
+                    onKeyChange = { inputKey = it },
+                    isKeyVisible = isKeyVisible,
+                    onKeyVisibilityChange = { isKeyVisible = it },
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                OutlinedTextField(
-                    value = inputKey,
-                    onValueChange = { newValue ->
-                        inputKey = newValue
-                    },
-                    label = { Text("API Key") },
-                    placeholder = { Text("Optional: Enter your API key") },
-                    visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        val description = if (isKeyVisible) "Hide API Key" else "Show API Key"
-                        val icon = if (isKeyVisible) Icons.Default.LockOpen else Icons.Default.Lock
-
-                        IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
-                            Icon(imageVector = icon, contentDescription = description)
-                        }
-                    },
-                    modifier =
-                        Modifier
-                            .semantics { testTagsAsResourceId = true }
-                            .testTag("api_key_input")
-                            .fillMaxWidth(),
-                    singleLine = true,
+                SettingsActions(
+                    inputUrl = inputUrl,
+                    onSave = { saveSettings() },
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = {
-                        val urlToSave = inputUrl.trim()
-                        if (urlToSave.isNotBlank() && (urlToSave.startsWith("http://") || urlToSave.startsWith("https://"))) {
-                            // URLを正規化して保存（末尾スラッシュを削除）
-                            val normalizedUrl = normalizeBaseUrl(urlToSave)
-                            preferences.putString(
-                                PlatformPrefsKeys.KEY_API_URL,
-                                normalizedUrl,
-                            )
-                            apiUrl = normalizedUrl
-                            inputUrl = normalizedUrl
-                        }
-                        val keyToSave = inputKey.trim()
-                        preferences.putString(
-                            PlatformPrefsKeys.KEY_API_KEY,
-                            keyToSave,
-                        )
-                        apiKey = keyToSave
-
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Settings saved")
-                            onBack()
-                        }
-                    },
-                    modifier =
-                        Modifier
-                            .semantics { testTagsAsResourceId = true }
-                            .testTag("save_settings_button")
-                            .fillMaxWidth(),
-                    enabled =
-                        inputUrl.trim().isNotEmpty() &&
-                            (inputUrl.trim().startsWith("http://") || inputUrl.trim().startsWith("https://")),
-                ) {
-                    Text("Save Settings")
-                }
             }
         }
+    }
+}
+
+@Composable
+private fun AppearanceSection(
+    selectedTheme: AppTheme,
+    onThemeSelected: (AppTheme) -> Unit,
+) {
+    Text(
+        text = "Appearance",
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(bottom = 8.dp),
+    )
+
+    AppTheme.entries.forEach { theme ->
+        ThemeOption(
+            text = theme.displayName,
+            selected = selectedTheme == theme,
+            onClick = {
+                onThemeSelected(theme)
+            },
+        )
+    }
+}
+
+@Composable
+private fun ApiConfigurationSection(
+    inputUrl: String,
+    onUrlChange: (String) -> Unit,
+    inputKey: String,
+    onKeyChange: (String) -> Unit,
+    isKeyVisible: Boolean,
+    onKeyVisibilityChange: (Boolean) -> Unit,
+) {
+    Text(
+        text = "API Configuration",
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(bottom = 8.dp),
+    )
+
+    OutlinedTextField(
+        value = inputUrl,
+        onValueChange = onUrlChange,
+        label = { Text("API URL") },
+        placeholder = { Text("https://api.egograph.dev") },
+        modifier =
+            Modifier
+                .semantics { testTagsAsResourceId = true }
+                .testTag("api_url_input")
+                .fillMaxWidth(),
+        singleLine = true,
+        isError = inputUrl.isNotBlank() && !isValidUrl(inputUrl),
+        supportingText = {
+            Text(
+                text = "Production: https://api.egograph.dev | Tailscale: http://100.x.x.x:8000",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    OutlinedTextField(
+        value = inputKey,
+        onValueChange = onKeyChange,
+        label = { Text("API Key") },
+        placeholder = { Text("Optional: Enter your API key") },
+        visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+            val description = if (isKeyVisible) "Hide API Key" else "Show API Key"
+            val icon = if (isKeyVisible) Icons.Default.LockOpen else Icons.Default.Lock
+
+            IconButton(onClick = { onKeyVisibilityChange(!isKeyVisible) }) {
+                Icon(imageVector = icon, contentDescription = description)
+            }
+        },
+        modifier =
+            Modifier
+                .semantics { testTagsAsResourceId = true }
+                .testTag("api_key_input")
+                .fillMaxWidth(),
+        singleLine = true,
+    )
+}
+
+@Composable
+private fun SettingsActions(
+    inputUrl: String,
+    onSave: () -> Unit,
+) {
+    Button(
+        onClick = onSave,
+        modifier =
+            Modifier
+                .semantics { testTagsAsResourceId = true }
+                .testTag("save_settings_button")
+                .fillMaxWidth(),
+        enabled = isValidUrl(inputUrl),
+    ) {
+        Text("Save Settings")
     }
 }
 
@@ -262,4 +289,11 @@ private fun ThemeOption(
         Spacer(modifier = Modifier.width(8.dp))
         Text(text)
     }
+}
+
+private fun isValidUrl(url: String): Boolean {
+    val trimmed = url.trim()
+    val hasValidScheme = trimmed.startsWith("http://") || trimmed.startsWith("https://")
+    val hostPortPart = trimmed.substringAfter("://", missingDelimiterValue = "")
+    return trimmed.isNotEmpty() && hasValidScheme && hostPortPart.isNotBlank()
 }

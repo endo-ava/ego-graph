@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import cafe.adriel.voyager.core.screen.Screen
 import com.arkivanov.mvikotlin.extensions.coroutines.states
 import dev.egograph.shared.store.chat.ChatIntent
+import dev.egograph.shared.store.chat.ChatState
 import dev.egograph.shared.store.chat.ChatStore
 import org.koin.compose.koinInject
 
@@ -22,22 +23,33 @@ class ThreadListScreen : Screen {
             }
         }
 
-        ThreadList(
-            threads = state.threads,
-            selectedThreadId = state.selectedThread?.threadId,
-            isLoading = state.isLoadingThreads,
-            isLoadingMore = state.isLoadingMoreThreads,
-            hasMore = state.hasMoreThreads,
-            error = state.threadsError,
-            onThreadClick = { threadId ->
-                store.accept(ChatIntent.SelectThread(threadId))
-            },
-            onRefresh = {
-                store.accept(ChatIntent.RefreshThreads)
-            },
-            onLoadMore = {
-                store.accept(ChatIntent.LoadMoreThreads)
-            },
+        ThreadListScreenContent(
+            state = state,
+            onEvent = store::accept,
         )
     }
+}
+
+@Composable
+private fun ThreadListScreenContent(
+    state: ChatState,
+    onEvent: (ChatIntent) -> Unit,
+) {
+    ThreadList(
+        threads = state.threads,
+        selectedThreadId = state.selectedThread?.threadId,
+        isLoading = state.isLoadingThreads,
+        isLoadingMore = state.isLoadingMoreThreads,
+        hasMore = state.hasMoreThreads,
+        error = state.threadsError,
+        onThreadClick = { threadId ->
+            onEvent(ChatIntent.SelectThread(threadId))
+        },
+        onRefresh = {
+            onEvent(ChatIntent.RefreshThreads)
+        },
+        onLoadMore = {
+            onEvent(ChatIntent.LoadMoreThreads)
+        },
+    )
 }

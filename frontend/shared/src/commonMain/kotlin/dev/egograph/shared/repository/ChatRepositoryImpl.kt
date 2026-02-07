@@ -1,15 +1,12 @@
 package dev.egograph.shared.repository
 
-import co.touchlab.kermit.Logger
 import dev.egograph.shared.dto.ChatRequest
 import dev.egograph.shared.dto.ChatResponse
 import dev.egograph.shared.dto.ModelsResponse
 import dev.egograph.shared.dto.StreamChunk
 import dev.egograph.shared.dto.StreamChunkType
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
@@ -49,57 +46,35 @@ class ChatRepositoryImpl(
                 val response =
                     httpClient.post("$baseUrl/v1/chat") {
                         contentType(io.ktor.http.ContentType.Application.Json)
-                        if (apiKey.isNotEmpty()) {
-                            headers {
-                                append("X-API-Key", apiKey)
-                            }
-                        }
+                        configureAuth(apiKey)
                         setBody(request.copy(stream = true))
                     }
 
-                when (response.status) {
-                    HttpStatusCode.OK -> {
-                        val channel = response.bodyAsChannel()
-                        val buffer = StringBuilder()
-                        val chunkBuffer = ByteArray(8192)
+                if (response.status == HttpStatusCode.OK) {
+                    val channel = response.bodyAsChannel()
+                    val buffer = StringBuilder()
+                    val chunkBuffer = ByteArray(8192)
 
-                        while (!channel.isClosedForRead) {
-                            currentCoroutineContext().ensureActive() // Check for cancellation
-                            val readCount = channel.readAvailable(chunkBuffer, 0, chunkBuffer.size)
-                            if (readCount == -1) {
-                                break
-                            }
-                            if (readCount == 0) {
-                                delay(1)
-                                continue
-                            }
-
-                            buffer.append(chunkBuffer.decodeToString(0, readCount))
-                            emitSseEventsFromBuffer(buffer)
+                    while (!channel.isClosedForRead) {
+                        currentCoroutineContext().ensureActive() // Check for cancellation
+                        val readCount = channel.readAvailable(chunkBuffer, 0, chunkBuffer.size)
+                        if (readCount == -1) {
+                            break
+                        }
+                        if (readCount == 0) {
+                            delay(1)
+                            continue
                         }
 
-                        if (buffer.isNotBlank()) {
-                            emitSseEvent(buffer.toString())
-                        }
+                        buffer.append(chunkBuffer.decodeToString(0, readCount))
+                        emitSseEventsFromBuffer(buffer)
                     }
-                    else -> {
-                        val errorDetail =
-                            try {
-                                response.body<String>()
-                            } catch (e: Exception) {
-                                Logger.w(e) { "Failed to read error response body" }
-                                response.status.description
-                            }
-                        emit(
-                            Result.failure(
-                                ApiError.HttpError(
-                                    code = response.status.value,
-                                    errorMessage = response.status.description,
-                                    detail = errorDetail,
-                                ),
-                            ),
-                        )
+
+                    if (buffer.isNotBlank()) {
+                        emitSseEvent(buffer.toString())
                     }
+                } else {
+                    response.bodyOrThrow<Unit>(fallbackDetail = response.status.description)
                 }
             } catch (e: ApiError) {
                 emit(Result.failure(e))
@@ -187,33 +162,11 @@ class ChatRepositoryImpl(
             val response =
                 httpClient.post("$baseUrl/v1/chat") {
                     contentType(io.ktor.http.ContentType.Application.Json)
-                    if (apiKey.isNotEmpty()) {
-                        headers {
-                            append("X-API-Key", apiKey)
-                        }
-                    }
+                    configureAuth(apiKey)
                     setBody(request.copy(stream = false))
                 }
 
-            when (response.status) {
-                HttpStatusCode.OK -> Result.success(response.body<ChatResponse>())
-                else -> {
-                    val errorDetail =
-                        try {
-                            response.body<String>()
-                        } catch (e: Exception) {
-                            Logger.w(e) { "Failed to read error response body" }
-                            null
-                        }
-                    Result.failure(
-                        ApiError.HttpError(
-                            code = response.status.value,
-                            errorMessage = response.status.description,
-                            detail = errorDetail,
-                        ),
-                    )
-                }
-            }
+            Result.success(response.bodyOrThrow())
         } catch (e: ApiError) {
             Result.failure(e)
         } catch (e: Exception) {
@@ -224,32 +177,10 @@ class ChatRepositoryImpl(
         try {
             val response =
                 httpClient.get("$baseUrl/v1/chat/models") {
-                    if (apiKey.isNotEmpty()) {
-                        headers {
-                            append("X-API-Key", apiKey)
-                        }
-                    }
+                    configureAuth(apiKey)
                 }
 
-            when (response.status) {
-                HttpStatusCode.OK -> Result.success(response.body<ModelsResponse>())
-                else -> {
-                    val errorDetail =
-                        try {
-                            response.body<String>()
-                        } catch (e: Exception) {
-                            Logger.w(e) { "Failed to read error response body" }
-                            null
-                        }
-                    Result.failure(
-                        ApiError.HttpError(
-                            code = response.status.value,
-                            errorMessage = response.status.description,
-                            detail = errorDetail,
-                        ),
-                    )
-                }
-            }
+            Result.success(response.bodyOrThrow())
         } catch (e: ApiError) {
             Result.failure(e)
         } catch (e: Exception) {

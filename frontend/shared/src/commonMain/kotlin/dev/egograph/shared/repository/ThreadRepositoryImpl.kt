@@ -5,18 +5,13 @@ import dev.egograph.shared.cache.DiskCache
 import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.dto.ThreadListResponse
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.client.request.headers
 import io.ktor.client.request.parameter
-import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * ThreadRepositoryの実装
@@ -39,33 +34,8 @@ class ThreadRepositoryImpl(
         generateContextHash(baseUrl, apiKey)
     }
 
-    private data class CacheEntry<T>(
-        val data: T,
-        val timestamp: Long = System.currentTimeMillis(),
-    )
-
-    private val threadsCacheMutex = Mutex()
-    private var threadsCache: Map<String, CacheEntry<ThreadListResponse>> = emptyMap()
-
-    private val threadCacheMutex = Mutex()
-    private var threadCache: Map<String, CacheEntry<Thread>> = emptyMap()
-
-    private val cacheDurationMs = 60000L
-
-    private fun generateContextHash(
-        baseUrl: String,
-        apiKey: String,
-    ): String {
-        val combined = "$baseUrl:$apiKey"
-        // Use 64-bit FNV-1a hash for better collision resistance than 32-bit
-        var hash: ULong = 0xcbf29ce484222325u // FNV offset basis
-        val fnvPrime: ULong = 0x100000001b3u
-        for (byte in combined.toByteArray(Charsets.UTF_8)) {
-            hash = hash xor byte.toULong()
-            hash = hash * fnvPrime
-        }
-        return hash.toString(16).padStart(16, '0')
-    }
+    private val threadsCache = InMemoryCache<String, ThreadListResponse>()
+    private val threadCache = InMemoryCache<String, Thread>()
 
     override fun getThreads(
         limit: Int,
@@ -73,9 +43,9 @@ class ThreadRepositoryImpl(
     ): Flow<RepositoryResult<ThreadListResponse>> =
         flow {
             val cacheKey = "$contextHash:list:$limit:$offset"
-            val cached = threadsCacheMutex.withLock { threadsCache[cacheKey] }
-            if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
-                emit(Result.success(cached.data))
+            val cached = threadsCache.get(cacheKey)
+            if (cached != null) {
+                emit(Result.success(cached))
                 return@flow
             }
             try {
@@ -90,23 +60,15 @@ class ThreadRepositoryImpl(
                     } else {
                         fetchThreadList(limit, offset)
                     }
-                threadsCacheMutex.withLock {
-                    threadsCache = threadsCache + (cacheKey to CacheEntry(body))
-                }
+                threadsCache.put(cacheKey, body)
                 emit(Result.success(body))
             } catch (e: ApiError) {
-                threadsCacheMutex.withLock {
-                    threadsCache = threadsCache - cacheKey
-                }
-                diskCache?.remove(cacheKey)
+                invalidateThreadsCache(cacheKey)
                 emit(Result.failure(e))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                threadsCacheMutex.withLock {
-                    threadsCache = threadsCache - cacheKey
-                }
-                diskCache?.remove(cacheKey)
+                invalidateThreadsCache(cacheKey)
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
         }.flowOn(Dispatchers.IO)
@@ -114,9 +76,9 @@ class ThreadRepositoryImpl(
     override fun getThread(threadId: String): Flow<RepositoryResult<Thread>> =
         flow {
             val cacheKey = "$contextHash:thread:$threadId"
-            val cached = threadCacheMutex.withLock { threadCache[cacheKey] }
-            if (cached != null && System.currentTimeMillis() - cached.timestamp < cacheDurationMs) {
-                emit(Result.success(cached.data))
+            val cached = threadCache.get(cacheKey)
+            if (cached != null) {
+                emit(Result.success(cached))
                 return@flow
             }
             try {
@@ -131,26 +93,28 @@ class ThreadRepositoryImpl(
                     } else {
                         fetchThread(threadId)
                     }
-                threadCacheMutex.withLock {
-                    threadCache = threadCache + (cacheKey to CacheEntry(body))
-                }
+                threadCache.put(cacheKey, body)
                 emit(Result.success(body))
             } catch (e: ApiError) {
-                threadCacheMutex.withLock {
-                    threadCache = threadCache - cacheKey
-                }
-                diskCache?.remove(cacheKey)
+                invalidateThreadCache(cacheKey)
                 emit(Result.failure(e))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                threadCacheMutex.withLock {
-                    threadCache = threadCache - cacheKey
-                }
-                diskCache?.remove(cacheKey)
+                invalidateThreadCache(cacheKey)
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
         }.flowOn(Dispatchers.IO)
+
+    private suspend fun invalidateThreadsCache(cacheKey: String) {
+        threadsCache.remove(cacheKey)
+        diskCache?.remove(cacheKey)
+    }
+
+    private suspend fun invalidateThreadCache(cacheKey: String) {
+        threadCache.remove(cacheKey)
+        diskCache?.remove(cacheKey)
+    }
 
     override suspend fun createThread(title: String): RepositoryResult<Thread> =
         Result.failure(
@@ -169,58 +133,18 @@ class ThreadRepositoryImpl(
             httpClient.get("$baseUrl/v1/threads") {
                 parameter("limit", limit)
                 parameter("offset", offset)
-                if (apiKey.isNotEmpty()) {
-                    headers {
-                        append("X-API-Key", apiKey)
-                    }
-                }
+                configureAuth(apiKey)
             }
 
-        return when (response.status) {
-            HttpStatusCode.OK -> response.body()
-            else -> {
-                val errorDetail =
-                    try {
-                        response.body<String>()
-                    } catch (e: Exception) {
-                        logger.w(e) { "Failed to read error response body" }
-                        null
-                    }
-                throw ApiError.HttpError(
-                    code = response.status.value,
-                    errorMessage = response.status.description,
-                    detail = errorDetail,
-                )
-            }
-        }
+        return response.bodyOrThrow(logError = { e -> logger.w(e) { "Failed to read error response body" } })
     }
 
     private suspend fun fetchThread(threadId: String): Thread {
         val response =
             httpClient.get("$baseUrl/v1/threads/$threadId") {
-                if (apiKey.isNotEmpty()) {
-                    headers {
-                        append("X-API-Key", apiKey)
-                    }
-                }
+                configureAuth(apiKey)
             }
 
-        return when (response.status) {
-            HttpStatusCode.OK -> response.body()
-            else -> {
-                val errorDetail =
-                    try {
-                        response.body<String>()
-                    } catch (e: Exception) {
-                        logger.w(e) { "Failed to read error response body" }
-                        null
-                    }
-                throw ApiError.HttpError(
-                    code = response.status.value,
-                    errorMessage = response.status.description,
-                    detail = errorDetail,
-                )
-            }
-        }
+        return response.bodyOrThrow(logError = { e -> logger.w(e) { "Failed to read error response body" } })
     }
 }
