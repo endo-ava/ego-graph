@@ -13,13 +13,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.dto.ThreadMessage
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
 
 @Composable
 fun MessageList(
@@ -28,18 +34,30 @@ fun MessageList(
     isLoading: Boolean = false,
     errorMessage: String? = null,
     streamingMessageId: String? = null,
+    activeAssistantTask: String? = null,
 ) {
     val listState = rememberLazyListState()
+    val reversedMessages = remember(messages) { messages.asReversed() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
-        }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }
+            .filter { it }
+            .collectLatest {
+                keyboardController?.hide()
+                focusManager.clearFocus()
+            }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
         if (messages.isEmpty() && !isLoading && errorMessage == null) {
             MessageListEmpty(modifier = Modifier.align(Alignment.Center))
+        } else if (messages.isEmpty() && isLoading) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.align(Alignment.Center),
+            )
         } else if (errorMessage != null) {
             Text(
                 text = errorMessage,
@@ -53,23 +71,14 @@ fun MessageList(
         } else {
             LazyColumn(
                 state = listState,
+                reverseLayout = true,
                 modifier =
                     Modifier
                         .semantics { testTagsAsResourceId = true }
                         .testTag("message_list")
                         .fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 16.dp),
+                contentPadding = PaddingValues(vertical = 16.dp),
             ) {
-                items(
-                    items = messages,
-                    key = { it.messageId },
-                ) { message ->
-                    ChatMessage(
-                        message = message,
-                        isStreaming = message.messageId == streamingMessageId,
-                    )
-                }
-
                 if (isLoading) {
                     item {
                         Box(
@@ -85,6 +94,17 @@ fun MessageList(
                             )
                         }
                     }
+                }
+
+                items(
+                    items = reversedMessages,
+                    key = { it.messageId },
+                ) { message ->
+                    ChatMessage(
+                        message = message,
+                        isStreaming = message.messageId == streamingMessageId,
+                        activeAssistantTask = activeAssistantTask,
+                    )
                 }
             }
         }

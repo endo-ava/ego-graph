@@ -46,7 +46,7 @@ class ChatStoreTest {
         }
 
     @Test
-    fun `SelectThread intent should update selected thread`() =
+    fun `SelectThread intent should update selected thread and enter messages loading`() =
         runTest(testDispatcher) {
             val store = createTestStore()
 
@@ -64,6 +64,7 @@ class ChatStoreTest {
             store.accept(ChatIntent.SelectThread(thread.threadId))
 
             assertEquals(thread, store.state.selectedThread)
+            assertTrue(store.state.isLoadingMessages)
         }
 
     @Test
@@ -168,6 +169,8 @@ class ChatStoreTest {
                                 copy(
                                     selectedThread = msg.thread,
                                     messages = emptyList(),
+                                    isLoadingMessages = true,
+                                    streamingMessageId = null,
                                     messagesError = null,
                                 )
                             is ChatView.ModelSelected -> copy(selectedModel = msg.modelId)
@@ -175,6 +178,8 @@ class ChatStoreTest {
                                 copy(
                                     selectedThread = null,
                                     messages = emptyList(),
+                                    isLoadingMessages = false,
+                                    streamingMessageId = null,
                                     messagesError = null,
                                 )
                             else -> this

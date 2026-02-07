@@ -60,7 +60,7 @@ class ChatReducerTest {
     }
 
     @Test
-    fun `ThreadSelected updates selected thread and clears messages`() {
+    fun `ThreadSelected updates selected thread and immediately enters messages loading`() {
         val thread =
             dev.egograph.shared.dto.Thread(
                 threadId = "thread-1",
@@ -94,11 +94,13 @@ class ChatReducerTest {
 
         assertEquals(thread, newState.selectedThread)
         assertTrue(newState.messages.isEmpty())
+        assertTrue(newState.isLoadingMessages)
+        assertNull(newState.streamingMessageId)
         assertNull(newState.messagesError)
     }
 
     @Test
-    fun `ThreadSelectionCleared clears selected thread and messages`() {
+    fun `ThreadSelectionCleared clears selected thread and resets message loading state`() {
         val thread =
             dev.egograph.shared.dto.Thread(
                 threadId = "thread-1",
@@ -125,6 +127,8 @@ class ChatReducerTest {
                         ),
                     ),
                 messagesError = "Previous error",
+                isLoadingMessages = true,
+                streamingMessageId = "msg-streaming",
             )
         val msg = ChatView.ThreadSelectionCleared
 
@@ -132,6 +136,8 @@ class ChatReducerTest {
 
         assertNull(newState.selectedThread)
         assertTrue(newState.messages.isEmpty())
+        assertFalse(newState.isLoadingMessages)
+        assertNull(newState.streamingMessageId)
         assertNull(newState.messagesError)
     }
 

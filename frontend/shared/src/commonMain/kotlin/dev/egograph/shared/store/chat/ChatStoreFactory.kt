@@ -72,6 +72,12 @@ internal sealed interface ChatView {
         val messages: List<dev.egograph.shared.dto.ThreadMessage>,
     ) : ChatView
 
+    data class AssistantTaskStarted(
+        val taskName: String,
+    ) : ChatView
+
+    data object AssistantTaskFinished : ChatView
+
     data class MessageSent(
         val messages: List<dev.egograph.shared.dto.ThreadMessage>,
         val threadId: String,
@@ -136,6 +142,8 @@ internal object ChatReducerImpl :
             is ChatView.ModelSelected -> reduceModelSelected(msg)
             is ChatView.MessageSendingStarted -> reduceMessageSendingStarted()
             is ChatView.MessageStreamUpdated -> reduceMessageStreamUpdated(msg)
+            is ChatView.AssistantTaskStarted -> reduceAssistantTaskStarted(msg)
+            is ChatView.AssistantTaskFinished -> reduceAssistantTaskFinished()
             is ChatView.MessageSent -> reduceMessageSent(msg)
             is ChatView.MessageSendFailed -> reduceMessageSendFailed(msg)
             is ChatView.ErrorsCleared -> reduceErrorsCleared()
@@ -189,6 +197,8 @@ internal object ChatReducerImpl :
         copy(
             selectedThread = msg.thread,
             messages = emptyList(),
+            isLoadingMessages = true,
+            streamingMessageId = null,
             messagesError = null,
         )
 
@@ -196,6 +206,8 @@ internal object ChatReducerImpl :
         copy(
             selectedThread = null,
             messages = emptyList(),
+            isLoadingMessages = false,
+            streamingMessageId = null,
             messagesError = null,
         )
 
@@ -246,6 +258,7 @@ internal object ChatReducerImpl :
     private fun ChatState.reduceMessageSendingStarted(): ChatState =
         copy(
             isSending = true,
+            activeAssistantTask = null,
             messagesError = null,
         )
 
@@ -257,11 +270,17 @@ internal object ChatReducerImpl :
             messagesError = null,
         )
 
+    private fun ChatState.reduceAssistantTaskStarted(msg: ChatView.AssistantTaskStarted): ChatState =
+        copy(activeAssistantTask = msg.taskName)
+
+    private fun ChatState.reduceAssistantTaskFinished(): ChatState = copy(activeAssistantTask = null)
+
     private fun ChatState.reduceMessageSent(msg: ChatView.MessageSent): ChatState =
         copy(
             isSending = false,
             messages = msg.messages,
             streamingMessageId = null,
+            activeAssistantTask = null,
             selectedThread = resolveSelectedThread(msg),
             messagesError = null,
         )
@@ -270,6 +289,7 @@ internal object ChatReducerImpl :
         copy(
             isSending = false,
             streamingMessageId = null,
+            activeAssistantTask = null,
             messagesError = msg.error,
         )
 

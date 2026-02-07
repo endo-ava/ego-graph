@@ -84,6 +84,7 @@ class ChatScreen : Screen {
                 isLoading = state.isLoadingMessages,
                 errorMessage = state.messagesError,
                 streamingMessageId = state.streamingMessageId,
+                activeAssistantTask = state.activeAssistantTask,
             )
         }
     }
