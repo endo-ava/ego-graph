@@ -37,38 +37,84 @@ fun ChatMessage(
     modifier: Modifier = Modifier,
     isStreaming: Boolean = false,
 ) {
-    val isUser = message.role == MessageRole.USER
+    if (message.role == MessageRole.USER) {
+        UserMessage(message, modifier)
+    } else {
+        AssistantMessage(message, modifier, isStreaming)
+    }
+}
 
+@Composable
+private fun UserMessage(
+    message: ThreadMessage,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
+        horizontalArrangement = Arrangement.End,
     ) {
-        if (!isUser) {
-            MessageAvatar(isUser = false)
-            Spacer(modifier = Modifier.width(8.dp))
-        }
-
         Column(
-            horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
+            horizontalAlignment = Alignment.End,
             modifier = Modifier.weight(1f, fill = false),
         ) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                color = MaterialTheme.colorScheme.primaryContainer,
                 modifier =
                     Modifier
                         .semantics { testTagsAsResourceId = true }
-                        .testTag(if (isUser) "user_message_bubble" else "assistant_message_bubble"),
+                        .testTag("user_message_bubble"),
             ) {
-                if (isUser || isStreaming) {
+                Text(
+                    text = message.content,
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        MessageAvatar(isUser = true)
+    }
+}
+
+@Composable
+private fun AssistantMessage(
+    message: ThreadMessage,
+    modifier: Modifier = Modifier,
+    isStreaming: Boolean = false,
+) {
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        MessageAvatar(isUser = false)
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Column(
+            horizontalAlignment = Alignment.Start,
+            modifier = Modifier.weight(1f, fill = false),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier =
+                    Modifier
+                        .semantics { testTagsAsResourceId = true }
+                        .testTag("assistant_message_bubble"),
+            ) {
+                if (isStreaming) {
                     Text(
                         text = message.content,
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
                     val textColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -80,7 +126,7 @@ fun ChatMessage(
                 }
             }
 
-            if (message.modelName != null && !isUser) {
+            if (message.modelName != null) {
                 Text(
                     text = message.modelName,
                     style = MaterialTheme.typography.labelSmall,
@@ -88,11 +134,6 @@ fun ChatMessage(
                     modifier = Modifier.padding(top = 4.dp, start = 4.dp),
                 )
             }
-        }
-
-        if (isUser) {
-            Spacer(modifier = Modifier.width(8.dp))
-            MessageAvatar(isUser = true)
         }
     }
 }

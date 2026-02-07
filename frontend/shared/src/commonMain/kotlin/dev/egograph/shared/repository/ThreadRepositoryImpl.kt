@@ -36,11 +36,6 @@ class ThreadRepositoryImpl(
         generateContextHash(baseUrl, apiKey)
     }
 
-    private data class CacheEntry<T>(
-        val data: T,
-        val timestamp: Long = System.currentTimeMillis(),
-    )
-
     private val threadsCacheMutex = Mutex()
     private var threadsCache: Map<String, CacheEntry<ThreadListResponse>> = emptyMap()
 
@@ -48,21 +43,6 @@ class ThreadRepositoryImpl(
     private var threadCache: Map<String, CacheEntry<Thread>> = emptyMap()
 
     private val cacheDurationMs = 60000L
-
-    private fun generateContextHash(
-        baseUrl: String,
-        apiKey: String,
-    ): String {
-        val combined = "$baseUrl:$apiKey"
-        // Use 64-bit FNV-1a hash for better collision resistance than 32-bit
-        var hash: ULong = 0xcbf29ce484222325u // FNV offset basis
-        val fnvPrime: ULong = 0x100000001b3u
-        for (byte in combined.toByteArray(Charsets.UTF_8)) {
-            hash = hash xor byte.toULong()
-            hash = hash * fnvPrime
-        }
-        return hash.toString(16).padStart(16, '0')
-    }
 
     override fun getThreads(
         limit: Int,

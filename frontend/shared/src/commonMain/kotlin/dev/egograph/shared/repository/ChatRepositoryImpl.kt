@@ -1,16 +1,12 @@
 package dev.egograph.shared.repository
 
-import co.touchlab.kermit.Logger
 import dev.egograph.shared.dto.ChatRequest
 import dev.egograph.shared.dto.ChatResponse
 import dev.egograph.shared.dto.ModelsResponse
 import dev.egograph.shared.dto.StreamChunk
 import dev.egograph.shared.dto.StreamChunkType
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
-import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
@@ -190,34 +186,4 @@ class ChatRepositoryImpl(
         } catch (e: Exception) {
             Result.failure(ApiError.NetworkError(e))
         }
-}
-
-internal fun HttpRequestBuilder.configureAuth(apiKey: String) {
-    if (apiKey.isNotEmpty()) {
-        headers {
-            append("X-API-Key", apiKey)
-        }
-    }
-}
-
-internal suspend inline fun <reified T> io.ktor.client.statement.HttpResponse.bodyOrThrow(
-    crossinline logError: (Exception) -> Unit = { e -> Logger.w(e) { "Failed to read error response body" } },
-    fallbackDetail: String? = null,
-): T {
-    if (status == io.ktor.http.HttpStatusCode.OK) {
-        return body()
-    } else {
-        val errorDetail =
-            try {
-                body<String>()
-            } catch (e: Exception) {
-                logError(e)
-                fallbackDetail
-            }
-        throw ApiError.HttpError(
-            code = status.value,
-            errorMessage = status.description,
-            detail = errorDetail,
-        )
-    }
 }
