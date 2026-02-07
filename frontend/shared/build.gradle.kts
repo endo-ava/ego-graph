@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.kover)
 }
 
 fun loadDotenv(file: java.io.File): Map<String, String> {
@@ -152,4 +153,14 @@ android {
 
 compose.resources {
     publicResClass = true
+}
+
+kover {
+    reports {
+        total {
+            html {
+                onCheck = false
+            }
+        }
+    }
 }
