@@ -136,3 +136,4 @@ coderabbit --prompt-only -t committed --base main    # PR作成前
 - 質問は `AskUserQuestion` 等を活用
 - サブエージェント活用でコンテキストをクリーンに（`delegate_task` を使用、`task` は使わない）
 - コード変更後はテスト確認必須
+- `.env`系を読むことは禁止

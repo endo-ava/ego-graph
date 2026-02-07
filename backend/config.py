@@ -13,7 +13,7 @@ from shared.config import R2Config
 
 # 環境変数で .env ファイルの使用を制御（デフォルトは使用）
 USE_ENV_FILE = os.getenv("USE_ENV_FILE", "true").lower() in ("true", "1", "yes")
-ENV_FILES = ["backend/.env", ".env"] if USE_ENV_FILE else []
+BACKEND_ENV_FILES = ["backend/.env"] if USE_ENV_FILE else []
 
 PROVIDERS_CONFIG = {
     "openai": {
@@ -38,7 +38,7 @@ class LLMConfig(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=ENV_FILES,
+        env_file=BACKEND_ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -100,7 +100,7 @@ class BackendConfig(BaseSettings):
     """Backend APIサーバー設定。"""
 
     model_config = SettingsConfigDict(
-        env_file=ENV_FILES,
+        env_file=BACKEND_ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -180,7 +180,7 @@ class R2Settings(BaseSettings):
     """Cloudflare R2設定 (S3互換)。"""
 
     model_config = SettingsConfigDict(
-        env_file=ENV_FILES,
+        env_file=BACKEND_ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
     )
