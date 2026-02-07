@@ -3,12 +3,6 @@ package dev.egograph.shared.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
-private val pureMermaidFenceRegex =
-    Regex(
-        pattern = """^\s*```\s*mermaid\s*\n([\s\S]*?)\n```\s*$""",
-        option = RegexOption.IGNORE_CASE,
-    )
-
 private val mermaidFenceRegex =
     Regex(
         pattern = """```\s*mermaid\s*\n([\s\S]*?)\n```""",
@@ -23,12 +17,6 @@ internal sealed interface AssistantContentBlock {
     data class Mermaid(
         val code: String,
     ) : AssistantContentBlock
-}
-
-internal fun extractMermaidCode(content: String): String? {
-    val match = pureMermaidFenceRegex.matchEntire(content) ?: return null
-    val code = match.groupValues[1].trim()
-    return code.ifBlank { null }
 }
 
 internal fun splitAssistantContent(content: String): List<AssistantContentBlock> {
