@@ -14,6 +14,7 @@ import dev.egograph.shared.repository.MessageRepository
 import dev.egograph.shared.repository.ThreadRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlin.random.Random
@@ -26,6 +27,8 @@ internal class ChatExecutor(
 ) : CoroutineExecutor<ChatIntent, Unit, ChatState, ChatView, ChatLabel>(mainContext) {
     private val logger = Logger
     private val pageLimit = 50
+    private val streamPacingDelayMs = 56L
+    private val streamPacingCharsPerStep = 24
 
     override fun executeIntent(intent: ChatIntent) {
         when (intent) {
@@ -117,6 +120,7 @@ internal class ChatExecutor(
             }
 
             try {
+                val pendingDeltaBuffer = StringBuilder()
                 chatRepository
                     .streamChatResponse(request)
                     .collect { result ->
@@ -124,6 +128,7 @@ internal class ChatExecutor(
                         val chunkThreadId = chunk.threadId?.takeIf { it.isNotBlank() }
                         var updatedMessages = state().messages
                         var updated = false
+                        var dispatchedDuringAppend = false
 
                         if (chunkThreadId != null && chunkThreadId != resolvedThreadId) {
                             resolvedThreadId = chunkThreadId
@@ -138,6 +143,25 @@ internal class ChatExecutor(
                                     }
                                 }
                             updated = true
+                        }
+
+                        if (chunk.type != StreamChunkType.DELTA && pendingDeltaBuffer.isNotEmpty()) {
+                            val (newAssistant, newMessages) =
+                                appendAssistantContent(
+                                    content = pendingDeltaBuffer.toString(),
+                                    prefixIfAppending = "",
+                                    messages = updatedMessages,
+                                    resolvedThreadId = resolvedThreadId,
+                                    provisionalThreadId = provisionalThreadId,
+                                    modelName = currentState.selectedModel,
+                                    timestamp = now,
+                                )
+                            pendingDeltaBuffer.clear()
+                            assistantThreadMessage = newAssistant
+                            updatedMessages = newMessages
+                            updated = true
+                            dispatch(ChatView.MessageStreamUpdated(updatedMessages))
+                            dispatchedDuringAppend = true
                         }
 
                         val (contentToAppend, prefix) =
@@ -159,25 +183,64 @@ internal class ChatExecutor(
                             }
 
                         if (contentToAppend.isNotEmpty()) {
-                            val (newAssistant, newMessages) =
-                                appendAssistantContent(
-                                    content = contentToAppend,
-                                    prefixIfAppending = prefix,
-                                    messages = updatedMessages,
-                                    resolvedThreadId = resolvedThreadId,
-                                    provisionalThreadId = provisionalThreadId,
-                                    modelName = currentState.selectedModel,
-                                    timestamp = now,
-                                )
-                            assistantThreadMessage = newAssistant
-                            updatedMessages = newMessages
-                            updated = true
+                            if (chunk.type == StreamChunkType.DELTA) {
+                                pendingDeltaBuffer.append(contentToAppend)
+                                while (pendingDeltaBuffer.length >= streamPacingCharsPerStep) {
+                                    val segment = pendingDeltaBuffer.substring(0, streamPacingCharsPerStep)
+                                    pendingDeltaBuffer.delete(0, streamPacingCharsPerStep)
+                                    val (newAssistant, newMessages) =
+                                        appendAssistantContent(
+                                            content = segment,
+                                            prefixIfAppending = "",
+                                            messages = updatedMessages,
+                                            resolvedThreadId = resolvedThreadId,
+                                            provisionalThreadId = provisionalThreadId,
+                                            modelName = currentState.selectedModel,
+                                            timestamp = now,
+                                        )
+                                    assistantThreadMessage = newAssistant
+                                    updatedMessages = newMessages
+                                    updated = true
+                                    dispatch(ChatView.MessageStreamUpdated(updatedMessages))
+                                    dispatchedDuringAppend = true
+                                    delay(streamPacingDelayMs)
+                                }
+                            } else {
+                                val (newAssistant, newMessages) =
+                                    appendAssistantContent(
+                                        content = contentToAppend,
+                                        prefixIfAppending = prefix,
+                                        messages = updatedMessages,
+                                        resolvedThreadId = resolvedThreadId,
+                                        provisionalThreadId = provisionalThreadId,
+                                        modelName = currentState.selectedModel,
+                                        timestamp = now,
+                                    )
+                                assistantThreadMessage = newAssistant
+                                updatedMessages = newMessages
+                                updated = true
+                            }
                         }
 
-                        if (updated) {
+                        if (updated && !dispatchedDuringAppend) {
                             dispatch(ChatView.MessageStreamUpdated(updatedMessages))
                         }
                     }
+
+                if (pendingDeltaBuffer.isNotEmpty()) {
+                    val (newAssistant, newMessages) =
+                        appendAssistantContent(
+                            content = pendingDeltaBuffer.toString(),
+                            prefixIfAppending = "",
+                            messages = state().messages,
+                            resolvedThreadId = resolvedThreadId,
+                            provisionalThreadId = provisionalThreadId,
+                            modelName = currentState.selectedModel,
+                            timestamp = now,
+                        )
+                    assistantThreadMessage = newAssistant
+                    dispatch(ChatView.MessageStreamUpdated(newMessages))
+                }
 
                 val finalThreadId = resolvedThreadId ?: provisionalThreadId
                 val finalAssistantMessage = assistantThreadMessage.copy(threadId = finalThreadId)

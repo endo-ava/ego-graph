@@ -12,10 +12,9 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.utils.io.readAvailable
+import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -52,26 +51,28 @@ class ChatRepositoryImpl(
 
                 if (response.status == HttpStatusCode.OK) {
                     val channel = response.bodyAsChannel()
-                    val buffer = StringBuilder()
-                    val chunkBuffer = ByteArray(8192)
+                    val eventBuffer = StringBuilder()
 
                     while (!channel.isClosedForRead) {
                         currentCoroutineContext().ensureActive() // Check for cancellation
-                        val readCount = channel.readAvailable(chunkBuffer, 0, chunkBuffer.size)
-                        if (readCount == -1) {
+                        val line = channel.readUTF8Line()
+                        if (line == null) {
                             break
                         }
-                        if (readCount == 0) {
-                            delay(1)
+
+                        if (line.isBlank()) {
+                            if (eventBuffer.isNotEmpty()) {
+                                emitSseEvent(eventBuffer.toString())
+                                eventBuffer.clear()
+                            }
                             continue
                         }
 
-                        buffer.append(chunkBuffer.decodeToString(0, readCount))
-                        emitSseEventsFromBuffer(buffer)
+                        eventBuffer.appendLine(line)
                     }
 
-                    if (buffer.isNotBlank()) {
-                        emitSseEvent(buffer.toString())
+                    if (eventBuffer.isNotBlank()) {
+                        emitSseEvent(eventBuffer.toString())
                     }
                 } else {
                     response.bodyOrThrow<Unit>(fallbackDetail = response.status.description)
@@ -82,38 +83,6 @@ class ChatRepositoryImpl(
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
         }.flowOn(Dispatchers.IO)
-
-    private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEventsFromBuffer(
-        buffer: StringBuilder,
-    ) {
-        var delimiter = findSseDelimiter(buffer)
-        while (delimiter != null) {
-            currentCoroutineContext().ensureActive() // Check for cancellation
-            val (index, length) = delimiter
-            val event = buffer.substring(0, index)
-            buffer.delete(0, index + length)
-            emitSseEvent(event)
-            delimiter = findSseDelimiter(buffer)
-        }
-    }
-
-    private fun findSseDelimiter(buffer: StringBuilder): Pair<Int, Int>? {
-        val lfIndex = buffer.indexOf("\n\n")
-        val crlfIndex = buffer.indexOf("\r\n\r\n")
-
-        val index =
-            when {
-                lfIndex >= 0 && crlfIndex >= 0 -> minOf(lfIndex, crlfIndex)
-                lfIndex >= 0 -> lfIndex
-                crlfIndex >= 0 -> crlfIndex
-                else -> -1
-            }
-
-        if (index < 0) return null
-
-        val length = if (index == crlfIndex) 4 else 2
-        return index to length
-    }
 
     private suspend fun kotlinx.coroutines.flow.FlowCollector<RepositoryResult<StreamChunk>>.emitSseEvent(event: String) {
         currentCoroutineContext().ensureActive() // Check for cancellation
@@ -153,7 +122,7 @@ class ChatRepositoryImpl(
             emit(Result.success(chunk))
         } catch (e: Exception) {
             if (e is ApiError) throw e
-            emit(Result.failure(ApiError.SerializationError(e)))
+            return
         }
     }
 

@@ -164,14 +164,13 @@ private fun AssistantMessage(
                         )
                     }
                 } else {
-                    MessageBubble(isUser = false) {
-                        Text(
-                            text = message.content,
-                            modifier = Modifier.padding(12.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    Markdown(
+                        content = message.content,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                        colors = markdownColors,
+                        typography = markdownTextStyles,
+                        components = markdownRendererComponents,
+                    )
                 }
             }
 
