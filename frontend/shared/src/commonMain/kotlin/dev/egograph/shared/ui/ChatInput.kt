@@ -22,9 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.platform.PlatformPreferences
 import dev.egograph.shared.store.chat.ChatStore
@@ -87,8 +84,7 @@ private fun ChatTextField(
         onValueChange = onTextChange,
         modifier =
             Modifier
-                .semantics { testTagsAsResourceId = true }
-                .testTag("chat_input_field")
+                .testTagResourceId("chat_input_field")
                 .fillMaxWidth()
                 .heightIn(min = 96.dp),
         placeholder = { Text("Type a message...") },
@@ -110,8 +106,7 @@ private fun SendButton(
         enabled = enabled,
         modifier =
             Modifier
-                .semantics { testTagsAsResourceId = true }
-                .testTag("send_button")
+                .testTagResourceId("send_button")
                 .padding(start = 8.dp),
     ) {
         if (isLoading) {

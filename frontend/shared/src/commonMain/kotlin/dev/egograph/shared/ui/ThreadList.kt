@@ -25,9 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.dto.Thread
 
@@ -115,8 +112,7 @@ private fun ThreadListContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier =
                 Modifier
-                    .semantics { testTagsAsResourceId = true }
-                    .testTag("thread_list")
+                    .testTagResourceId("thread_list")
                     .fillMaxSize(),
         ) {
             items(

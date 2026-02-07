@@ -12,8 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * ThreadRepositoryの実装
@@ -36,11 +34,8 @@ class ThreadRepositoryImpl(
         generateContextHash(baseUrl, apiKey)
     }
 
-    private val threadsCacheMutex = Mutex()
-    private var threadsCache: Map<String, CacheEntry<ThreadListResponse>> = emptyMap()
-
-    private val threadCacheMutex = Mutex()
-    private var threadCache: Map<String, CacheEntry<Thread>> = emptyMap()
+    private val threadsCache = InMemoryCache<String, ThreadListResponse>()
+    private val threadCache = InMemoryCache<String, Thread>()
 
     override fun getThreads(
         limit: Int,
@@ -48,9 +43,9 @@ class ThreadRepositoryImpl(
     ): Flow<RepositoryResult<ThreadListResponse>> =
         flow {
             val cacheKey = "$contextHash:list:$limit:$offset"
-            val cached = threadsCacheMutex.withLock { threadsCache[cacheKey] }
-            if (cached != null && System.currentTimeMillis() - cached.timestamp < DEFAULT_CACHE_DURATION_MS) {
-                emit(Result.success(cached.data))
+            val cached = threadsCache.get(cacheKey)
+            if (cached != null) {
+                emit(Result.success(cached))
                 return@flow
             }
             try {
@@ -65,23 +60,15 @@ class ThreadRepositoryImpl(
                     } else {
                         fetchThreadList(limit, offset)
                     }
-                threadsCacheMutex.withLock {
-                    threadsCache = threadsCache + (cacheKey to CacheEntry(body))
-                }
+                threadsCache.put(cacheKey, body)
                 emit(Result.success(body))
             } catch (e: ApiError) {
-                threadsCacheMutex.withLock {
-                    threadsCache = threadsCache - cacheKey
-                }
-                diskCache?.remove(cacheKey)
+                invalidateThreadsCache(cacheKey)
                 emit(Result.failure(e))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                threadsCacheMutex.withLock {
-                    threadsCache = threadsCache - cacheKey
-                }
-                diskCache?.remove(cacheKey)
+                invalidateThreadsCache(cacheKey)
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
         }.flowOn(Dispatchers.IO)
@@ -89,9 +76,9 @@ class ThreadRepositoryImpl(
     override fun getThread(threadId: String): Flow<RepositoryResult<Thread>> =
         flow {
             val cacheKey = "$contextHash:thread:$threadId"
-            val cached = threadCacheMutex.withLock { threadCache[cacheKey] }
-            if (cached != null && System.currentTimeMillis() - cached.timestamp < DEFAULT_CACHE_DURATION_MS) {
-                emit(Result.success(cached.data))
+            val cached = threadCache.get(cacheKey)
+            if (cached != null) {
+                emit(Result.success(cached))
                 return@flow
             }
             try {
@@ -106,26 +93,28 @@ class ThreadRepositoryImpl(
                     } else {
                         fetchThread(threadId)
                     }
-                threadCacheMutex.withLock {
-                    threadCache = threadCache + (cacheKey to CacheEntry(body))
-                }
+                threadCache.put(cacheKey, body)
                 emit(Result.success(body))
             } catch (e: ApiError) {
-                threadCacheMutex.withLock {
-                    threadCache = threadCache - cacheKey
-                }
-                diskCache?.remove(cacheKey)
+                invalidateThreadCache(cacheKey)
                 emit(Result.failure(e))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                threadCacheMutex.withLock {
-                    threadCache = threadCache - cacheKey
-                }
-                diskCache?.remove(cacheKey)
+                invalidateThreadCache(cacheKey)
                 emit(Result.failure(ApiError.NetworkError(e)))
             }
         }.flowOn(Dispatchers.IO)
+
+    private suspend fun invalidateThreadsCache(cacheKey: String) {
+        threadsCache.remove(cacheKey)
+        diskCache?.remove(cacheKey)
+    }
+
+    private suspend fun invalidateThreadCache(cacheKey: String) {
+        threadCache.remove(cacheKey)
+        diskCache?.remove(cacheKey)
+    }
 
     override suspend fun createThread(title: String): RepositoryResult<Thread> =
         Result.failure(

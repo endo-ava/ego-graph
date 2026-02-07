@@ -258,8 +258,7 @@ internal class ChatExecutor(
                             )
                         }.onFailure { error ->
                             val message = "スレッドの読み込みに失敗しました: ${error.message}"
-                            logger.e(message, error)
-                            dispatch(ChatView.ThreadsLoadFailed(message))
+                            logAndDispatchError(message, error, ChatView.ThreadsLoadFailed(message))
                         }
                 }
         }
@@ -289,8 +288,7 @@ internal class ChatExecutor(
                             )
                         }.onFailure { error ->
                             val message = "スレッドの追加読み込みに失敗しました: ${error.message}"
-                            logger.e(message, error)
-                            dispatch(ChatView.ThreadsLoadMoreFailed(message))
+                            logAndDispatchError(message, error, ChatView.ThreadsLoadMoreFailed(message))
                         }
                 }
         }
@@ -318,8 +316,7 @@ internal class ChatExecutor(
                                 loadMessages(threadId)
                             }.onFailure { error ->
                                 val message = "スレッドの取得に失敗しました: ${error.message}"
-                                logger.e(message, error)
-                                dispatch(ChatView.ThreadsLoadFailed(message))
+                                logAndDispatchError(message, error, ChatView.ThreadsLoadFailed(message))
                             }
                     }
             }
@@ -350,8 +347,7 @@ internal class ChatExecutor(
                             dispatch(ChatView.MessagesLoaded(response.messages))
                         }.onFailure { error ->
                             val message = "メッセージの読み込みに失敗しました: ${error.message}"
-                            logger.e(message, error)
-                            dispatch(ChatView.MessagesLoadFailed(message))
+                            logAndDispatchError(message, error, ChatView.MessagesLoadFailed(message))
                         }
                 }
         }
@@ -380,10 +376,18 @@ internal class ChatExecutor(
                     }
                 }.onFailure { error ->
                     val message = "モデルの読み込みに失敗しました: ${error.message}"
-                    logger.e(message, error)
-                    dispatch(ChatView.ModelsLoadFailed(message))
+                    logAndDispatchError(message, error, ChatView.ModelsLoadFailed(message))
                 }
         }
+    }
+
+    private fun logAndDispatchError(
+        message: String,
+        error: Throwable,
+        view: ChatView,
+    ) {
+        logger.e(message, error)
+        dispatch(view)
     }
 
     private fun appendAssistantContent(
