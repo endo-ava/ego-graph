@@ -14,17 +14,21 @@ import kotlin.test.assertTrue
 class ChatReducerTest {
     @Test
     fun `ThreadsLoadingStarted sets isLoadingThreads to true and clears error`() {
+        // Arrange
         val initialState = ChatState(threadsError = "Previous error")
         val msg = ChatView.ThreadsLoadingStarted
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertTrue(newState.isLoadingThreads)
         assertNull(newState.threadsError)
     }
 
     @Test
     fun `ThreadsLoaded updates threads and clears loading state`() {
+        // Arrange
         val threads =
             listOf(
                 dev.egograph.shared.dto.Thread(
@@ -41,8 +45,10 @@ class ChatReducerTest {
         val initialState = ChatState(isLoadingThreads = true)
         val msg = ChatView.ThreadsLoaded(threads, hasMore = false)
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertEquals(threads, newState.threads)
         assertFalse(newState.isLoadingThreads)
         assertNull(newState.threadsError)
@@ -50,17 +56,21 @@ class ChatReducerTest {
 
     @Test
     fun `ThreadsLoadFailed sets error and clears loading state`() {
+        // Arrange
         val initialState = ChatState(isLoadingThreads = true)
         val msg = ChatView.ThreadsLoadFailed("Failed to load threads")
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertFalse(newState.isLoadingThreads)
         assertEquals("Failed to load threads", newState.threadsError)
     }
 
     @Test
     fun `ThreadSelected updates selected thread and immediately enters messages loading`() {
+        // Arrange
         val thread =
             dev.egograph.shared.dto.Thread(
                 threadId = "thread-1",
@@ -90,8 +100,10 @@ class ChatReducerTest {
             )
         val msg = ChatView.ThreadSelected(thread)
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertEquals(thread, newState.selectedThread)
         assertTrue(newState.messages.isEmpty())
         assertTrue(newState.isLoadingMessages)
@@ -101,6 +113,7 @@ class ChatReducerTest {
 
     @Test
     fun `ThreadSelectionCleared clears selected thread and resets message loading state`() {
+        // Arrange
         val thread =
             dev.egograph.shared.dto.Thread(
                 threadId = "thread-1",
@@ -132,8 +145,10 @@ class ChatReducerTest {
             )
         val msg = ChatView.ThreadSelectionCleared
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertNull(newState.selectedThread)
         assertTrue(newState.messages.isEmpty())
         assertFalse(newState.isLoadingMessages)
@@ -143,17 +158,21 @@ class ChatReducerTest {
 
     @Test
     fun `MessagesLoadingStarted sets isLoadingMessages to true and clears error`() {
+        // Arrange
         val initialState = ChatState(messagesError = "Previous error")
         val msg = ChatView.MessagesLoadingStarted
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertTrue(newState.isLoadingMessages)
         assertNull(newState.messagesError)
     }
 
     @Test
     fun `MessagesLoaded updates messages and clears loading state`() {
+        // Arrange
         val messages =
             listOf(
                 dev.egograph.shared.dto.ThreadMessage(
@@ -169,8 +188,10 @@ class ChatReducerTest {
         val initialState = ChatState(isLoadingMessages = true)
         val msg = ChatView.MessagesLoaded(messages)
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertEquals(messages, newState.messages)
         assertFalse(newState.isLoadingMessages)
         assertNull(newState.messagesError)
@@ -178,28 +199,35 @@ class ChatReducerTest {
 
     @Test
     fun `MessagesLoadFailed sets error and clears loading state`() {
+        // Arrange
         val initialState = ChatState(isLoadingMessages = true)
         val msg = ChatView.MessagesLoadFailed("Failed to load messages")
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertFalse(newState.isLoadingMessages)
         assertEquals("Failed to load messages", newState.messagesError)
     }
 
     @Test
     fun `ModelsLoadingStarted sets isLoadingModels to true and clears error`() {
+        // Arrange
         val initialState = ChatState(modelsError = "Previous error")
         val msg = ChatView.ModelsLoadingStarted
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertTrue(newState.isLoadingModels)
         assertNull(newState.modelsError)
     }
 
     @Test
     fun `ModelsLoaded updates models and default model`() {
+        // Arrange
         val models =
             listOf(
                 dev.egograph.shared.dto.LLMModel(
@@ -215,8 +243,10 @@ class ChatReducerTest {
         val initialState = ChatState(isLoadingModels = true)
         val msg = ChatView.ModelsLoaded(models, "openai/gpt-4")
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertEquals(models, newState.models)
         assertEquals("openai/gpt-4", newState.selectedModel)
         assertFalse(newState.isLoadingModels)
@@ -225,38 +255,48 @@ class ChatReducerTest {
 
     @Test
     fun `ModelsLoadFailed sets error and clears loading state`() {
+        // Arrange
         val initialState = ChatState(isLoadingModels = true)
         val msg = ChatView.ModelsLoadFailed("Failed to load models")
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertFalse(newState.isLoadingModels)
         assertEquals("Failed to load models", newState.modelsError)
     }
 
     @Test
     fun `ModelSelected updates selected model`() {
+        // Arrange
         val initialState = ChatState()
         val msg = ChatView.ModelSelected("openai/gpt-4")
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertEquals("openai/gpt-4", newState.selectedModel)
     }
 
     @Test
     fun `MessageSendingStarted sets isSending to true and clears error`() {
+        // Arrange
         val initialState = ChatState(messagesError = "Previous error")
         val msg = ChatView.MessageSendingStarted
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertTrue(newState.isSending)
         assertNull(newState.messagesError)
     }
 
     @Test
     fun `MessageStreamUpdated updates messages and keeps sending state`() {
+        // Arrange
         val messages =
             listOf(
                 dev.egograph.shared.dto.ThreadMessage(
@@ -272,8 +312,10 @@ class ChatReducerTest {
         val initialState = ChatState(isSending = false)
         val msg = ChatView.MessageStreamUpdated(messages)
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertEquals(messages, newState.messages)
         assertTrue(newState.isSending)
         assertNull(newState.messagesError)
@@ -281,6 +323,7 @@ class ChatReducerTest {
 
     @Test
     fun `MessageSent updates messages and clears sending state`() {
+        // Arrange
         val messages =
             listOf(
                 dev.egograph.shared.dto.ThreadMessage(
@@ -296,8 +339,10 @@ class ChatReducerTest {
         val initialState = ChatState(isSending = true, messagesError = "Previous error")
         val msg = ChatView.MessageSent(messages, "thread-1")
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertEquals(messages, newState.messages)
         assertFalse(newState.isSending)
         assertNull(newState.messagesError)
@@ -305,17 +350,21 @@ class ChatReducerTest {
 
     @Test
     fun `MessageSendFailed sets error and clears sending state`() {
+        // Arrange
         val initialState = ChatState(isSending = true)
         val msg = ChatView.MessageSendFailed("Failed to send message")
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertFalse(newState.isSending)
         assertEquals("Failed to send message", newState.messagesError)
     }
 
     @Test
     fun `ErrorsCleared clears all error fields`() {
+        // Arrange
         val initialState =
             ChatState(
                 threadsError = "Threads error",
@@ -324,8 +373,10 @@ class ChatReducerTest {
             )
         val msg = ChatView.ErrorsCleared
 
+        // Act
         val newState = ChatReducerImpl.run { initialState.reduce(msg) }
 
+        // Assert
         assertNull(newState.threadsError)
         assertNull(newState.messagesError)
         assertNull(newState.modelsError)
@@ -333,6 +384,7 @@ class ChatReducerTest {
 
     @Test
     fun `State hasSelectedThread should be true when thread is selected`() {
+        // Arrange
         val thread =
             dev.egograph.shared.dto.Thread(
                 threadId = "thread1",
@@ -345,36 +397,71 @@ class ChatReducerTest {
             )
 
         val state = ChatState(selectedThread = thread)
-        assertTrue(state.hasSelectedThread)
+
+        // Act
+        val result = state.hasSelectedThread
+
+        // Assert
+        assertTrue(result)
     }
 
     @Test
     fun `State hasSelectedThread should be false when no thread is selected`() {
+        // Arrange
         val state = ChatState()
-        assertFalse(state.hasSelectedThread)
+
+        // Act
+        val result = state.hasSelectedThread
+
+        // Assert
+        assertFalse(result)
     }
 
     @Test
     fun `State isLoading should be true when any loading flag is set`() {
+        // Arrange
         val state = ChatState(isLoadingThreads = true)
-        assertTrue(state.isLoading)
+
+        // Act
+        val result = state.isLoading
+
+        // Assert
+        assertTrue(result)
     }
 
     @Test
     fun `State isLoading should be false when no loading flag is set`() {
+        // Arrange
         val state = ChatState()
-        assertFalse(state.isLoading)
+
+        // Act
+        val result = state.isLoading
+
+        // Assert
+        assertFalse(result)
     }
 
     @Test
     fun `State hasError should be true when any error exists`() {
+        // Arrange
         val state = ChatState(threadsError = "Error")
-        assertTrue(state.hasError)
+
+        // Act
+        val result = state.hasError
+
+        // Assert
+        assertTrue(result)
     }
 
     @Test
     fun `State hasError should be false when no error exists`() {
+        // Arrange
         val state = ChatState()
-        assertFalse(state.hasError)
+
+        // Act
+        val result = state.hasError
+
+        // Assert
+        assertFalse(result)
     }
 }

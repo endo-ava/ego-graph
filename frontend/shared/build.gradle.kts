@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.kover)
 }
 
 fun loadDotenv(file: java.io.File): Map<String, String> {
@@ -101,9 +102,7 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(libs.kotlin.test)
-                implementation(libs.kotest.framework.engine)
-                implementation(libs.kotest.assertions.core)
-                implementation(libs.kotest.framework.datatest)
+                implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.turbine)
                 implementation(libs.koin.test)
                 implementation(libs.ktor.client.mock)
@@ -152,4 +151,24 @@ android {
 
 compose.resources {
     publicResClass = true
+}
+
+kover {
+    reports {
+        total {
+            html {
+                onCheck = false
+            }
+            xml {
+                onCheck = false
+            }
+        }
+    }
+    currentProject {
+        instrumentation {
+            excludedClasses.add("*.ui.*")
+            excludedClasses.add("*Screen")
+            excludedClasses.add("*Screen\$*")
+        }
+    }
 }

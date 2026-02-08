@@ -17,7 +17,11 @@ import kotlin.test.assertNotNull
 class KoinDiTest : KoinTest {
     @Test
     fun `ThreadRepository should be injectable`() {
+        // Arrange
+        // Koin module is configured
+
         try {
+            // Act
             startKoin {
                 modules(
                     module {
@@ -38,6 +42,8 @@ class KoinDiTest : KoinTest {
             }
 
             val repository: ThreadRepository by inject()
+
+            // Assert
             assertNotNull(repository)
         } catch (e: Exception) {
             println("Error injecting ThreadRepository: ${e.message}")
@@ -52,7 +58,11 @@ class KoinDiTest : KoinTest {
 
     @Test
     fun `MessageRepository should be injectable`() {
+        // Arrange
+        // Koin module is configured
+
         try {
+            // Act
             startKoin {
                 modules(
                     module {
@@ -73,6 +83,8 @@ class KoinDiTest : KoinTest {
             }
 
             val repository: MessageRepository by inject()
+
+            // Assert
             assertNotNull(repository)
         } catch (e: Exception) {
             println("Error injecting MessageRepository: ${e.message}")
@@ -87,12 +99,18 @@ class KoinDiTest : KoinTest {
 
     @Test
     fun `ChatRepository should be injectable`() {
+        // Arrange
+        // Koin module is configured
+
         try {
+            // Act
             startKoin {
                 modules(appModule)
             }
 
             val repository: ChatRepository by inject()
+
+            // Assert
             assertNotNull(repository)
         } catch (e: Exception) {
             println("Error injecting ChatRepository: ${e.message}")
@@ -105,12 +123,18 @@ class KoinDiTest : KoinTest {
 
     @Test
     fun `HttpClient should be injectable`() {
+        // Arrange
+        // Koin module is configured
+
         try {
+            // Act
             startKoin {
                 modules(appModule)
             }
 
             val httpClient: HttpClient by inject()
+
+            // Assert
             assertNotNull(httpClient)
         } catch (e: Exception) {
             println("Error injecting HttpClient: ${e.message}")

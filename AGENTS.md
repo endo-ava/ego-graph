@@ -37,6 +37,7 @@ cd frontend # PJルートからはgradlewは使えないことに注意
 ./gradlew :androidApp:assembleDebug      # ビルド
 ./gradlew :androidApp:installDebug      # インストール
 ./gradlew :shared:testDebugUnitTest     # テスト
+./gradlew :shared:koverHtmlReportDebug  # カバレッジ率
 ./gradlew ktlintCheck                   # Lint
 ./gradlew ktlintFormat                  # Format
 ./gradlew detekt                        # 静的解析

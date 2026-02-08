@@ -14,6 +14,9 @@ import kotlin.test.assertTrue
 class KtorConfigTest {
     @Test
     fun `HttpClient initializes successfully`() {
+        // Arrange
+        // (nothing to arrange)
+
         // Act
         val client = provideHttpClient()
 
@@ -34,6 +37,9 @@ class KtorConfigTest {
 
     @Test
     fun `HttpClient provider creates multiple independent instances`() {
+        // Arrange
+        // (nothing to arrange)
+
         // Act
         val client1 = provideHttpClient()
         val client2 = provideHttpClient()

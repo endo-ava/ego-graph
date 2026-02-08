@@ -29,12 +29,12 @@ class ChatExecutorTest {
 
     @Test
     fun `ChatExecutor can be instantiated`() {
-        // Given
+        // Arrange
         val mockThreadRepo = createDefaultThreadRepository()
         val mockMessageRepo = createDefaultMessageRepository()
         val mockChatRepo = createDefaultChatRepository()
 
-        // When
+        // Act
         val executor =
             ChatExecutor(
                 threadRepository = mockThreadRepo,
@@ -43,14 +43,14 @@ class ChatExecutorTest {
                 mainContext = testDispatcher,
             )
 
-        // Then
+        // Assert
         assertNotNull(executor)
     }
 
     @Test
     fun `LoadThreads intent dispatches loading started`() =
         runTest(testDispatcher) {
-            // Given
+            // Arrange
             val threads =
                 listOf(
                     Thread(
@@ -88,11 +88,11 @@ class ChatExecutorTest {
             val messages = mutableListOf<ChatView>()
             val callbacks = createTestCallbacks(messages = messages, state = ChatState())
 
-            // When
+            // Act
             executor.init(callbacks)
             executor.executeIntent(ChatIntent.LoadThreads)
 
-            // Then
+            // Assert
             val loadingMsg = messages.find { it is ChatView.ThreadsLoadingStarted }
             assertNotNull(loadingMsg, "ThreadsLoadingStarted should be dispatched")
         }
@@ -100,7 +100,7 @@ class ChatExecutorTest {
     @Test
     fun `SelectModel intent dispatches ModelSelected`() =
         runTest(testDispatcher) {
-            // Given
+            // Arrange
             val executor =
                 ChatExecutor(
                     threadRepository = createDefaultThreadRepository(),
@@ -112,11 +112,11 @@ class ChatExecutorTest {
             val messages = mutableListOf<ChatView>()
             val callbacks = createTestCallbacks(messages = messages, state = ChatState())
 
-            // When
+            // Act
             executor.init(callbacks)
             executor.executeIntent(ChatIntent.SelectModel("openai/gpt-4"))
 
-            // Then
+            // Assert
             val selectedMsg = messages.filterIsInstance<ChatView.ModelSelected>().firstOrNull()
             assertNotNull(selectedMsg, "ModelSelected should be dispatched")
             assertEquals("openai/gpt-4", selectedMsg.modelId)
@@ -125,7 +125,7 @@ class ChatExecutorTest {
     @Test
     fun `ClearThreadSelection intent dispatches ThreadSelectionCleared`() =
         runTest(testDispatcher) {
-            // Given
+            // Arrange
             val executor =
                 ChatExecutor(
                     threadRepository = createDefaultThreadRepository(),
@@ -137,11 +137,11 @@ class ChatExecutorTest {
             val messages = mutableListOf<ChatView>()
             val callbacks = createTestCallbacks(messages = messages, state = ChatState())
 
-            // When
+            // Act
             executor.init(callbacks)
             executor.executeIntent(ChatIntent.ClearThreadSelection)
 
-            // Then
+            // Assert
             val clearedMsg = messages.find { it is ChatView.ThreadSelectionCleared }
             assertNotNull(clearedMsg, "ThreadSelectionCleared should be dispatched")
         }
@@ -149,7 +149,7 @@ class ChatExecutorTest {
     @Test
     fun `ClearErrors intent dispatches ErrorsCleared`() =
         runTest(testDispatcher) {
-            // Given
+            // Arrange
             val executor =
                 ChatExecutor(
                     threadRepository = createDefaultThreadRepository(),
@@ -161,11 +161,11 @@ class ChatExecutorTest {
             val messages = mutableListOf<ChatView>()
             val callbacks = createTestCallbacks(messages = messages, state = ChatState())
 
-            // When
+            // Act
             executor.init(callbacks)
             executor.executeIntent(ChatIntent.ClearErrors)
 
-            // Then
+            // Assert
             val clearedMsg = messages.find { it is ChatView.ErrorsCleared }
             assertNotNull(clearedMsg, "ErrorsCleared should be dispatched")
         }
