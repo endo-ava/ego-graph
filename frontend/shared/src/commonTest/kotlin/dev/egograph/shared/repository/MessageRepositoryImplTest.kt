@@ -12,13 +12,13 @@ import kotlin.test.assertTrue
 class MessageRepositoryImplTest {
     @Test
     fun `MessageRepositoryImpl can be instantiated`() {
-        // Given
+        // Arrange
         val httpClient = HttpClient()
 
-        // When
+        // Act
         val repository = MessageRepositoryImpl(httpClient, "http://localhost:8000", "")
 
-        // Then
+        // Assert
         assertTrue(repository is MessageRepository)
     }
 }

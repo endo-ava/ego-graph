@@ -13,14 +13,14 @@ import kotlin.test.assertTrue
 class SystemPromptRepositoryImplTest {
     @Test
     fun `SystemPromptRepositoryImpl can be instantiated`() {
-        // Given
+        // Arrange
         val httpClient = provideHttpClient()
 
         try {
-            // When
+            // Act
             val repository = SystemPromptRepositoryImpl(httpClient, "http://localhost:8000", "")
 
-            // Then
+            // Assert
             assertTrue(repository is SystemPromptRepository)
         } finally {
             httpClient.close()

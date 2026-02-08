@@ -52,7 +52,7 @@ class AppThemeTest {
         AppTheme.entries.forEach { theme ->
             val storageString = theme.toStorageString()
             val restored = storageString.toAppTheme()
-            assertEquals(theme, restored, "Failed to round-trip $theme")
+            assertEquals(theme, restored)
         }
     }
 
@@ -60,6 +60,7 @@ class AppThemeTest {
     fun `round-trip with uppercase storage string normalizes to lowercase`() {
         val theme = "DARK".toAppTheme()
         val restoredString = theme.toStorageString()
+
         assertEquals(AppTheme.DARK, theme)
         assertEquals("dark", restoredString)
     }

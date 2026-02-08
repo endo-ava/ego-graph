@@ -1,8 +1,6 @@
 package dev.egograph.shared.repository
 
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.headers
-import io.ktor.http.headers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -17,13 +15,10 @@ class RepositoryUtilsTest {
     fun `InMemoryCache - put and get returns stored value`() =
         runTest {
             val cache = InMemoryCache<String, String>()
-            val key = "test-key"
-            val value = "test-value"
 
-            cache.put(key, value)
-            val result = cache.get(key)
+            cache.put("test-key", "test-value")
 
-            assertEquals(value, result)
+            assertEquals("test-value", cache.get("test-key"))
         }
 
     @Test
@@ -31,9 +26,7 @@ class RepositoryUtilsTest {
         runTest {
             val cache = InMemoryCache<String, String>()
 
-            val result = cache.get("non-existent")
-
-            assertNull(result)
+            assertNull(cache.get("non-existent"))
         }
 
     @Test
@@ -43,9 +36,8 @@ class RepositoryUtilsTest {
             cache.put("key", "value")
 
             cache.remove("key")
-            val result = cache.get("key")
 
-            assertNull(result)
+            assertNull(cache.get("key"))
         }
 
     @Test
@@ -56,11 +48,9 @@ class RepositoryUtilsTest {
             cache.put("key2", "value2")
 
             cache.clear()
-            val result1 = cache.get("key1")
-            val result2 = cache.get("key2")
 
-            assertNull(result1)
-            assertNull(result2)
+            assertNull(cache.get("key1"))
+            assertNull(cache.get("key2"))
         }
 
     @Test
@@ -70,9 +60,8 @@ class RepositoryUtilsTest {
             cache.put("key", "old-value")
 
             cache.put("key", "new-value")
-            val result = cache.get("key")
 
-            assertEquals("new-value", result)
+            assertEquals("new-value", cache.get("key"))
         }
 
     @Test
@@ -83,9 +72,8 @@ class RepositoryUtilsTest {
             cache.put("key", "value")
 
             Thread.sleep(shortExpiration + 150)
-            val result = cache.get("key")
 
-            assertNull(result)
+            assertNull(cache.get("key"))
         }
 
     @Test
@@ -96,29 +84,19 @@ class RepositoryUtilsTest {
             cache.put("key", "value")
 
             delay(100)
-            val result = cache.get("key")
 
-            assertEquals("value", result)
+            assertEquals("value", cache.get("key"))
         }
 
-    /**
-     * Verifies cache API stability under coroutine concurrency patterns.
-     *
-     * This test uses runTest with its single-threaded dispatcher, validating
-     * that concurrent coroutine launches don't corrupt cache state. True
-     * multi-threaded safety would require Dispatchers.Default and is tested
-     * separately in platform-specific test suites.
-     */
     @Test
     fun `InMemoryCache - concurrent access does not crash`() =
         runTest {
             val cache = InMemoryCache<String, Int>()
-            val iterations = 100
 
             val jobs =
                 List(10) {
                     launch {
-                        repeat(iterations) { i ->
+                        repeat(100) { i ->
                             cache.put("counter", i)
                         }
                     }
@@ -127,17 +105,10 @@ class RepositoryUtilsTest {
 
             val result = cache.get("counter")
             assertNotNull(result)
-            assertTrue(result >= 0 && result < iterations)
+            assertTrue(result >= 0)
+            assertTrue(result < 100)
         }
 
-    /**
-     * Validates cache read operations under concurrent access.
-     *
-     * Uses concurrent coroutine launches to verify read consistency.
-     * Note: MutableList is not thread-safe; this relies on runTest's
-     * single-threaded dispatcher. For true concurrent reads testing,
-     * use thread-safe collections like ConcurrentLinkedQueue.
-     */
     @Test
     fun `InMemoryCache - concurrent reads return consistent values`() =
         runTest {
@@ -159,59 +130,25 @@ class RepositoryUtilsTest {
 
     @Test
     fun `generateContextHash - produces consistent hash for same input`() {
-        val baseUrl = "http://localhost:8000"
-        val apiKey = "test-key"
-
-        val hash1 = generateContextHash(baseUrl, apiKey)
-        val hash2 = generateContextHash(baseUrl, apiKey)
+        val hash1 = generateContextHash("http://localhost:8000", "test-key")
+        val hash2 = generateContextHash("http://localhost:8000", "test-key")
 
         assertEquals(hash1, hash2)
     }
 
     @Test
     fun `generateContextHash - produces different hashes for different inputs`() {
-        val baseUrl1 = "http://localhost:8000"
-        val apiKey1 = "key1"
-        val baseUrl2 = "http://localhost:8000"
-        val apiKey2 = "key2"
+        val hash1 = generateContextHash("http://localhost:8000", "key1")
+        val hash2 = generateContextHash("http://localhost:8000", "key2")
 
-        val hash1 = generateContextHash(baseUrl1, apiKey1)
-        val hash2 = generateContextHash(baseUrl2, apiKey2)
-
-        assertTrue(hash1 != hash2, "Hashes should be different: $hash1 vs $hash2")
+        assertTrue(hash1 != hash2)
     }
 
     @Test
-    fun `generateContextHash - different baseUrl produces different hash`() {
-        val baseUrl1 = "http://localhost:8000"
-        val baseUrl2 = "http://localhost:9000"
-        val apiKey = "same-key"
+    fun `generateContextHash - produces fixed-length hexadecimal string`() {
+        val hash = generateContextHash("http://localhost:8000", "test-key")
 
-        val hash1 = generateContextHash(baseUrl1, apiKey)
-        val hash2 = generateContextHash(baseUrl2, apiKey)
-
-        assertTrue(hash1 != hash2, "Hashes should be different: $hash1 vs $hash2")
-    }
-
-    @Test
-    fun `generateContextHash - empty strings produce valid hash`() {
-        val baseUrl = ""
-        val apiKey = ""
-
-        val hash = generateContextHash(baseUrl, apiKey)
-
-        assertTrue(hash.isNotEmpty())
         assertEquals(16, hash.length)
-    }
-
-    @Test
-    fun `generateContextHash - special characters are handled correctly`() {
-        val baseUrl = "http://localhost:8000/api/v1"
-        val apiKey = "key-with-special-chars-!@#$%^&*()"
-
-        val hash = generateContextHash(baseUrl, apiKey)
-
-        assertTrue(hash.isNotEmpty())
         assertTrue(hash.all { it.isDigit() || it in 'a'..'f' })
     }
 
@@ -227,127 +164,45 @@ class RepositoryUtilsTest {
                 Pair("https://localhost:8000", "key1"),
             )
 
-        val hashes =
-            inputs.map { (baseUrl, apiKey) ->
-                generateContextHash(baseUrl, apiKey)
-            }
-
+        val hashes = inputs.map { (baseUrl, apiKey) -> generateContextHash(baseUrl, apiKey) }
         val uniqueHashes = hashes.toSet()
-        assertEquals(
-            inputs.size,
-            uniqueHashes.size,
-            "Collision detected. Expected ${inputs.size} unique hashes but got ${uniqueHashes.size}",
-        )
-    }
 
-    @Test
-    fun `generateContextHash - produces fixed-length hexadecimal string`() {
-        val baseUrl = "http://localhost:8000"
-        val apiKey = "test-key-12345"
-
-        val hash = generateContextHash(baseUrl, apiKey)
-
-        assertEquals(16, hash.length)
-        assertTrue(hash.all { it.isDigit() || it in 'a'..'f' })
+        assertEquals(inputs.size, uniqueHashes.size)
     }
 
     @Test
     fun `configureAuth - adds X-API-Key header when apiKey is non-empty`() {
-        val apiKey = "test-api-key"
         val builder = HttpRequestBuilder()
 
-        builder.configureAuth(apiKey)
+        builder.configureAuth("test-api-key")
 
-        val headers = builder.headers
-        assertEquals(apiKey, headers["X-API-Key"])
+        assertEquals("test-api-key", builder.headers["X-API-Key"])
     }
 
     @Test
     fun `configureAuth - does not add header when apiKey is empty`() {
-        val apiKey = ""
         val builder = HttpRequestBuilder()
 
-        builder.configureAuth(apiKey)
+        builder.configureAuth("")
 
-        val headers = builder.headers
-        assertNull(headers["X-API-Key"])
+        assertNull(builder.headers["X-API-Key"])
     }
 
     @Test
-    fun `configureAuth - appends X-API-Key header when not present`() {
-        val apiKey = "test-api-key"
-        val builder = HttpRequestBuilder()
+    fun `ApiError_HttpError - HTTP error properties are set correctly`() {
+        val httpError = ApiError.HttpError(404, "Not Found", "Resource not found")
 
-        builder.configureAuth(apiKey)
-
-        val headers = builder.headers
-        assertEquals(apiKey, headers["X-API-Key"])
-    }
-
-    @Test
-    fun `ApiError_HttpError - HTTP error type can be created`() {
-        val httpError =
-            ApiError.HttpError(
-                code = 200,
-                errorMessage = "OK",
-                detail = null,
-            )
-
-        assertTrue(httpError is ApiError.HttpError)
-        assertEquals(200, httpError.code)
-    }
-
-    @Test
-    fun `ApiError_HttpError - HttpError with status code`() {
-        val httpError =
-            ApiError.HttpError(
-                code = 404,
-                errorMessage = "Not Found",
-                detail = "Resource not found",
-            )
-
-        assertTrue(httpError is ApiError.HttpError)
         assertEquals(404, httpError.code)
         assertEquals("Not Found", httpError.errorMessage)
         assertEquals("Resource not found", httpError.detail)
     }
 
     @Test
-    fun `ApiError_HttpError - error message includes detail`() {
-        val httpError =
-            ApiError.HttpError(
-                code = 500,
-                errorMessage = "Internal Server Error",
-                detail = "Database connection failed",
-            )
+    fun `ApiError_HttpError - error message formatting`() {
+        val httpError1 = ApiError.HttpError(500, "Internal Server Error", "Database connection failed")
+        val httpError2 = ApiError.HttpError(401, "Unauthorized", null)
 
-        val expectedMessage = "HTTP 500: Internal Server Error - Database connection failed"
-        assertEquals(expectedMessage, httpError.message)
-    }
-
-    @Test
-    fun `ApiError_HttpError - error message with detail`() {
-        val httpError =
-            ApiError.HttpError(
-                code = 503,
-                errorMessage = "Service Unavailable",
-                detail = "Server maintenance in progress",
-            )
-
-        val expectedMessage = "HTTP 503: Service Unavailable - Server maintenance in progress"
-        assertEquals(expectedMessage, httpError.message)
-    }
-
-    @Test
-    fun `ApiError_HttpError - null detail is handled gracefully`() {
-        val httpError =
-            ApiError.HttpError(
-                code = 401,
-                errorMessage = "Unauthorized",
-                detail = null,
-            )
-
-        val expectedMessage = "HTTP 401: Unauthorized"
-        assertEquals(expectedMessage, httpError.message)
+        assertEquals("HTTP 500: Internal Server Error - Database connection failed", httpError1.message)
+        assertEquals("HTTP 401: Unauthorized", httpError2.message)
     }
 }

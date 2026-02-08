@@ -20,14 +20,14 @@ class ChatRepositoryImplTest {
 
     @Test
     fun `ChatRepositoryImpl can be instantiated`() {
-        // Given
+        // Arrange
         val httpClient = HttpClient()
 
         try {
-            // When
+            // Act
             val repository = ChatRepositoryImpl(httpClient, "http://localhost:8000", "", json)
 
-            // Then
+            // Assert
             assertTrue(repository is ChatRepository)
         } finally {
             httpClient.close()
