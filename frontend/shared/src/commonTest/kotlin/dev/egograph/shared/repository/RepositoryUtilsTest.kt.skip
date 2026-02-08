@@ -101,8 +101,16 @@ class RepositoryUtilsTest {
             assertEquals("value", result)
         }
 
+    /**
+     * Verifies cache API stability under coroutine concurrency patterns.
+     *
+     * This test uses runTest with its single-threaded dispatcher, validating
+     * that concurrent coroutine launches don't corrupt cache state. True
+     * multi-threaded safety would require Dispatchers.Default and is tested
+     * separately in platform-specific test suites.
+     */
     @Test
-    fun `InMemoryCache - concurrent access is thread-safe`() =
+    fun `InMemoryCache - concurrent access does not crash`() =
         runTest {
             val cache = InMemoryCache<String, Int>()
             val iterations = 100
@@ -122,8 +130,16 @@ class RepositoryUtilsTest {
             assertTrue(result >= 0 && result < iterations)
         }
 
+    /**
+     * Validates cache read operations under concurrent access.
+     *
+     * Uses concurrent coroutine launches to verify read consistency.
+     * Note: MutableList is not thread-safe; this relies on runTest's
+     * single-threaded dispatcher. For true concurrent reads testing,
+     * use thread-safe collections like ConcurrentLinkedQueue.
+     */
     @Test
-    fun `InMemoryCache - concurrent reads do not block`() =
+    fun `InMemoryCache - concurrent reads return consistent values`() =
         runTest {
             val cache = InMemoryCache<String, String>()
             cache.put("key", "value")
@@ -203,19 +219,16 @@ class RepositoryUtilsTest {
     fun `generateContextHash - collision resistance with similar inputs`() {
         val inputs =
             listOf(
-                "http://localhost:8000:key1",
-                "http://localhost:8000:key2",
-                "http://localhost:8000:key3",
-                "http://localhost:8001:key1",
-                "http://localhost:8002:key1",
-                "https://localhost:8000:key1",
+                Pair("http://localhost:8000", "key1"),
+                Pair("http://localhost:8000", "key2"),
+                Pair("http://localhost:8000", "key3"),
+                Pair("http://localhost:8001", "key1"),
+                Pair("http://localhost:8002", "key1"),
+                Pair("https://localhost:8000", "key1"),
             )
 
         val hashes =
-            inputs.map { input ->
-                val parts = input.split(":")
-                val baseUrl = parts.take(parts.size - 1).joinToString(":")
-                val apiKey = parts.last()
+            inputs.map { (baseUrl, apiKey) ->
                 generateContextHash(baseUrl, apiKey)
             }
 
@@ -275,7 +288,7 @@ class RepositoryUtilsTest {
     }
 
     @Test
-    fun `bodyOrThrow - HTTP error type can be created`() {
+    fun `ApiError_HttpError - HTTP error type can be created`() {
         val httpError =
             ApiError.HttpError(
                 code = 200,
@@ -288,7 +301,7 @@ class RepositoryUtilsTest {
     }
 
     @Test
-    fun `bodyOrThrow - HttpError with status code`() {
+    fun `ApiError_HttpError - HttpError with status code`() {
         val httpError =
             ApiError.HttpError(
                 code = 404,
@@ -303,7 +316,7 @@ class RepositoryUtilsTest {
     }
 
     @Test
-    fun `bodyOrThrow - error message includes detail`() {
+    fun `ApiError_HttpError - error message includes detail`() {
         val httpError =
             ApiError.HttpError(
                 code = 500,
@@ -316,20 +329,20 @@ class RepositoryUtilsTest {
     }
 
     @Test
-    fun `bodyOrThrow - error message without detail`() {
+    fun `ApiError_HttpError - error message with detail`() {
         val httpError =
             ApiError.HttpError(
                 code = 503,
                 errorMessage = "Service Unavailable",
-                detail = "Fallback error message",
+                detail = "Server maintenance in progress",
             )
 
-        val expectedMessage = "HTTP 503: Service Unavailable - Fallback error message"
+        val expectedMessage = "HTTP 503: Service Unavailable - Server maintenance in progress"
         assertEquals(expectedMessage, httpError.message)
     }
 
     @Test
-    fun `bodyOrThrow - null detail is handled gracefully`() {
+    fun `ApiError_HttpError - null detail is handled gracefully`() {
         val httpError =
             ApiError.HttpError(
                 code = 401,
