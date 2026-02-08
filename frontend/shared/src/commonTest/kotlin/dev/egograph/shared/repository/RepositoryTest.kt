@@ -141,12 +141,14 @@ class RepositoryTest {
 
         // Act
         val isFailure = result.isFailure
-        val exception = result.exceptionOrNull() as? ApiError.HttpError
+        val exception = result.exceptionOrNull()
 
         // Assert
         assertTrue(isFailure)
-        assertEquals(404, exception?.code)
-        assertEquals("Not Found", exception?.errorMessage)
+        assertNotNull(exception)
+        assertTrue(exception is ApiError.HttpError)
+        assertEquals(404, exception.code)
+        assertEquals("Not Found", exception.errorMessage)
     }
 
     /**

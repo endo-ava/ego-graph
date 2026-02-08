@@ -199,8 +199,11 @@ class SystemPromptRepositoryImplTest {
                     assertEquals("$baseUrl/v1/system-prompts/user", it.url.toString())
                     assertEquals(apiKey, it.headers["X-API-Key"])
 
-                    // リクエストボディをキャプチャ
-                    requestBody = it.body.toString()
+                    // リクエストボディをキャプチャして検証
+                    val bodyBytes =
+                        (it.body as io.ktor.http.content.OutgoingContent.ByteArrayContent)
+                            .bytes()
+                    requestBody = String(bodyBytes)
 
                     respond(
                         content = responseBody,
@@ -220,6 +223,9 @@ class SystemPromptRepositoryImplTest {
             val actual = result.getOrNull()!!
             assertEquals("user", actual.name)
             assertEquals("Updated content", actual.content)
+
+            // Assert: リクエストボディに更新内容が含まれることを検証
+            assertTrue(requestBody?.contains("Updated content") == true)
         }
 
     @Test
@@ -233,12 +239,20 @@ class SystemPromptRepositoryImplTest {
                 )
             val responseBody = json.encodeToString(expectedResponse)
 
+            var capturedRequestBody: String? = null
+
             val mockEngine =
                 MockEngine {
                     // HTTPリクエストのアサーション
                     assertEquals(HttpMethod.Put, it.method)
                     assertEquals("$baseUrl/v1/system-prompts/identity", it.url.toString())
                     assertEquals(apiKey, it.headers["X-API-Key"])
+
+                    // リクエストボディをキャプチャして検証
+                    val bodyBytes =
+                        (it.body as io.ktor.http.content.OutgoingContent.ByteArrayContent)
+                            .bytes()
+                    capturedRequestBody = String(bodyBytes)
 
                     respond(
                         content = responseBody,
@@ -253,10 +267,13 @@ class SystemPromptRepositoryImplTest {
             // Act
             val result = repository.updateSystemPrompt(SystemPromptName.IDENTITY, "You are Claude.")
 
-            // Assert
+            // Assert: レスポンスの検証
             assertTrue(result.isSuccess)
             assertEquals("identity", result.getOrNull()!!.name)
             assertEquals("You are Claude.", result.getOrNull()!!.content)
+
+            // Assert: リクエストボディにコンテンツが含まれることを検証
+            assertTrue(capturedRequestBody?.contains("You are Claude.") == true)
         }
 
     @Test

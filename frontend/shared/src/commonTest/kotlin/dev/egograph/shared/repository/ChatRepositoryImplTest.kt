@@ -325,7 +325,10 @@ class ChatRepositoryImplTest {
             val errors = mutableListOf<ApiError>()
             repository.streamChatResponse(request).collect { result ->
                 if (result.isFailure) {
-                    result.exceptionOrNull()?.let { errors.add(it as ApiError) }
+                    result.exceptionOrNull()?.let {
+                        assertIs<ApiError>(it)
+                        errors.add(it)
+                    }
                 }
             }
 

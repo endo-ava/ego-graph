@@ -1,7 +1,6 @@
 package dev.egograph.shared.repository
 
 import io.ktor.client.request.HttpRequestBuilder
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -105,7 +104,7 @@ class RepositoryUtilsTest {
             cache.put("key", "value")
 
             // Act
-            delay(100)
+            Thread.sleep(100)
 
             // Assert
             assertEquals("value", cache.get("key"))

@@ -218,7 +218,7 @@ class ChatUtilsTest {
     }
 
     @Test
-    fun `toThreadTitle with unicode characters longer than maxLength`() {
+    fun `toThreadTitle with unicode characters shorter than maxLength returns unchanged`() {
         // Arrange
         val input = "こんにちは世界これは非常に長いタイトルです"
 

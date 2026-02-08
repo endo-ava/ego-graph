@@ -139,7 +139,10 @@ class MessageRepositoryImplTest {
             val errors = mutableListOf<ApiError>()
             repository.getMessages("nonexistent").collect { result ->
                 if (result.isFailure) {
-                    result.exceptionOrNull()?.let { errors.add(it as ApiError) }
+                    result.exceptionOrNull()?.let {
+                        assertIs<ApiError>(it)
+                        errors.add(it)
+                    }
                 }
             }
 
@@ -209,7 +212,10 @@ class MessageRepositoryImplTest {
             val errors = mutableListOf<ApiError>()
             repository.getMessages("thread-123").collect { result ->
                 if (result.isFailure) {
-                    result.exceptionOrNull()?.let { errors.add(it as ApiError) }
+                    result.exceptionOrNull()?.let {
+                        assertIs<ApiError>(it)
+                        errors.add(it)
+                    }
                 }
             }
 

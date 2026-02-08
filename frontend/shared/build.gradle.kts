@@ -159,6 +159,16 @@ kover {
             html {
                 onCheck = false
             }
+            xml {
+                onCheck = false
+            }
+        }
+    }
+    currentProject {
+        instrumentation {
+            excludedClasses.add("*.ui.*")
+            excludedClasses.add("*Screen")
+            excludedClasses.add("*Screen\$*")
         }
     }
 }
