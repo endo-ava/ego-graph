@@ -23,9 +23,13 @@ class ChatStoreTest {
     @Test
     fun `initial state should have default values`() =
         runTest(testDispatcher) {
+            // Arrange
             val store = createTestStore()
 
+            // Act
             val state = store.state
+
+            // Assert
             assertTrue(state.threads.isEmpty())
             assertNull(state.selectedThread)
             assertTrue(state.messages.isEmpty())
@@ -38,16 +42,20 @@ class ChatStoreTest {
     @Test
     fun `LoadThreads intent should start loading threads`() =
         runTest(testDispatcher) {
+            // Arrange
             val store = createTestStore()
 
+            // Act
             store.accept(ChatIntent.LoadThreads)
 
+            // Assert
             assertTrue(store.state.isLoadingThreads)
         }
 
     @Test
     fun `SelectThread intent should update selected thread and enter messages loading`() =
         runTest(testDispatcher) {
+            // Arrange
             val store = createTestStore()
 
             val thread =
@@ -61,8 +69,10 @@ class ChatStoreTest {
                     lastMessageAt = "2024-01-01",
                 )
 
+            // Act
             store.accept(ChatIntent.SelectThread(thread.threadId))
 
+            // Assert
             assertEquals(thread, store.state.selectedThread)
             assertTrue(store.state.isLoadingMessages)
         }
@@ -70,10 +80,13 @@ class ChatStoreTest {
     @Test
     fun `ClearThreadSelection intent should clear selected thread`() =
         runTest(testDispatcher) {
+            // Arrange
             val store = createTestStore()
 
+            // Act
             store.accept(ChatIntent.ClearThreadSelection)
 
+            // Assert
             assertNull(store.state.selectedThread)
             assertTrue(store.state.messages.isEmpty())
         }
@@ -81,22 +94,28 @@ class ChatStoreTest {
     @Test
     fun `SelectModel intent should update selected model`() =
         runTest(testDispatcher) {
+            // Arrange
             val store = createTestStore()
 
+            // Act
             store.accept(ChatIntent.SelectModel("model1"))
 
+            // Assert
             assertEquals("model1", store.state.selectedModel)
         }
 
     @Test
     fun `ClearErrors intent should clear all errors`() =
         runTest(testDispatcher) {
+            // Arrange
             val store = createTestStore()
 
+            // Act
             // まずエラー状態を作る（実際にはリポジトリの失敗が必要）
             // ここではクリア操作の動作確認のみ
             store.accept(ChatIntent.ClearErrors)
 
+            // Assert
             assertNull(store.state.threadsError)
             assertNull(store.state.messagesError)
             assertNull(store.state.modelsError)
