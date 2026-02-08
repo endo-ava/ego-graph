@@ -102,9 +102,7 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(libs.kotlin.test)
-                implementation(libs.kotest.framework.engine)
-                implementation(libs.kotest.assertions.core)
-                implementation(libs.kotest.framework.datatest)
+                implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.turbine)
                 implementation(libs.koin.test)
                 implementation(libs.ktor.client.mock)
