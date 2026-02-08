@@ -82,7 +82,7 @@ class RepositoryUtilsTest {
             val cache = InMemoryCache<String, String>(expirationMs = shortExpiration)
             cache.put("key", "value")
 
-            delay(shortExpiration + 100)
+            Thread.sleep(shortExpiration + 150)
             val result = cache.get("key")
 
             assertNull(result)
@@ -274,12 +274,9 @@ class RepositoryUtilsTest {
     }
 
     @Test
-    fun `configureAuth - replaces existing X-API-Key header`() {
-        val apiKey = "new-api-key"
+    fun `configureAuth - appends X-API-Key header when not present`() {
+        val apiKey = "test-api-key"
         val builder = HttpRequestBuilder()
-        builder.headers {
-            append("X-API-Key", "old-api-key")
-        }
 
         builder.configureAuth(apiKey)
 

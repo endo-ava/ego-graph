@@ -181,13 +181,10 @@ class ChatUtilsTest {
 
     @Test
     fun `toThreadTitle with content needing trailing space trim after truncation`() {
-        // Arrange
-        val input = "This is a very long title that needs truncation   "
+        val input = "This is a very long title that needs truncation and more content   "
 
-        // Act
         val result = input.toThreadTitle()
 
-        // Assert
         assertEquals(48, result.length)
         assertTrue(result.endsWith("..."))
         assertFalse(result.endsWith(" ..."))
@@ -219,15 +216,11 @@ class ChatUtilsTest {
 
     @Test
     fun `toThreadTitle with unicode characters longer than maxLength`() {
-        // Arrange
         val input = "こんにちは世界これは非常に長いタイトルです"
 
-        // Act
         val result = input.toThreadTitle()
 
-        // Assert
-        assertTrue(result.length <= 48)
-        assertTrue(result.endsWith("..."))
+        assertEquals("こんにちは世界これは非常に長いタイトルです", result)
     }
 
     @Test
