@@ -14,41 +14,55 @@ class RepositoryUtilsTest {
     @Test
     fun `InMemoryCache - put and get returns stored value`() =
         runTest {
+            // Arrange
             val cache = InMemoryCache<String, String>()
 
+            // Act
             cache.put("test-key", "test-value")
 
+            // Assert
             assertEquals("test-value", cache.get("test-key"))
         }
 
     @Test
     fun `InMemoryCache - get returns null for non-existent key`() =
         runTest {
+            // Arrange
             val cache = InMemoryCache<String, String>()
 
-            assertNull(cache.get("non-existent"))
+            // Act
+            val result = cache.get("non-existent")
+
+            // Assert
+            assertNull(result)
         }
 
     @Test
     fun `InMemoryCache - remove deletes entry`() =
         runTest {
+            // Arrange
             val cache = InMemoryCache<String, String>()
             cache.put("key", "value")
 
+            // Act
             cache.remove("key")
 
+            // Assert
             assertNull(cache.get("key"))
         }
 
     @Test
     fun `InMemoryCache - clear removes all entries`() =
         runTest {
+            // Arrange
             val cache = InMemoryCache<String, String>()
             cache.put("key1", "value1")
             cache.put("key2", "value2")
 
+            // Act
             cache.clear()
 
+            // Assert
             assertNull(cache.get("key1"))
             assertNull(cache.get("key2"))
         }
@@ -56,43 +70,54 @@ class RepositoryUtilsTest {
     @Test
     fun `InMemoryCache - overwriting existing key replaces value`() =
         runTest {
+            // Arrange
             val cache = InMemoryCache<String, String>()
             cache.put("key", "old-value")
 
+            // Act
             cache.put("key", "new-value")
 
+            // Assert
             assertEquals("new-value", cache.get("key"))
         }
 
     @Test
     fun `InMemoryCache - expired entry returns null`() =
         runTest {
+            // Arrange
             val shortExpiration = 100L
             val cache = InMemoryCache<String, String>(expirationMs = shortExpiration)
             cache.put("key", "value")
 
+            // Act
             Thread.sleep(shortExpiration + 150)
 
+            // Assert
             assertNull(cache.get("key"))
         }
 
     @Test
     fun `InMemoryCache - non-expired entry returns value`() =
         runTest {
+            // Arrange
             val longExpiration = 1000L
             val cache = InMemoryCache<String, String>(expirationMs = longExpiration)
             cache.put("key", "value")
 
+            // Act
             delay(100)
 
+            // Assert
             assertEquals("value", cache.get("key"))
         }
 
     @Test
     fun `InMemoryCache - concurrent access does not crash`() =
         runTest {
+            // Arrange
             val cache = InMemoryCache<String, Int>()
 
+            // Act
             val jobs =
                 List(10) {
                     launch {
@@ -103,6 +128,7 @@ class RepositoryUtilsTest {
                 }
             jobs.forEach { it.join() }
 
+            // Assert
             val result = cache.get("counter")
             assertNotNull(result)
             assertTrue(result >= 0)
@@ -112,9 +138,11 @@ class RepositoryUtilsTest {
     @Test
     fun `InMemoryCache - concurrent reads return consistent values`() =
         runTest {
+            // Arrange
             val cache = InMemoryCache<String, String>()
             cache.put("key", "value")
 
+            // Act
             val results = mutableListOf<String?>()
             val jobs =
                 List(10) {
@@ -124,36 +152,57 @@ class RepositoryUtilsTest {
                 }
             jobs.forEach { it.join() }
 
+            // Assert
             assertEquals(10, results.size)
             assertTrue(results.all { it == "value" })
         }
 
     @Test
     fun `generateContextHash - produces consistent hash for same input`() {
-        val hash1 = generateContextHash("http://localhost:8000", "test-key")
-        val hash2 = generateContextHash("http://localhost:8000", "test-key")
+        // Arrange
+        val baseUrl = "http://localhost:8000"
+        val apiKey = "test-key"
 
+        // Act
+        val hash1 = generateContextHash(baseUrl, apiKey)
+        val hash2 = generateContextHash(baseUrl, apiKey)
+
+        // Assert
         assertEquals(hash1, hash2)
     }
 
     @Test
     fun `generateContextHash - produces different hashes for different inputs`() {
-        val hash1 = generateContextHash("http://localhost:8000", "key1")
-        val hash2 = generateContextHash("http://localhost:8000", "key2")
+        // Arrange
+        val baseUrl1 = "http://localhost:8000"
+        val apiKey1 = "key1"
+        val apiKey2 = "key2"
 
+        // Act
+        val hash1 = generateContextHash(baseUrl1, apiKey1)
+        val hash2 = generateContextHash(baseUrl1, apiKey2)
+
+        // Assert
         assertTrue(hash1 != hash2)
     }
 
     @Test
     fun `generateContextHash - produces fixed-length hexadecimal string`() {
-        val hash = generateContextHash("http://localhost:8000", "test-key")
+        // Arrange
+        val baseUrl = "http://localhost:8000"
+        val apiKey = "test-key"
 
+        // Act
+        val hash = generateContextHash(baseUrl, apiKey)
+
+        // Assert
         assertEquals(16, hash.length)
         assertTrue(hash.all { it.isDigit() || it in 'a'..'f' })
     }
 
     @Test
     fun `generateContextHash - collision resistance with similar inputs`() {
+        // Arrange
         val inputs =
             listOf(
                 Pair("http://localhost:8000", "key1"),
@@ -164,45 +213,68 @@ class RepositoryUtilsTest {
                 Pair("https://localhost:8000", "key1"),
             )
 
+        // Act
         val hashes = inputs.map { (baseUrl, apiKey) -> generateContextHash(baseUrl, apiKey) }
         val uniqueHashes = hashes.toSet()
 
+        // Assert
         assertEquals(inputs.size, uniqueHashes.size)
     }
 
     @Test
     fun `configureAuth - adds X-API-Key header when apiKey is non-empty`() {
+        // Arrange
         val builder = HttpRequestBuilder()
+        val apiKey = "test-api-key"
 
-        builder.configureAuth("test-api-key")
+        // Act
+        builder.configureAuth(apiKey)
 
-        assertEquals("test-api-key", builder.headers["X-API-Key"])
+        // Assert
+        assertEquals(apiKey, builder.headers["X-API-Key"])
     }
 
     @Test
     fun `configureAuth - does not add header when apiKey is empty`() {
+        // Arrange
         val builder = HttpRequestBuilder()
+        val apiKey = ""
 
-        builder.configureAuth("")
+        // Act
+        builder.configureAuth(apiKey)
 
+        // Assert
         assertNull(builder.headers["X-API-Key"])
     }
 
     @Test
     fun `ApiError_HttpError - HTTP error properties are set correctly`() {
-        val httpError = ApiError.HttpError(404, "Not Found", "Resource not found")
+        // Arrange
+        val code = 404
+        val errorMessage = "Not Found"
+        val detail = "Resource not found"
 
-        assertEquals(404, httpError.code)
-        assertEquals("Not Found", httpError.errorMessage)
-        assertEquals("Resource not found", httpError.detail)
+        // Act
+        val httpError = ApiError.HttpError(code, errorMessage, detail)
+
+        // Assert
+        assertEquals(code, httpError.code)
+        assertEquals(errorMessage, httpError.errorMessage)
+        assertEquals(detail, httpError.detail)
     }
 
     @Test
     fun `ApiError_HttpError - error message formatting`() {
+        // Arrange
         val httpError1 = ApiError.HttpError(500, "Internal Server Error", "Database connection failed")
         val httpError2 = ApiError.HttpError(401, "Unauthorized", null)
 
-        assertEquals("HTTP 500: Internal Server Error - Database connection failed", httpError1.message)
-        assertEquals("HTTP 401: Unauthorized", httpError2.message)
+        // Act
+        val message1 = httpError1.message
+        val message2 = httpError2.message
+
+        // Assert
+        assertEquals("HTTP 500: Internal Server Error - Database connection failed", message1)
+        assertEquals("HTTP 401: Unauthorized", message2)
     }
 }

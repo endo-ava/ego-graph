@@ -30,10 +30,14 @@ class SystemPromptRepositoryImplTest {
     @Test
     fun `network error type can be created`() =
         runTest {
+            // Arrange
             // This test documents expected behavior without actual HTTP calls
             // When MockEngine is available, add actual network error tests
 
+            // Act
             val expectedError = ApiError.NetworkError(Exception("Network error"))
+
+            // Assert
             assertTrue(expectedError is ApiError.NetworkError)
             assertTrue(expectedError.cause != null)
         }

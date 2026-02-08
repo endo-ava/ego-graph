@@ -14,41 +14,77 @@ class BaseUrlProviderTest {
 
     @Test
     fun `normalizeBaseUrl - スキームとホストのみのURLをそのまま返す`() {
-        val result = normalizeBaseUrl("http://localhost:8000")
-        assertEquals("http://localhost:8000", result)
+        // Arrange
+        val input = "http://localhost:8000"
+        val expected = "http://localhost:8000"
+
+        // Act
+        val result = normalizeBaseUrl(input)
+
+        // Assert
+        assertEquals(expected, result)
     }
 
     @Test
     fun `normalizeBaseUrl - 末尾スラッシュを削除する`() {
-        val result = normalizeBaseUrl("http://localhost:8000/")
-        assertEquals("http://localhost:8000", result)
+        // Arrange
+        val input = "http://localhost:8000/"
+        val expected = "http://localhost:8000"
+
+        // Act
+        val result = normalizeBaseUrl(input)
+
+        // Assert
+        assertEquals(expected, result)
     }
 
     @Test
     fun `normalizeBaseUrl - HTTPSスキームを保持する`() {
-        val result = normalizeBaseUrl("https://api.egograph.dev/")
-        assertEquals("https://api.egograph.dev", result)
+        // Arrange
+        val input = "https://api.egograph.dev/"
+        val expected = "https://api.egograph.dev"
+
+        // Act
+        val result = normalizeBaseUrl(input)
+
+        // Assert
+        assertEquals(expected, result)
     }
 
     @Test
     fun `normalizeBaseUrl - Tailscale IPアドレスを正しく処理する`() {
-        val result = normalizeBaseUrl("http://100.x.x.x:8000/")
-        assertEquals("http://100.x.x.x:8000", result)
+        // Arrange
+        val input = "http://100.x.x.x:8000/"
+        val expected = "http://100.x.x.x:8000"
+
+        // Act
+        val result = normalizeBaseUrl(input)
+
+        // Assert
+        assertEquals(expected, result)
     }
 
     // ========== 異常系テスト ==========
 
     @Test
     fun `normalizeBaseUrl - 空白文字列の場合は例外を投げる`() {
+        // Arrange
+        val input = ""
+
+        // Act & Assert
         assertFailsWith<IllegalArgumentException> {
-            normalizeBaseUrl("")
+            normalizeBaseUrl(input)
         }
     }
 
     @Test
     fun `normalizeBaseUrl - スキームがない場合は例外を投げる`() {
+        // Arrange
+        val input = "localhost:8000"
+
+        // Act & Assert
         assertFailsWith<IllegalArgumentException> {
-            normalizeBaseUrl("localhost:8000")
+            normalizeBaseUrl(input)
         }
     }
 
@@ -56,7 +92,14 @@ class BaseUrlProviderTest {
 
     @Test
     fun `normalizeBaseUrl - 前後の空白をトリムする`() {
-        val result = normalizeBaseUrl("  http://localhost:8000/  ")
-        assertEquals("http://localhost:8000", result)
+        // Arrange
+        val input = "  http://localhost:8000/  "
+        val expected = "http://localhost:8000"
+
+        // Act
+        val result = normalizeBaseUrl(input)
+
+        // Assert
+        assertEquals(expected, result)
     }
 }

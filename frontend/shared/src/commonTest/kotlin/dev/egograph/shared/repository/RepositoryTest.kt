@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.flow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -24,17 +25,26 @@ class RepositoryTest {
      */
     @Test
     fun `ApiError - all error types can be created`() {
+        // Arrange
         val networkError = ApiError.NetworkError(Exception("Network failed"))
         val httpError = ApiError.HttpError(404, "Not Found", "Resource not found")
         val serializationError = ApiError.SerializationError(Exception("Parse failed"))
         val unknownError = ApiError.UnknownError(Exception("Unknown"))
         val validationError = ApiError.ValidationError("Invalid input")
 
-        assertEquals("Network error: Network failed", networkError.message)
-        assertEquals("HTTP 404: Not Found - Resource not found", httpError.message)
-        assertEquals("Serialization error: Parse failed", serializationError.message)
-        assertEquals("Unknown error: Unknown", unknownError.message)
-        assertEquals("Invalid input", validationError.message)
+        // Act
+        val networkMessage = networkError.message
+        val httpMessage = httpError.message
+        val serializationMessage = serializationError.message
+        val unknownMessage = unknownError.message
+        val validationMessage = validationError.message
+
+        // Assert
+        assertEquals("Network error: Network failed", networkMessage)
+        assertEquals("HTTP 404: Not Found - Resource not found", httpMessage)
+        assertEquals("Serialization error: Parse failed", serializationMessage)
+        assertEquals("Unknown error: Unknown", unknownMessage)
+        assertEquals("Invalid input", validationMessage)
     }
 
     /**
@@ -42,14 +52,21 @@ class RepositoryTest {
      */
     @Test
     fun `ApiError - cause is propagated correctly`() {
+        // Arrange
         val originalException = RuntimeException("Original error")
         val networkError = ApiError.NetworkError(originalException)
         val serializationError = ApiError.SerializationError(originalException)
         val unknownError = ApiError.UnknownError(originalException)
 
-        assertEquals(originalException, networkError.cause)
-        assertEquals(originalException, serializationError.cause)
-        assertEquals(originalException, unknownError.cause)
+        // Act
+        val networkCause = networkError.cause
+        val serializationCause = serializationError.cause
+        val unknownCause = unknownError.cause
+
+        // Assert
+        assertEquals(originalException, networkCause)
+        assertEquals(originalException, serializationCause)
+        assertEquals(originalException, unknownCause)
     }
 
     /**
@@ -57,11 +74,18 @@ class RepositoryTest {
      */
     @Test
     fun `ApiError - HttpError fields are accessible`() {
+        // Arrange
         val httpError = ApiError.HttpError(500, "Internal Server Error", "Database connection failed")
 
-        assertEquals(500, httpError.code)
-        assertEquals("Internal Server Error", httpError.errorMessage)
-        assertEquals("Database connection failed", httpError.detail)
+        // Act
+        val code = httpError.code
+        val errorMessage = httpError.errorMessage
+        val detail = httpError.detail
+
+        // Assert
+        assertEquals(500, code)
+        assertEquals("Internal Server Error", errorMessage)
+        assertEquals("Database connection failed", detail)
     }
 
     /**
@@ -69,12 +93,20 @@ class RepositoryTest {
      */
     @Test
     fun `RepositoryResult - returns success for valid result`() {
+        // Arrange
         val result: RepositoryResult<String> = Result.success("success")
 
-        assertTrue(result.isSuccess)
-        assertFalse(result.isFailure)
-        assertEquals("success", result.getOrNull())
-        assertEquals("success", result.getOrThrow())
+        // Act
+        val isSuccess = result.isSuccess
+        val isFailure = result.isFailure
+        val orNull = result.getOrNull()
+        val orThrow = result.getOrThrow()
+
+        // Assert
+        assertTrue(isSuccess)
+        assertFalse(isFailure)
+        assertEquals("success", orNull)
+        assertEquals("success", orThrow)
     }
 
     /**
@@ -82,11 +114,18 @@ class RepositoryTest {
      */
     @Test
     fun `RepositoryResult - returns failure for exception`() {
+        // Arrange
         val result: RepositoryResult<String> = Result.failure(ApiError.ValidationError("test error"))
 
-        assertTrue(result.isFailure)
-        assertFalse(result.isSuccess)
-        assertTrue(result.exceptionOrNull() is ApiError.ValidationError)
+        // Act
+        val isFailure = result.isFailure
+        val isSuccess = result.isSuccess
+        val exceptionOrNull = result.exceptionOrNull()
+
+        // Assert
+        assertTrue(isFailure)
+        assertFalse(isSuccess)
+        assertTrue(exceptionOrNull is ApiError.ValidationError)
     }
 
     /**
@@ -94,13 +133,18 @@ class RepositoryTest {
      */
     @Test
     fun `RepositoryResult - exception message is preserved`() {
+        // Arrange
         val result: RepositoryResult<String> =
             Result.failure(
                 ApiError.HttpError(404, "Not Found", "Resource not found"),
             )
 
-        assertTrue(result.isFailure)
+        // Act
+        val isFailure = result.isFailure
         val exception = result.exceptionOrNull() as? ApiError.HttpError
+
+        // Assert
+        assertTrue(isFailure)
         assertEquals(404, exception?.code)
         assertEquals("Not Found", exception?.errorMessage)
     }
@@ -110,7 +154,7 @@ class RepositoryTest {
      */
     @Test
     fun `Repository interfaces - can be implemented`() {
-        // Create mock implementations to verify interfaces are correctly defined
+        // Arrange
         val mockThreadRepo =
             object : ThreadRepository {
                 override fun getThreads(
@@ -170,6 +214,15 @@ class RepositoryTest {
                         ),
                     )
             }
+
+        // Act
+        // Repository interfaces are implemented and instantiated
+
+        // Assert
+        // If we reach here, the interfaces are correctly defined
+        assertNotNull(mockThreadRepo)
+        assertNotNull(mockMessageRepo)
+        assertNotNull(mockChatRepo)
     }
 
     /**
@@ -177,24 +230,27 @@ class RepositoryTest {
      */
     @Test
     fun `RepositoryResult - fold works correctly`() {
+        // Arrange
         val successResult: RepositoryResult<String> = Result.success("value")
         val failureResult: RepositoryResult<String> =
             Result.failure(
                 ApiError.ValidationError("error"),
             )
 
+        // Act
         val successValue =
             successResult.fold(
                 onSuccess = { it },
                 onFailure = { "failure" },
             )
-        assertEquals("value", successValue)
-
         val failureValue =
             failureResult.fold(
                 onSuccess = { "success" },
                 onFailure = { "failure: ${it.message}" },
             )
+
+        // Assert
+        assertEquals("value", successValue)
         assertEquals("failure: error", failureValue)
     }
 
@@ -203,9 +259,13 @@ class RepositoryTest {
      */
     @Test
     fun `RepositoryResult - map transforms success value`() {
+        // Arrange
         val result: RepositoryResult<Int> = Result.success(5)
+
+        // Act
         val mapped = result.map { it * 2 }
 
+        // Assert
         assertTrue(mapped.isSuccess)
         assertEquals(10, mapped.getOrNull())
     }
@@ -215,12 +275,16 @@ class RepositoryTest {
      */
     @Test
     fun `RepositoryResult - mapCatches handles exceptions`() {
+        // Arrange
         val result: RepositoryResult<Int> =
             Result.failure(
                 ApiError.NetworkError(Exception("Network error")),
             )
+
+        // Act
         val mapped = result.mapCatching { it * 2 }
 
+        // Assert
         assertTrue(mapped.isFailure)
         assertTrue(mapped.exceptionOrNull() is ApiError.NetworkError)
     }

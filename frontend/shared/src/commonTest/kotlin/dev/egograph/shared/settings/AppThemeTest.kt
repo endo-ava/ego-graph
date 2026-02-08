@@ -6,50 +6,113 @@ import kotlin.test.assertEquals
 class AppThemeTest {
     @Test
     fun `toAppTheme should parse lowercase theme strings`() {
-        assertEquals(AppTheme.DARK, "dark".toAppTheme())
-        assertEquals(AppTheme.SYSTEM, "system".toAppTheme())
-        assertEquals(AppTheme.LIGHT, "light".toAppTheme())
+        // Arrange
+        val inputDark = "dark"
+        val inputSystem = "system"
+        val inputLight = "light"
+
+        // Act
+        val resultDark = inputDark.toAppTheme()
+        val resultSystem = inputSystem.toAppTheme()
+        val resultLight = inputLight.toAppTheme()
+
+        // Assert
+        assertEquals(AppTheme.DARK, resultDark)
+        assertEquals(AppTheme.SYSTEM, resultSystem)
+        assertEquals(AppTheme.LIGHT, resultLight)
     }
 
     @Test
     fun `toAppTheme should parse uppercase theme strings`() {
-        assertEquals(AppTheme.DARK, "DARK".toAppTheme())
-        assertEquals(AppTheme.SYSTEM, "SYSTEM".toAppTheme())
-        assertEquals(AppTheme.LIGHT, "LIGHT".toAppTheme())
+        // Arrange
+        val inputDark = "DARK"
+        val inputSystem = "SYSTEM"
+        val inputLight = "LIGHT"
+
+        // Act
+        val resultDark = inputDark.toAppTheme()
+        val resultSystem = inputSystem.toAppTheme()
+        val resultLight = inputLight.toAppTheme()
+
+        // Assert
+        assertEquals(AppTheme.DARK, resultDark)
+        assertEquals(AppTheme.SYSTEM, resultSystem)
+        assertEquals(AppTheme.LIGHT, resultLight)
     }
 
     @Test
     fun `toAppTheme should parse mixed case theme strings`() {
-        assertEquals(AppTheme.DARK, "DaRk".toAppTheme())
-        assertEquals(AppTheme.SYSTEM, "SyStEm".toAppTheme())
-        assertEquals(AppTheme.LIGHT, "LiGhT".toAppTheme())
+        // Arrange
+        val inputDark = "DaRk"
+        val inputSystem = "SyStEm"
+        val inputLight = "LiGhT"
+
+        // Act
+        val resultDark = inputDark.toAppTheme()
+        val resultSystem = inputSystem.toAppTheme()
+        val resultLight = inputLight.toAppTheme()
+
+        // Assert
+        assertEquals(AppTheme.DARK, resultDark)
+        assertEquals(AppTheme.SYSTEM, resultSystem)
+        assertEquals(AppTheme.LIGHT, resultLight)
     }
 
     @Test
     fun `toAppTheme should return LIGHT as default for invalid inputs`() {
-        assertEquals(AppTheme.LIGHT, "invalid_theme".toAppTheme())
-        assertEquals(AppTheme.LIGHT, "".toAppTheme())
-        assertEquals(AppTheme.LIGHT, "   ".toAppTheme())
-        assertEquals(AppTheme.LIGHT, "darkness".toAppTheme())
+        // Arrange
+        val invalidInputs = listOf("invalid_theme", "", "   ", "darkness")
+
+        // Act
+        val results = invalidInputs.map { it.toAppTheme() }
+
+        // Assert
+        results.forEach { assertEquals(AppTheme.LIGHT, it) }
     }
 
     @Test
     fun `toStorageString should return correct lowercase string`() {
-        assertEquals("light", AppTheme.LIGHT.toStorageString())
-        assertEquals("dark", AppTheme.DARK.toStorageString())
-        assertEquals("system", AppTheme.SYSTEM.toStorageString())
+        // Arrange
+        val lightTheme = AppTheme.LIGHT
+        val darkTheme = AppTheme.DARK
+        val systemTheme = AppTheme.SYSTEM
+
+        // Act
+        val lightString = lightTheme.toStorageString()
+        val darkString = darkTheme.toStorageString()
+        val systemString = systemTheme.toStorageString()
+
+        // Assert
+        assertEquals("light", lightString)
+        assertEquals("dark", darkString)
+        assertEquals("system", systemString)
     }
 
     @Test
     fun `displayName should return correct display name`() {
-        assertEquals("Light", AppTheme.LIGHT.displayName)
-        assertEquals("Dark", AppTheme.DARK.displayName)
-        assertEquals("System", AppTheme.SYSTEM.displayName)
+        // Arrange
+        val lightTheme = AppTheme.LIGHT
+        val darkTheme = AppTheme.DARK
+        val systemTheme = AppTheme.SYSTEM
+
+        // Act
+        val lightDisplayName = lightTheme.displayName
+        val darkDisplayName = darkTheme.displayName
+        val systemDisplayName = systemTheme.displayName
+
+        // Assert
+        assertEquals("Light", lightDisplayName)
+        assertEquals("Dark", darkDisplayName)
+        assertEquals("System", systemDisplayName)
     }
 
     @Test
     fun `round-trip conversion should preserve theme for all enum values`() {
-        AppTheme.entries.forEach { theme ->
+        // Arrange
+        val allThemes = AppTheme.entries
+
+        // Act & Assert
+        allThemes.forEach { theme ->
             val storageString = theme.toStorageString()
             val restored = storageString.toAppTheme()
             assertEquals(theme, restored)
@@ -58,9 +121,14 @@ class AppThemeTest {
 
     @Test
     fun `round-trip with uppercase storage string normalizes to lowercase`() {
-        val theme = "DARK".toAppTheme()
+        // Arrange
+        val uppercaseInput = "DARK"
+
+        // Act
+        val theme = uppercaseInput.toAppTheme()
         val restoredString = theme.toStorageString()
 
+        // Assert
         assertEquals(AppTheme.DARK, theme)
         assertEquals("dark", restoredString)
     }
