@@ -28,24 +28,22 @@ class LLMModel(BaseModel):
 
 # 利用可能な LLM モデルの定義
 MODELS_CONFIG: dict[str, LLMModel] = {
-    # MIMO v2 Flash - 廃止のためコメントアウト
-    # "xiaomi/mimo-v2-flash:free": LLMModel(
-    #     id="xiaomi/mimo-v2-flash:free",
-    #     name="MIMO v2 Flash",
-    #     provider="openrouter",
-    #     input_cost_per_1m=0.0,
-    #     output_cost_per_1m=0.0,
-    #     is_free=True,
-    # ),
-    # DevStral-2512 - 廃止のためコメントアウト
-    # "mistralai/devstral-2512:free": LLMModel(
-    #     id="mistralai/devstral-2512:free",
-    #     name="DevStral-2512",
-    #     provider="openrouter",
-    #     input_cost_per_1m=0.0,
-    #     output_cost_per_1m=0.0,
-    #     is_free=True,
-    # ),
+    "arcee-ai/trinity-large-preview:free": LLMModel(
+        id="arcee-ai/trinity-large-preview:free",
+        name="trinity-large-preview",
+        provider="openrouter",
+        input_cost_per_1m=0.0,
+        output_cost_per_1m=0.0,
+        is_free=True,
+    ),
+    "stepfun/step-3.5-flash:free": LLMModel(
+        id="stepfun/step-3.5-flash:free",
+        name="step-3.5-flash",
+        provider="openrouter",
+        input_cost_per_1m=0.0,
+        output_cost_per_1m=0.0,
+        is_free=True,
+    ),
     "x-ai/grok-4.1-fast": LLMModel(
         id="x-ai/grok-4.1-fast",
         name="Grok 4.1 Fast",
