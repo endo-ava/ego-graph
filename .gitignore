@@ -106,3 +106,6 @@ wt1/
 .maestro/reports/
 maestro/reports/
 *.mp4
+
+# Firebase config (contains project keys)
+frontend/androidApp/google-services.json
