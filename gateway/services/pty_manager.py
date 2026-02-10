@@ -1,0 +1,277 @@
+"""PTYプロセスのライフサイクル管理。
+
+tmuxセッションへのattach/detachを担当する。
+"""
+
+import asyncio
+import logging
+from typing import Final
+
+logger = logging.getLogger(__name__)
+
+# tmux attachコマンドのフォーマット
+TMUX_ATTACH_CMD: Final = "tmux attach -t {session_id}"
+TMUX_CAPTURE_TIMEOUT_SECONDS: Final = 2.0
+
+
+class TmuxAttachManager:
+    """tmuxセッションへのattachプロセスを管理する。
+
+    WebSocket接続ごとに1つのattachプロセスを作成し、
+    接続切断時にプロセスを終了する。
+    """
+
+    def __init__(self, session_id: str) -> None:
+        """TmuxAttachManagerを初期化する。
+
+        Args:
+            session_id: tmuxセッションID (例: agent-0001)
+        """
+        self._session_id = session_id
+        self._process: asyncio.subprocess.Process | None = None
+        self._stdin: asyncio.StreamWriter | None = None
+        self._stdout: asyncio.StreamReader | None = None
+        self._stderr: asyncio.StreamReader | None = None
+        self._attached = False
+
+    @property
+    def session_id(self) -> str:
+        """tmuxセッションIDを取得する。"""
+        return self._session_id
+
+    @property
+    def is_attached(self) -> bool:
+        """attach中かどうかを取得する。"""
+        return self._attached
+
+    @property
+    def stdin(self) -> asyncio.StreamWriter:
+        """標準入力ストリームを取得する。
+
+        Returns:
+            標準入力ストリーム
+
+        Raises:
+            RuntimeError: attachされていない場合
+        """
+        if not self._attached or self._stdin is None:
+            raise RuntimeError("Not attached to session")
+        return self._stdin
+
+    @property
+    def stdout(self) -> asyncio.StreamReader:
+        """標準出力ストリームを取得する。
+
+        Returns:
+            標準出力ストリーム
+
+        Raises:
+            RuntimeError: attachされていない場合
+        """
+        if not self._attached or self._stdout is None:
+            raise RuntimeError("Not attached to session")
+        return self._stdout
+
+    async def attach_session(self) -> None:
+        """tmuxセッションにattachする。
+
+        `tmux attach -t <session_id>` を非同期プロセスとして実行する。
+
+        Raises:
+            RuntimeError: 既にattach中の場合
+            asyncio.TimeoutError: attach開始がタイムアウトした場合
+        """
+        if self._attached:
+            raise RuntimeError(f"Already attached to session {self._session_id}")
+
+        cmd = TMUX_ATTACH_CMD.format(session_id=self._session_id)
+        logger.info("Attaching to session: %s", self._session_id)
+
+        try:
+            # 非同期プロセスとしてtmux attachを実行
+            self._process = await asyncio.create_subprocess_shell(
+                cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+
+            if (
+                self._process.stdin is None
+                or self._process.stdout is None
+                or self._process.stderr is None
+            ):
+                raise RuntimeError("Failed to create process streams")
+
+            self._stdin = self._process.stdin
+            self._stdout = self._process.stdout
+            self._stderr = self._process.stderr
+            self._attached = True
+
+            logger.info("Successfully attached to session: %s", self._session_id)
+
+        except Exception as e:
+            logger.error("Failed to attach to session %s: %s", self._session_id, e)
+            # クリーンアップ
+            await self.detach_session()
+            raise
+
+    async def detach_session(self) -> None:
+        """tmuxセッションからdetachする。
+
+        attachプロセスを終了する。tmuxセッション自体は保持される。
+        """
+        if not self._attached:
+            return
+
+        logger.info("Detaching from session: %s", self._session_id)
+
+        # プロセスを終了
+        if self._process and self._process.returncode is None:
+            try:
+                self._process.terminate()
+                await asyncio.wait_for(self._process.wait(), timeout=2.0)
+            except asyncio.TimeoutError:
+                logger.warning("Process did not terminate gracefully, killing")
+                self._process.kill()
+                await self._process.wait()
+            except Exception as e:
+                logger.error("Error during process termination: %s", e)
+
+        # ストリームをクローズ
+        if self._stdin and not self._stdin.is_closing():
+            self._stdin.close()
+            try:
+                await self._stdin.wait_closed()
+            except Exception as e:
+                logger.error("Error closing stdin: %s", e)
+
+        # 状態をリセット
+        self._process = None
+        self._stdin = None
+        self._stdout = None
+        self._stderr = None
+        self._attached = False
+
+        logger.info("Successfully detached from session: %s", self._session_id)
+
+    async def write_input(self, data: bytes) -> None:
+        """端末に入力データを書き込む。
+
+        Args:
+            data: 入力データ
+
+        Raises:
+            RuntimeError: attachされていない場合
+            OSError: 書き込みに失敗した場合
+        """
+        if not self._attached or self._stdin is None:
+            raise RuntimeError("Not attached to session")
+
+        try:
+            self._stdin.write(data)
+            await self._stdin.drain()
+        except Exception as e:
+            logger.error("Failed to write input: %s", e)
+            raise
+
+    async def read_output(self, n: int = 4096) -> bytes:
+        """端末から出力データを読み込む。
+
+        Args:
+            n: 読み込む最大バイト数
+
+        Returns:
+            読み込んだデータ
+
+        Raises:
+            RuntimeError: attachされていない場合
+        """
+        if not self._attached or self._stdout is None:
+            raise RuntimeError("Not attached to session")
+
+        try:
+            return await self._stdout.read(n)
+        except Exception as e:
+            logger.error("Failed to read output: %s", e)
+            raise
+
+    async def read_stderr(self, n: int = 4096) -> bytes:
+        """標準エラーからデータを読み込む。
+
+        Args:
+            n: 読み込む最大バイト数
+
+        Returns:
+            読み込んだデータ
+
+        Raises:
+            RuntimeError: attachされていない場合
+        """
+        if not self._attached or self._stderr is None:
+            raise RuntimeError("Not attached to session")
+
+        try:
+            return await self._stderr.read(n)
+        except Exception as e:
+            logger.error("Failed to read stderr: %s", e)
+            raise
+
+    async def resize_window(
+        self,
+        cols: int,
+        rows: int,
+    ) -> None:
+        """tmux セッションのウィンドウサイズを変更する。"""
+        cmd = [
+            "tmux",
+            "resize-window",
+            "-t",
+            self._session_id,
+            "-x",
+            str(cols),
+            "-y",
+            str(rows),
+        ]
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await process.communicate()
+        if process.returncode != 0:
+            message = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
+            raise RuntimeError(f"Failed to resize tmux window: {message}")
+
+    async def capture_snapshot(self) -> bytes:
+        """現在の tmux ペイン内容を取得する。"""
+        cmd = ["tmux", "capture-pane", "-p", "-S", "-200", "-t", self._session_id]
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=TMUX_CAPTURE_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError as e:
+            process.kill()
+            await process.wait()
+            raise RuntimeError("Failed to capture tmux snapshot: timeout") from e
+
+        if process.returncode != 0:
+            message = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
+            raise RuntimeError(f"Failed to capture tmux snapshot: {message}")
+
+        return stdout
+
+    def __del__(self) -> None:
+        """デストラクタ。
+
+        プロセスが残っている場合は終了する。
+        """
+        if self._process and self._process.returncode is None:
+            logger.warning("Process still running in __del__, terminating")
+            self._process.terminate()
