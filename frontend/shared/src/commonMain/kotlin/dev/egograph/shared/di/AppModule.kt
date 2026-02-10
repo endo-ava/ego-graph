@@ -21,7 +21,6 @@ import dev.egograph.shared.repository.ThreadRepositoryImpl
 import dev.egograph.shared.settings.ThemeRepository
 import dev.egograph.shared.settings.ThemeRepositoryImpl
 import dev.egograph.shared.store.chat.ChatIntent
-import dev.egograph.shared.store.chat.ChatStore
 import dev.egograph.shared.store.chat.ChatStoreFactory
 import io.ktor.client.HttpClient
 import org.koin.core.qualifier.named
@@ -108,7 +107,7 @@ val appModule =
             DefaultStoreFactory()
         }
 
-        single<ChatStore> {
+        single(qualifier = named("ChatStore")) {
             val store =
                 ChatStoreFactory(
                     storeFactory = get(),
