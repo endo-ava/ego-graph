@@ -4,11 +4,14 @@ import android.content.Context
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
+import android.view.View
+import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +37,6 @@ class AndroidTerminalWebView(
     private var currentApiKey: String? = null
     private var isPageReady = false
     private var isTerminalReady = false
-    private var themeMode: String = "dark"
 
     override val output: Flow<String> = _output.asSharedFlow()
     override val connectionState: Flow<Boolean> = _connectionState.asStateFlow()
@@ -47,15 +49,15 @@ class AndroidTerminalWebView(
                 domStorageEnabled = true
                 allowContentAccess = true
                 allowFileAccess = true
-                loadWithOverviewMode = true
-                useWideViewPort = true
+                loadWithOverviewMode = false
+                useWideViewPort = false
+                textZoom = 100
                 setSupportZoom(false)
                 builtInZoomControls = false
                 displayZoomControls = false
+                @Suppress("DEPRECATION")
+                forceDark = WebSettings.FORCE_DARK_OFF
             }
-
-            // Disable hardware acceleration to fix rendering issues in Emulator/WebView
-            setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
 
             // Add JavaScript interface for bidirectional communication
             addJavascriptInterface(TerminalJavaScriptBridge(), "TerminalBridge")
@@ -68,7 +70,6 @@ class AndroidTerminalWebView(
                     ) {
                         super.onPageFinished(view, url)
                         isPageReady = true
-                        applyThemeToWebView()
                         connectIfReady()
                     }
 
@@ -99,10 +100,6 @@ class AndroidTerminalWebView(
                                 val js = loadAsset("xterm/xterm.js")
                                 createResponse(js, "application/javascript")
                             }
-                            url.endsWith("xterm.css") -> {
-                                val css = loadAsset("xterm/xterm.css")
-                                createResponse(css, "text/css")
-                            }
                             else -> super.shouldInterceptRequest(view, request)
                         }
                     }
@@ -110,17 +107,15 @@ class AndroidTerminalWebView(
 
             webChromeClient =
                 object : WebChromeClient() {
-                    override fun onConsoleMessage(
-                        consoleMessage: String?,
-                        lineNumber: Int,
-                        sourceID: String?,
-                    ) {
-                        consoleMessage?.let {
-                            println("[WebView Console] $it")
-                        }
+                    override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
+                        println(
+                            "[WebView Console] ${consoleMessage.message()} @${consoleMessage.sourceId()}:${consoleMessage.lineNumber()}",
+                        )
+                        return true
                     }
                 }
 
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
             setBackgroundColor(Color.parseColor("#1e1e1e"))
         }
     }
@@ -213,44 +208,7 @@ class AndroidTerminalWebView(
     }
 
     override fun setTheme(darkMode: Boolean) {
-        themeMode = if (darkMode) "dark" else "light"
-        if (themeMode == "dark") {
-            _webView.setBackgroundColor(Color.parseColor("#1e1e1e"))
-        } else {
-            _webView.setBackgroundColor(Color.parseColor("#f8f9fb"))
-        }
-
-        if (isPageReady) {
-            applyThemeToWebView()
-        }
-    }
-
-    private fun applyThemeToWebView() {
-        val mode = themeMode
-        _webView.evaluateJavascript(
-            """
-            (function() {
-                const apply = function() {
-                    if (window.TerminalAPI && typeof window.TerminalAPI.setTheme === 'function') {
-                        window.TerminalAPI.setTheme('$mode');
-                        return true;
-                    }
-                    return false;
-                };
-
-                if (!apply()) {
-                    let attempts = 0;
-                    const timer = setInterval(function() {
-                        attempts += 1;
-                        if (apply() || attempts > 40) {
-                            clearInterval(timer);
-                        }
-                    }, 50);
-                }
-            })();
-            """.trimIndent(),
-            null,
-        )
+        _webView.setBackgroundColor(Color.parseColor("#1e1e1e"))
     }
 
     fun getWebView(): WebView = _webView
@@ -295,7 +253,6 @@ class AndroidTerminalWebView(
         fun onTerminalReady() {
             mainHandler.post {
                 isTerminalReady = true
-                applyThemeToWebView()
                 connectIfReady()
             }
         }

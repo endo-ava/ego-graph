@@ -165,15 +165,45 @@ class TmuxAttachManager:
             RuntimeError: attachされていない場合
             OSError: 書き込みに失敗した場合
         """
-        if not self._attached or self._stdin is None:
+        if not self._attached:
             raise RuntimeError("Not attached to session")
 
         try:
+            if self._stdin is None or self._stdin.is_closing():
+                await self._send_keys_via_tmux(data)
+                return
+
             self._stdin.write(data)
             await self._stdin.drain()
         except Exception as e:
-            logger.error("Failed to write input: %s", e)
-            raise
+            logger.warning(
+                "Direct stdin write failed, falling back to tmux send-keys: %s", e
+            )
+            await self._send_keys_via_tmux(data)
+
+    async def _send_keys_via_tmux(self, data: bytes) -> None:
+        text = data.decode("utf-8", errors="ignore")
+        for char in text:
+            if char in ("\r", "\n"):
+                await self._run_tmux_send_keys(["Enter"])
+            elif char in ("\b", "\x7f"):
+                await self._run_tmux_send_keys(["BSpace"])
+            elif char == "\t":
+                await self._run_tmux_send_keys(["Tab"])
+            elif char:
+                await self._run_tmux_send_keys(["-l", char])
+
+    async def _run_tmux_send_keys(self, args: list[str]) -> None:
+        cmd = ["tmux", "send-keys", "-t", self._session_id, *args]
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await process.communicate()
+        if process.returncode != 0:
+            message = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
+            raise RuntimeError(f"Failed to send keys via tmux: {message}")
 
     async def read_output(self, n: int = 4096) -> bytes:
         """端末から出力データを読み込む。

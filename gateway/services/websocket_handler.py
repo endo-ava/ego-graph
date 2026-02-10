@@ -64,7 +64,6 @@ class TerminalWebSocketHandler:
             # 並行処理タスクを作成
             self._tasks = [
                 asyncio.create_task(self._receive_from_client()),
-                asyncio.create_task(self._send_to_client()),
                 asyncio.create_task(self._ping_loop()),
             ]
 
@@ -133,6 +132,10 @@ class TerminalWebSocketHandler:
         try:
             data = message.decode_data()
             await self._pty_manager.write_input(data)
+            await asyncio.sleep(0.12)
+            snapshot = await self._pty_manager.capture_snapshot()
+            if snapshot:
+                await self._send_json(WSOutputMessage.from_bytes(snapshot).model_dump())
         except Exception as e:
             logger.error("Failed to write input: %s", e)
             await self._send_error("input_error", str(e))

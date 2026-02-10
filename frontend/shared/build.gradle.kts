@@ -45,6 +45,11 @@ val debugBaseUrl =
         ?: project.findProperty("EGOGRAPH_BASE_URL_DEBUG") as? String
         ?: "http://10.0.2.2:8000"
 
+val debugGatewayBaseUrl =
+    dotenv["EGOGRAPH_GATEWAY_BASE_URL_DEBUG"]?.takeIf { it.isNotBlank() }
+        ?: project.findProperty("EGOGRAPH_GATEWAY_BASE_URL_DEBUG") as? String
+        ?: "http://10.0.2.2:8001"
+
 kotlin {
     androidTarget {
         compilerOptions {
@@ -133,6 +138,21 @@ android {
             "RELEASE_BASE_URL",
             "\"${project.findProperty("EGOGRAPH_BASE_URL_RELEASE") ?: "https://api.egograph.dev"}\"",
         )
+        buildConfigField(
+            "String",
+            "DEBUG_GATEWAY_BASE_URL",
+            "\"${debugGatewayBaseUrl}\"",
+        )
+        buildConfigField(
+            "String",
+            "STAGING_GATEWAY_BASE_URL",
+            "\"${project.findProperty("EGOGRAPH_GATEWAY_BASE_URL_STAGING") ?: "http://192.168.0.2:8001"}\"",
+        )
+        buildConfigField(
+            "String",
+            "RELEASE_GATEWAY_BASE_URL",
+            "\"${project.findProperty("EGOGRAPH_GATEWAY_BASE_URL_RELEASE") ?: "https://gateway.egograph.dev"}\"",
+        )
     }
 
     compileOptions {
@@ -142,6 +162,10 @@ android {
 
     buildFeatures {
         buildConfig = true
+    }
+
+    sourceSets {
+        getByName("main").assets.srcDir("src/commonMain/resources/assets")
     }
 
     lint {

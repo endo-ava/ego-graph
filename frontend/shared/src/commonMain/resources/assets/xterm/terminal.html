@@ -1,95 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Terminal</title>
-    <link rel="stylesheet" href="xterm.css" />
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; overflow: hidden; }
-        #terminal-container { width: 100%; height: 100%; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body>
-    <div id="terminal-container"></div>
-    <script src="xterm.js"></script>
+<body style="margin:0;padding:0;background:#1e1e1e;">
+    <input type="text" id="hiddenInput" style="position:absolute;left:-9999px;opacity:0;" />
+    <pre id="terminal" style="margin:0;padding:8px;background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:14px;white-space:pre-wrap;word-wrap:break-word;"></pre>
+    <div id="debug" style="position:fixed;top:0;left:0;background:yellow;color:black;font-size:10px;max-height:100px;overflow:auto;padding:4px;"></div>
     <script>
         (function() {
-            'use strict';
-            var terminal, websocket;
-            var container = document.getElementById('terminal-container');
-
-            function initTerminal() {
-                var w = container.clientWidth || window.innerWidth || 800;
-                var h = container.clientHeight || window.innerHeight || 600;
-                var cols = Math.floor(w / 9) || 80;
-                var rows = Math.floor(h / 18) || 24;
-
-                terminal = new Terminal({
-                    cols: cols, rows: rows, fontSize: 14, fontFamily: 'monospace',
-                    theme: { background: '#1e1e1e', foreground: '#d4d4d4', cursor: '#ffffff' },
-                    cursorBlink: true, scrollback: 1000
-                });
-
-                terminal.open(container);
-                terminal.write('\x1b[32mTerminal ready\x1b[0m\r\n');
-
-                // Force resize after delay to ensure rendering
-                setTimeout(function() {
-                    var w = container.clientWidth || window.innerWidth || 800;
-                    var h = container.clientHeight || window.innerHeight || 600;
-                    var cols = Math.floor(w / 9) || 80;
-                    var rows = Math.floor(h / 18) || 24;
-                    if (terminal) {
-                        terminal.resize(cols, rows);
-                    }
-                }, 500);
-
-                if (window.TerminalBridge && window.TerminalBridge.onTerminalReady) {
-                    window.TerminalBridge.onTerminalReady();
-                }
+            var terminal = document.getElementById('terminal');
+            var hiddenInput = document.getElementById('hiddenInput');
+            var debug = document.getElementById('debug');
+            var websocket;
+            var messageCount = 0;
+            
+            function logDebug(msg) {
+                messageCount++;
+                debug.textContent = '[' + messageCount + '] ' + msg + '\n' + debug.textContent;
             }
+            
+            function appendText(text) {
+                var cleaned = text.replace(/\x1b\[[0-9;]*m/g, '');
+                logDebug('Append: ' + cleaned.length + ' bytes');
+                terminal.textContent = cleaned;
+                terminal.scrollTop = terminal.scrollHeight;
+            }
+            
+            logDebug('Page loaded');
+
+            terminal.addEventListener('click', function() {
+                hiddenInput.focus();
+            });
+
+            hiddenInput.addEventListener('input', function(e) {
+                var char = e.data || '';
+                if (char && window.TerminalAPI) {
+                    logDebug('Input: ' + char);
+                    window.TerminalAPI.sendKey(char);
+                }
+                hiddenInput.value = '';
+            });
+
+            hiddenInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    logDebug('Key: Enter');
+                    window.TerminalAPI.sendKey('\r');
+                } else if (e.key === 'Backspace') {
+                    e.preventDefault();
+                    logDebug('Key: Backspace');
+                    window.TerminalAPI.sendKey('\b');
+                }
+            });
 
             window.TerminalAPI = {
                 connect: function(wsUrl, apiKey) {
+                    logDebug('Connecting to: ' + wsUrl);
                     websocket = new WebSocket(wsUrl);
                     websocket.onopen = function() {
+                        logDebug('Connected');
                         websocket.send(JSON.stringify({type: 'auth', api_key: apiKey}));
                         if (window.TerminalBridge) window.TerminalBridge.onConnectionChanged(true);
                     };
                     websocket.onmessage = function(e) {
                         try {
                             var msg = JSON.parse(e.data);
+                            logDebug('Received: type=' + msg.type);
                             if (msg.type === 'output' && msg.data_b64) {
                                 var bin = atob(msg.data_b64);
                                 var bytes = new Uint8Array(bin.length);
                                 for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-                                terminal.write(new TextDecoder('utf-8').decode(bytes));
+                                var text = new TextDecoder('utf-8').decode(bytes);
+                                appendText(text);
                             }
-                        } catch(err) {}
-                    };
-                    websocket.onerror = function() {
-                        if (window.TerminalBridge) window.TerminalBridge.onError('WS error');
+                        } catch(err) {
+                            logDebug('Error: ' + err);
+                        }
                     };
                     websocket.onclose = function() {
+                        logDebug('Closed');
                         if (window.TerminalBridge) window.TerminalBridge.onConnectionChanged(false);
                     };
                 },
-                disconnect: function() { if (websocket) { websocket.close(); websocket = null; } },
+                disconnect: function() {
+                    if (websocket) { websocket.close(); websocket = null; }
+                },
                 sendKey: function(key) {
                     if (websocket && websocket.readyState === 1) {
+                        logDebug('Sending: ' + key.charCodeAt(0));
                         websocket.send(JSON.stringify({type: 'input', data_b64: btoa(unescape(encodeURIComponent(key)))}));
                     }
-                },
-                setTheme: function(mode) {
-                    if (terminal) terminal.options.theme = mode === 'light' ? 
-                        {background: '#f8f9fb', foreground: '#1f2937'} : 
-                        {background: '#1e1e1e', foreground: '#d4d4d4'};
                 }
             };
 
-            setTimeout(initTerminal, 100);
+            if (window.TerminalBridge && window.TerminalBridge.onTerminalReady) {
+                window.TerminalBridge.onTerminalReady();
+            }
+
+            hiddenInput.focus();
         })();
     </script>
 </body>
