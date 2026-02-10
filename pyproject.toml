@@ -1,5 +1,5 @@
 [tool.uv.workspace]
-members = ["shared", "ingest", "backend"]
+members = ["shared", "ingest", "backend", "gateway"]
 
 [tool.ruff]
 line-length = 88
@@ -19,7 +19,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pytest.ini_options]
-testpaths = ["ingest/tests", "backend/tests", "shared/tests"]
+testpaths = ["ingest/tests", "backend/tests", "shared/tests", "gateway/tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
