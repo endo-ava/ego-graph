@@ -6,14 +6,15 @@
 
 ## モノレポ構成
 
-| コンポーネント | 言語/FW     | パッケージマネージャー | 主要ライブラリ                   |
-| -------------- | ----------- | ---------------------- | -------------------------------- |
-| **shared/**    | Python 3.13 | uv                     | Pydantic, python-dotenv          |
-| **ingest/**    | Python 3.13 | uv                     | Spotipy, DuckDB, boto3, pyarrow  |
-| **backend/**   | Python 3.13 | uv                     | FastAPI, Uvicorn, DuckDB         |
-| **frontend/**  | Kotlin 2.3  | Gradle                 | Compose Multiplatform, MVIKotlin |
+| コンポーネント | 言語/FW     | パッケージマネージャー | 主要ライブラリ                        |
+| -------------- | ----------- | ---------------------- | ------------------------------------- |
+| **shared/**    | Python 3.13 | uv                     | Pydantic, python-dotenv               |
+| **ingest/**    | Python 3.13 | uv                     | Spotipy, DuckDB, boto3, pyarrow       |
+| **backend/**   | Python 3.13 | uv                     | FastAPI, Uvicorn, DuckDB              |
+| **gateway/**   | Python 3.13 | uv                     | Starlette, Uvicorn, WebSocket, FCM    |
+| **frontend/**  | Kotlin 2.3  | Gradle                 | Compose Multiplatform, MVIKotlin, FCM |
 
-- **Python Workspace**: uv で shared, ingest, backend を一元管理
+- **Python Workspace**: uv で shared, ingest, backend, gateway を一元管理
 - **Frontend**: Kotlin Multiplatform (Gradle)
 
 ---
@@ -88,6 +89,30 @@
 
 ---
 
+## 4.5. Gateway（Terminal Gateway）
+
+モバイル端末からの tmux セッション接続とプッシュ通知を担当する独立サービス。
+
+- **Framework**: Starlette (Python 3.13)
+- **Web Server**: Uvicorn (ASGI)
+- **主要ライブラリ**:
+  - `websockets`: WebSocket 通信（端末入出力）
+  - `firebase-admin`: FCM プッシュ通知
+  - `duckdb`: プッシュトークン永続化（SQLite）
+  - `pydantic`: データモデル定義
+  - `pydantic-settings`: 環境変数管理
+- **認証方式**: Bearer Token（環境変数照合）
+- **実行環境**: LXC（常駐サーバー）
+- **特性**:
+  - tmux セッションの列挙・接続管理
+  - WebSocket による双方向端末入出力
+  - FCM によるタスク完了/入力要求通知
+  - EgoGraph Backend からは独立したサービス
+
+詳細: [Terminal Gateway 要件定義](../00.project/requirements/mobile_terminal_gateway.md)
+
+---
+
 ## 5. Frontend（モバイル/Web アプリ）
 
 - **Framework**: Kotlin Multiplatform + Compose Multiplatform
@@ -95,6 +120,9 @@
 - **Mobile Runtime**: Native Android
 - **UI System**: Material3 (Compose)
 - **State Management**: MVIKotlin
+- **Terminal UI**: xterm.js (WebView), xterm-addon-fit
+- **Push Notification**: Firebase Cloud Messaging (FCM)
+- **音声入力**: Android SpeechRecognizer
 - **テスト**: Kotest, Turbine
 - **実行環境**: モバイル（Android）
 
@@ -110,6 +138,7 @@
 | ------------------------ | ------------------------- | ----------------------- |
 | `ci-backend.yml`         | `backend/**`, `shared/**` | Backend テスト・Lint    |
 | `ci-ingest.yml`          | `ingest/**`, `shared/**`  | Ingest テスト・Lint     |
+| `ci-gateway.yml`         | `gateway/**`, `shared/**` | Gateway テスト・Lint    |
 | `ci-frontend.yml`        | `frontend/**`             | Frontend テスト (JUnit) |
 | `job-ingest-spotify.yml` | Cron (1日2回)             | Spotify データ収集      |
 

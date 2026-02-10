@@ -11,6 +11,7 @@
 | **shared/**    | 共有ライブラリ | Python 3.13, Pydantic                        | `__init__.py`                        |
 | **ingest/**    | データ収集     | Spotipy, DuckDB, boto3                       | `ingest.spotify.main:main`           |
 | **backend/**   | Agent API      | FastAPI, DuckDB, LLM                         | `backend.main:create_app()`          |
+| **gateway/**   | Terminal GW    | Starlette, Uvicorn, WebSocket, FCM           | `gateway.main:create_app()`          |
 | **frontend/**  | チャット UI    | Kotlin 2.3, Compose Multiplatform, MVIKotlin | `./gradlew :androidApp:installDebug` |
 
 ## 開発コマンド
@@ -32,6 +33,11 @@ uv run python -m backend.main                 # http://localhost:8000/docs
 uv run pytest backend/tests --cov=backend
 uv run python -m backend.dev_tools.chat_cli   # デバッグ用CLIツール
 
+# === Gateway ===
+uv run uvicorn gateway.main:app --host 127.0.0.1 --port 8001  # http://localhost:8001/health
+uv run pytest gateway/tests --cov=gateway
+# tmux で起動: tmux new-session -d -s egograph-gateway 'uv run uvicorn gateway.main:app --host 127.0.0.1 --port 8001'
+
 # === Frontend (cd frontend) ===
 cd frontend # PJルートからはgradlewは使えないことに注意
 ./gradlew :androidApp:assembleDebug      # ビルド
@@ -51,6 +57,8 @@ maestro test maestro/flows/           # 全テスト一括実行
 
 ```
 External APIs → GitHub Actions (Ingest) → R2 (Parquet) → Backend (DuckDB) → Frontend
+                                                     ↓
+                                                  Gateway (tmux) → Frontend (Terminal)
 ```
 
 | ストレージ | 役割                                     |
@@ -58,6 +66,7 @@ External APIs → GitHub Actions (Ingest) → R2 (Parquet) → Backend (DuckDB) 
 | R2         | 正本（Parquet/JSON、年月パーティション） |
 | DuckDB     | View（`:memory:` で R2 直接クエリ）      |
 | Qdrant     | 意味検索インデックス                     |
+| tmux       | エージェントセッション管理               |
 
 ## 規約
 
