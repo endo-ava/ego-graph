@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.dto.Thread
+import dev.egograph.shared.ui.common.testTagResourceId
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

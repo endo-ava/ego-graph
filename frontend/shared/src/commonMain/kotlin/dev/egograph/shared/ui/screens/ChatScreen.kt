@@ -26,13 +26,15 @@ import com.arkivanov.mvikotlin.extensions.coroutines.states
 import dev.egograph.shared.platform.PlatformPreferences
 import dev.egograph.shared.store.chat.ChatIntent
 import dev.egograph.shared.store.chat.ChatStore
+import dev.egograph.shared.ui.components.ChatInput
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import org.koin.core.qualifier.named
 
 class ChatScreen : Screen {
     @Composable
     override fun Content() {
-        val store = koinInject<ChatStore>()
+        val store = koinInject<ChatStore>(qualifier = named("ChatStore"))
         val preferences = koinInject<PlatformPreferences>()
         val state by store.states.collectAsState(initial = store.state)
         val snackbarHostState = remember { SnackbarHostState() }

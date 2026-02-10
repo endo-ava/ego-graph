@@ -1,17 +1,9 @@
-package dev.egograph.shared.ui
+package dev.egograph.shared.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,13 +14,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.platform.PlatformPreferences
 import dev.egograph.shared.store.chat.ChatStore
+import dev.egograph.shared.ui.ModelSelector
 
+/**
+ * チャット入力コンポーネント
+ *
+ * テキスト入力とマイクボタンを含むチャット入力UI。
+ * マイクボタンがクリックされると、コールバックが呼び出される。
+ *
+ * @param store チャットストア
+ * @param preferences プラットフォーム設定
+ * @param onSendMessage メッセージ送信コールバック
+ * @param isLoading ローディング状態
+ * @param onVoiceInputClick 音声入力ボタンクリックコールバック（オプション）
+ * @param modifier Modifier
+ */
 @Composable
 fun ChatInput(
     store: ChatStore,
     preferences: PlatformPreferences,
     onSendMessage: (String) -> Unit,
     isLoading: Boolean = false,
+    onVoiceInputClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var text by remember { mutableStateOf("") }
@@ -59,54 +66,20 @@ fun ChatInput(
             )
         }
 
+        // マイクボタン（コールバックが提供されている場合のみ表示）
+        if (onVoiceInputClick != null) {
+            MicButton(
+                onClick = onVoiceInputClick,
+                modifier = Modifier.padding(start = 4.dp),
+            )
+        }
+
         SendButton(
             enabled = text.isNotBlank() && !isLoading,
             onClick = {
                 onSendMessage(text)
                 text = ""
             },
-        )
-    }
-}
-
-@Composable
-private fun ChatTextField(
-    text: String,
-    onTextChange: (String) -> Unit,
-    isLoading: Boolean,
-) {
-    OutlinedTextField(
-        value = text,
-        onValueChange = onTextChange,
-        modifier =
-            Modifier
-                .testTagResourceId("chat_input_field")
-                .fillMaxWidth()
-                .heightIn(min = 96.dp),
-        placeholder = { Text("Type a message...") },
-        minLines = 2,
-        maxLines = 4,
-        enabled = !isLoading,
-        shape = RoundedCornerShape(22.dp),
-    )
-}
-
-@Composable
-private fun SendButton(
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    IconButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier =
-            Modifier
-                .testTagResourceId("send_button")
-                .padding(start = 8.dp),
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.Send,
-            contentDescription = "Send",
         )
     }
 }

@@ -33,6 +33,7 @@ import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
 import dev.egograph.shared.dto.MessageRole
 import dev.egograph.shared.dto.ThreadMessage
+import dev.egograph.shared.ui.common.testTagResourceId
 
 @Composable
 fun ChatMessage(
