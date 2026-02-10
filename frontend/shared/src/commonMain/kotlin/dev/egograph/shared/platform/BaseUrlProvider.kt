@@ -2,6 +2,8 @@ package dev.egograph.shared.platform
 
 expect fun getDefaultBaseUrl(): String
 
+expect fun getDefaultGatewayBaseUrl(): String
+
 /**
  * APIのベースURLを正規化する。
  *
@@ -21,4 +23,18 @@ fun normalizeBaseUrl(url: String): String {
 
     // 末尾スラッシュのみ削除
     return trimmed.trimEnd('/')
+}
+
+/**
+ * URLが有効かどうかを検証する。
+ *
+ * @param url 検証対象のURL
+ * @return 有効な場合はtrue、それ以外はfalse
+ */
+fun isValidUrl(url: String): Boolean {
+    val trimmed = url.trim()
+    if (trimmed.isEmpty()) return false
+    val hasValidScheme = trimmed.startsWith("http://") || trimmed.startsWith("https://")
+    val hostPortPart = trimmed.substringAfter("://", missingDelimiterValue = "")
+    return hasValidScheme && hostPortPart.isNotBlank()
 }
