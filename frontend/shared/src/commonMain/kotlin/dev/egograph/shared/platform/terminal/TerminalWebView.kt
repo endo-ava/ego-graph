@@ -38,6 +38,13 @@ interface TerminalWebView {
     fun sendKey(key: String)
 
     /**
+     * Set terminal render mode.
+     *
+     * @param mode Render mode ("legacy" or "xterm")
+     */
+    fun setRenderMode(mode: String)
+
+    /**
      * Apply terminal color theme.
      *
      * @param darkMode true for dark theme, false for light theme

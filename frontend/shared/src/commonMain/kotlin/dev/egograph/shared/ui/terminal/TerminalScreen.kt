@@ -93,6 +93,7 @@ private fun TerminalContent(agentId: String) {
     LaunchedEffect(webView, terminalSettings.wsUrl, terminalSettings.apiKey) {
         webView.loadTerminal()
         webView.setTheme(darkMode)
+        webView.setRenderMode("xterm")
         if (!terminalSettings.wsUrl.isNullOrBlank() && !terminalSettings.apiKey.isNullOrBlank()) {
             webView.connect(terminalSettings.wsUrl, terminalSettings.apiKey)
             isConnecting = true

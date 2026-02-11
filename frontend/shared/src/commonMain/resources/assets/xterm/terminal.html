@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="vendor/xterm.5.5.0.css">
     <style>
         html, body {
             margin: 0;
@@ -11,6 +12,7 @@
             color: #d4d4d4;
             font-family: monospace;
             font-size: 14px;
+            overflow: hidden;
         }
 
         #hiddenInput {
@@ -26,8 +28,14 @@
         }
 
         #terminal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             margin: 0;
             padding: 8px;
+            box-sizing: border-box;
             background: #1e1e1e;
             color: #d4d4d4;
             font-family: monospace;
@@ -35,6 +43,30 @@
             line-height: 1.3;
             white-space: pre-wrap;
             word-wrap: break-word;
+            overflow: auto;
+        }
+
+        #xtermRender {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: 0;
+            padding: 8px;
+            box-sizing: border-box;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.3;
+            overflow: hidden;
+            display: none;
+        }
+
+        #xtermRender .xterm {
+            width: 100%;
+            height: 100%;
         }
 
         .cursor-cell {
@@ -53,11 +85,17 @@
       spellcheck="false"
     />
     <pre id="terminal"></pre>
+    <div id="xtermRender"></div>
+    <script src="vendor/xterm.5.5.0.js"></script>
     <script>
         (function() {
             var terminal = document.getElementById('terminal');
+            var xtermRender = document.getElementById('xtermRender');
             var hiddenInput = document.getElementById('hiddenInput');
             var websocket;
+            var inputTerminal = null;
+            var renderTerminal = null;
+            var useXtermRender = false;
             var ANSI_ESCAPE_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
             var ANSI_FG = [
                 '#000000', '#cd3131', '#0dbc79', '#e5e510',
@@ -78,25 +116,34 @@
                 };
             }
 
+            function getActiveTerminalElement() {
+                return useXtermRender ? xtermRender : terminal;
+            }
+
             function scrollToBottom() {
-                terminal.scrollTop = terminal.scrollHeight;
-                if (typeof window.scrollTo === 'function') {
-                    window.scrollTo(0, document.body.scrollHeight || 0);
-                }
+                var activeTerminal = getActiveTerminalElement();
+                activeTerminal.scrollTop = activeTerminal.scrollHeight;
             }
 
             function focusInputWithoutScroll() {
-                var terminalTop = terminal.scrollTop;
-                var pageTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+                var activeTerminal = getActiveTerminalElement();
+                var terminalTop = activeTerminal.scrollTop;
                 try {
                     hiddenInput.focus({ preventScroll: true });
                 } catch (err) {
                     hiddenInput.focus();
                 }
-                if (typeof window.scrollTo === 'function') {
-                    window.scrollTo(0, pageTop);
+                activeTerminal.scrollTop = terminalTop;
+            }
+
+            function applyRenderMode() {
+                if (useXtermRender) {
+                    terminal.style.display = 'none';
+                    xtermRender.style.display = 'block';
+                } else {
+                    xtermRender.style.display = 'none';
+                    terminal.style.display = 'block';
                 }
-                terminal.scrollTop = terminalTop;
             }
 
             function reportError(message) {
@@ -361,6 +408,16 @@
             }
 
             function renderSnapshot(text, cursorX, cursorY, paneRows) {
+                if (useXtermRender) {
+                    if (renderSnapshotWithXterm(text, cursorX, cursorY, paneRows)) {
+                        scrollToBottom();
+                        return;
+                    }
+                    useXtermRender = false;
+                    applyRenderMode();
+                    reportError('xterm render failed; fallback to legacy renderer');
+                }
+
                 var lines = parseAnsiLines(text);
                 if (lines.length === 0) {
                     lines = [createLine()];
@@ -391,7 +448,146 @@
                 scrollToBottom();
             }
 
+            function initializeInputTerminal() {
+                if (typeof window.Terminal !== 'function') {
+                    return;
+                }
+
+                try {
+                    inputTerminal = new window.Terminal({
+                        cols: 80,
+                        rows: 24,
+                    });
+                    if (typeof inputTerminal.onData === 'function') {
+                        inputTerminal.onData(function(data) {
+                            if (window.TerminalAPI && typeof window.TerminalAPI.sendKey === 'function') {
+                                window.TerminalAPI.sendKey(data);
+                            }
+                        });
+                    }
+                } catch (err) {
+                    inputTerminal = null;
+                }
+            }
+
+            function initializeRenderTerminal(cols, rows) {
+                if (!useXtermRender || renderTerminal || typeof window.Terminal !== 'function') {
+                    return;
+                }
+
+                try {
+                    renderTerminal = new window.Terminal({
+                        cols: cols || 80,
+                        rows: rows || 24,
+                        convertEol: true,
+                    });
+                    renderTerminal.open(xtermRender);
+                } catch (err) {
+                    renderTerminal = null;
+                }
+            }
+
+            function renderSnapshotWithXterm(text, cursorX, cursorY, paneRows) {
+                var normalized = text
+                    .replace(/\u0000/g, '')
+                    .replace(/\r/g, '');
+                var lines = normalized.split('\n');
+                if (lines.length > 1 && lines[lines.length - 1] === '') {
+                    lines.pop();
+                }
+                if (
+                    typeof paneRows === 'number' &&
+                    paneRows > 0 &&
+                    lines.length > paneRows
+                ) {
+                    lines = lines.slice(lines.length - paneRows);
+                }
+
+                var rows = Math.max(typeof paneRows === 'number' && paneRows > 0 ? paneRows : 24, 12);
+                var cols = 80;
+                for (var i = 0; i < lines.length; i++) {
+                    var plainLength = lines[i].replace(ANSI_ESCAPE_RE, '').length;
+                    if (plainLength + 1 > cols) {
+                        cols = plainLength + 1;
+                    }
+                }
+                cols = Math.min(Math.max(cols, 20), 240);
+
+                initializeRenderTerminal(cols, rows);
+                if (!renderTerminal) {
+                    return false;
+                }
+
+                if (typeof renderTerminal.resize === 'function') {
+                    renderTerminal.resize(cols, rows);
+                }
+                if (typeof renderTerminal.clear === 'function') {
+                    renderTerminal.clear();
+                }
+                if (typeof renderTerminal.write === 'function') {
+                    renderTerminal.write(lines.join('\r\n'));
+                    if (
+                        typeof cursorX === 'number' &&
+                        typeof cursorY === 'number' &&
+                        cursorX >= 0 &&
+                        cursorY >= 0
+                    ) {
+                        renderTerminal.write('\x1b[' + (cursorY + 1) + ';' + (cursorX + 1) + 'H');
+                    }
+                }
+
+                return true;
+            }
+
+            function writeStreamChunkWithXterm(text) {
+                initializeRenderTerminal(80, 24);
+                if (!renderTerminal || typeof renderTerminal.write !== 'function') {
+                    return false;
+                }
+                renderTerminal.write(text);
+                if (typeof renderTerminal.scrollToBottom === 'function') {
+                    renderTerminal.scrollToBottom();
+                }
+                return true;
+            }
+
+            function routeInput(data) {
+                if (!data) {
+                    return;
+                }
+                if (inputTerminal && typeof inputTerminal.send === 'function') {
+                    inputTerminal.send(data);
+                    return;
+                }
+                if (window.TerminalAPI && typeof window.TerminalAPI.sendKey === 'function') {
+                    window.TerminalAPI.sendKey(data);
+                }
+            }
+
+            function estimateTerminalSize() {
+                var cols = Math.floor((window.innerWidth - 16) / 8.4);
+                var rows = Math.floor((window.innerHeight - 16) / 18.2);
+                cols = Math.min(Math.max(cols, 20), 240);
+                rows = Math.min(Math.max(rows, 12), 200);
+                return { cols: cols, rows: rows };
+            }
+
+            function sendResizeToServer() {
+                if (!websocket || websocket.readyState !== 1) {
+                    return;
+                }
+                var size = estimateTerminalSize();
+                websocket.send(JSON.stringify({
+                    type: 'resize',
+                    cols: size.cols,
+                    rows: size.rows
+                }));
+            }
+
             terminal.addEventListener('click', function() {
+                focusInputWithoutScroll();
+            });
+            xtermRender.addEventListener('click', function() {
                 focusInputWithoutScroll();
             });
 
@@ -400,23 +596,21 @@
                 if (!text) {
                     text = hiddenInput.value;
                 }
-                if (text && window.TerminalAPI) {
-                    window.TerminalAPI.sendKey(text);
-                }
+                routeInput(text);
                 hiddenInput.value = '';
             });
 
             hiddenInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    window.TerminalAPI.sendKey('\r');
+                    routeInput('\r');
                     hiddenInput.value = '';
                 } else if (e.key === 'Backspace') {
                     e.preventDefault();
-                    window.TerminalAPI.sendKey('\b');
+                    routeInput('\b');
                 } else if (e.key === 'Tab') {
                     e.preventDefault();
-                    window.TerminalAPI.sendKey('\t');
+                    routeInput('\t');
                 }
             });
 
@@ -426,6 +620,7 @@
                     websocket.onopen = function() {
                         websocket.send(JSON.stringify({type: 'auth', api_key: apiKey}));
                         if (window.TerminalBridge) window.TerminalBridge.onConnectionChanged(true);
+                        sendResizeToServer();
                         focusInputWithoutScroll();
                     };
                     websocket.onmessage = function(e) {
@@ -436,6 +631,15 @@
                                 var bytes = new Uint8Array(bin.length);
                                 for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
                                 var text = new TextDecoder('utf-8').decode(bytes);
+                                var isSnapshot =
+                                    typeof msg.cursor_x === 'number' &&
+                                    typeof msg.cursor_y === 'number';
+                                if (useXtermRender && !isSnapshot) {
+                                    if (writeStreamChunkWithXterm(text)) {
+                                        scrollToBottom();
+                                        return;
+                                    }
+                                }
                                 renderSnapshot(text, msg.cursor_x, msg.cursor_y, msg.pane_rows);
                             }
                         } catch(err) {
@@ -456,6 +660,10 @@
                     if (websocket && websocket.readyState === 1) {
                         websocket.send(JSON.stringify({type: 'input', data_b64: btoa(unescape(encodeURIComponent(key)))}));
                     }
+                },
+                setRenderMode: function(mode) {
+                    useXtermRender = mode === 'xterm';
+                    applyRenderMode();
                 }
             };
 
@@ -463,6 +671,11 @@
                 window.TerminalBridge.onTerminalReady();
             }
 
+            window.addEventListener('resize', function() {
+                sendResizeToServer();
+            });
+            applyRenderMode();
+            initializeInputTerminal();
             scrollToBottom();
         })();
     </script>

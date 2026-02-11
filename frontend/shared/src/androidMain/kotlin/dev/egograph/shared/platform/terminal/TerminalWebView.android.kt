@@ -36,6 +36,7 @@ class AndroidTerminalWebView(
     private val isConnected = AtomicBoolean(false)
     private var currentWsUrl: String? = null
     private var currentApiKey: String? = null
+    private var currentRenderMode: String = "legacy"
     private val isPageReady = AtomicBoolean(false)
     private val isTerminalReady = AtomicBoolean(false)
 
@@ -113,10 +114,7 @@ class AndroidTerminalWebView(
             webChromeClient =
                 object : WebChromeClient() {
                     override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
-                        println(
-                            "[WebView Console] ${consoleMessage.message()} @${consoleMessage.sourceId()}:${consoleMessage.lineNumber()}",
-                        )
-                        return true
+                        return false
                     }
                 }
 
@@ -177,12 +175,30 @@ class AndroidTerminalWebView(
             return
         }
 
+        applyRenderModeIfReady()
+
         val escapedWsUrl = wsUrl.replace("\\", "\\\\").replace("'", "\\'")
         val escapedApiKey = apiKey.replace("\\", "\\\\").replace("'", "\\'")
         _webView.evaluateJavascript(
             """
             if (window.TerminalAPI) {
                 window.TerminalAPI.connect('$escapedWsUrl', '$escapedApiKey');
+            }
+            """.trimIndent(),
+            null,
+        )
+    }
+
+    private fun applyRenderModeIfReady() {
+        if (!isPageReady.get() || !isTerminalReady.get()) {
+            return
+        }
+
+        val mode = if (currentRenderMode == "xterm") "xterm" else "legacy"
+        _webView.evaluateJavascript(
+            """
+            if (window.TerminalAPI && typeof window.TerminalAPI.setRenderMode === 'function') {
+                window.TerminalAPI.setRenderMode('$mode');
             }
             """.trimIndent(),
             null,
@@ -210,6 +226,11 @@ class AndroidTerminalWebView(
             """.trimIndent(),
             null,
         )
+    }
+
+    override fun setRenderMode(mode: String) {
+        currentRenderMode = if (mode == "xterm") "xterm" else "legacy"
+        applyRenderModeIfReady()
     }
 
     override fun setTheme(darkMode: Boolean) {
@@ -252,7 +273,6 @@ class AndroidTerminalWebView(
             rows: Int,
         ) {
             // Handle terminal size if needed
-            println("[TerminalJavaScriptBridge] Terminal size: ${cols}x$rows")
         }
 
         @JavascriptInterface
