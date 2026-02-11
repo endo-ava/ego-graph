@@ -4,6 +4,8 @@ import android.util.Log
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import dev.egograph.android.notifications.NotificationChannelManager
+import dev.egograph.android.notifications.NotificationDisplayer
 
 /** Firebase Cloud Messaging サービス。
 
@@ -36,6 +38,9 @@ class FcmService : FirebaseMessagingService() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // 通知チャンネルを作成（Android 8.0+）
+        NotificationChannelManager.createNotificationChannel(this)
 
         // 起動時に既存トークンの登録も試行
         FirebaseMessaging
@@ -93,7 +98,12 @@ class FcmService : FirebaseMessagingService() {
         // 通知ペイロードの処理
         message.notification?.let { notification ->
             Log.d(TAG, "Message Notification Body: ${notification.body}")
-            // システム通知は自動的に表示されます
+            // 通知を表示
+            NotificationDisplayer.showNotification(
+                context = this,
+                title = notification.title ?: "EgoGraph",
+                message = notification.body ?: "New notification",
+            )
         }
 
         // データペイロードの処理
@@ -106,7 +116,12 @@ class FcmService : FirebaseMessagingService() {
             when (type) {
                 "task_completed" -> {
                     Log.d(TAG, "Task completed: $sessionId")
-                    // TODO: タスク完了時の処理
+                    // データペイロードから通知を作成
+                    NotificationDisplayer.showNotification(
+                        context = this,
+                        title = message.data["title"] ?: "Task Completed",
+                        message = message.data["body"] ?: "Your task has been completed",
+                    )
                 }
             }
         }

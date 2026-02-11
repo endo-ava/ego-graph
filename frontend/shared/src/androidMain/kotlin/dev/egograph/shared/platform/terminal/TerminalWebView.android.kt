@@ -226,6 +226,18 @@ class AndroidTerminalWebView(
         )
     }
 
+    override fun sendText(text: String) {
+        val escapedText = text.replace("\\", "\\\\").replace("'", "\\'")
+        _webView.evaluateJavascript(
+            """
+            if (window.TerminalAPI) {
+                window.TerminalAPI.sendText('$escapedText');
+            }
+            """.trimIndent(),
+            null,
+        )
+    }
+
     override fun setRenderMode(mode: String) {
         currentRenderMode = if (mode == "xterm") "xterm" else "legacy"
         applyRenderModeIfReady()

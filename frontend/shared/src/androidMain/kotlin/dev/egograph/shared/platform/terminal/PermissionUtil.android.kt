@@ -55,4 +55,45 @@ actual fun createPermissionUtil(): PermissionUtil =
                 Manifest.permission.RECORD_AUDIO,
             ) == PackageManager.PERMISSION_GRANTED
         }
+
+        private var notificationLauncher: androidx.activity.result.ActivityResultLauncher<String>? = null
+
+        override suspend fun requestPostNotificationsPermission(): PermissionResult =
+            suspendCancellableCoroutine { continuation ->
+                val activity =
+                    ActivityRecorder.currentActivity as? ComponentActivity
+                        ?: run {
+                            continuation.resume(PermissionResult(granted = false))
+                            return@suspendCancellableCoroutine
+                        }
+
+                // パーミッションランチャーの設定
+                val launcher =
+                    activity.activityResultRegistry.register(
+                        "post_notifications_permission",
+                        ActivityResultContracts.RequestPermission(),
+                    ) { isGranted ->
+                        if (continuation.isActive) {
+                            continuation.resume(PermissionResult(granted = isGranted))
+                        }
+                    }
+
+                notificationLauncher = launcher
+
+                // パーミッションをリクエスト
+                launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+
+                continuation.invokeOnCancellation {
+                    // キャンセル時にランチャーを解除
+                    notificationLauncher?.unregister()
+                }
+            }
+
+        override fun hasPostNotificationsPermission(): Boolean {
+            val context = ActivityRecorder.currentActivity ?: return false
+            return ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+        }
     }

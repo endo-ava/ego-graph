@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,14 +29,22 @@ fun TerminalHeader(
     isConnected: Boolean,
     onClose: () -> Unit,
     onDisconnect: () -> Unit,
+    onVoiceInputToggle: () -> Unit = {},
 ) {
+    val title =
+        when {
+            isConnecting -> "Connecting to $agentId..."
+            isConnected -> agentId
+            else -> "●"
+        }
+
     CenterAlignedTopAppBar(
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
-                Text("Terminal: $agentId")
+                Text(text = title)
                 Spacer(modifier = Modifier.size(8.dp))
                 when {
                     isConnecting -> {
@@ -76,6 +85,12 @@ fun TerminalHeader(
             }
         },
         actions = {
+            IconButton(onClick = onVoiceInputToggle) {
+                Icon(
+                    imageVector = Icons.Filled.Mic,
+                    contentDescription = "Voice Input",
+                )
+            }
             IconButton(onClick = onDisconnect) {
                 Icon(
                     imageVector = Icons.Default.PowerSettingsNew,

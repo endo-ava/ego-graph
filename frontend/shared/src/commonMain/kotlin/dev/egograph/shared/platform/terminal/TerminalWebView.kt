@@ -38,6 +38,13 @@ interface TerminalWebView {
     fun sendKey(key: String)
 
     /**
+     * Send text input to terminal
+     *
+     * @param text Text string to send to terminal
+     */
+    fun sendText(text: String)
+
+    /**
      * Set terminal render mode.
      *
      * @param mode Render mode ("legacy" or "xterm")

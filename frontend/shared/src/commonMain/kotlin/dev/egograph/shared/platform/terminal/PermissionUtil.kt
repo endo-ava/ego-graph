@@ -13,6 +13,7 @@ data class PermissionResult(
  * プラットフォーム固有のパーミッションユーティリティ
  *
  * RECORD_AUDIOパーミッションのリクエストを処理する。
+ * POST_NOTIFICATIONSパーミッションのリクエストも処理する。
  */
 interface PermissionUtil {
     /**
@@ -28,6 +29,20 @@ interface PermissionUtil {
      * @return パーミッションが許可されている場合はtrue
      */
     fun hasRecordAudioPermission(): Boolean
+
+    /**
+     * POST_NOTIFICATIONSパーミッションをリクエストする
+     *
+     * @return パーミッションリクエストの結果
+     */
+    suspend fun requestPostNotificationsPermission(): PermissionResult
+
+    /**
+     * POST_NOTIFICATIONSパーミッションが既に許可されているかを確認する
+     *
+     * @return パーミッションが許可されている場合はtrue
+     */
+    fun hasPostNotificationsPermission(): Boolean
 }
 
 /**

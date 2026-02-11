@@ -23,6 +23,10 @@ class PermissionUtilTest {
         override suspend fun requestRecordAudioPermission(): PermissionResult = mockRequestResult
 
         override fun hasRecordAudioPermission(): Boolean = mockHasPermission
+
+        override suspend fun requestPostNotificationsPermission(): PermissionResult = mockRequestResult
+
+        override fun hasPostNotificationsPermission(): Boolean = mockHasPermission
     }
 
     // ========== 正常系テスト ==========
