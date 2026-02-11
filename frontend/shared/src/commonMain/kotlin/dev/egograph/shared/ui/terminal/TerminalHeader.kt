@@ -35,7 +35,7 @@ fun TerminalHeader(
         when {
             isConnecting -> "Connecting to $agentId..."
             isConnected -> agentId
-            else -> "●"
+            else -> agentId
         }
 
     CenterAlignedTopAppBar(

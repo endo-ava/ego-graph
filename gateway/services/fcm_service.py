@@ -179,7 +179,7 @@ class FcmService:
             送信結果を含む辞書
         """
         # ユーザーのトークンを取得
-        devices = self._token_repository.get_tokens(user_id)
+        devices = await asyncio.to_thread(self._token_repository.get_tokens, user_id)
 
         if not devices:
             logger.warning("No active devices found for user: %s", user_id)

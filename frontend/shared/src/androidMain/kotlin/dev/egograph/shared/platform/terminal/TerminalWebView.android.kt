@@ -46,6 +46,16 @@ class AndroidTerminalWebView(
     private val isPageReady = AtomicBoolean(false)
     private val isTerminalReady = AtomicBoolean(false)
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    private fun runOnMainThread(block: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            block()
+        } else {
+            mainHandler.post(block)
+        }
+    }
+
     override val output: Flow<String> = _output.asSharedFlow()
     override val connectionState: Flow<Boolean> = _connectionState.asStateFlow()
     override val errors: Flow<String> = _errors.asSharedFlow()
@@ -143,8 +153,7 @@ class AndroidTerminalWebView(
             .replace("\r", "\\r")
             .replace("\u2028", "\\u2028")
             .replace("\u2029", "\\u2029")
-            .replace("\"", "&quot;")
-            .replace("'", "&#39;")
+            .replace("\"", "\\\"")
 
     private fun loadAsset(path: String): String =
         try {
@@ -188,7 +197,7 @@ class AndroidTerminalWebView(
     ) {
         currentWsUrl = wsUrl
         currentApiKey = apiKey
-        connectIfReady()
+        runOnMainThread { connectIfReady() }
     }
 
     private fun connectIfReady() {
@@ -218,49 +227,57 @@ class AndroidTerminalWebView(
         }
 
         val mode = if (currentRenderMode == "xterm") "xterm" else "legacy"
-        _webView.evaluateJavascript(
-            """
-            if (window.TerminalAPI && typeof window.TerminalAPI.setRenderMode === 'function') {
-                window.TerminalAPI.setRenderMode('$mode');
-            }
-            """.trimIndent(),
-            null,
-        )
+        runOnMainThread {
+            _webView.evaluateJavascript(
+                """
+                if (window.TerminalAPI && typeof window.TerminalAPI.setRenderMode === 'function') {
+                    window.TerminalAPI.setRenderMode('$mode');
+                }
+                """.trimIndent(),
+                null,
+            )
+        }
     }
 
     override fun disconnect() {
-        _webView.evaluateJavascript(
-            """
-            if (window.TerminalAPI) {
-                window.TerminalAPI.disconnect();
-            }
-            """.trimIndent(),
-            null,
-        )
+        runOnMainThread {
+            _webView.evaluateJavascript(
+                """
+                if (window.TerminalAPI) {
+                    window.TerminalAPI.disconnect();
+                }
+                """.trimIndent(),
+                null,
+            )
+        }
     }
 
     override fun sendKey(key: String) {
         val escapedKey = escapeJsString(key)
-        _webView.evaluateJavascript(
-            """
-            if (window.TerminalAPI) {
-                window.TerminalAPI.sendKey('$escapedKey');
-            }
-            """.trimIndent(),
-            null,
-        )
+        runOnMainThread {
+            _webView.evaluateJavascript(
+                """
+                if (window.TerminalAPI) {
+                    window.TerminalAPI.sendKey('$escapedKey');
+                }
+                """.trimIndent(),
+                null,
+            )
+        }
     }
 
     override fun sendText(text: String) {
         val escapedText = escapeJsString(text)
-        _webView.evaluateJavascript(
-            """
-            if (window.TerminalAPI) {
-                window.TerminalAPI.sendText('$escapedText');
-            }
-            """.trimIndent(),
-            null,
-        )
+        runOnMainThread {
+            _webView.evaluateJavascript(
+                """
+                if (window.TerminalAPI) {
+                    window.TerminalAPI.sendText('$escapedText');
+                }
+                """.trimIndent(),
+                null,
+            )
+        }
     }
 
     override fun setRenderMode(mode: String) {

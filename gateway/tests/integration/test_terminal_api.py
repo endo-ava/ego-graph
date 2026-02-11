@@ -86,6 +86,8 @@ class TestWebSocketAuthentication:
             patch(
                 "gateway.api.terminal.TerminalWebSocketHandler"
             ) as mock_handler_class,
+            patch("gateway.api.terminal.mark_session_connected"),
+            patch("gateway.api.terminal.mark_session_disconnected"),
         ):
             mock_handler = MagicMock()
             mock_handler.handle = AsyncMock()

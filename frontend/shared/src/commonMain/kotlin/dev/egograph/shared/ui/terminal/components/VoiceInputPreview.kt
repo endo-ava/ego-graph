@@ -77,7 +77,11 @@ fun VoiceInputPreview(
                 speechRecognizer.startRecognition().collect { result ->
                     recognizedText = result
                 }
+                // フローが正常完了した場合
+                isRecording = false
             } catch (e: Exception) {
+                // CancellationException は再スローしてコルーチンのキャンセル伝播を維持
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 errorMessage = e.message
                 isRecording = false
             }

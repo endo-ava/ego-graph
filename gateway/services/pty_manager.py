@@ -236,7 +236,15 @@ class TmuxAttachManager:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        _, stderr = await process.communicate()
+        try:
+            _, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=TMUX_CAPTURE_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            process.kill()
+            await process.wait()
+            raise RuntimeError("tmux send-keys timed out")
         if process.returncode != 0:
             message = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
             raise RuntimeError(f"Failed to send keys via tmux: {message}")

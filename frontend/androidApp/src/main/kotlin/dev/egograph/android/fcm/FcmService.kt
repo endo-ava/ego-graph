@@ -97,17 +97,23 @@ class FcmService : FirebaseMessagingService() {
 
         // 通知ペイロードの処理
         message.notification?.let { notification ->
-            Log.d(TAG, "Message Notification Body: ${notification.body}")
-            // 通知を表示
-            NotificationDisplayer.showNotification(
-                context = this,
-                title = notification.title ?: "EgoGraph",
-                message = notification.body ?: "New notification",
-            )
+            // データペイロードに "task_completed" タイプが含まれる場合は、
+            // そちらのデータペイロード処理で通知を表示するため、
+            // notification タイプの通知をスキップして二重表示を防ぐ
+            val hasTaskCompletedInData = message.data["type"] == "task_completed"
+            if (!hasTaskCompletedInData) {
+                Log.d(TAG, "Message Notification Body: ${notification.body}")
+                // 通知を表示
+                NotificationDisplayer.showNotification(
+                    context = this,
+                    title = notification.title ?: "EgoGraph",
+                    message = notification.body ?: "New notification",
+                )
+            }
         }
 
         // データペイロードの処理
-        message.data.isNotEmpty().let {
+        if (message.data.isNotEmpty()) {
             Log.d(TAG, "Message data payload: ${message.data}")
 
             val type = message.data["type"]
