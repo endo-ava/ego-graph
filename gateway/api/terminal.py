@@ -17,7 +17,7 @@ from starlette.websockets import WebSocket
 
 from gateway.dependencies import get_config, verify_gateway_token
 from gateway.domain.models import SessionStatus
-from gateway.infrastructure.tmux import list_sessions
+from gateway.infrastructure.tmux import list_sessions, session_exists
 from gateway.services.websocket_handler import TerminalWebSocketHandler
 
 logger = logging.getLogger(__name__)

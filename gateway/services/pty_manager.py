@@ -185,7 +185,7 @@ class TmuxAttachManager:
             raise RuntimeError("Not attached to session")
 
         try:
-            if self._stdin is None or self._stdin.is_closing():
+            if self._stdin is None or self._is_stream_closing(self._stdin):
                 await self._send_keys_via_tmux(data)
                 return
 
@@ -196,6 +196,14 @@ class TmuxAttachManager:
                 "Direct stdin write failed, falling back to tmux send-keys: %s", e
             )
             await self._send_keys_via_tmux(data)
+
+    @staticmethod
+    def _is_stream_closing(stream: asyncio.StreamWriter) -> bool:
+        checker = getattr(stream, "is_closing", None)
+        if not callable(checker):
+            return False
+        result = checker()
+        return result if isinstance(result, bool) else False
 
     async def _send_keys_via_tmux(self, data: bytes) -> None:
         text = data.decode("utf-8", errors="ignore")

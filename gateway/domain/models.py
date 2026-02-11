@@ -97,6 +97,7 @@ class WSOutputMessage(BaseModel):
 
     type: Literal["output"] = Field(default="output", description="メッセージタイプ")
     data_b64: str = Field(..., description="PTY出力のBase64エンコード")
+    is_snapshot: bool = Field(False, description="tmuxスナップショット由来かどうか")
     cursor_x: int | None = Field(None, description="カーソルX座標（0始まり）")
     cursor_y: int | None = Field(None, description="カーソルY座標（0始まり）")
     pane_rows: int | None = Field(None, description="表示中ペインの行数")
@@ -105,6 +106,7 @@ class WSOutputMessage(BaseModel):
     def from_bytes(
         cls,
         data: bytes,
+        is_snapshot: bool = False,
         cursor_x: int | None = None,
         cursor_y: int | None = None,
         pane_rows: int | None = None,
@@ -122,6 +124,7 @@ class WSOutputMessage(BaseModel):
         """
         return cls(
             data_b64=b64encode(data).decode("ascii"),
+            is_snapshot=is_snapshot,
             cursor_x=cursor_x,
             cursor_y=cursor_y,
             pane_rows=pane_rows,

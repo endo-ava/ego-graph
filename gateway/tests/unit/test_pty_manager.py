@@ -58,7 +58,7 @@ class TestAttachSession:
         mock_process.returncode = None
 
         with patch(
-            "asyncio.create_subprocess_shell", new=AsyncMock(return_value=mock_process)
+            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
         ):
             # Act
             await pty_manager.attach_session()
@@ -77,7 +77,7 @@ class TestAttachSession:
         mock_process.returncode = None
 
         with patch(
-            "asyncio.create_subprocess_shell", new=AsyncMock(return_value=mock_process)
+            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
         ):
             await pty_manager.attach_session()
 
@@ -96,7 +96,7 @@ class TestAttachSession:
         mock_process.returncode = None
 
         with patch(
-            "asyncio.create_subprocess_shell", new=AsyncMock(return_value=mock_process)
+            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
         ):
             # Act
             await pty_manager.attach_session()
@@ -115,7 +115,7 @@ class TestAttachSession:
         mock_process.stderr = None
 
         with patch(
-            "asyncio.create_subprocess_shell", new=AsyncMock(return_value=mock_process)
+            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
         ):
             # Act & Assert
             with pytest.raises(RuntimeError, match="Failed to create process streams"):
@@ -155,7 +155,7 @@ class TestDetachSession:
         mock_process.terminate = MagicMock()
 
         with patch(
-            "asyncio.create_subprocess_shell", new=AsyncMock(return_value=mock_process)
+            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
         ):
             await pty_manager.attach_session()
             assert pty_manager.is_attached
@@ -193,7 +193,7 @@ class TestWriteInput:
         mock_process.stdin = mock_stdin
 
         with patch(
-            "asyncio.create_subprocess_shell", new=AsyncMock(return_value=mock_process)
+            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
         ):
             await pty_manager.attach_session()
 
@@ -241,7 +241,7 @@ class TestReadOutput:
         mock_process.stdout = mock_stdout
 
         with patch(
-            "asyncio.create_subprocess_shell", new=AsyncMock(return_value=mock_process)
+            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
         ):
             await pty_manager.attach_session()
 
@@ -269,7 +269,7 @@ class TestReadOutput:
         mock_process.stdout = mock_stdout
 
         with patch(
-            "asyncio.create_subprocess_shell", new=AsyncMock(return_value=mock_process)
+            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
         ):
             await pty_manager.attach_session()
 

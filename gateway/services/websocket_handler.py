@@ -186,7 +186,7 @@ class TerminalWebSocketHandler:
                 data = await self._pty_manager.read_output(BUFFER_SIZE)
                 if data:
                     # Base64エンコードして送信
-                    message = WSOutputMessage.from_bytes(data)
+                    message = WSOutputMessage.from_bytes(data, is_snapshot=False)
                     await self._send_json(message.model_dump())
                     self._last_stream_output_at = time.monotonic()
                 else:
@@ -236,6 +236,7 @@ class TerminalWebSocketHandler:
             await self._send_json(
                 WSOutputMessage.from_bytes(
                     snapshot,
+                    is_snapshot=True,
                     cursor_x=cursor_x,
                     cursor_y=cursor_y,
                     pane_rows=pane_rows,

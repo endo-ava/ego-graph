@@ -631,9 +631,7 @@
                                 var bytes = new Uint8Array(bin.length);
                                 for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
                                 var text = new TextDecoder('utf-8').decode(bytes);
-                                var isSnapshot =
-                                    typeof msg.cursor_x === 'number' &&
-                                    typeof msg.cursor_y === 'number';
+                                var isSnapshot = msg.is_snapshot === true;
                                 if (useXtermRender && !isSnapshot) {
                                     if (writeStreamChunkWithXterm(text)) {
                                         scrollToBottom();

@@ -4,6 +4,7 @@
 """
 
 import logging
+import asyncio
 from typing import Any
 
 import firebase_admin

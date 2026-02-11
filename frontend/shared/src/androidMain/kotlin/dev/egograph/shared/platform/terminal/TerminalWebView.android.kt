@@ -113,9 +113,7 @@ class AndroidTerminalWebView(
 
             webChromeClient =
                 object : WebChromeClient() {
-                    override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
-                        return false
-                    }
+                    override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean = false
                 }
 
             setLayerType(View.LAYER_TYPE_SOFTWARE, null)
