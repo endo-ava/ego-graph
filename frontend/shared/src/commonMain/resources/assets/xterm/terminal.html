@@ -93,7 +93,6 @@
             var xtermRender = document.getElementById('xtermRender');
             var hiddenInput = document.getElementById('hiddenInput');
             var websocket;
-            var inputTerminal = null;
             var renderTerminal = null;
             var useXtermRender = false;
             var ANSI_ESCAPE_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
@@ -448,28 +447,6 @@
                 scrollToBottom();
             }
 
-            function initializeInputTerminal() {
-                if (typeof window.Terminal !== 'function') {
-                    return;
-                }
-
-                try {
-                    inputTerminal = new window.Terminal({
-                        cols: 80,
-                        rows: 24,
-                    });
-                    if (typeof inputTerminal.onData === 'function') {
-                        inputTerminal.onData(function(data) {
-                            if (window.TerminalAPI && typeof window.TerminalAPI.sendKey === 'function') {
-                                window.TerminalAPI.sendKey(data);
-                            }
-                        });
-                    }
-                } catch (err) {
-                    inputTerminal = null;
-                }
-            }
-
             function initializeRenderTerminal(cols, rows) {
                 if (!useXtermRender || renderTerminal || typeof window.Terminal !== 'function') {
                     return;
@@ -553,10 +530,6 @@
 
             function routeInput(data) {
                 if (!data) {
-                    return;
-                }
-                if (inputTerminal && typeof inputTerminal.send === 'function') {
-                    inputTerminal.send(data);
                     return;
                 }
                 if (window.TerminalAPI && typeof window.TerminalAPI.sendKey === 'function') {
@@ -673,7 +646,6 @@
                 sendResizeToServer();
             });
             applyRenderMode();
-            initializeInputTerminal();
             scrollToBottom();
         })();
     </script>
