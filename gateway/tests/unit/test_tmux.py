@@ -10,7 +10,6 @@ from unittest.mock import Mock, patch
 import pytest
 
 from gateway.infrastructure.tmux import (
-    Session,
     _parse_tmux_timestamp,
     list_sessions,
     session_exists,
@@ -219,39 +218,64 @@ class TestSessionExists:
 
     def test_returns_true_when_session_exists(self) -> None:
         """セッションが存在する場合に True を返すことを検証します。"""
-        # Arrange: agent-0001 が存在する
-        with patch("gateway.infrastructure.tmux.list_sessions") as mock_list:
-            mock_list.return_value = [
-                Session(
-                    name="agent-0001",
-                    last_activity=_parse_tmux_timestamp("2025-02-08T12:00:00"),
-                    created_at=_parse_tmux_timestamp("2025-02-08T10:00:00"),
-                )
-            ]
+        # Arrange: subprocess.run が成功する（終了ステータス 0）
+        with patch("subprocess.run") as mock_run:
+            result = Mock()
+            result.returncode = 0
+            mock_run.return_value = result
 
             # Act: セッションの存在確認
-            result = session_exists("agent-0001")
+            exists = session_exists("agent-0001")
 
             # Assert: True が返されること
-            assert result is True
+            assert exists is True
+            # Assert: 正しいコマンドが呼ばれたこと
+            mock_run.assert_called_once_with(
+                ["tmux", "has-session", "-t", "agent-0001"],
+                capture_output=True,
+                check=True,
+                timeout=5,
+            )
 
     def test_returns_false_when_session_not_exists(self) -> None:
         """セッションが存在しない場合に False を返すことを検証します。"""
-        # Arrange: agent-0001 のみが存在する
-        with patch("gateway.infrastructure.tmux.list_sessions") as mock_list:
-            mock_list.return_value = [
-                Session(
-                    name="agent-0001",
-                    last_activity=_parse_tmux_timestamp("2025-02-08T12:00:00"),
-                    created_at=_parse_tmux_timestamp("2025-02-08T10:00:00"),
-                )
-            ]
+        # Arrange: subprocess.run が CalledProcessError を発生させる
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(
+                returncode=1, cmd=["tmux", "has-session", "-t", "agent-9999"]
+            )
 
             # Act: 存在しないセッションの確認
-            result = session_exists("agent-9999")
+            exists = session_exists("agent-9999")
 
             # Assert: False が返されること
-            assert result is False
+            assert exists is False
+
+    def test_returns_false_when_tmux_not_found(self) -> None:
+        """tmux がインストールされていない場合に False を返すことを検証します。"""
+        # Arrange: subprocess.run が FileNotFoundError を発生させる
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError("tmux not found")
+
+            # Act: セッションの存在確認
+            exists = session_exists("agent-0001")
+
+            # Assert: False が返されること
+            assert exists is False
+
+    def test_returns_false_when_timeout(self) -> None:
+        """tmux コマンドがタイムアウトした場合に False を返すことを検証します。"""
+        # Arrange: subprocess.run が TimeoutExpired を発生させる
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.TimeoutExpired(
+                cmd=["tmux", "has-session", "-t", "agent-0001"], timeout=5
+            )
+
+            # Act: セッションの存在確認
+            exists = session_exists("agent-0001")
+
+            # Assert: False が返されること
+            assert exists is False
 
 
 class TestListSessionsTimeoutHandling:

@@ -75,9 +75,14 @@ class TestWebSocketAuthentication:
         mock_websocket.receive_text = AsyncMock(
             return_value=f'{{"type":"auth","api_key":"{valid_token}"}}'
         )
+        mock_websocket.close = AsyncMock()
 
         with (
             patch("gateway.api.terminal._is_valid_api_key", return_value=True),
+            patch(
+                "gateway.api.terminal.anyio.to_thread.run_sync",
+                return_value=True,
+            ),
             patch(
                 "gateway.api.terminal.TerminalWebSocketHandler"
             ) as mock_handler_class,

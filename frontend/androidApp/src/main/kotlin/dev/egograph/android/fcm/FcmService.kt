@@ -15,6 +15,7 @@ class FcmService : FirebaseMessagingService() {
         private const val PREFS_NAME = "egograph_prefs"
         private const val KEY_GATEWAY_API_URL = "gateway_api_url"
         private const val KEY_GATEWAY_API_KEY = "gateway_api_key"
+        private const val TOKEN_PREVIEW_LENGTH = 10
     }
 
     private var tokenManager: FcmTokenManager? = null
@@ -25,7 +26,7 @@ class FcmService : FirebaseMessagingService() {
      */
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d(TAG, "FCM token refreshed: ${token.take(10)}...")
+        Log.d(TAG, "FCM token refreshed: ${token.take(TOKEN_PREVIEW_LENGTH)}...")
 
         getTokenManager()?.registerToken(
             token = token,
@@ -53,9 +54,7 @@ class FcmService : FirebaseMessagingService() {
     }
 
     private fun getTokenManager(): FcmTokenManager? {
-        if (tokenManager != null) {
-            return tokenManager
-        }
+        tokenManager?.let { return it }
 
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val gatewayUrl = prefs.getString(KEY_GATEWAY_API_URL, "")?.trim().orEmpty()
@@ -65,13 +64,16 @@ class FcmService : FirebaseMessagingService() {
                 ?.trim()
                 .orEmpty()
 
-        if (gatewayUrl.isBlank() || apiKey.isBlank()) {
-            Log.w(TAG, "Skip FCM token registration: api_url or api_key is empty")
-            return null
-        }
+        val manager: FcmTokenManager? =
+            if (gatewayUrl.isBlank() || apiKey.isBlank()) {
+                Log.w(TAG, "Skip FCM token registration: api_url or api_key is empty")
+                null
+            } else {
+                FcmTokenManager(gatewayUrl = gatewayUrl, apiKey = apiKey)
+            }
 
-        tokenManager = FcmTokenManager(gatewayUrl = gatewayUrl, apiKey = apiKey)
-        return tokenManager
+        manager?.let { tokenManager = it }
+        return manager
     }
 
     override fun onDestroy() {

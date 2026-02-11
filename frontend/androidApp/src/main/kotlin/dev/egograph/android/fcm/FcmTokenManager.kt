@@ -28,6 +28,9 @@ class FcmTokenManager(
 ) {
     companion object {
         private const val TAG = "FcmTokenManager"
+        private const val TOKEN_PREVIEW_LENGTH = 10
+        private const val TIMEOUT_SECONDS = 10L
+        private const val MAX_RETRY_COUNT = 5
         private const val RETRY_DELAY_MS = 60_000L // 1分
         private const val INITIAL_RETRY_DELAY_MS = 5_000L // 5秒
     }
@@ -36,8 +39,8 @@ class FcmTokenManager(
     private val client =
         OkHttpClient
             .Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
+            .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .build()
 
     @Volatile
@@ -57,7 +60,7 @@ class FcmTokenManager(
             return
         }
 
-        Log.d(TAG, "Registering FCM token: ${token.take(10)}...")
+        Log.d(TAG, "Registering FCM token: ${token.take(TOKEN_PREVIEW_LENGTH)}...")
 
         scope.launch {
             registerTokenWithRetry(token, deviceName)
@@ -73,7 +76,7 @@ class FcmTokenManager(
         var attempt = 0
         var currentDelay = retryDelay
 
-        while (attempt < 5) { // 最大5回リトライ
+        while (attempt < MAX_RETRY_COUNT) {
             try {
                 sendTokenToGateway(token, deviceName)
                 currentToken = token
@@ -81,16 +84,16 @@ class FcmTokenManager(
                 return
             } catch (e: IOException) {
                 attempt++
-                Log.w(TAG, "Failed to register token (attempt $attempt/5): ${e.message}")
+                Log.w(TAG, "Failed to register token (attempt $attempt/$MAX_RETRY_COUNT): ${e.message}")
 
-                if (attempt < 5) {
+                if (attempt < MAX_RETRY_COUNT) {
                     delay(currentDelay)
                     currentDelay = (currentDelay * 2).coerceAtMost(RETRY_DELAY_MS)
                 }
             }
         }
 
-        Log.e(TAG, "Failed to register FCM token after 5 attempts")
+        Log.e(TAG, "Failed to register FCM token after $MAX_RETRY_COUNT attempts")
     }
 
     /** Gatewayにトークンを送信します。 */
