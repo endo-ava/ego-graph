@@ -173,12 +173,29 @@ class TestFcmService:
         service._initialized = True
 
         # モックの設定
-        mock_exception = MagicMock()
-        mock_exception.exception = Exception("InvalidRegistration")
         mock_response = MagicMock()
         mock_response.success_count = 0
         mock_response.failure_count = 1
-        mock_response.responses = [mock_exception]
+
+        # 応答オブジェクトのモック
+        mock_send_response = MagicMock()
+
+        # 例外クラスのモック
+        class MockUnregisteredError(Exception):
+            pass
+
+        class MockSenderIdMismatchError(Exception):
+            pass
+
+        # messagingモジュールの属性として設定
+        mock_messaging.UnregisteredError = MockUnregisteredError
+        mock_messaging.SenderIdMismatchError = MockSenderIdMismatchError
+
+        # 例外インスタンスを作成して設定
+        mock_send_response.exception = MockUnregisteredError("Unregistered")
+
+        mock_response.responses = [mock_send_response]
+
         mock_messaging.send_each_for_multicast.return_value = mock_response
 
         # Act
