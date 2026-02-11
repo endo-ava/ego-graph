@@ -3,42 +3,405 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        #hiddenInput {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+            border: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        #terminal {
+            margin: 0;
+            padding: 8px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.3;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .cursor-cell {
+            background: #d4d4d4;
+            color: #1e1e1e;
+        }
+    </style>
 </head>
-<body style="margin:0;padding:0;background:#1e1e1e;">
-    <input type="text" id="hiddenInput" style="position:absolute;left:-9999px;opacity:0;" />
-    <pre id="terminal" style="margin:0;padding:8px;background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:14px;white-space:pre-wrap;word-wrap:break-word;"></pre>
-    <div id="debug" style="position:fixed;top:0;left:0;background:yellow;color:black;font-size:10px;max-height:100px;overflow:auto;padding:4px;"></div>
+<body>
+    <input
+      type="text"
+      id="hiddenInput"
+      autocapitalize="off"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+    />
+    <pre id="terminal"></pre>
     <script>
         (function() {
             var terminal = document.getElementById('terminal');
             var hiddenInput = document.getElementById('hiddenInput');
-            var debug = document.getElementById('debug');
             var websocket;
-            var messageCount = 0;
-            
-            function logDebug(msg) {
-                messageCount++;
-                debug.textContent = '[' + messageCount + '] ' + msg + '\n' + debug.textContent;
+            var ANSI_ESCAPE_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
+            var ANSI_FG = [
+                '#000000', '#cd3131', '#0dbc79', '#e5e510',
+                '#2472c8', '#bc3fbc', '#11a8cd', '#e5e5e5'
+            ];
+            var ANSI_FG_BRIGHT = [
+                '#666666', '#f14c4c', '#23d18b', '#f5f543',
+                '#3b8eea', '#d670d6', '#29b8db', '#ffffff'
+            ];
+
+            function createStyleState() {
+                return {
+                    fg: null,
+                    bg: null,
+                    bold: false,
+                    underline: false,
+                    inverse: false
+                };
             }
-            
-            function appendText(text) {
-                var cleaned = text.replace(/\x1b\[[0-9;]*m/g, '');
-                logDebug('Append: ' + cleaned.length + ' bytes');
-                terminal.textContent = cleaned;
+
+            function scrollToBottom() {
                 terminal.scrollTop = terminal.scrollHeight;
+                if (typeof window.scrollTo === 'function') {
+                    window.scrollTo(0, document.body.scrollHeight || 0);
+                }
             }
-            
-            logDebug('Page loaded');
+
+            function focusInputWithoutScroll() {
+                var terminalTop = terminal.scrollTop;
+                var pageTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+                try {
+                    hiddenInput.focus({ preventScroll: true });
+                } catch (err) {
+                    hiddenInput.focus();
+                }
+                if (typeof window.scrollTo === 'function') {
+                    window.scrollTo(0, pageTop);
+                }
+                terminal.scrollTop = terminalTop;
+            }
+
+            function reportError(message) {
+                if (
+                    window.TerminalBridge &&
+                    typeof window.TerminalBridge.onError === 'function'
+                ) {
+                    window.TerminalBridge.onError(message);
+                }
+            }
+
+            function escapeHtml(text) {
+                return text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
+            function color256ToHex(index) {
+                if (index < 16) {
+                    if (index < 8) {
+                        return ANSI_FG[index];
+                    }
+                    return ANSI_FG_BRIGHT[index - 8];
+                }
+                if (index >= 16 && index <= 231) {
+                    var color = index - 16;
+                    var r = Math.floor(color / 36);
+                    var g = Math.floor((color % 36) / 6);
+                    var b = color % 6;
+                    var levels = [0, 95, 135, 175, 215, 255];
+                    return (
+                        'rgb(' +
+                        levels[r] + ',' +
+                        levels[g] + ',' +
+                        levels[b] + ')'
+                    );
+                }
+                if (index >= 232 && index <= 255) {
+                    var gray = 8 + (index - 232) * 10;
+                    return 'rgb(' + gray + ',' + gray + ',' + gray + ')';
+                }
+                return null;
+            }
+
+            function stateToCss(state) {
+                var fg = state.fg;
+                var bg = state.bg;
+                if (state.inverse) {
+                    var swap = fg;
+                    fg = bg || '#1e1e1e';
+                    bg = swap || '#d4d4d4';
+                }
+
+                var css = '';
+                if (fg) {
+                    css += 'color:' + fg + ';';
+                }
+                if (bg) {
+                    css += 'background:' + bg + ';';
+                }
+                if (state.bold) {
+                    css += 'font-weight:700;';
+                }
+                if (state.underline) {
+                    css += 'text-decoration:underline;';
+                }
+                return css;
+            }
+
+            function applySgr(codes, state) {
+                if (!codes || (codes.length === 1 && codes[0] === 0)) {
+                    state.fg = null;
+                    state.bg = null;
+                    state.bold = false;
+                    state.underline = false;
+                    state.inverse = false;
+                    return;
+                }
+
+                for (var i = 0; i < codes.length; i++) {
+                    var code = codes[i];
+                    if (code === 0) {
+                        state.fg = null;
+                        state.bg = null;
+                        state.bold = false;
+                        state.underline = false;
+                        state.inverse = false;
+                    } else if (code === 1) {
+                        state.bold = true;
+                    } else if (code === 22) {
+                        state.bold = false;
+                    } else if (code === 4) {
+                        state.underline = true;
+                    } else if (code === 24) {
+                        state.underline = false;
+                    } else if (code === 7) {
+                        state.inverse = true;
+                    } else if (code === 27) {
+                        state.inverse = false;
+                    } else if (code === 39) {
+                        state.fg = null;
+                    } else if (code === 49) {
+                        state.bg = null;
+                    } else if (code >= 30 && code <= 37) {
+                        state.fg = ANSI_FG[code - 30];
+                    } else if (code >= 90 && code <= 97) {
+                        state.fg = ANSI_FG_BRIGHT[code - 90];
+                    } else if (code >= 40 && code <= 47) {
+                        state.bg = ANSI_FG[code - 40];
+                    } else if (code >= 100 && code <= 107) {
+                        state.bg = ANSI_FG_BRIGHT[code - 100];
+                    } else if ((code === 38 || code === 48) && i + 1 < codes.length) {
+                        var isForeground = code === 38;
+                        var mode = codes[++i];
+                        if (mode === 5 && i + 1 < codes.length) {
+                            var c256 = color256ToHex(codes[++i]);
+                            if (c256) {
+                                if (isForeground) {
+                                    state.fg = c256;
+                                } else {
+                                    state.bg = c256;
+                                }
+                            }
+                        } else if (mode === 2 && i + 3 < codes.length) {
+                            var r = codes[++i];
+                            var g = codes[++i];
+                            var b = codes[++i];
+                            var rgb = 'rgb(' + r + ',' + g + ',' + b + ')';
+                            if (isForeground) {
+                                state.fg = rgb;
+                            } else {
+                                state.bg = rgb;
+                            }
+                        }
+                    }
+                }
+            }
+
+            function createLine() {
+                return {
+                    cells: [],
+                    plainLength: 0
+                };
+            }
+
+            function appendTextToLines(lines, text, style) {
+                for (var i = 0; i < text.length; i++) {
+                    var ch = text.charAt(i);
+                    if (ch === '\r') {
+                        continue;
+                    }
+                    if (ch === '\n') {
+                        lines.push(createLine());
+                        continue;
+                    }
+                    var line = lines[lines.length - 1];
+                    line.cells.push({
+                        ch: ch,
+                        style: style,
+                        cursor: false
+                    });
+                    line.plainLength += 1;
+                }
+            }
+
+            function parseAnsiLines(text) {
+                var sanitized = text
+                    .replace(/\u0000/g, '')
+                    .replace(ANSI_ESCAPE_RE, function(match) {
+                        return /\x1b\[[0-9;]*m/.test(match) ? match : '';
+                    });
+
+                var state = createStyleState();
+                var lines = [createLine()];
+                var parts = sanitized.split(/(\x1b\[[0-9;]*m)/g);
+
+                for (var i = 0; i < parts.length; i++) {
+                    var part = parts[i];
+                    if (!part) {
+                        continue;
+                    }
+                    var sgrMatch = part.match(/^\x1b\[([0-9;]*)m$/);
+                    if (sgrMatch) {
+                        var codeText = sgrMatch[1];
+                        var codes = codeText
+                            ? codeText.split(';').map(function(v) {
+                                return parseInt(v, 10) || 0;
+                            })
+                            : [0];
+                        applySgr(codes, state);
+                        continue;
+                    }
+                    appendTextToLines(lines, part, stateToCss(state));
+                }
+
+                if (lines.length > 1 && lines[lines.length - 1].plainLength === 0) {
+                    lines.pop();
+                }
+                return lines;
+            }
+
+            function injectCursor(line, x) {
+                if (x < 0) {
+                    x = 0;
+                }
+                while (line.cells.length < x) {
+                    line.cells.push({
+                        ch: ' ',
+                        style: '',
+                        cursor: false
+                    });
+                }
+                if (x >= line.cells.length) {
+                    line.cells.push({
+                        ch: ' ',
+                        style: '',
+                        cursor: true
+                    });
+                } else {
+                    line.cells[x].cursor = true;
+                }
+                line.plainLength = line.cells.length;
+            }
+
+            function renderLineHtml(line) {
+                if (line.cells.length === 0) {
+                    return '';
+                }
+
+                var html = '';
+                var currentText = '';
+                var currentStyle = line.cells[0].style;
+                var currentCursor = line.cells[0].cursor;
+
+                function flush() {
+                    if (!currentText) {
+                        return;
+                    }
+                    var text = escapeHtml(currentText);
+                    if (currentCursor) {
+                        html += '<span class="cursor-cell">' + text + '</span>';
+                    } else if (currentStyle) {
+                        html += '<span style="' + currentStyle + '">' + text + '</span>';
+                    } else {
+                        html += text;
+                    }
+                    currentText = '';
+                }
+
+                for (var i = 0; i < line.cells.length; i++) {
+                    var cell = line.cells[i];
+                    if (cell.style !== currentStyle || cell.cursor !== currentCursor) {
+                        flush();
+                        currentStyle = cell.style;
+                        currentCursor = cell.cursor;
+                    }
+                    currentText += cell.ch;
+                }
+                flush();
+                return html;
+            }
+
+            function renderSnapshot(text, cursorX, cursorY, paneRows) {
+                var lines = parseAnsiLines(text);
+                if (lines.length === 0) {
+                    lines = [createLine()];
+                }
+
+                if (typeof cursorX === 'number' && typeof cursorY === 'number' && cursorX >= 0 && cursorY >= 0) {
+                    var lineIndex;
+                    if (typeof paneRows === 'number' && paneRows > 0) {
+                        var visibleStart = Math.max(lines.length - paneRows, 0);
+                        lineIndex = visibleStart + cursorY;
+                    } else {
+                        lineIndex = cursorY;
+                    }
+                    if (lineIndex < 0) {
+                        lineIndex = 0;
+                    }
+                    if (lineIndex >= lines.length) {
+                        lineIndex = lines.length - 1;
+                    }
+                    injectCursor(lines[lineIndex], cursorX);
+                }
+
+                var htmlLines = new Array(lines.length);
+                for (var i = 0; i < lines.length; i++) {
+                    htmlLines[i] = renderLineHtml(lines[i]);
+                }
+                terminal.innerHTML = htmlLines.join('\n');
+                scrollToBottom();
+            }
 
             terminal.addEventListener('click', function() {
-                hiddenInput.focus();
+                focusInputWithoutScroll();
             });
 
             hiddenInput.addEventListener('input', function(e) {
-                var char = e.data || '';
-                if (char && window.TerminalAPI) {
-                    logDebug('Input: ' + char);
-                    window.TerminalAPI.sendKey(char);
+                var text = e.data || '';
+                if (!text) {
+                    text = hiddenInput.value;
+                }
+                if (text && window.TerminalAPI) {
+                    window.TerminalAPI.sendKey(text);
                 }
                 hiddenInput.value = '';
             });
@@ -46,41 +409,43 @@
             hiddenInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    logDebug('Key: Enter');
                     window.TerminalAPI.sendKey('\r');
+                    hiddenInput.value = '';
                 } else if (e.key === 'Backspace') {
                     e.preventDefault();
-                    logDebug('Key: Backspace');
                     window.TerminalAPI.sendKey('\b');
+                } else if (e.key === 'Tab') {
+                    e.preventDefault();
+                    window.TerminalAPI.sendKey('\t');
                 }
             });
 
             window.TerminalAPI = {
                 connect: function(wsUrl, apiKey) {
-                    logDebug('Connecting to: ' + wsUrl);
                     websocket = new WebSocket(wsUrl);
                     websocket.onopen = function() {
-                        logDebug('Connected');
                         websocket.send(JSON.stringify({type: 'auth', api_key: apiKey}));
                         if (window.TerminalBridge) window.TerminalBridge.onConnectionChanged(true);
+                        focusInputWithoutScroll();
                     };
                     websocket.onmessage = function(e) {
                         try {
                             var msg = JSON.parse(e.data);
-                            logDebug('Received: type=' + msg.type);
                             if (msg.type === 'output' && msg.data_b64) {
                                 var bin = atob(msg.data_b64);
                                 var bytes = new Uint8Array(bin.length);
                                 for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
                                 var text = new TextDecoder('utf-8').decode(bytes);
-                                appendText(text);
+                                renderSnapshot(text, msg.cursor_x, msg.cursor_y, msg.pane_rows);
                             }
                         } catch(err) {
-                            logDebug('Error: ' + err);
+                            reportError('Parse error: ' + String(err));
                         }
                     };
+                    websocket.onerror = function() {
+                        reportError('WebSocket error');
+                    };
                     websocket.onclose = function() {
-                        logDebug('Closed');
                         if (window.TerminalBridge) window.TerminalBridge.onConnectionChanged(false);
                     };
                 },
@@ -89,7 +454,6 @@
                 },
                 sendKey: function(key) {
                     if (websocket && websocket.readyState === 1) {
-                        logDebug('Sending: ' + key.charCodeAt(0));
                         websocket.send(JSON.stringify({type: 'input', data_b64: btoa(unescape(encodeURIComponent(key)))}));
                     }
                 }
@@ -99,7 +463,7 @@
                 window.TerminalBridge.onTerminalReady();
             }
 
-            hiddenInput.focus();
+            scrollToBottom();
         })();
     </script>
 </body>

@@ -70,6 +70,7 @@ class TestHandleClientMessage:
         message_data = {"type": "input", "data_b64": "SGVsbG8="}  # "Hello"
         pty_manager = MagicMock()
         pty_manager.write_input = AsyncMock()
+        pty_manager.capture_snapshot = AsyncMock(return_value=b"")
         websocket_handler._pty_manager = pty_manager
 
         # Act
@@ -129,6 +130,48 @@ class TestHandleClientMessage:
 
         # Assert - エラーが発生しないことを確認
 
+
+# ============================================================================
+# スナップショット重複抑止テスト
+# ============================================================================
+
+
+class TestSnapshotDeduplication:
+    """スナップショット送信の重複抑止テスト。"""
+
+    @pytest.mark.asyncio
+    async def test_send_snapshot_if_changed_sends_once_for_same_snapshot(
+        self, websocket_handler
+    ):
+        """同一スナップショットは1回だけ送信されることを確認する。"""
+        # Arrange
+        pty_manager = MagicMock()
+        pty_manager.capture_snapshot = AsyncMock(side_effect=[b"same", b"same"])
+        websocket_handler._pty_manager = pty_manager
+
+        # Act
+        await websocket_handler._send_snapshot_if_changed()
+        await websocket_handler._send_snapshot_if_changed()
+
+        # Assert
+        websocket_handler._websocket.send_json.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_send_snapshot_if_changed_force_sends_even_if_unchanged(
+        self, websocket_handler
+    ):
+        """force=True の場合は同一内容でも送信されることを確認する。"""
+        # Arrange
+        pty_manager = MagicMock()
+        pty_manager.capture_snapshot = AsyncMock(side_effect=[b"same", b"same"])
+        websocket_handler._pty_manager = pty_manager
+
+        # Act
+        await websocket_handler._send_snapshot_if_changed()
+        await websocket_handler._send_snapshot_if_changed(force=True)
+
+        # Assert
+        assert websocket_handler._websocket.send_json.call_count == 2
 
 # ============================================================================
 # 送信メソッドテスト

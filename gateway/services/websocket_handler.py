@@ -49,6 +49,12 @@ class TerminalWebSocketHandler:
         self._pty_manager = TmuxAttachManager(session_id)
         self._running = False
         self._tasks: list[asyncio.Task[None]] = []
+        self._last_snapshot: bytes = b""
+        self._last_cursor: tuple[int | None, int | None, int | None] = (
+            None,
+            None,
+            None,
+        )
 
     async def handle(self) -> None:
         """WebSocket接続を処理する。
@@ -64,16 +70,13 @@ class TerminalWebSocketHandler:
             # 並行処理タスクを作成
             self._tasks = [
                 asyncio.create_task(self._receive_from_client()),
+                asyncio.create_task(self._poll_loop()),
                 asyncio.create_task(self._ping_loop()),
             ]
 
             # 初回表示用に現在のペイン内容を送る
             try:
-                snapshot = await self._pty_manager.capture_snapshot()
-                if snapshot:
-                    await self._send_json(
-                        WSOutputMessage.from_bytes(snapshot).model_dump()
-                    )
+                await self._send_snapshot_if_changed(force=True)
             except Exception as e:
                 logger.warning("Failed to send initial pane snapshot: %s", e)
 
@@ -133,9 +136,7 @@ class TerminalWebSocketHandler:
             data = message.decode_data()
             await self._pty_manager.write_input(data)
             await asyncio.sleep(0.12)
-            snapshot = await self._pty_manager.capture_snapshot()
-            if snapshot:
-                await self._send_json(WSOutputMessage.from_bytes(snapshot).model_dump())
+            await self._send_snapshot_if_changed()
         except Exception as e:
             logger.error("Failed to write input: %s", e)
             await self._send_error("input_error", str(e))
@@ -187,6 +188,46 @@ class TerminalWebSocketHandler:
                 if self._running:
                     logger.error("Error sending to client: %s", e)
                 break
+
+    async def _poll_loop(self) -> None:
+        """定期的にスナップショットを取得して変更があれば送信する。"""
+        while self._running:
+            try:
+                await asyncio.sleep(0.5)
+                if not self._running:
+                    break
+                await self._send_snapshot_if_changed()
+            except Exception as e:
+                if self._running:
+                    logger.debug("Poll loop stopped: %s", e)
+                break
+
+    async def _send_snapshot_if_changed(self, force: bool = False) -> None:
+        """tmuxスナップショットを取得し、変化がある場合のみ送信する。"""
+        snapshot = await self._pty_manager.capture_snapshot()
+        if not snapshot:
+            return
+
+        cursor_x: int | None = None
+        cursor_y: int | None = None
+        pane_rows: int | None = None
+        try:
+            cursor_x, cursor_y, pane_rows = await self._pty_manager.capture_cursor_info()
+        except Exception:
+            pass
+
+        cursor_state = (cursor_x, cursor_y, pane_rows)
+        if force or snapshot != self._last_snapshot or cursor_state != self._last_cursor:
+            self._last_snapshot = snapshot
+            self._last_cursor = cursor_state
+            await self._send_json(
+                WSOutputMessage.from_bytes(
+                    snapshot,
+                    cursor_x=cursor_x,
+                    cursor_y=cursor_y,
+                    pane_rows=pane_rows,
+                ).model_dump()
+            )
 
     async def _ping_loop(self) -> None:
         """定期的にPingを送信するハートビートループ。"""

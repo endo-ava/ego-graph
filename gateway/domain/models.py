@@ -97,18 +97,35 @@ class WSOutputMessage(BaseModel):
 
     type: Literal["output"] = Field(default="output", description="メッセージタイプ")
     data_b64: str = Field(..., description="PTY出力のBase64エンコード")
+    cursor_x: int | None = Field(None, description="カーソルX座標（0始まり）")
+    cursor_y: int | None = Field(None, description="カーソルY座標（0始まり）")
+    pane_rows: int | None = Field(None, description="表示中ペインの行数")
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> "WSOutputMessage":
+    def from_bytes(
+        cls,
+        data: bytes,
+        cursor_x: int | None = None,
+        cursor_y: int | None = None,
+        pane_rows: int | None = None,
+    ) -> "WSOutputMessage":
         """バイト列から出力メッセージを作成する。
 
         Args:
             data: PTYから読み取ったバイト列
+            cursor_x: カーソルX座標（0始まり）
+            cursor_y: カーソルY座標（0始まり）
+            pane_rows: 表示中ペインの行数
 
         Returns:
             Base64エンコードされた出力メッセージ
         """
-        return cls(data_b64=b64encode(data).decode("ascii"))
+        return cls(
+            data_b64=b64encode(data).decode("ascii"),
+            cursor_x=cursor_x,
+            cursor_y=cursor_y,
+            pane_rows=pane_rows,
+        )
 
 
 class WSStatusMessage(BaseModel):

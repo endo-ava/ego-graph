@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # tmux attachコマンドのフォーマット
 TMUX_ATTACH_CMD: Final = "tmux attach -t {session_id}"
 TMUX_CAPTURE_TIMEOUT_SECONDS: Final = 2.0
+TMUX_CURSOR_TIMEOUT_SECONDS: Final = 1.0
 
 
 class TmuxAttachManager:
@@ -275,7 +276,7 @@ class TmuxAttachManager:
 
     async def capture_snapshot(self) -> bytes:
         """現在の tmux ペイン内容を取得する。"""
-        cmd = ["tmux", "capture-pane", "-p", "-S", "-200", "-t", self._session_id]
+        cmd = ["tmux", "capture-pane", "-p", "-e", "-S", "-200", "-t", self._session_id]
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
@@ -296,6 +297,46 @@ class TmuxAttachManager:
             raise RuntimeError(f"Failed to capture tmux snapshot: {message}")
 
         return stdout
+
+    async def capture_cursor_info(self) -> tuple[int | None, int | None, int | None]:
+        """現在の tmux カーソル座標と表示行数を取得する。"""
+        cmd = [
+            "tmux",
+            "display-message",
+            "-p",
+            "-t",
+            self._session_id,
+            "#{cursor_x},#{cursor_y},#{pane_height}",
+        ]
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=TMUX_CURSOR_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            process.kill()
+            await process.wait()
+            return (None, None, None)
+
+        if process.returncode != 0:
+            message = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
+            logger.debug("Failed to capture tmux cursor info: %s", message)
+            return (None, None, None)
+
+        raw = stdout.decode("utf-8", errors="ignore").strip()
+        parts = raw.split(",")
+        if len(parts) != 3:
+            return (None, None, None)
+
+        try:
+            return (int(parts[0]), int(parts[1]), int(parts[2]))
+        except ValueError:
+            return (None, None, None)
 
     def __del__(self) -> None:
         """デストラクタ。
