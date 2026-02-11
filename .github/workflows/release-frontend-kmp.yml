@@ -52,6 +52,10 @@ jobs:
           mkdir -p frontend/androidApp
           echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > frontend/androidApp/debug.keystore
 
+      - name: Setup google-services.json
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > frontend/androidApp/google-services.json
+
       - name: Build Debug APK
         run: ./gradlew :androidApp:assembleDebug
         working-directory: frontend
