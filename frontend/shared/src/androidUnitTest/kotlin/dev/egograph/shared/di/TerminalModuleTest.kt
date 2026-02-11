@@ -8,6 +8,7 @@ import dev.egograph.shared.store.terminal.TerminalStore
 import io.ktor.client.HttpClient
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -28,6 +29,7 @@ import kotlin.test.assertNotNull
  *
  * TerminalModuleで定義された依存関係が正しく注入できることを検証します。
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class TerminalModuleTest : KoinTest {
     private val testDispatcher: TestDispatcher = StandardTestDispatcher()
 

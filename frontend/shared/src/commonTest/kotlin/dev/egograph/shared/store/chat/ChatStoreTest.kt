@@ -2,6 +2,7 @@ package dev.egograph.shared.store.chat
 
 import com.arkivanov.mvikotlin.main.store.DefaultStoreFactory
 import dev.egograph.shared.dto.Thread
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -17,6 +18,7 @@ import kotlin.test.assertTrue
  * Store全体の挙動をテストします。
  * リポジトリはモックを使用し、Storeのライフサイクルと状態遷移を検証します。
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class ChatStoreTest {
     private val testDispatcher: TestDispatcher = UnconfinedTestDispatcher()
 

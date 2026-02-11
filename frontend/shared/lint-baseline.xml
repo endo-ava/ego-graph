@@ -1,54 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<issues format="6" by="lint 8.6.0" type="baseline" client="gradle" dependencies="false" name="AGP (8.6.0)" variant="all" version="8.6.0">
+<issues format="6" by="lint 8.10.0" type="baseline" client="gradle" dependencies="false" name="AGP (8.10.0)" variant="all" version="8.10.0">
 
     <issue
-        id="ObsoleteLintCustomCheck"
-        message="Lint found an issue registry (`androidx.compose.foundation.lint.FoundationIssueRegistry`) which requires a newer API level. That means that the custom lint checks are intended for a newer lint version; please upgrade.">
+        id="InlinedApi"
+        message="Field requires API level 33 (current min is 24): `android.Manifest.permission#POST_NOTIFICATIONS`"
+        errorLine1="                launcher.launch(Manifest.permission.POST_NOTIFICATIONS)"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="$GRADLE_USER_HOME/caches/8.12.1/transforms/d4331cfcf31bc6583af45eb3b722a4d7/transformed/foundation-release/jars/lint.jar"/>
+            file="src/androidMain/kotlin/dev/egograph/shared/platform/terminal/PermissionUtil.android.kt"
+            line="84"
+            column="33"/>
     </issue>
 
     <issue
-        id="ObsoleteLintCustomCheck"
-        message="Lint found an issue registry (`androidx.compose.runtime.lint.RuntimeIssueRegistry`) which requires a newer API level. That means that the custom lint checks are intended for a newer lint version; please upgrade.">
+        id="InlinedApi"
+        message="Field requires API level 33 (current min is 24): `android.Manifest.permission#POST_NOTIFICATIONS`"
+        errorLine1="                Manifest.permission.POST_NOTIFICATIONS,"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="$GRADLE_USER_HOME/caches/8.12.1/transforms/178162da1835836e940ef122d27de5f6/transformed/runtime/jars/lint.jar"/>
+            file="src/androidMain/kotlin/dev/egograph/shared/platform/terminal/PermissionUtil.android.kt"
+            line="96"
+            column="17"/>
     </issue>
 
     <issue
-        id="ObsoleteLintCustomCheck"
-        message="Lint found an issue registry (`androidx.compose.ui.lint.UiIssueRegistry`) which requires a newer API level. That means that the custom lint checks are intended for a newer lint version; please upgrade.">
+        id="SetJavaScriptEnabled"
+        message="Using `setJavaScriptEnabled` can introduce XSS vulnerabilities into your application, review carefully"
+        errorLine1="                javaScriptEnabled = true"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="$GRADLE_USER_HOME/caches/8.12.1/transforms/381e8ce7956b2a191f11d2f86fabd503/transformed/ui-release/jars/lint.jar"/>
+            file="src/androidMain/kotlin/dev/egograph/shared/platform/terminal/TerminalWebView.android.kt"
+            line="67"
+            column="17"/>
     </issue>
 
     <issue
-        id="ObsoleteLintCustomCheck"
-        message="Lint found an issue registry (`androidx.lifecycle.lint.LiveDataCoreIssueRegistry`) which requires a newer API level. That means that the custom lint checks are intended for a newer lint version; please upgrade.">
+        id="StaticFieldLeak"
+        message="Do not place Android context classes in static fields (static reference to `ActivityRecorder` which has field `currentActivity` pointing to `Context`); this is a memory leak"
+        errorLine1="/**"
+        errorLine2="^">
         <location
-            file="$GRADLE_USER_HOME/caches/8.12.1/transforms/207dad01208d8963100d1c37063d53a5/transformed/lifecycle-livedata-core-2.9.2/jars/lint.jar"/>
+            file="src/androidMain/kotlin/dev/egograph/shared/platform/terminal/SpeechRecognizerFactory.android.kt"
+            line="134"
+            column="1"/>
     </issue>
 
     <issue
-        id="NewApi"
-        message="Call requires API level 26, or core library desugaring (current min is 24): `java.time.Instant#now`"
-        errorLine1="actual fun nowIsoTimestamp(): String = Instant.now().toString()"
-        errorLine2="                                               ~~~">
+        id="StaticFieldLeak"
+        message="Do not place Android context classes in static fields; this is a memory leak"
+        errorLine1="    var currentActivity: Context? = null"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/androidMain/kotlin/dev/egograph/shared/platform/TimeProvider.android.kt"
-            line="5"
-            column="48"/>
+            file="src/androidMain/kotlin/dev/egograph/shared/platform/terminal/SpeechRecognizerFactory.android.kt"
+            line="140"
+            column="5"/>
     </issue>
 
     <issue
-        id="UseTomlInstead"
-        message="Use version catalog instead"
-        errorLine1="                implementation(&quot;io.ktor:ktor-client-okhttp:3.4.0&quot;)"
-        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().putString(key, value).apply()"
+        errorLine2="        ~~~~~~~~~~~~">
         <location
-            file="build.gradle.kts"
-            line="92"
+            file="src/androidMain/kotlin/dev/egograph/shared/platform/PlatformPreferences.android.kt"
+            line="24"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().putBoolean(key, value).apply()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/androidMain/kotlin/dev/egograph/shared/platform/PlatformPreferences.android.kt"
+            line="36"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="            setBackgroundColor(Color.parseColor(&quot;#1e1e1e&quot;))"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/androidMain/kotlin/dev/egograph/shared/platform/terminal/TerminalWebView.android.kt"
+            line="139"
             column="32"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        _webView.setBackgroundColor(Color.parseColor(backgroundColor))"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/androidMain/kotlin/dev/egograph/shared/platform/terminal/TerminalWebView.android.kt"
+            line="293"
+            column="37"/>
     </issue>
 
 </issues>

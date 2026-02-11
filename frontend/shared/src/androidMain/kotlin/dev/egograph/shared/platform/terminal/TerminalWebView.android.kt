@@ -2,6 +2,7 @@ package dev.egograph.shared.platform.terminal
 
 import android.content.Context
 import android.graphics.Color
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.View
@@ -73,8 +74,10 @@ class AndroidTerminalWebView(
                 setSupportZoom(false)
                 builtInZoomControls = false
                 displayZoomControls = false
-                @Suppress("DEPRECATION")
-                forceDark = WebSettings.FORCE_DARK_OFF
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    @Suppress("DEPRECATION")
+                    forceDark = WebSettings.FORCE_DARK_OFF
+                }
             }
 
             // Add JavaScript interface for bidirectional communication

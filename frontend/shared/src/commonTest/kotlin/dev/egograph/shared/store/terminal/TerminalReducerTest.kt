@@ -3,6 +3,7 @@ package dev.egograph.shared.store.terminal
 import com.arkivanov.mvikotlin.main.store.DefaultStoreFactory
 import dev.egograph.shared.dto.terminal.Session
 import dev.egograph.shared.dto.terminal.SessionStatus
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -18,6 +19,7 @@ import kotlin.test.assertTrue
  * Store全体の挙動をテストします。
  * Reducerの状態遷移ロジックを検証します。
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class TerminalReducerTest {
     private val testDispatcher: TestDispatcher = UnconfinedTestDispatcher()
 
