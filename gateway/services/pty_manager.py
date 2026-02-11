@@ -5,12 +5,16 @@ tmuxセッションへのattach/detachを担当する。
 
 import asyncio
 import logging
+import re
 from typing import Final
 
 logger = logging.getLogger(__name__)
 
 # tmux attachコマンドのフォーマット
 TMUX_ATTACH_CMD: Final = "tmux attach -t {session_id}"
+
+# セッションIDの検証パターン（英数字とハイフンのみ許可）
+SESSION_ID_PATTERN: Final = re.compile(r"^[A-Za-z0-9-]+$")
 TMUX_CAPTURE_TIMEOUT_SECONDS: Final = 2.0
 TMUX_CURSOR_TIMEOUT_SECONDS: Final = 1.0
 
@@ -27,7 +31,15 @@ class TmuxAttachManager:
 
         Args:
             session_id: tmuxセッションID (例: agent-0001)
+
+        Raises:
+            ValueError: セッションIDに不正な文字が含まれる場合
         """
+        if not SESSION_ID_PATTERN.fullmatch(session_id):
+            raise ValueError(
+                f"Invalid session_id format: {session_id}. "
+                "Only alphanumeric characters and hyphens are allowed."
+            )
         self._session_id = session_id
         self._process: asyncio.subprocess.Process | None = None
         self._stdin: asyncio.StreamWriter | None = None
@@ -85,13 +97,16 @@ class TmuxAttachManager:
         if self._attached:
             raise RuntimeError(f"Already attached to session {self._session_id}")
 
-        cmd = TMUX_ATTACH_CMD.format(session_id=self._session_id)
         logger.info("Attaching to session: %s", self._session_id)
 
         try:
             # 非同期プロセスとしてtmux attachを実行
-            self._process = await asyncio.create_subprocess_shell(
-                cmd,
+            # create_subprocess_execを使用してshell injectionを防止
+            self._process = await asyncio.create_subprocess_exec(
+                "tmux",
+                "attach",
+                "-t",
+                self._session_id,
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
@@ -253,7 +268,20 @@ class TmuxAttachManager:
         cols: int,
         rows: int,
     ) -> None:
-        """tmux セッションのウィンドウサイズを変更する。"""
+        """tmux セッションのウィンドウサイズを変更する。
+
+        Args:
+            cols: 列数（正の整数）
+            rows: 行数（正の整数）
+
+        Raises:
+            ValueError: colsまたはrowsが無効な場合
+        """
+        if not isinstance(cols, int) or cols <= 0:
+            raise ValueError(f"cols must be a positive integer, got {cols}")
+        if not isinstance(rows, int) or rows <= 0:
+            raise ValueError(f"rows must be a positive integer, got {rows}")
+
         cmd = [
             "tmux",
             "resize-window",
