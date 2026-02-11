@@ -147,7 +147,7 @@ def _parse_tmux_timestamp(timestamp_str: str) -> datetime:
     # tmux の UNIX epoch 秒形式に対応
     # フォーマット例: "1770648271"
     if timestamp_str.isdigit():
-        return datetime.fromtimestamp(int(timestamp_str))
+        return datetime.fromtimestamp(int(timestamp_str), tz=timezone.utc)
 
     # tmux のタイムスタンプ形式に対応
     # フォーマット例: "2025-02-08T12:34:56"
@@ -157,7 +157,8 @@ def _parse_tmux_timestamp(timestamp_str: str) -> datetime:
         "%Y-%m-%dT%H:%M:%S.%f",
     ):
         try:
-            return datetime.strptime(timestamp_str, fmt)
+            dt = datetime.strptime(timestamp_str, fmt)
+            return dt.replace(tzinfo=timezone.utc)
         except ValueError:
             continue
 
@@ -173,5 +174,15 @@ def session_exists(session_name: str) -> bool:
     Returns:
         セッションが存在する場合は True、そうでない場合は False
     """
-    sessions = list_sessions()
-    return any(s.name == session_name for s in sessions)
+    try:
+        subprocess.run(
+            ["tmux", "has-session", "-t", session_name],
+            capture_output=True,
+            check=True,
+            timeout=TMUX_COMMAND_TIMEOUT_SECONDS,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False

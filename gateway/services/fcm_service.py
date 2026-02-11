@@ -107,9 +107,9 @@ class FcmService:
         )
 
         try:
-            # FCMに送信
-            response: messaging.BatchResponse = messaging.send_each_for_multicast(
-                message
+            # FCMに送信（ブロッキング呼び出しを別スレッドで実行）
+            response: messaging.BatchResponse = await asyncio.to_thread(
+                messaging.send_each_for_multicast, message
             )
 
             success_count = response.success_count

@@ -172,6 +172,12 @@ async def terminal_websocket(websocket: WebSocket) -> None:
     if not await _authenticate_websocket(websocket, session_id):
         return
 
+    # セッションが実際に存在するか確認
+    if not await anyio.to_thread.run_sync(session_exists, session_id):
+        logger.warning("Session does not exist: %s", session_id)
+        await websocket.close(code=1008, reason="Session does not exist")
+        return
+
     # 接続状態を更新
     mark_session_connected(session_id)
 

@@ -4,6 +4,7 @@ FCMトークン登録とWebhook経由のプッシュ通知送信を提供しま�
 """
 
 import logging
+import threading
 
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -26,6 +27,23 @@ logger = logging.getLogger(__name__)
 # グローバルインスタンス
 _fcm_service: FcmService | None = None
 _token_repository: PushTokenRepository | None = None
+_fcm_init_lock = threading.Lock()
+
+
+def get_token_repository() -> PushTokenRepository:
+    """PushTokenRepositoryの singleton インスタンスを取得します。
+
+    Returns:
+        PushTokenRepository: トークンリポジトリインスタンス
+    """
+    global _token_repository
+
+    if _token_repository is None:
+        with _fcm_init_lock:
+            if _token_repository is None:
+                _token_repository = PushTokenRepository()
+
+    return _token_repository
 
 
 def get_fcm_service() -> FcmService:
@@ -34,18 +52,17 @@ def get_fcm_service() -> FcmService:
     Returns:
         FcmService: FCMサービスインスタンス
     """
-    global _fcm_service, _token_repository
+    global _fcm_service
 
     if _fcm_service is None:
-        config = get_config()
-
-        if _token_repository is None:
-            _token_repository = PushTokenRepository()
-
-        _fcm_service = FcmService(
-            token_repository=_token_repository,
-            fcm_project_id=config.fcm_project_id,
-        )
+        with _fcm_init_lock:
+            if _fcm_service is None:
+                config = get_config()
+                repository = get_token_repository()
+                _fcm_service = FcmService(
+                    token_repository=repository,
+                    fcm_project_id=config.fcm_project_id,
+                )
 
     return _fcm_service
 
@@ -92,7 +109,7 @@ async def register_token(request: Request) -> JSONResponse:
         raise HTTPException(status_code=400, detail=f"invalid_request: {e}")
 
     config = get_config()
-    repository = PushTokenRepository()
+    repository = get_token_repository()
 
     # トークンを保存
     device = repository.save_token(
