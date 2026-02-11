@@ -15,9 +15,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -32,10 +31,9 @@ fun SwipeableSidebarContainer(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    // スワイプアニメーション用のオフセット
     val swipeOffset = remember { Animatable(0f) }
-    val screenWidth = with(LocalDensity.current) { 400.dp.toPx() }
-    val swipeThreshold = screenWidth * 0.3f // 画面幅の30%で遷移
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.toFloat()
 
     Box(
         modifier =
@@ -46,25 +44,25 @@ fun SwipeableSidebarContainer(
                         x = swipeOffset.value.roundToInt(),
                         y = 0,
                     )
-                }.pointerInput(activeView) {
+                }.pointerInput(activeView, screenWidth) {
+                    val swipeThreshold = screenWidth * 0.3f
+
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         val startX = down.position.x
 
-                        // チャット画面で左半分からのスワイプはサイドバー用として処理しない
                         val shouldProcessSwipe =
                             when (activeView) {
-                                SidebarView.Chat -> startX > screenWidth / 2 // 右半分のみ処理
-                                SidebarView.Terminal -> true // ターミナル画面では全域処理
+                                SidebarView.Chat -> startX > screenWidth / 2
+                                SidebarView.Terminal -> true
                                 else -> false
                             }
 
                         if (shouldProcessSwipe) {
                             drag(down.id) { change ->
                                 val dragAmount = change.positionChange().x
-                                val newOffset = (swipeOffset.value + dragAmount)
+                                val newOffset = swipeOffset.value + dragAmount
 
-                                // オフセットを制限（画面幅の範囲内）
                                 val boundedOffset =
                                     when (activeView) {
                                         SidebarView.Chat -> newOffset.coerceIn(-screenWidth, 0f)
@@ -78,7 +76,6 @@ fun SwipeableSidebarContainer(
                                 }
                             }
 
-                            // ドラッグ終了時にアニメーションと画面切り替え
                             when {
                                 swipeOffset.value < -swipeThreshold && activeView == SidebarView.Chat -> {
                                     onSwipeToTerminal()
@@ -99,7 +96,6 @@ fun SwipeableSidebarContainer(
                                     }
                                 }
                                 else -> {
-                                    // 閾値未達の場合は元の位置に戻す
                                     scope.launch {
                                         swipeOffset.animateTo(
                                             0f,

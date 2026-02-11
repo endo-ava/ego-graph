@@ -73,15 +73,13 @@ fun VoiceInputPreview(
     // 音声認識の開始・停止
     LaunchedEffect(isRecording) {
         if (isRecording) {
-            scope.launch {
-                try {
-                    speechRecognizer.startRecognition().collect { result ->
-                        recognizedText = result
-                    }
-                } catch (e: Exception) {
-                    errorMessage = e.message
-                    isRecording = false
+            try {
+                speechRecognizer.startRecognition().collect { result ->
+                    recognizedText = result
                 }
+            } catch (e: Exception) {
+                errorMessage = e.message
+                isRecording = false
             }
         } else {
             speechRecognizer.stopRecognition()
@@ -184,11 +182,9 @@ fun VoiceInputPreview(
                                         if (!granted) {
                                             errorMessage = "Microphone permission is required for voice input"
                                             isRecording = false
-                                            return@launch
                                         }
                                     } else {
                                         errorMessage = "Microphone permission is required for voice input"
-                                        return@launch
                                     }
                                 }
 

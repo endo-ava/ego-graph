@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,7 +35,7 @@ fun SessionListError(
     ) {
         Icon(
             imageVector = Icons.Default.ErrorOutline,
-            contentDescription = null,
+            contentDescription = "エラーアイコン",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.error,
         )
@@ -52,5 +53,9 @@ fun SessionListError(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             textAlign = TextAlign.Center,
         )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onRefresh) {
+            Text("再試行")
+        }
     }
 }

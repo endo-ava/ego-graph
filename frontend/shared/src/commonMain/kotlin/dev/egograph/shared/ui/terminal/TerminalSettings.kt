@@ -58,7 +58,12 @@ fun rememberTerminalSettings(
                         error = "Gateway API URL is invalid",
                     )
                 }
-            val wsBaseUrl = normalizedUrl.replace("http://", "ws://").replace("https://", "wss://")
+            val wsBaseUrl =
+                when {
+                    normalizedUrl.startsWith("https://") -> normalizedUrl.replaceFirst("https://", "wss://")
+                    normalizedUrl.startsWith("http://") -> normalizedUrl.replaceFirst("http://", "ws://")
+                    else -> normalizedUrl
+                }
             TerminalSettings(
                 wsUrl = "$wsBaseUrl/api/ws/terminal?session_id=${agentId.encodeURLParameter()}",
                 apiKey = apiKey,

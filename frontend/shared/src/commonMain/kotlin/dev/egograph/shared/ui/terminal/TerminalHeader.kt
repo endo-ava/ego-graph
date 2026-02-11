@@ -16,6 +16,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,6 +50,10 @@ fun TerminalHeader(
                             "●",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
+                            modifier =
+                                Modifier.semantics {
+                                    contentDescription = "Connected"
+                                },
                         )
                     }
                     else -> {
@@ -55,6 +61,10 @@ fun TerminalHeader(
                             "●",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
+                            modifier =
+                                Modifier.semantics {
+                                    contentDescription = "Disconnected"
+                                },
                         )
                     }
                 }
