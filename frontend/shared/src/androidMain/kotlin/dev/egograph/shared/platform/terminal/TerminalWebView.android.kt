@@ -34,8 +34,14 @@ class AndroidTerminalWebView(
     private val _errors = MutableSharedFlow<String>(replay = 0)
 
     private val isConnected = AtomicBoolean(false)
+
+    @Volatile
     private var currentWsUrl: String? = null
+
+    @Volatile
     private var currentApiKey: String? = null
+
+    @Volatile
     private var currentRenderMode: String = "legacy"
     private val isPageReady = AtomicBoolean(false)
     private val isTerminalReady = AtomicBoolean(false)
@@ -121,6 +127,25 @@ class AndroidTerminalWebView(
         }
     }
 
+    private fun escapeHtml(text: String): String =
+        text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;")
+
+    private fun escapeJsString(text: String): String =
+        text
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\u2028", "\\u2028")
+            .replace("\u2029", "\\u2029")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;")
+
     private fun loadAsset(path: String): String =
         try {
             context.assets
@@ -134,7 +159,7 @@ class AndroidTerminalWebView(
                 """
                 <!DOCTYPE html><html><body style=\"font-family:monospace;padding:16px;\">
                 <h3>Terminal asset error</h3>
-                <p>$message</p>
+                <p>${escapeHtml(message)}</p>
                 </body></html>
                 """.trimIndent()
             } else {
@@ -175,8 +200,8 @@ class AndroidTerminalWebView(
 
         applyRenderModeIfReady()
 
-        val escapedWsUrl = wsUrl.replace("\\", "\\\\").replace("'", "\\'")
-        val escapedApiKey = apiKey.replace("\\", "\\\\").replace("'", "\\'")
+        val escapedWsUrl = escapeJsString(wsUrl)
+        val escapedApiKey = escapeJsString(apiKey)
         _webView.evaluateJavascript(
             """
             if (window.TerminalAPI) {
@@ -215,7 +240,7 @@ class AndroidTerminalWebView(
     }
 
     override fun sendKey(key: String) {
-        val escapedKey = key.replace("\\", "\\\\").replace("'", "\\'")
+        val escapedKey = escapeJsString(key)
         _webView.evaluateJavascript(
             """
             if (window.TerminalAPI) {
@@ -227,7 +252,7 @@ class AndroidTerminalWebView(
     }
 
     override fun sendText(text: String) {
-        val escapedText = text.replace("\\", "\\\\").replace("'", "\\'")
+        val escapedText = escapeJsString(text)
         _webView.evaluateJavascript(
             """
             if (window.TerminalAPI) {

@@ -3,8 +3,8 @@
 プッシュ通知の送信とFCMトークンの管理を行います。
 """
 
-import logging
 import asyncio
+import logging
 from typing import Any
 
 import firebase_admin
@@ -128,7 +128,10 @@ class FcmService:
                             or "NotRegistered" in str(resp.exception)
                             or "UNREGISTERED" in str(resp.exception)
                         ):
-                            self._token_repository.disable_token(token)
+                            await asyncio.to_thread(
+                                self._token_repository.disable_token,
+                                token,
+                            )
                             invalid_tokens.append(token)
                             logger.info(
                                 "Disabled invalid token: %s", token[:10] + "..."

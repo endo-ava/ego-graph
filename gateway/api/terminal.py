@@ -3,6 +3,7 @@
 tmux セッション一覧の取得などを提供します。
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -21,6 +22,8 @@ from gateway.infrastructure.tmux import list_sessions, session_exists
 from gateway.services.websocket_handler import TerminalWebSocketHandler
 
 logger = logging.getLogger(__name__)
+
+AUTH_TIMEOUT_SECONDS = 10
 
 
 # 接続状態のキャッシュ（簡易実装、プロセス内メモリのみ）
@@ -234,8 +237,15 @@ def _is_valid_api_key(api_key: str) -> bool:
 async def _authenticate_websocket(websocket: WebSocket, session_id: str) -> bool:
     """WebSocket接続の初回認証を行う。"""
     try:
-        auth_message = await websocket.receive_text()
+        auth_message = await asyncio.wait_for(
+            websocket.receive_text(),
+            timeout=AUTH_TIMEOUT_SECONDS,
+        )
         payload = json.loads(auth_message)
+    except asyncio.TimeoutError:
+        logger.warning("Authentication timeout for session: %s", session_id)
+        await websocket.close(code=1008, reason="Authentication timeout")
+        return False
     except Exception:
         logger.warning("Authentication message is invalid for session: %s", session_id)
         await websocket.close(code=1008, reason="Invalid authentication message")

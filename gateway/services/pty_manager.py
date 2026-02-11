@@ -10,9 +10,6 @@ from typing import Final
 
 logger = logging.getLogger(__name__)
 
-# tmux attachコマンドのフォーマット
-TMUX_ATTACH_CMD: Final = "tmux attach -t {session_id}"
-
 # セッションIDの検証パターン（英数字とハイフンのみ許可）
 SESSION_ID_PATTERN: Final = re.compile(r"^[A-Za-z0-9-]+$")
 TMUX_CAPTURE_TIMEOUT_SECONDS: Final = 2.0
@@ -98,11 +95,12 @@ class TmuxAttachManager:
             raise RuntimeError(f"Already attached to session {self._session_id}")
 
         logger.info("Attaching to session: %s", self._session_id)
+        process = None  # 一時変数でプロセスを保持
 
         try:
             # 非同期プロセスとしてtmux attachを実行
             # create_subprocess_execを使用してshell injectionを防止
-            self._process = await asyncio.create_subprocess_exec(
+            process = await asyncio.create_subprocess_exec(
                 "tmux",
                 "attach",
                 "-t",
@@ -113,23 +111,37 @@ class TmuxAttachManager:
             )
 
             if (
-                self._process.stdin is None
-                or self._process.stdout is None
-                or self._process.stderr is None
+                process.stdin is None
+                or process.stdout is None
+                or process.stderr is None
             ):
+                # プロセスを終了させる
+                process.terminate()
+                try:
+                    await asyncio.wait_for(process.wait(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    process.kill()
+                    await process.wait()
                 raise RuntimeError("Failed to create process streams")
 
-            self._stdin = self._process.stdin
-            self._stdout = self._process.stdout
-            self._stderr = self._process.stderr
+            self._process = process
+            self._stdin = process.stdin
+            self._stdout = process.stdout
+            self._stderr = process.stderr
             self._attached = True
 
             logger.info("Successfully attached to session: %s", self._session_id)
 
         except Exception as e:
             logger.error("Failed to attach to session %s: %s", self._session_id, e)
-            # クリーンアップ
-            await self.detach_session()
+            # プロセスが作成されている場合は終了させる
+            if process is not None and process.returncode is None:
+                process.terminate()
+                try:
+                    await asyncio.wait_for(process.wait(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    process.kill()
+                    await process.wait()
             raise
 
     async def detach_session(self) -> None:

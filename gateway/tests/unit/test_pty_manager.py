@@ -113,6 +113,14 @@ class TestAttachSession:
         mock_process.stdin = None
         mock_process.stdout = None
         mock_process.stderr = None
+        mock_process.returncode = None  # プロセスが実行中として扱われる
+
+        # wait()メソッドをawaitableにする
+        async def mock_wait():
+            return None
+
+        mock_process.wait = mock_wait
+        mock_process.terminate = MagicMock()
 
         with patch(
             "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)

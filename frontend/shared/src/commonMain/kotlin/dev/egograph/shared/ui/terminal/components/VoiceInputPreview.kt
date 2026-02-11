@@ -181,10 +181,11 @@ fun VoiceInputPreview(
                                         val granted = requestRecordAudioPermission()
                                         if (!granted) {
                                             errorMessage = "Microphone permission is required for voice input"
-                                            isRecording = false
+                                            return@launch
                                         }
                                     } else {
                                         errorMessage = "Microphone permission is required for voice input"
+                                        return@launch
                                     }
                                 }
 
