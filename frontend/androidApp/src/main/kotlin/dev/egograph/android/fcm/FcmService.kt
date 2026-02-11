@@ -114,13 +114,13 @@ class FcmService : FirebaseMessagingService() {
 
         // データペイロードの処理
         if (message.data.isNotEmpty()) {
-            Log.d(TAG, "Message data payload: ${message.data}")
+            Log.d(TAG, "Message data payload keys: ${message.data.keys}")
 
             val type = message.data["type"]
-            val sessionId = message.data["session_id"]
 
             when (type) {
                 "task_completed" -> {
+                    val sessionId = message.data["session_id"]
                     Log.d(TAG, "Task completed: $sessionId")
                     // データペイロードから通知を作成
                     NotificationDisplayer.showNotification(

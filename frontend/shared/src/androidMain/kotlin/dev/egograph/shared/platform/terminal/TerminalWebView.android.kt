@@ -175,7 +175,8 @@ class AndroidTerminalWebView(
                 </body></html>
                 """.trimIndent()
             } else {
-                "/* $message */"
+                val sanitizedMessage = message.replace("*/", "* /").replace("/*", "/ *")
+                "/* $sanitizedMessage */"
             }
         }
 
@@ -290,7 +291,9 @@ class AndroidTerminalWebView(
 
     override fun setTheme(darkMode: Boolean) {
         val backgroundColor = if (darkMode) "#1e1e1e" else "#FFFFFF"
-        _webView.setBackgroundColor(Color.parseColor(backgroundColor))
+        runOnMainThread {
+            _webView.setBackgroundColor(Color.parseColor(backgroundColor))
+        }
     }
 
     fun getWebView(): WebView = _webView
@@ -302,8 +305,6 @@ class AndroidTerminalWebView(
      * not the main UI thread. WebView operations must be dispatched to the main looper.
      */
     inner class TerminalJavaScriptBridge {
-        private val mainHandler = Handler(Looper.getMainLooper())
-
         @JavascriptInterface
         fun onConnectionChanged(connected: Boolean) {
             mainHandler.post {

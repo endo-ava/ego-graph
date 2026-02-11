@@ -622,6 +622,7 @@
                     };
                     websocket.onclose = function() {
                         if (window.TerminalBridge) window.TerminalBridge.onConnectionChanged(false);
+                        websocket = null;
                     };
                 },
                 disconnect: function() {
@@ -642,8 +643,12 @@
                 window.TerminalBridge.onTerminalReady();
             }
 
+            var resizeTimeout;
             window.addEventListener('resize', function() {
-                sendResizeToServer();
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    sendResizeToServer();
+                }, 200);
             });
             applyRenderMode();
             scrollToBottom();

@@ -219,15 +219,27 @@ class TmuxAttachManager:
 
     async def _send_keys_via_tmux(self, data: bytes) -> None:
         text = data.decode("utf-8", errors="ignore")
+        chunk: list[str] = []
+
+        async def flush_chunk() -> None:
+            if chunk:
+                await self._run_tmux_send_keys(["-l", "".join(chunk)])
+                chunk.clear()
+
         for char in text:
             if char in ("\r", "\n"):
+                await flush_chunk()
                 await self._run_tmux_send_keys(["Enter"])
             elif char in ("\b", "\x7f"):
+                await flush_chunk()
                 await self._run_tmux_send_keys(["BSpace"])
             elif char == "\t":
+                await flush_chunk()
                 await self._run_tmux_send_keys(["Tab"])
-            elif char:
-                await self._run_tmux_send_keys(["-l", char])
+            else:
+                chunk.append(char)
+
+        await flush_chunk()
 
     async def _run_tmux_send_keys(self, args: list[str]) -> None:
         cmd = ["tmux", "send-keys", "-t", self._session_id, *args]
@@ -241,10 +253,10 @@ class TmuxAttachManager:
                 process.communicate(),
                 timeout=TMUX_CAPTURE_TIMEOUT_SECONDS,
             )
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as e:
             process.kill()
             await process.wait()
-            raise RuntimeError("tmux send-keys timed out")
+            raise RuntimeError("tmux send-keys timed out") from e
         if process.returncode != 0:
             message = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
             raise RuntimeError(f"Failed to send keys via tmux: {message}")

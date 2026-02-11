@@ -24,14 +24,6 @@ from gateway.domain.models import (
 
 
 @pytest.fixture
-def mock_token_verifier():
-    """TokenVerifierのモック。"""
-    verifier = MagicMock()
-    verifier.verify = MagicMock(return_value=True)
-    return verifier
-
-
-@pytest.fixture
 def valid_token():
     """有効な認証トークン。"""
     return "valid_token_12345678901234567890"
@@ -64,9 +56,7 @@ class TestWebSocketAuthentication:
     """WebSocket認証のテスト。"""
 
     @pytest.mark.asyncio
-    async def test_websocket_accepts_valid_token(
-        self, mock_token_verifier, valid_token, valid_session_id
-    ):
+    async def test_websocket_accepts_valid_token(self, valid_token, valid_session_id):
         """有効なトークンでWebSocket接続が確立されることを確認する。"""
         # Arrange
         mock_websocket = MagicMock()
@@ -134,12 +124,15 @@ class TestWebSocketAuthentication:
         mock_websocket.accept = AsyncMock()
         mock_websocket.close = AsyncMock()
 
-        # Act
-        await terminal_websocket(mock_websocket)
+        with patch("gateway.api.terminal._is_valid_api_key", return_value=False):
+            # Act
+            await terminal_websocket(mock_websocket)
 
-        # Assert
-        mock_websocket.accept.assert_called_once()
-        mock_websocket.close.assert_called_once()
+            # Assert
+            mock_websocket.accept.assert_called_once()
+            mock_websocket.close.assert_called_once_with(
+                code=1008, reason="Missing api_key"
+            )
 
 
 # ============================================================================
@@ -151,9 +144,7 @@ class TestSessionIdValidation:
     """セッションIDバリデーションのテスト。"""
 
     @pytest.mark.asyncio
-    async def test_websocket_rejects_invalid_session_id(
-        self, valid_token, invalid_session_id
-    ):
+    async def test_websocket_rejects_invalid_session_id(self, invalid_session_id):
         """無効なセッションIDでWebSocket接続が拒否されることを確認する。"""
         # Arrange
         mock_websocket = MagicMock()
@@ -179,8 +170,7 @@ class TestSessionIdValidation:
 class TestWebSocketMessageHandling:
     """WebSocketメッセージ handling のテスト。"""
 
-    @pytest.mark.asyncio
-    async def test_input_message_handling(self):
+    def test_input_message_handling(self):
         """入力メッセージが正しく処理されることを確認する。"""
         # Arrange
         message = WSInputMessage(data_b64="SGVsbG8=")  # "Hello" in base64
@@ -191,8 +181,7 @@ class TestWebSocketMessageHandling:
         # Assert
         assert data == b"Hello"
 
-    @pytest.mark.asyncio
-    async def test_output_message_creation(self):
+    def test_output_message_creation(self):
         """出力メッセージが正しく作成されることを確認する。"""
         # Arrange
         test_data = b"World"
@@ -204,8 +193,7 @@ class TestWebSocketMessageHandling:
         assert message.type == "output"
         assert message.data_b64 == "V29ybGQ="  # "World" in base64
 
-    @pytest.mark.asyncio
-    async def test_invalid_base64_rejected(self):
+    def test_invalid_base64_rejected(self):
         """無効なBase64エンコーディングが拒否されることを確認する。"""
         # Arrange & Act & Assert
         with pytest.raises(ValueError, match="Invalid base64"):

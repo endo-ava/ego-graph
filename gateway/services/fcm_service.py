@@ -9,7 +9,6 @@ from typing import Any
 
 import firebase_admin
 from firebase_admin import credentials, messaging
-from pydantic import ValidationError
 
 from gateway.domain.models import PushNotificationRequest, WebhookPayload
 from gateway.infrastructure.repositories import PushTokenRepository
@@ -53,7 +52,7 @@ class FcmService:
                         fcm_project_id,
                     )
                 self._initialized = True
-            except Exception as e:
+            except (ValueError, IOError) as e:
                 logger.warning("Failed to initialize Firebase Admin SDK: %s", e)
                 logger.warning("Push notifications will be disabled")
         else:
@@ -64,7 +63,7 @@ class FcmService:
         device_tokens: list[str],
         title: str,
         body: str,
-        data: dict[str, Any] | None = None,
+        data: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """プッシュ通知を送信します。
 
@@ -123,10 +122,15 @@ class FcmService:
                     if resp.exception:
                         token = device_tokens[idx]
                         # 無効なトークンを無効化
-                        if (
-                            "InvalidRegistration" in str(resp.exception)
-                            or "NotRegistered" in str(resp.exception)
-                            or "UNREGISTERED" in str(resp.exception)
+                        if isinstance(
+                            resp.exception,
+                            (
+                                messaging.UnregisteredError,
+                                messaging.SenderIdMismatchError,
+                            ),
+                        ) or (
+                            isinstance(resp.exception, ValueError)
+                            and "InvalidRegistration" in str(resp.exception)
                         ):
                             await asyncio.to_thread(
                                 self._token_repository.disable_token,
@@ -156,8 +160,8 @@ class FcmService:
                 "invalid_tokens": invalid_tokens,
             }
 
-        except Exception as e:
-            logger.exception("Failed to send notification: %s", e)
+        except Exception:
+            logger.exception("Failed to send notification")
             return {
                 "success_count": 0,
                 "failure_count": len(device_tokens),
@@ -211,18 +215,19 @@ class FcmService:
             ValidationError: ペイロードのバリデーションに失敗した場合
         """
         # ペイロードのバリデーション
-        try:
-            validated = WebhookPayload.model_validate(payload)
-        except ValidationError as e:
-            logger.error("Invalid webhook payload: %s", e)
-            raise
+        # payloadは既にWebhookPayload型であることを想定
+        validated = payload
 
         # 通知リクエストを作成
-        notification = PushNotificationRequest(
-            title=validated.title,
-            body=validated.body,
-            data={"type": validated.type, "session_id": validated.session_id},
-        )
+        try:
+            notification = PushNotificationRequest(
+                title=validated.title,
+                body=validated.body,
+                data={"type": validated.type, "session_id": validated.session_id},
+            )
+        except Exception:
+            logger.exception("Failed to create notification request from payload")
+            raise
 
         # ユーザーに送信
         return await self.send_to_user(user_id, notification)
