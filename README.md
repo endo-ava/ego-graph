@@ -31,6 +31,7 @@ ego-graph/
 ├── shared/                # 共有Pythonライブラリ（uv workspace メンバー）
 ├── ingest/                # データ収集ワーカー（uv workspace メンバー）
 ├── backend/               # FastAPI サーバー（uv workspace メンバー）
+├── gateway/               # Terminal Gateway（uv workspace メンバー）
 ├── frontend/              # KMP Android アプリ（Gradle）
 ├── frontend-capacitor/    # React + Capacitor アプリ（旧版、参照用）
 │
@@ -47,7 +48,8 @@ ego-graph/
 | **shared/**    | 共有ライブラリ（モデル、設定） | Python 3.13, Pydantic                        | ライブラリ                |
 | **ingest/**    | データ収集・変換・保存         | Python 3.13, Spotipy, DuckDB, boto3          | GitHub Actions (定期実行) |
 | **backend/**   | Agent API・データアクセス      | FastAPI, DuckDB, LLM (DeepSeek/OpenAI)       | VPS/GCP (常駐サーバー)    |
-| **frontend/**  | チャット UI                    | Kotlin 2.3, Compose Multiplatform, MVIKotlin | Android (Gradle)          |
+| **gateway/**   | Terminal Gateway・tmux 接続    | Starlette, Uvicorn, WebSocket, FCM           | tmux (LXC)                |
+| **frontend/**  | チャット UI・Terminal UI       | Kotlin 2.3, Compose Multiplatform, MVIKotlin | Android (Gradle)          |
 
 ---
 
@@ -105,7 +107,29 @@ open http://localhost:8000/docs
 - `R2_*`（データアクセス）
 - `LLM_*`（チャット機能）
 
-#### C. Frontend（Android アプリ）
+#### C. Gateway（Terminal Gateway）
+
+```bash
+# tmux セッションで起動
+tmux new-session -d -s egograph-gateway 'uv run uvicorn gateway.main:app --host 127.0.0.1 --port 8001'
+
+# セッションにアタッチ
+tmux attach-session -t egograph-gateway
+
+# ヘルスチェック
+curl http://localhost:8001/health
+```
+
+**必要な環境変数**:
+
+- `GATEWAY_BEARER_TOKEN`（認証トークン、32bytes以上）
+- `GATEWAY_WEBHOOK_SECRET`（Webhook シークレット、32bytes以上）
+- `FCM_CREDENTIALS_PATH`（Firebase サービスアカウントキーのパス）
+- `FCM_PROJECT_ID`（Firebase プロジェクト ID）
+
+詳細: [Gateway デプロイ](./docs/40.deploy/gateway.md)
+
+#### D. Frontend（Android アプリ）
 
 ```bash
 cd frontend
@@ -159,6 +183,7 @@ GitHub Actions でコンポーネント別に自動テストが実行されま�
 
 - **ci-backend.yml**: `backend/`, `shared/` の変更時
 - **ci-ingest.yml**: `ingest/`, `shared/` の変更時
+- **ci-gateway.yml**: `gateway/`, `shared/` の変更時
 - **ci-frontend.yml**: `frontend/` の変更時
 - **job-ingest-spotify.yml**: 1日2回（02:00, 14:00 UTC）定期実行
 
@@ -171,7 +196,14 @@ GitHub Actions でコンポーネント別に自動テストが実行されま�
 - **[Shared](./shared/README.md)**: 共有ライブラリ（モデル、設定、ユーティリティ）
 - **[Ingest](./ingest/README.md)**: データ収集ワーカー、R2 ストレージロジック
 - **[Backend](./backend/README.md)**: Agent API、DuckDB 接続、LLM 統合
+- **[Gateway](./gateway/README.md)**: Terminal Gateway、tmux 接続、FCM 通知
 - **[Frontend](./frontend/README.md)**: モバイル/Web アプリケーション
+
+### デプロイ
+
+- **[Backend Deploy](./docs/40.deploy/backend.md)**: Agent API サーバーのデプロイ手順
+- **[Gateway Deploy](./docs/40.deploy/gateway.md)**: Terminal Gateway のデプロイ手順
+- **[Frontend Deploy](./docs/40.deploy/frontend-android.md)**: Android アプリのデプロイ手順
 
 ### アーキテクチャ & 設計
 

@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint)
+    id("com.google.gms.google-services") version "4.4.2"
 }
 
 kotlin {
@@ -73,4 +74,17 @@ dependencies {
     implementation(libs.voyager.navigator)
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
+
+    // Firebase Cloud Messaging
+    implementation(platform("com.google.firebase:firebase-bom:33.11.0"))
+    implementation("com.google.firebase:firebase-messaging")
+
+    // OkHttp for FCM token registration
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Kotlinx Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+
+    // AndroidX Lifecycle
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
 }

@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="vendor/xterm.5.5.0.css">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 14px;
+            overflow: hidden;
+        }
+
+        #hiddenInput {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+            border: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        #terminal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: 0;
+            padding: 8px;
+            box-sizing: border-box;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.3;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: auto;
+        }
+
+        #xtermRender {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: 0;
+            padding: 8px;
+            box-sizing: border-box;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.3;
+            overflow: hidden;
+            display: none;
+        }
+
+        #xtermRender .xterm {
+            width: 100%;
+            height: 100%;
+        }
+
+        .cursor-cell {
+            background: #d4d4d4;
+            color: #1e1e1e;
+        }
+    </style>
+</head>
+<body>
+    <input
+      type="text"
+      id="hiddenInput"
+      autocapitalize="off"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+    />
+    <pre id="terminal"></pre>
+    <div id="xtermRender"></div>
+    <script src="vendor/xterm.5.5.0.js"></script>
+    <script>
+        (function() {
+            var terminal = document.getElementById('terminal');
+            var xtermRender = document.getElementById('xtermRender');
+            var hiddenInput = document.getElementById('hiddenInput');
+            var websocket;
+            var renderTerminal = null;
+            var useXtermRender = false;
+            var ANSI_ESCAPE_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
+            var ANSI_FG = [
+                '#000000', '#cd3131', '#0dbc79', '#e5e510',
+                '#2472c8', '#bc3fbc', '#11a8cd', '#e5e5e5'
+            ];
+            var ANSI_FG_BRIGHT = [
+                '#666666', '#f14c4c', '#23d18b', '#f5f543',
+                '#3b8eea', '#d670d6', '#29b8db', '#ffffff'
+            ];
+
+            function createStyleState() {
+                return {
+                    fg: null,
+                    bg: null,
+                    bold: false,
+                    underline: false,
+                    inverse: false
+                };
+            }
+
+            function getActiveTerminalElement() {
+                return useXtermRender ? xtermRender : terminal;
+            }
+
+            function scrollToBottom() {
+                var activeTerminal = getActiveTerminalElement();
+                activeTerminal.scrollTop = activeTerminal.scrollHeight;
+            }
+
+            function focusInputWithoutScroll() {
+                var activeTerminal = getActiveTerminalElement();
+                var terminalTop = activeTerminal.scrollTop;
+                try {
+                    hiddenInput.focus({ preventScroll: true });
+                } catch (err) {
+                    hiddenInput.focus();
+                }
+                activeTerminal.scrollTop = terminalTop;
+            }
+
+            function applyRenderMode() {
+                if (useXtermRender) {
+                    terminal.style.display = 'none';
+                    xtermRender.style.display = 'block';
+                } else {
+                    xtermRender.style.display = 'none';
+                    terminal.style.display = 'block';
+                }
+            }
+
+            function reportError(message) {
+                if (
+                    window.TerminalBridge &&
+                    typeof window.TerminalBridge.onError === 'function'
+                ) {
+                    window.TerminalBridge.onError(message);
+                }
+            }
+
+            function escapeHtml(text) {
+                return text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
+            function color256ToHex(index) {
+                if (index < 16) {
+                    if (index < 8) {
+                        return ANSI_FG[index];
+                    }
+                    return ANSI_FG_BRIGHT[index - 8];
+                }
+                if (index >= 16 && index <= 231) {
+                    var color = index - 16;
+                    var r = Math.floor(color / 36);
+                    var g = Math.floor((color % 36) / 6);
+                    var b = color % 6;
+                    var levels = [0, 95, 135, 175, 215, 255];
+                    return (
+                        'rgb(' +
+                        levels[r] + ',' +
+                        levels[g] + ',' +
+                        levels[b] + ')'
+                    );
+                }
+                if (index >= 232 && index <= 255) {
+                    var gray = 8 + (index - 232) * 10;
+                    return 'rgb(' + gray + ',' + gray + ',' + gray + ')';
+                }
+                return null;
+            }
+
+            function stateToCss(state) {
+                var fg = state.fg;
+                var bg = state.bg;
+                if (state.inverse) {
+                    var swap = fg;
+                    fg = bg || '#1e1e1e';
+                    bg = swap || '#d4d4d4';
+                }
+
+                var css = '';
+                if (fg) {
+                    css += 'color:' + fg + ';';
+                }
+                if (bg) {
+                    css += 'background:' + bg + ';';
+                }
+                if (state.bold) {
+                    css += 'font-weight:700;';
+                }
+                if (state.underline) {
+                    css += 'text-decoration:underline;';
+                }
+                return css;
+            }
+
+            function applySgr(codes, state) {
+                if (!codes || (codes.length === 1 && codes[0] === 0)) {
+                    state.fg = null;
+                    state.bg = null;
+                    state.bold = false;
+                    state.underline = false;
+                    state.inverse = false;
+                    return;
+                }
+
+                for (var i = 0; i < codes.length; i++) {
+                    var code = codes[i];
+                    if (code === 0) {
+                        state.fg = null;
+                        state.bg = null;
+                        state.bold = false;
+                        state.underline = false;
+                        state.inverse = false;
+                    } else if (code === 1) {
+                        state.bold = true;
+                    } else if (code === 22) {
+                        state.bold = false;
+                    } else if (code === 4) {
+                        state.underline = true;
+                    } else if (code === 24) {
+                        state.underline = false;
+                    } else if (code === 7) {
+                        state.inverse = true;
+                    } else if (code === 27) {
+                        state.inverse = false;
+                    } else if (code === 39) {
+                        state.fg = null;
+                    } else if (code === 49) {
+                        state.bg = null;
+                    } else if (code >= 30 && code <= 37) {
+                        state.fg = ANSI_FG[code - 30];
+                    } else if (code >= 90 && code <= 97) {
+                        state.fg = ANSI_FG_BRIGHT[code - 90];
+                    } else if (code >= 40 && code <= 47) {
+                        state.bg = ANSI_FG[code - 40];
+                    } else if (code >= 100 && code <= 107) {
+                        state.bg = ANSI_FG_BRIGHT[code - 100];
+                    } else if ((code === 38 || code === 48) && i + 1 < codes.length) {
+                        var isForeground = code === 38;
+                        var mode = codes[++i];
+                        if (mode === 5 && i + 1 < codes.length) {
+                            var c256 = color256ToHex(codes[++i]);
+                            if (c256) {
+                                if (isForeground) {
+                                    state.fg = c256;
+                                } else {
+                                    state.bg = c256;
+                                }
+                            }
+                        } else if (mode === 2 && i + 3 < codes.length) {
+                            var r = codes[++i];
+                            var g = codes[++i];
+                            var b = codes[++i];
+                            var rgb = 'rgb(' + r + ',' + g + ',' + b + ')';
+                            if (isForeground) {
+                                state.fg = rgb;
+                            } else {
+                                state.bg = rgb;
+                            }
+                        }
+                    }
+                }
+            }
+
+            function createLine() {
+                return {
+                    cells: [],
+                    plainLength: 0
+                };
+            }
+
+            function appendTextToLines(lines, text, style) {
+                for (var i = 0; i < text.length; i++) {
+                    var ch = text.charAt(i);
+                    if (ch === '\r') {
+                        continue;
+                    }
+                    if (ch === '\n') {
+                        lines.push(createLine());
+                        continue;
+                    }
+                    var line = lines[lines.length - 1];
+                    line.cells.push({
+                        ch: ch,
+                        style: style,
+                        cursor: false
+                    });
+                    line.plainLength += 1;
+                }
+            }
+
+            function parseAnsiLines(text) {
+                var sanitized = text
+                    .replace(/\u0000/g, '')
+                    .replace(ANSI_ESCAPE_RE, function(match) {
+                        return /\x1b\[[0-9;]*m/.test(match) ? match : '';
+                    });
+
+                var state = createStyleState();
+                var lines = [createLine()];
+                var parts = sanitized.split(/(\x1b\[[0-9;]*m)/g);
+
+                for (var i = 0; i < parts.length; i++) {
+                    var part = parts[i];
+                    if (!part) {
+                        continue;
+                    }
+                    var sgrMatch = part.match(/^\x1b\[([0-9;]*)m$/);
+                    if (sgrMatch) {
+                        var codeText = sgrMatch[1];
+                        var codes = codeText
+                            ? codeText.split(';').map(function(v) {
+                                return parseInt(v, 10) || 0;
+                            })
+                            : [0];
+                        applySgr(codes, state);
+                        continue;
+                    }
+                    appendTextToLines(lines, part, stateToCss(state));
+                }
+
+                if (lines.length > 1 && lines[lines.length - 1].plainLength === 0) {
+                    lines.pop();
+                }
+                return lines;
+            }
+
+            function injectCursor(line, x) {
+                if (x < 0) {
+                    x = 0;
+                }
+                while (line.cells.length < x) {
+                    line.cells.push({
+                        ch: ' ',
+                        style: '',
+                        cursor: false
+                    });
+                }
+                if (x >= line.cells.length) {
+                    line.cells.push({
+                        ch: ' ',
+                        style: '',
+                        cursor: true
+                    });
+                } else {
+                    line.cells[x].cursor = true;
+                }
+                line.plainLength = line.cells.length;
+            }
+
+            function renderLineHtml(line) {
+                if (line.cells.length === 0) {
+                    return '';
+                }
+
+                var html = '';
+                var currentText = '';
+                var currentStyle = line.cells[0].style;
+                var currentCursor = line.cells[0].cursor;
+
+                function flush() {
+                    if (!currentText) {
+                        return;
+                    }
+                    var text = escapeHtml(currentText);
+                    if (currentCursor) {
+                        html += '<span class="cursor-cell">' + text + '</span>';
+                    } else if (currentStyle) {
+                        html += '<span style="' + currentStyle + '">' + text + '</span>';
+                    } else {
+                        html += text;
+                    }
+                    currentText = '';
+                }
+
+                for (var i = 0; i < line.cells.length; i++) {
+                    var cell = line.cells[i];
+                    if (cell.style !== currentStyle || cell.cursor !== currentCursor) {
+                        flush();
+                        currentStyle = cell.style;
+                        currentCursor = cell.cursor;
+                    }
+                    currentText += cell.ch;
+                }
+                flush();
+                return html;
+            }
+
+            function renderSnapshot(text, cursorX, cursorY, paneRows) {
+                if (useXtermRender) {
+                    if (renderSnapshotWithXterm(text, cursorX, cursorY, paneRows)) {
+                        scrollToBottom();
+                        return;
+                    }
+                    useXtermRender = false;
+                    applyRenderMode();
+                    reportError('xterm render failed; fallback to legacy renderer');
+                }
+
+                var lines = parseAnsiLines(text);
+                if (lines.length === 0) {
+                    lines = [createLine()];
+                }
+
+                if (typeof cursorX === 'number' && typeof cursorY === 'number' && cursorX >= 0 && cursorY >= 0) {
+                    var lineIndex;
+                    if (typeof paneRows === 'number' && paneRows > 0) {
+                        var visibleStart = Math.max(lines.length - paneRows, 0);
+                        lineIndex = visibleStart + cursorY;
+                    } else {
+                        lineIndex = cursorY;
+                    }
+                    if (lineIndex < 0) {
+                        lineIndex = 0;
+                    }
+                    if (lineIndex >= lines.length) {
+                        lineIndex = lines.length - 1;
+                    }
+                    injectCursor(lines[lineIndex], cursorX);
+                }
+
+                var htmlLines = new Array(lines.length);
+                for (var i = 0; i < lines.length; i++) {
+                    htmlLines[i] = renderLineHtml(lines[i]);
+                }
+                terminal.innerHTML = htmlLines.join('\n');
+                scrollToBottom();
+            }
+
+            function initializeRenderTerminal(cols, rows) {
+                if (!useXtermRender || renderTerminal || typeof window.Terminal !== 'function') {
+                    return;
+                }
+
+                try {
+                    renderTerminal = new window.Terminal({
+                        cols: cols || 80,
+                        rows: rows || 24,
+                        convertEol: true,
+                    });
+                    renderTerminal.open(xtermRender);
+                } catch (err) {
+                    renderTerminal = null;
+                }
+            }
+
+            function renderSnapshotWithXterm(text, cursorX, cursorY, paneRows) {
+                var normalized = text
+                    .replace(/\u0000/g, '')
+                    .replace(/\r/g, '');
+                var lines = normalized.split('\n');
+                if (lines.length > 1 && lines[lines.length - 1] === '') {
+                    lines.pop();
+                }
+                if (
+                    typeof paneRows === 'number' &&
+                    paneRows > 0 &&
+                    lines.length > paneRows
+                ) {
+                    lines = lines.slice(lines.length - paneRows);
+                }
+
+                var rows = Math.max(typeof paneRows === 'number' && paneRows > 0 ? paneRows : 24, 12);
+                var cols = 80;
+                for (var i = 0; i < lines.length; i++) {
+                    var plainLength = lines[i].replace(ANSI_ESCAPE_RE, '').length;
+                    if (plainLength + 1 > cols) {
+                        cols = plainLength + 1;
+                    }
+                }
+                cols = Math.min(Math.max(cols, 20), 240);
+
+                initializeRenderTerminal(cols, rows);
+                if (!renderTerminal) {
+                    return false;
+                }
+
+                if (typeof renderTerminal.resize === 'function') {
+                    renderTerminal.resize(cols, rows);
+                }
+                if (typeof renderTerminal.clear === 'function') {
+                    renderTerminal.clear();
+                }
+                if (typeof renderTerminal.write === 'function') {
+                    renderTerminal.write(lines.join('\r\n'));
+                    if (
+                        typeof cursorX === 'number' &&
+                        typeof cursorY === 'number' &&
+                        cursorX >= 0 &&
+                        cursorY >= 0
+                    ) {
+                        renderTerminal.write('\x1b[' + (cursorY + 1) + ';' + (cursorX + 1) + 'H');
+                    }
+                }
+
+                return true;
+            }
+
+            function writeStreamChunkWithXterm(text) {
+                initializeRenderTerminal(80, 24);
+                if (!renderTerminal || typeof renderTerminal.write !== 'function') {
+                    return false;
+                }
+                renderTerminal.write(text);
+                if (typeof renderTerminal.scrollToBottom === 'function') {
+                    renderTerminal.scrollToBottom();
+                }
+                return true;
+            }
+
+            function routeInput(data) {
+                if (!data) {
+                    return;
+                }
+                if (window.TerminalAPI && typeof window.TerminalAPI.sendKey === 'function') {
+                    window.TerminalAPI.sendKey(data);
+                }
+            }
+
+            function estimateTerminalSize() {
+                var cols = Math.floor((window.innerWidth - 16) / 8.4);
+                var rows = Math.floor((window.innerHeight - 16) / 18.2);
+                cols = Math.min(Math.max(cols, 20), 240);
+                rows = Math.min(Math.max(rows, 12), 200);
+                return { cols: cols, rows: rows };
+            }
+
+            function sendResizeToServer() {
+                if (!websocket || websocket.readyState !== 1) {
+                    return;
+                }
+                var size = estimateTerminalSize();
+                websocket.send(JSON.stringify({
+                    type: 'resize',
+                    cols: size.cols,
+                    rows: size.rows
+                }));
+            }
+
+            terminal.addEventListener('click', function() {
+                focusInputWithoutScroll();
+            });
+            xtermRender.addEventListener('click', function() {
+                focusInputWithoutScroll();
+            });
+
+            hiddenInput.addEventListener('input', function(e) {
+                var text = e.data || '';
+                if (!text) {
+                    text = hiddenInput.value;
+                }
+                routeInput(text);
+                hiddenInput.value = '';
+            });
+
+            hiddenInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    routeInput('\r');
+                    hiddenInput.value = '';
+                } else if (e.key === 'Backspace') {
+                    e.preventDefault();
+                    routeInput('\b');
+                } else if (e.key === 'Tab') {
+                    e.preventDefault();
+                    routeInput('\t');
+                }
+            });
+
+            window.TerminalAPI = {
+                connect: function(wsUrl, apiKey) {
+                    websocket = new WebSocket(wsUrl);
+                    websocket.onopen = function() {
+                        websocket.send(JSON.stringify({type: 'auth', api_key: apiKey}));
+                        if (window.TerminalBridge) window.TerminalBridge.onConnectionChanged(true);
+                        sendResizeToServer();
+                        focusInputWithoutScroll();
+                    };
+                    websocket.onmessage = function(e) {
+                        try {
+                            var msg = JSON.parse(e.data);
+                            if (msg.type === 'output' && msg.data_b64) {
+                                var bin = atob(msg.data_b64);
+                                var bytes = new Uint8Array(bin.length);
+                                for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                                var text = new TextDecoder('utf-8').decode(bytes);
+                                var isSnapshot = msg.is_snapshot === true;
+                                if (useXtermRender && !isSnapshot) {
+                                    if (writeStreamChunkWithXterm(text)) {
+                                        scrollToBottom();
+                                        return;
+                                    }
+                                }
+                                renderSnapshot(text, msg.cursor_x, msg.cursor_y, msg.pane_rows);
+                            }
+                        } catch(err) {
+                            reportError('Parse error: ' + String(err));
+                        }
+                    };
+                    websocket.onerror = function() {
+                        reportError('WebSocket error');
+                    };
+                    websocket.onclose = function() {
+                        if (window.TerminalBridge) window.TerminalBridge.onConnectionChanged(false);
+                        websocket = null;
+                    };
+                },
+                disconnect: function() {
+                    if (websocket) { websocket.close(); websocket = null; }
+                },
+                sendKey: function(key) {
+                    if (websocket && websocket.readyState === 1) {
+                        websocket.send(JSON.stringify({type: 'input', data_b64: btoa(unescape(encodeURIComponent(key)))}));
+                    }
+                },
+                setRenderMode: function(mode) {
+                    useXtermRender = mode === 'xterm';
+                    applyRenderMode();
+                }
+            };
+
+            if (window.TerminalBridge && window.TerminalBridge.onTerminalReady) {
+                window.TerminalBridge.onTerminalReady();
+            }
+
+            var resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    sendResizeToServer();
+                }, 200);
+            });
+            applyRenderMode();
+            scrollToBottom();
+        })();
+    </script>
+</body>
+</html>

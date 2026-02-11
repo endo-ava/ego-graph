@@ -17,6 +17,7 @@ flowchart TB
     classDef storage fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,color:black,shape:cyl;
     classDef external fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:black,rx:5,ry:5;
     classDef process fill:#fff,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5,color:#666;
+    classDef gateway fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:black,rx:5,ry:5;
 
     subgraph ClientLayer ["📱 Client Layer"]
         direction TB
@@ -32,6 +33,12 @@ flowchart TB
             DuckDB[("DuckDB\n(Analytics Engine)")]:::server
         end
 
+        subgraph GatewayLayer ["Terminal Gateway (LXC)"]
+            direction TB
+            GatewayAPI["Terminal Gateway\n(Starlette)"]:::gateway
+            Tmux[("tmux Sessions")]:::storage
+        end
+
         subgraph IngestionLayer ["GitHub Actions (Async Batch)"]
             direction TB
             GHA["Ingestion Workers\n(Python Scripts)"]:::server
@@ -42,6 +49,7 @@ flowchart TB
         direction TB
         Qdrant[("Qdrant Cloud\n(Vector Database)")]:::external
         R2{{"Cloudflare R2\n(Object Storage)"}}:::storage
+        FCM["Firebase Cloud Messaging\n(FCM)"]:::external
     end
 
     subgraph DataSources ["🌐 External Data Sources"]
@@ -51,9 +59,14 @@ flowchart TB
 
     %% Connectivity
     MobileApp <==>|"HTTPS / REST"| AgentAPI
+    MobileApp <==>|"WebSocket / HTTPS"| GatewayAPI
+    MobileApp <-->|"Push Token"| FCM
 
     AgentAPI <-->|"SQL Query"| DuckDB
     AgentAPI <-->|"Vector Search"| Qdrant
+
+    GatewayAPI <-->|"Attach / Detach"| Tmux
+    GatewayAPI <-->|"Push Notification"| FCM
 
     DuckDB -.->|"Read Parquet (httpfs)"| R2
 
@@ -85,6 +98,8 @@ flowchart TB
     subgraph "External Server (VPS/GCP)"
         Agent[Agent API （FastAPI）]
         DuckDB[(DuckDB Engine)]
+        Gateway[Terminal Gateway\n(Starlette)]
+        Tmux[(tmux Sessions)]
     end
 
     subgraph "Storage"
@@ -93,6 +108,7 @@ flowchart TB
 
     subgraph "Managed Services"
         Qdrant[Qdrant Cloud\n（Vector DB）]
+        FCM[Firebase Cloud Messaging\n(FCM)]
     end
 
     subgraph "Data Sources"
@@ -101,9 +117,14 @@ flowchart TB
     end
 
     Mobile <-->|HTTPS| Agent
+    Mobile <-->|WebSocket| Gateway
+    Mobile <-->|Push Token/Notify| FCM
 
     Agent <-->|SQL Analytics| DuckDB
     Agent <-->|Vector Search| Qdrant
+
+    Gateway <-->|Attach/Detach| Tmux
+    Gateway <-->|Push Notification| FCM
 
     DuckDB <-->|Read Only| R2
 
@@ -154,12 +175,24 @@ flowchart TB
   - `query_analytics(sql)`: 数値的な集計や台帳参照。
   - `search_vectors(query_text)`: 意味的なインデックス検索。
 
-### 2.5 Client Layer (Frontend)
+### 2.5 Terminal Gateway
+
+モバイル端末からの tmux セッション接続とプッシュ通知を担当する独立サービス。
+
+- **Role**: 複数エージェントの並行運用、通知受信、音声入力をモバイルから可能にする。
+- **Features**:
+  - tmux セッションの列挙・接続管理 (`agent-0001`, `agent-0002`, ...)
+  - WebSocket による双方向端末入出力
+  - FCM によるタスク完了/入力要求通知
+  - Bearer Token 認証
+- **Framework**: Starlette + Uvicorn (ASGI)
+
+### 2.6 Client Layer (Frontend)
 
 ユーザーとのインターフェース。
 
 - **Framework**: Kotlin Multiplatform + Compose Multiplatform
-- **Role**: Native Android App, Chat UI.
+- **Role**: Native Android App, Chat UI, Terminal UI.
 
 ---
 

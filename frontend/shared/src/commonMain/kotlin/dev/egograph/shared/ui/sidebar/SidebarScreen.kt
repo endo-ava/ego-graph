@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -23,6 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.navigator.LocalNavigator
 import com.arkivanov.mvikotlin.extensions.coroutines.states
 import dev.egograph.shared.store.chat.ChatIntent
 import dev.egograph.shared.store.chat.ChatStore
@@ -30,24 +32,42 @@ import dev.egograph.shared.ui.ChatScreen
 import dev.egograph.shared.ui.ThreadList
 import dev.egograph.shared.ui.settings.SettingsScreen
 import dev.egograph.shared.ui.systemprompt.SystemPromptEditorScreen
+import dev.egograph.shared.ui.terminal.GatewaySettingsScreen
+import dev.egograph.shared.ui.terminal.TerminalScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import org.koin.core.qualifier.named
 
 enum class SidebarView {
     Chat,
     SystemPrompt,
     Settings,
+    Terminal,
+    GatewaySettings,
 }
 
 class SidebarScreen : Screen {
     @Composable
     override fun Content() {
-        val store = koinInject<ChatStore>()
+        val navigator = requireNotNull(LocalNavigator.current)
+        val store = koinInject<ChatStore>(qualifier = named("ChatStore"))
         val state by store.states.collectAsState(initial = store.state)
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
-        var activeView by remember { mutableStateOf(SidebarView.Chat) }
+        var activeView by rememberSaveable { mutableStateOf(SidebarView.Chat) }
         val chatScreen = remember { ChatScreen() }
+        val agentListScreen =
+            remember(navigator) {
+                dev.egograph.shared.ui.terminal
+                    .AgentListScreen(
+                        onSessionSelected = { sessionId ->
+                            navigator.push(TerminalScreen(agentId = sessionId))
+                        },
+                        onOpenGatewaySettings = {
+                            activeView = SidebarView.GatewaySettings
+                        },
+                    )
+            }
 
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -61,6 +81,10 @@ class SidebarScreen : Screen {
                         },
                         onSettingsClick = {
                             activeView = SidebarView.Settings
+                            scope.launch { drawerState.close() }
+                        },
+                        onTerminalClick = {
+                            activeView = SidebarView.Terminal
                             scope.launch { drawerState.close() }
                         },
                     )
@@ -102,25 +126,43 @@ class SidebarScreen : Screen {
                     )
                 }
             },
-            gesturesEnabled = true,
+            // チャット画面ではサイドバーのスワイプを有効化、ターミナル画面では無効化
+            gesturesEnabled = activeView == SidebarView.Chat,
         ) {
-            when (activeView) {
-                SidebarView.Chat -> chatScreen.Content()
-                SidebarView.SystemPrompt -> {
-                    val promptScreen =
-                        remember {
-                            SystemPromptEditorScreen(
-                                onBack = { activeView = SidebarView.Chat },
-                            )
-                        }
-                    promptScreen.Content()
-                }
-                SidebarView.Settings -> {
-                    val preferences = koinInject<dev.egograph.shared.platform.PlatformPreferences>()
-                    SettingsScreen(
-                        preferences = preferences,
-                        onBack = { activeView = SidebarView.Chat },
-                    )
+            // メインコンテンツエリア全体をBoxで包み、スワイプジェスチャーを検知
+            SwipeableSidebarContainer(
+                activeView = activeView,
+                onSwipeToTerminal = { activeView = SidebarView.Terminal },
+                onSwipeToChat = { activeView = SidebarView.Chat },
+            ) {
+                when (activeView) {
+                    SidebarView.Chat -> chatScreen.Content()
+                    SidebarView.SystemPrompt -> {
+                        val promptScreen =
+                            remember {
+                                SystemPromptEditorScreen(
+                                    onBack = { activeView = SidebarView.Chat },
+                                )
+                            }
+                        promptScreen.Content()
+                    }
+                    SidebarView.Settings -> {
+                        val preferences = koinInject<dev.egograph.shared.platform.PlatformPreferences>()
+                        SettingsScreen(
+                            preferences = preferences,
+                            onBack = { activeView = SidebarView.Chat },
+                        )
+                    }
+                    SidebarView.Terminal -> agentListScreen.Content()
+                    SidebarView.GatewaySettings -> {
+                        val gatewaySettingsScreen =
+                            remember {
+                                GatewaySettingsScreen(
+                                    onBack = { activeView = SidebarView.Terminal },
+                                )
+                            }
+                        gatewaySettingsScreen.Content()
+                    }
                 }
             }
         }

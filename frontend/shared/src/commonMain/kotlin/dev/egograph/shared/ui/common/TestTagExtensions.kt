@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui
+package dev.egograph.shared.ui.common
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag

@@ -7,11 +7,13 @@ on:
     paths:
       - "frontend/**"
       - ".github/workflows/ci-frontend.yml"
+      - "gateway/**"  # Gateway 変更時も Terminal UI テストを実行
   pull_request:
     branches: [main]
     paths:
       - "frontend/**"
       - ".github/workflows/ci-frontend.yml"
+      - "gateway/**"  # Gateway 変更時も Terminal UI テストを実行
 
 jobs:
   quality-check:
@@ -83,6 +85,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+
+      - name: Setup google-services.json
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > frontend/androidApp/google-services.json
       - name: Run unit tests with DI validation
         run: ./gradlew :shared:testDebugUnitTest
         working-directory: frontend
