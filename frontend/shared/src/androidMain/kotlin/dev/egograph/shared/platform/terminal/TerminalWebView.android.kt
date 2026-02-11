@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.ByteArrayInputStream
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Android implementation of TerminalWebView using Android WebView
@@ -32,11 +33,11 @@ class AndroidTerminalWebView(
     private val _connectionState = MutableStateFlow(false)
     private val _errors = MutableSharedFlow<String>(replay = 0)
 
-    private var isConnected = false
+    private val isConnected = AtomicBoolean(false)
     private var currentWsUrl: String? = null
     private var currentApiKey: String? = null
-    private var isPageReady = false
-    private var isTerminalReady = false
+    private val isPageReady = AtomicBoolean(false)
+    private val isTerminalReady = AtomicBoolean(false)
 
     override val output: Flow<String> = _output.asSharedFlow()
     override val connectionState: Flow<Boolean> = _connectionState.asStateFlow()
@@ -69,7 +70,7 @@ class AndroidTerminalWebView(
                         url: String?,
                     ) {
                         super.onPageFinished(view, url)
-                        isPageReady = true
+                        isPageReady.set(true)
                         connectIfReady()
                     }
 
@@ -95,6 +96,10 @@ class AndroidTerminalWebView(
                             url.endsWith("terminal.html") -> {
                                 val html = loadAsset("xterm/terminal.html")
                                 createResponse(html, "text/html")
+                            }
+                            url.endsWith("xterm.css") -> {
+                                val css = loadAsset("xterm/xterm.css")
+                                createResponse(css, "text/css")
                             }
                             url.endsWith("xterm.js") -> {
                                 val js = loadAsset("xterm/xterm.js")
@@ -151,8 +156,8 @@ class AndroidTerminalWebView(
     }
 
     override fun loadTerminal() {
-        isPageReady = false
-        isTerminalReady = false
+        isPageReady.set(false)
+        isTerminalReady.set(false)
         _webView.loadUrl("file:///android_asset/xterm/terminal.html")
     }
 
@@ -168,7 +173,7 @@ class AndroidTerminalWebView(
     private fun connectIfReady() {
         val wsUrl = currentWsUrl ?: return
         val apiKey = currentApiKey ?: return
-        if (!isPageReady || !isTerminalReady) {
+        if (!isPageReady.get() || !isTerminalReady.get()) {
             return
         }
 
@@ -208,7 +213,8 @@ class AndroidTerminalWebView(
     }
 
     override fun setTheme(darkMode: Boolean) {
-        _webView.setBackgroundColor(Color.parseColor("#1e1e1e"))
+        val backgroundColor = if (darkMode) "#1e1e1e" else "#FFFFFF"
+        _webView.setBackgroundColor(Color.parseColor(backgroundColor))
     }
 
     fun getWebView(): WebView = _webView
@@ -225,7 +231,7 @@ class AndroidTerminalWebView(
         @JavascriptInterface
         fun onConnectionChanged(connected: Boolean) {
             mainHandler.post {
-                isConnected = connected
+                isConnected.set(connected)
                 _connectionState.tryEmit(connected)
             }
         }
@@ -252,7 +258,7 @@ class AndroidTerminalWebView(
         @JavascriptInterface
         fun onTerminalReady() {
             mainHandler.post {
-                isTerminalReady = true
+                isTerminalReady.set(true)
                 connectIfReady()
             }
         }
@@ -262,10 +268,7 @@ class AndroidTerminalWebView(
 /**
  * Factory function for Android
  */
-actual fun createTerminalWebView(): TerminalWebView {
-    // This will be called from Composable context where Context is available
-    throw NotImplementedError("Use createTerminalWebView(Context) instead")
-}
+actual fun createTerminalWebView(): TerminalWebView = throw NotImplementedError("Use createTerminalWebView(Context) instead")
 
 /**
  * Factory function for Android with Context

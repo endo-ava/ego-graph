@@ -4,6 +4,7 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
@@ -39,6 +40,7 @@ class FcmTokenManager(
             .readTimeout(10, TimeUnit.SECONDS)
             .build()
 
+    @Volatile
     private var currentToken: String? = null
 
     /** FCMトークンをGatewayに登録します。
@@ -124,6 +126,7 @@ class FcmTokenManager(
 
     /** リソースを解放します。 */
     fun cleanup() {
+        scope.cancel()
         client.dispatcher.executorService.shutdown()
         client.connectionPool.evictAll()
     }

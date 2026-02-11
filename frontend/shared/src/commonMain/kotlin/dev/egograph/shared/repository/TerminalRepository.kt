@@ -11,6 +11,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.encodeURLPathPart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -109,8 +110,9 @@ class TerminalRepositoryImpl(
 
     private suspend fun fetchSession(sessionId: String): Session {
         val config = resolveGatewayConfig()
+        val encodedSessionId = sessionId.encodeURLPathPart()
         val response =
-            httpClient.get("${config.baseUrl}/api/v1/terminal/sessions/$sessionId") {
+            httpClient.get("${config.baseUrl}/api/v1/terminal/sessions/$encodedSessionId") {
                 configureGatewayAuth(config.apiKey)
             }
 
