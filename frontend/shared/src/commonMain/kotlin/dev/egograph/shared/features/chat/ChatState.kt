@@ -1,8 +1,8 @@
 package dev.egograph.shared.features.chat
 
-import dev.egograph.shared.dto.LLMModel
-import dev.egograph.shared.dto.Thread
-import dev.egograph.shared.dto.ThreadMessage
+import dev.egograph.shared.core.domain.model.LLMModel
+import dev.egograph.shared.core.domain.model.Thread
+import dev.egograph.shared.core.domain.model.ThreadMessage
 
 /**
  * チャット画面の状態

@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui.terminal
+package dev.egograph.shared.features.terminal
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -8,23 +8,9 @@ import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.core.screen.uniqueScreenKey
-import com.arkivanov.mvikotlin.extensions.coroutines.labels
-import com.arkivanov.mvikotlin.extensions.coroutines.states
-import dev.egograph.shared.store.terminal.TerminalIntent
-import dev.egograph.shared.store.terminal.TerminalLabel
-import dev.egograph.shared.store.terminal.TerminalStore
-import dev.egograph.shared.ui.terminal.components.SessionList
-import kotlinx.coroutines.flow.collect
-import org.koin.compose.koinInject
-import org.koin.core.qualifier.named
+import cafe.adriel.voyager.koin.getScreenModel
+import dev.egograph.shared.features.terminal.components.SessionList
 
-/**
- * Agent List Screen
- *
- * ターミナルセッションの一覧を表示し、セッションを選択するとTerminalScreenへ遷移します。
- *
- * @param onSessionSelected セッション選択時のコールバック
- */
 class AgentListScreen(
     private val onSessionSelected: (String) -> Unit = {},
     private val onOpenGatewaySettings: () -> Unit = {},
@@ -33,21 +19,18 @@ class AgentListScreen(
 
     @Composable
     override fun Content() {
-        val store = koinInject<TerminalStore>(qualifier = named("TerminalStore"))
-        val state by store.states.collectAsState(initial = store.state)
+        val screenModel = getScreenModel<TerminalScreenModel>()
+        val state by screenModel.state.collectAsState()
 
-        // 画面表示のたびに最新のセッション一覧を取得
-        LaunchedEffect(store) {
-            store.accept(TerminalIntent.RefreshSessions)
+        LaunchedEffect(Unit) {
+            screenModel.loadSessions()
         }
 
-        // Labelを監視して、セッション選択時にコールバックを実行
         LaunchedEffect(Unit) {
-            store.labels.collect { label ->
-                when (label) {
-                    is TerminalLabel.SessionSelectionCompleted -> {
-                        // コールバックでsessionIdを通知
-                        onSessionSelected(label.sessionId)
+            screenModel.effect.collect { effect ->
+                when (effect) {
+                    is TerminalEffect.NavigateToSession -> {
+                        onSessionSelected(effect.sessionId)
                     }
                     else -> {}
                 }
@@ -60,10 +43,10 @@ class AgentListScreen(
             isLoading = state.isLoadingSessions,
             error = state.sessionsError,
             onSessionClick = { sessionId ->
-                store.accept(TerminalIntent.SelectSession(sessionId))
+                screenModel.selectSession(sessionId)
             },
             onRefresh = {
-                store.accept(TerminalIntent.RefreshSessions)
+                screenModel.loadSessions()
             },
             onOpenGatewaySettings = onOpenGatewaySettings,
             modifier = Modifier,

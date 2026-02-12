@@ -27,7 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
-import dev.egograph.shared.dto.SystemPromptName
+import dev.egograph.shared.core.domain.model.SystemPromptName
 import dev.egograph.shared.repository.SystemPromptRepository
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject

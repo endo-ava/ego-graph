@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.ui.components.EmptyView
 import dev.egograph.shared.core.ui.components.ErrorView
 import dev.egograph.shared.core.ui.components.LoadingView
-import dev.egograph.shared.dto.Thread
+import dev.egograph.shared.core.domain.model.Thread
 import dev.egograph.shared.ui.common.testTagResourceId
 
 @OptIn(ExperimentalMaterial3Api::class)
