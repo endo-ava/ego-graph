@@ -1,4 +1,4 @@
-package dev.egograph.shared.repository
+package dev.egograph.shared.features.chat
 
 import dev.egograph.shared.core.data.repository.ChatRepositoryImpl
 import dev.egograph.shared.core.domain.model.ChatRequest

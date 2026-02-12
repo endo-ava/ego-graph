@@ -1,15 +1,5 @@
-package dev.egograph.shared.dto
+package dev.egograph.shared.core.domain.model
 
-import dev.egograph.shared.core.domain.model.ChatRequest
-import dev.egograph.shared.core.domain.model.Message
-import dev.egograph.shared.core.domain.model.MessageRole
-import dev.egograph.shared.core.domain.model.ModelsResponse
-import dev.egograph.shared.core.domain.model.StreamChunk
-import dev.egograph.shared.core.domain.model.StreamChunkType
-import dev.egograph.shared.core.domain.model.SystemPromptName
-import dev.egograph.shared.core.domain.model.SystemPromptUpdateRequest
-import dev.egograph.shared.core.domain.model.Thread
-import dev.egograph.shared.core.domain.model.ThreadMessagesResponse
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.test.Test

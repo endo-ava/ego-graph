@@ -1,4 +1,4 @@
-package dev.egograph.shared.repository
+package dev.egograph.shared.core.domain.repository
 
 import dev.egograph.shared.core.domain.model.ChatRequest
 import dev.egograph.shared.core.domain.model.ChatResponse
@@ -9,11 +9,6 @@ import dev.egograph.shared.core.domain.model.StreamChunk
 import dev.egograph.shared.core.domain.model.Thread
 import dev.egograph.shared.core.domain.model.ThreadListResponse
 import dev.egograph.shared.core.domain.model.ThreadMessagesResponse
-import dev.egograph.shared.core.domain.repository.ApiError
-import dev.egograph.shared.core.domain.repository.ChatRepository
-import dev.egograph.shared.core.domain.repository.MessageRepository
-import dev.egograph.shared.core.domain.repository.RepositoryResult
-import dev.egograph.shared.core.domain.repository.ThreadRepository
 import kotlinx.coroutines.flow.flow
 import kotlin.test.Test
 import kotlin.test.assertEquals

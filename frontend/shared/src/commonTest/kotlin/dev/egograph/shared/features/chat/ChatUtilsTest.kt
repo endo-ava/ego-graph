@@ -1,6 +1,5 @@
-package dev.egograph.shared.store.chat.internal
+package dev.egograph.shared.features.chat
 
-import dev.egograph.shared.features.chat.toThreadTitle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

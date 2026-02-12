@@ -1,6 +1,5 @@
-package dev.egograph.shared.store.terminal
+package dev.egograph.shared.features.terminal
 
-import dev.egograph.shared.features.terminal.TerminalState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

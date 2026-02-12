@@ -1,4 +1,4 @@
-package dev.egograph.shared.repository
+package dev.egograph.shared.features.terminal
 
 import dev.egograph.shared.core.data.repository.TerminalRepositoryImpl
 import dev.egograph.shared.core.domain.model.terminal.Session

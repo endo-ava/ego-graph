@@ -1,6 +1,5 @@
-package dev.egograph.shared.repository
+package dev.egograph.shared.core.domain.repository
 
-import dev.egograph.shared.core.domain.repository.ApiError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

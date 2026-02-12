@@ -1,4 +1,4 @@
-package dev.egograph.shared.repository
+package dev.egograph.shared.features.systemprompt
 
 import dev.egograph.shared.core.data.repository.SystemPromptRepositoryImpl
 import dev.egograph.shared.core.domain.model.SystemPromptName

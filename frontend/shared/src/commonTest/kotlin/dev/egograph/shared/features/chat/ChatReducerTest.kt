@@ -1,6 +1,5 @@
-package dev.egograph.shared.store.chat
+package dev.egograph.shared.features.chat
 
-import dev.egograph.shared.features.chat.ChatState
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
