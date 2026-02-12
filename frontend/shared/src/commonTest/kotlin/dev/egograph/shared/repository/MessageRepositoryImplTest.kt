@@ -1,8 +1,9 @@
 package dev.egograph.shared.repository
 
-import dev.egograph.shared.dto.MessageRole
-import dev.egograph.shared.dto.ThreadMessage
-import dev.egograph.shared.dto.ThreadMessagesResponse
+import dev.egograph.shared.core.data.repository.MessageRepositoryImpl
+import dev.egograph.shared.core.domain.model.MessageRole
+import dev.egograph.shared.core.domain.model.ThreadMessage
+import dev.egograph.shared.core.domain.model.ThreadMessagesResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond

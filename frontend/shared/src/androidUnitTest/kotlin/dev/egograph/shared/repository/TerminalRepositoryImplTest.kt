@@ -1,7 +1,8 @@
 package dev.egograph.shared.repository
 
-import dev.egograph.shared.dto.terminal.Session
-import dev.egograph.shared.dto.terminal.SessionStatus
+import dev.egograph.shared.core.data.repository.TerminalRepositoryImpl
+import dev.egograph.shared.core.domain.model.terminal.Session
+import dev.egograph.shared.core.domain.model.terminal.SessionStatus
 import dev.egograph.shared.platform.PlatformPreferences
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine

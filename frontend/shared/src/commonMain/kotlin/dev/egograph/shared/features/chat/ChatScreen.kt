@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui
+package dev.egograph.shared.features.chat
 
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.exclude
@@ -16,49 +16,41 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
-import com.arkivanov.mvikotlin.extensions.coroutines.states
+import cafe.adriel.voyager.koin.getScreenModel
+import dev.egograph.shared.core.ui.components.MessageList
 import dev.egograph.shared.platform.PlatformPreferences
-import dev.egograph.shared.store.chat.ChatIntent
-import dev.egograph.shared.ui.components.ChatInput
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import org.koin.core.qualifier.named
 
 class ChatScreen : Screen {
     @Composable
     override fun Content() {
-        val store = koinInject<ChatStore>(qualifier = named("ChatStore"))
+        val screenModel = getScreenModel<ChatScreenModel>()
         val preferences = koinInject<PlatformPreferences>()
-        val state by store.states.collectAsState(initial = store.state)
+        val state by screenModel.state.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }
-        val scope = rememberCoroutineScope()
 
-        var lastShownError by remember { mutableStateOf<String?>(null) }
-        val currentError = state.threadsError ?: state.messagesError ?: state.modelsError
-
-        LaunchedEffect(currentError) {
-            if (currentError != null) {
-                if (currentError != lastShownError) {
-                    lastShownError = currentError
-                    scope.launch {
-                        snackbarHostState.showSnackbar(currentError)
+        // Effect の収集
+        LaunchedEffect(Unit) {
+            screenModel.effect.collect { effect ->
+                when (effect) {
+                    is ChatEffect.ShowError -> {
+                        snackbarHostState.showSnackbar(effect.message)
+                    }
+                    is ChatEffect.ShowSnackbar -> {
+                        snackbarHostState.showSnackbar(effect.message)
+                    }
+                    is ChatEffect.NavigateToThread -> {
+                        // Navigation は Screen 側で処理
                     }
                 }
-            } else {
-                lastShownError = null
             }
         }
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            // Exclude navigationBars and ime from contentWindowInsets because we handle them manually.
-            // Specifically, we want the bottom bar to move up with the IME, and the content to be padded accordingly.
             contentWindowInsets =
                 ScaffoldDefaults.contentWindowInsets
                     .exclude(WindowInsets.navigationBars)
@@ -66,10 +58,9 @@ class ChatScreen : Screen {
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 ChatInput(
-                    store = store,
                     preferences = preferences,
                     onSendMessage = { text ->
-                        store.accept(ChatIntent.SendMessage(text))
+                        screenModel.sendMessage(text)
                     },
                     isLoading = state.isSending,
                     modifier =

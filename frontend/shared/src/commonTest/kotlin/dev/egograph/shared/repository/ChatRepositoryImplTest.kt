@@ -1,13 +1,14 @@
 package dev.egograph.shared.repository
 
-import dev.egograph.shared.dto.ChatRequest
-import dev.egograph.shared.dto.ChatResponse
-import dev.egograph.shared.dto.LLMModel
-import dev.egograph.shared.dto.Message
-import dev.egograph.shared.dto.MessageRole
-import dev.egograph.shared.dto.ModelsResponse
-import dev.egograph.shared.dto.StreamChunk
-import dev.egograph.shared.dto.StreamChunkType
+import dev.egograph.shared.core.data.repository.ChatRepositoryImpl
+import dev.egograph.shared.core.domain.model.ChatRequest
+import dev.egograph.shared.core.domain.model.ChatResponse
+import dev.egograph.shared.core.domain.model.LLMModel
+import dev.egograph.shared.core.domain.model.Message
+import dev.egograph.shared.core.domain.model.MessageRole
+import dev.egograph.shared.core.domain.model.ModelsResponse
+import dev.egograph.shared.core.domain.model.StreamChunk
+import dev.egograph.shared.core.domain.model.StreamChunkType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond

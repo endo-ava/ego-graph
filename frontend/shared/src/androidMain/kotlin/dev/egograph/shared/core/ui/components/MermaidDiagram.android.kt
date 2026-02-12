@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui
+package dev.egograph.shared.core.ui.components
 
 import android.annotation.SuppressLint
 import android.os.Handler
@@ -33,7 +33,7 @@ private const val MERMAID_CDN_URL = "https://cdn.jsdelivr.net/npm/mermaid@11/dis
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-internal actual fun MermaidDiagram(
+actual fun MermaidDiagram(
     mermaidCode: String,
     modifier: Modifier,
 ) {

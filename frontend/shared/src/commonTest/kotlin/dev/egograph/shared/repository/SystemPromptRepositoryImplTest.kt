@@ -1,7 +1,8 @@
 package dev.egograph.shared.repository
 
-import dev.egograph.shared.dto.SystemPromptName
-import dev.egograph.shared.dto.SystemPromptResponse
+import dev.egograph.shared.core.data.repository.SystemPromptRepositoryImpl
+import dev.egograph.shared.core.domain.model.SystemPromptName
+import dev.egograph.shared.core.domain.model.SystemPromptResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond

@@ -1,7 +1,8 @@
 package dev.egograph.shared.repository
 
-import dev.egograph.shared.dto.Thread
-import dev.egograph.shared.dto.ThreadListResponse
+import dev.egograph.shared.core.data.repository.ThreadRepositoryImpl
+import dev.egograph.shared.core.domain.model.Thread
+import dev.egograph.shared.core.domain.model.ThreadListResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
