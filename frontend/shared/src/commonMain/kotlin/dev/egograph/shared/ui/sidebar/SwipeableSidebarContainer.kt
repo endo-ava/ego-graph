@@ -22,6 +22,15 @@ import kotlin.math.roundToInt
 
 /**
  * チャット画面とターミナル画面間のスワイプ遷移を管理するコンテナ
+ *
+ * **重要**: このコンポーネントは ModalNavigationDrawer のサイドバー開閉ジェスチャーと共存する必要があります。
+ * - チャット画面では左端領域（DRAWER_EDGE_WIDTH）からのスワイプをサイドバー用に確保
+ * - それ以外の領域でチャット⇔ターミナルのスワイプを処理
+ *
+ * **バグ履歴**:
+ * - 2026-02-11: screenWidth判定を画面中央（screenWidth/2）に変更したことで、
+ *   左端からのサイドバースワイプがブロックされる問題が発生（commit 02b8923）
+ * - 修正: DRAWER_EDGE_WIDTH を導入し、左端領域を明示的に除外
  */
 @Composable
 fun SwipeableSidebarContainer(
@@ -34,6 +43,10 @@ fun SwipeableSidebarContainer(
     val swipeOffset = remember { Animatable(0f) }
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.toFloat()
+
+    // ModalNavigationDrawerのサイドバー開閉ジェスチャー用の左端領域（dp単位）
+    // この領域からのスワイプはModalNavigationDrawerに処理を委譲する
+    val drawerEdgeWidth = 50f
 
     Box(
         modifier =
@@ -51,9 +64,11 @@ fun SwipeableSidebarContainer(
                         val down = awaitFirstDown()
                         val startX = down.position.x
 
+                        // CRITICAL: 左端領域（drawerEdgeWidth）を除外してサイドバージェスチャーを優先
+                        // この条件を変更する場合、ModalNavigationDrawerのサイドバー開閉が妨げられないか必ず確認すること
                         val shouldProcessSwipe =
                             when (activeView) {
-                                SidebarView.Chat -> startX > screenWidth / 2
+                                SidebarView.Chat -> startX > drawerEdgeWidth
                                 SidebarView.Terminal -> true
                                 else -> false
                             }
