@@ -32,6 +32,22 @@ import dev.egograph.shared.core.ui.components.EmptyView
 import dev.egograph.shared.core.ui.components.ErrorView
 import dev.egograph.shared.core.ui.components.LoadingView
 
+/**
+ * スレッド一覧コンポーネント
+ *
+ * チャットスレッドの一覧を表示する。Pull-to-refreshと無限スクロールをサポート。
+ *
+ * @param threads スレッド一覧
+ * @param selectedThreadId 選択中のスレッドID
+ * @param isLoading 読み込み中フラグ
+ * @param isLoadingMore 追加読み込み中フラグ
+ * @param hasMore さらに項目があるかどうか
+ * @param error エラーメッセージ
+ * @param onThreadClick スレッド選択コールバック
+ * @param onRefresh 更新コールバック
+ * @param onLoadMore 追加読み込みコールバック
+ * @param modifier Modifier
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThreadList(

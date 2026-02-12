@@ -1,5 +1,8 @@
 package dev.egograph.shared.core.platform
 
+/**
+ * Platform preferences (expect class)
+ */
 expect class PlatformPreferences {
     fun getString(
         key: String,

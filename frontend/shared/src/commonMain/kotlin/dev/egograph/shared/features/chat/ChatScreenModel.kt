@@ -18,6 +18,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * チャット画面のViewModel
+ *
+ * メッセージ送受信、スレッド管理、モデル選択などのビジネスロジックを担当する。
+ */
 class ChatScreenModel(
     private val threadRepository: ThreadRepository,
     private val messageRepository: MessageRepository,

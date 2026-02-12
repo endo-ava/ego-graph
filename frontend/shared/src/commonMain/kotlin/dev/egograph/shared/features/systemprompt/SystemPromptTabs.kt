@@ -11,6 +11,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import dev.egograph.shared.core.domain.model.SystemPromptName
 
+/**
+ * システムプロンプト選択タブ
+ *
+ * @param selectedTab 選択中のタブ
+ * @param onTabSelected タブ選択コールバック
+ * @param modifier Modifier
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SystemPromptTabs(

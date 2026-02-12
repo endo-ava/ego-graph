@@ -25,6 +25,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.ui.common.testTagResourceId
 
+/**
+ * サイドバーのヘッダーコンポーネント
+ *
+ * 新しいチャット、設定、ターミナルへのボタンを含むヘッダー。
+ *
+ * @param onNewChatClick 新規チャットボタンクリックコールバック
+ * @param onSettingsClick 設定ボタンクリックコールバック
+ * @param onTerminalClick ターミナルボタンクリックコールバック
+ */
 @Composable
 fun SidebarHeader(
     onNewChatClick: () -> Unit,

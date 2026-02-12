@@ -38,6 +38,9 @@ import dev.egograph.shared.features.terminal.components.GatewaySettingsScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
+/**
+ * メインのViewを表す列挙型
+ */
 enum class MainView {
     Chat,
     SystemPrompt,
@@ -46,6 +49,11 @@ enum class MainView {
     GatewaySettings,
 }
 
+/**
+ * サイドバー画面
+ *
+ * ナビゲーションドロワーと画面コンテンツを管理するメイン画面。
+ */
 class SidebarScreen : Screen {
     @Composable
     override fun Content() {

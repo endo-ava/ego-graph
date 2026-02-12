@@ -19,6 +19,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.domain.model.Thread
 
+/**
+ * スレッドリストアイテムコンポーネント
+ *
+ * @param thread スレッド情報
+ * @param isActive アクティブフラグ
+ * @param onClick クリックコールバック
+ * @param modifier Modifier
+ */
 @Composable
 fun ThreadItem(
     thread: Thread,

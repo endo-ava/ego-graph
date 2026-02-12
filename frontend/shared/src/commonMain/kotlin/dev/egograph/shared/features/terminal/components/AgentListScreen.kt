@@ -11,6 +11,14 @@ import cafe.adriel.voyager.core.screen.uniqueScreenKey
 import cafe.adriel.voyager.koin.koinScreenModel
 import dev.egograph.shared.features.terminal.components.SessionList
 
+/**
+ * エージェント（セッション）一覧画面
+ *
+ * Gatewayに接続されたターミナルセッション一覧を表示する。
+ *
+ * @param onSessionSelected セッション選択コールバック
+ * @param onOpenGatewaySettings Gateway設定を開くコールバック
+ */
 class AgentListScreen(
     private val onSessionSelected: (String) -> Unit = {},
     private val onOpenGatewaySettings: () -> Unit = {},

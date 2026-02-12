@@ -53,6 +53,14 @@ import dev.egograph.shared.core.settings.ThemeRepository
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
+/**
+ * 設定画面
+ *
+ * テーマ選択、API URL、API Keyの設定を行う。
+ *
+ * @param preferences プラットフォーム設定
+ * @param onBack 戻るボタンコールバック
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(

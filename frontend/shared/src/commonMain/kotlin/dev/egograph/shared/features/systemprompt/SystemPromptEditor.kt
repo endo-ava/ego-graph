@@ -10,6 +10,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 
+/**
+ * システムプロンプトエディタコンポーネント
+ *
+ * @param content 編集する内容
+ * @param onContentChange 内容変更コールバック
+ * @param enabled 有効フラグ
+ * @param modifier Modifier
+ */
 @Composable
 fun SystemPromptEditor(
     content: String,

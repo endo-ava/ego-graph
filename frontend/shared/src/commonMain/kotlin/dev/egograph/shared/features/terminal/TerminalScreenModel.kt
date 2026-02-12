@@ -12,6 +12,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * ターミナル画面のViewModel
+ *
+ * セッション一覧管理、画面遷移などのビジネスロジックを担当する。
+ */
 class TerminalScreenModel(
     private val terminalRepository: TerminalRepository,
 ) : ScreenModel {

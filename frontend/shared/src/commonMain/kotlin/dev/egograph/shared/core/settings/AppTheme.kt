@@ -1,5 +1,8 @@
 package dev.egograph.shared.core.settings
 
+/**
+ * アプリテーマ
+ */
 enum class AppTheme(
     val displayName: String,
 ) {
@@ -8,6 +11,9 @@ enum class AppTheme(
     SYSTEM("System"),
 }
 
+/**
+ * StringをAppThemeに変換する
+ */
 fun String.toAppTheme(): AppTheme =
     when (this.lowercase()) {
         "dark" -> AppTheme.DARK

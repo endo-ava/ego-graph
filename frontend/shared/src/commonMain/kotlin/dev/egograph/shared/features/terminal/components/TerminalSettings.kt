@@ -9,12 +9,26 @@ import dev.egograph.shared.core.platform.getDefaultGatewayBaseUrl
 import dev.egograph.shared.core.platform.normalizeBaseUrl
 import io.ktor.http.encodeURLParameter
 
+/**
+ * ターミナル設定データ
+ *
+ * @property wsUrl WebSocket URL
+ * @property apiKey APIキー
+ * @property error エラーメッセージ
+ */
 data class TerminalSettings(
     val wsUrl: String?,
     val apiKey: String?,
     val error: String?,
 )
 
+/**
+ * ターミナル設定を生成する
+ *
+ * @param agentId エージェントID
+ * @param preferences プラットフォーム設定
+ * @return ターミナル設定
+ */
 @Composable
 fun rememberTerminalSettings(
     agentId: String,

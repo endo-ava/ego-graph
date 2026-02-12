@@ -9,6 +9,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import dev.egograph.shared.features.sidebar.MainView
 
+/**
+ * スワイプジェスチャーでViewを切り替えるコンテナ
+ *
+ * @param activeView 現在のアクティブなView
+ * @param onSwipeToSidebar スワイプでサイドバーへ移動するコールバック
+ * @param onSwipeToTerminal スワイプでターミナルへ移動するコールバック
+ * @param onSwipeToChat スワイプでチャットへ移動するコールバック
+ * @param content 表示するコンテンツ
+ */
 @Composable
 fun SwipeNavigationContainer(
     activeView: MainView,

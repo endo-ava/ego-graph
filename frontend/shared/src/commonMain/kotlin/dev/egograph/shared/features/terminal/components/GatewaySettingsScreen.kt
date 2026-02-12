@@ -45,6 +45,13 @@ import dev.egograph.shared.core.platform.normalizeBaseUrl
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
+/**
+ * Gateway設定画面
+ *
+ * Gateway APIのURLとAPIキーを設定する画面。
+ *
+ * @param onBack 戻るボタンコールバック
+ */
 class GatewaySettingsScreen(
     private val onBack: () -> Unit = {},
 ) : Screen {

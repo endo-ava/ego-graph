@@ -38,6 +38,16 @@ import dev.egograph.shared.core.ui.components.AssistantContentBlock
 import dev.egograph.shared.core.ui.components.MermaidDiagram
 import dev.egograph.shared.core.ui.components.splitAssistantContent
 
+/**
+ * チャットメッセージコンポーネント
+ *
+ * ユーザーメッセージとアシスタントメッセージを表示する。
+ *
+ * @param message メッセージ
+ * @param modifier Modifier
+ * @param isStreaming ストリーミング中フラグ
+ * @param activeAssistantTask アクティブなアシスタントタスク
+ */
 @Composable
 fun ChatMessage(
     message: ThreadMessage,

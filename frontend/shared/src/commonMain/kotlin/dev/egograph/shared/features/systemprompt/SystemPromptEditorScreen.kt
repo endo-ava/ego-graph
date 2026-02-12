@@ -32,6 +32,13 @@ import dev.egograph.shared.core.domain.repository.SystemPromptRepository
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
+/**
+ * システムプロンプトエディタ画面
+ *
+ * ユーザー定義のシステムプロンプトを編集する画面。
+ *
+ * @param onBack 戻るボタンコールバック
+ */
 class SystemPromptEditorScreen(
     private val onBack: () -> Unit = {},
 ) : Screen {

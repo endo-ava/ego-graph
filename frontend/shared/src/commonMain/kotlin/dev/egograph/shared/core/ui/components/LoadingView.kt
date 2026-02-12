@@ -11,6 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+/**
+ * ローディング表示コンポーネント
+ *
+ * @param modifier Modifier
+ * @param message ローディングメッセージ
+ * @param height 表示領域の高さ
+ */
 @Composable
 fun LoadingView(
     modifier: Modifier = Modifier,

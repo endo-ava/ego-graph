@@ -27,6 +27,18 @@ import dev.egograph.shared.core.domain.model.ThreadMessage
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 
+/**
+ * メッセージ一覧コンポーネント
+ *
+ * チャットのメッセージリストを表示する。スクロール時にキーボードを非表示にする。
+ *
+ * @param messages メッセージ一覧
+ * @param modifier Modifier
+ * @param isLoading 読み込み中フラグ
+ * @param errorMessage エラーメッセージ
+ * @param streamingMessageId ストリーミング中のメッセージID
+ * @param activeAssistantTask アクティブなアシスタントタスク
+ */
 @Composable
 fun MessageList(
     messages: List<ThreadMessage>,
@@ -111,6 +123,11 @@ fun MessageList(
     }
 }
 
+/**
+ * メッセージ一覧が空の場合の表示
+ *
+ * @param modifier Modifier
+ */
 @Composable
 fun MessageListEmpty(modifier: Modifier = Modifier) {
     Box(

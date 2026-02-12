@@ -8,14 +8,15 @@ EgoGraph エージェントと対話するための ChatGPT ライクなイン�
 React + Capacitor から Kotlin Multiplatform に移行し、ネイティブ Android 体験を提供します。
 
 - **Native Android**: Compose Multiplatform によるネイティブ UI
-- **MVIKotlin**: 予測可能な状態管理
+- **MVVM**: 状態管理
 - **SSE Streaming**: リアルタイムチャット応答
 - **Offline First**: ローカルストレージとキャッシング
 
 ## アーキテクチャ
 
-- **Framework**: Kotlin Multiplatform 2.3.0 + Compose Multiplatform 1.10.0
-- **State Management**: MVIKotlin 4.2.0
+- **Framework**: Kotlin 2.3 + Compose Multiplatform
+- **Architecture**: MVVM
+- **State Management**: StateFlow + Channel ( Kotlin Coroutines )
 - **Navigation**: Voyager
 - **HTTP Client**: Ktor 3.4.0
 - **DI**: Koin 4.0.0
@@ -27,14 +28,50 @@ React + Capacitor から Kotlin Multiplatform に移行し、ネイティブ And
 frontend/
 ├── shared/                 # Kotlin Multiplatform モジュール
 │   ├── src/commonMain/     # プラットフォーム共通コード
-│   │   ├── domain/         # DTOs, Repository インターフェース
-│   │   ├── mvi/            # MVIKotlin Stores, Executors, Reducers
-│   │   └── ui/             # Compose UI コンポーネント
+│   │   ├── core/           # コア機能（domain, platform, settings, ui, network）
+│   │   │   ├── domain/         # DTOs, Repository インターフェース
+│   │   │   │   ├── model/       # データモデル
+│   │   │   │   └── repository/  # Repository インターフェース
+│   │   │   ├── platform/        # プラットフォーム抽象化
+│   │   │   ├── settings/        # テーマ設定
+│   │   │   ├── ui/              # 共通UIコンポーネント
+│   │   │   └── network/         # HTTPクライアント
+│   │   ├── features/       # 機能モジュール（MVVM）
+│   │   │   ├── chat/            # チャット機能
+│   │   │   │   ├── ChatScreen.kt
+│   │   │   │   ├── ChatScreenModel.kt
+│   │   │   │   ├── ChatState.kt
+│   │   │   │   ├── ChatEffect.kt
+│   │   │   │   └── components/  # チャット専用コンポーネント
+│   │   │   ├── terminal/        # ターミナル機能
+│   │   │   ├── settings/        # 設定画面
+│   │   │   ├── sidebar/         # サイドバー
+│   │   │   ├── systemprompt/    # システムプロンプト編集
+│   │   │   └── navigation/      # ナビゲーション
+│   │   └── di/             # 依存性注入モジュール
 │   ├── src/androidMain/    # Android 固有実装
 │   └── src/commonTest/     # 共通テスト
 └── androidApp/             # Android アプリエントリポイント
     └── src/main/           # AndroidManifest, MainActivity
 ```
+
+### アーキテクチャ
+
+本プロジェクトは **MVVM + MVIKotlin** アーキテクチャを採用しています。
+
+#### 画面構成（Screen + ScreenModel + State + Effect）
+
+| レイヤー        | 役割                       | ファイル例           |
+| --------------- | -------------------------- | -------------------- |
+| **Screen**      | Compose UI 表示            | `ChatScreen.kt`      |
+| **ScreenModel** | ビジネスロジック・状態更新 | `ChatScreenModel.kt` |
+| **State**       | UI状態（データクラス）     | `ChatState.kt`       |
+| **Effect**      | One-shotイベント           | `ChatEffect.kt`      |
+
+#### シンプルな画面
+
+設定画面など状態遷移が単純な画面はScreenのみとし、State/Effectを省略しています。
+これはIntentionalな設計判断です。
 
 ## ビルド要件
 

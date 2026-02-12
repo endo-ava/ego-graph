@@ -10,6 +10,12 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import dev.egograph.shared.features.sidebar.MainView
 
+/**
+ * メインView間の遷移アニメーション
+ *
+ * @param activeView 現在のアクティブなView
+ * @param content 表示するコンテンツ
+ */
 @Composable
 fun MainViewTransition(
     activeView: MainView,

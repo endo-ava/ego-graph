@@ -25,6 +25,11 @@ import dev.egograph.shared.features.chat.components.ChatInput
 import dev.egograph.shared.features.chat.components.MessageList
 import org.koin.compose.koinInject
 
+/**
+ * チャット画面
+ *
+ * メッセージ一覧表示、入力、ストリーミング応答を処理するメイン画面。
+ */
 class ChatScreen : Screen {
     @Composable
     override fun Content() {

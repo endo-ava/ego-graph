@@ -10,6 +10,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+/**
+ * エラー表示コンポーネント
+ *
+ * @param message エラーメッセージ
+ * @param modifier Modifier
+ */
 @Composable
 fun ErrorView(
     message: String,

@@ -31,6 +31,14 @@ import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.domain.model.terminal.Session
 import dev.egograph.shared.core.domain.model.terminal.SessionStatus
 
+/**
+ * セッションリストアイテムコンポーネント
+ *
+ * @param session セッション情報
+ * @param isActive アクティブフラグ
+ * @param onClick クリックコールバック
+ * @param modifier Modifier
+ */
 @Composable
 fun SessionListItem(
     session: Session,

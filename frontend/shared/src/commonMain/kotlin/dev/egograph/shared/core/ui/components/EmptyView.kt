@@ -10,6 +10,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+/**
+ * 空状態表示コンポーネント
+ *
+ * @param modifier Modifier
+ * @param message 表示メッセージ
+ */
 @Composable
 fun EmptyView(
     modifier: Modifier = Modifier,

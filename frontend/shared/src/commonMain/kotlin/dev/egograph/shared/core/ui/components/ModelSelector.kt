@@ -28,6 +28,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.domain.model.LLMModel
 
+/**
+ * モデル選択コンポーネント
+ *
+ * ドロップダウンでLLMモデルを選択する。
+ *
+ * @param models モデル一覧
+ * @param selectedModelId 選択中のモデルID
+ * @param isLoading 読み込み中フラグ
+ * @param error エラーメッセージ
+ * @param onModelSelected モデル選択コールバック
+ * @param modifier Modifier
+ */
 @Composable
 fun ModelSelector(
     models: List<LLMModel>,

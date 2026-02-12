@@ -6,16 +6,28 @@ private val mermaidFenceRegex =
         option = RegexOption.IGNORE_CASE,
     )
 
+/**
+ * Assistant content block types
+ */
 internal sealed interface AssistantContentBlock {
+    /**
+     * Markdown content
+     */
     data class Markdown(
         val content: String,
     ) : AssistantContentBlock
 
+    /**
+     * Mermaid diagram
+     */
     data class Mermaid(
         val code: String,
     ) : AssistantContentBlock
 }
 
+/**
+ * Split assistant content into blocks
+ */
 internal fun splitAssistantContent(content: String): List<AssistantContentBlock> {
     val matches = mermaidFenceRegex.findAll(content).toList()
     if (matches.isEmpty()) {

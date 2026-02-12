@@ -7,6 +7,11 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import dev.egograph.shared.features.chat.components.ThreadList
 
+/**
+ * スレッド一覧画面
+ *
+ * チャットスレッドの一覧を表示する画面。
+ */
 class ThreadListScreen : Screen {
     @Composable
     override fun Content() {

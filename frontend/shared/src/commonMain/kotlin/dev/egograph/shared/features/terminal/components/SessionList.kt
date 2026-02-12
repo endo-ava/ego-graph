@@ -30,6 +30,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.domain.model.terminal.Session
 
+/**
+ * ターミナルセッション一覧コンポーネント
+ *
+ * @param sessions セッション一覧
+ * @param selectedSessionId 選択中のセッションID
+ * @param isLoading 読み込み中フラグ
+ * @param error エラーメッセージ
+ * @param onSessionClick セッション選択コールバック
+ * @param onRefresh 更新コールバック
+ * @param onOpenGatewaySettings Gateway設定を開くコールバック
+ * @param modifier Modifier
+ */
 @Composable
 fun SessionList(
     sessions: List<Session>,

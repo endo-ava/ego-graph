@@ -20,6 +20,17 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
+/**
+ * ターミナル画面のヘッダー
+ *
+ * エージェントID、接続状態、閉じるボタン、音声入力を含む。
+ *
+ * @param agentId エージェントID
+ * @param isLoading 接続中フラグ
+ * @param error エラーメッセージ（nullの場合は正常）
+ * @param onClose 閉じるボタンコールバック
+ * @param onVoiceInputToggle 音声入力切替コールバック
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TerminalHeader(

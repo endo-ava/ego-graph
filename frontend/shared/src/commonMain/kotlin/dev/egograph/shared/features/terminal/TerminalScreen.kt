@@ -36,6 +36,13 @@ import dev.egograph.shared.features.terminal.components.rememberTerminalSettings
 import dev.egograph.shared.features.terminal.components.rememberTerminalWebView
 import org.koin.compose.koinInject
 
+/**
+ * ターミナル画面
+ *
+ * WebSocket経由でGatewayに接続し、ターミナルエミュレーションを表示する画面。
+ *
+ * @property agentId エージェントID
+ */
 class TerminalScreen(
     private val agentId: String,
 ) : Screen {

@@ -15,6 +15,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+/**
+ * ターミナル用特殊キーバ튼リスト
+ *
+ * Ctrl+C, Esc, 矢印キーなどの特殊キーを送信するボタン群。
+ *
+ * @param onKeyPress キー送信コールバック
+ * @param modifier Modifier
+ */
 @Composable
 fun SpecialKeysBar(
     onKeyPress: (String) -> Unit,
