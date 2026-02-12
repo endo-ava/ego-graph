@@ -4,6 +4,7 @@ import dev.egograph.shared.core.data.repository.MessageRepositoryImpl
 import dev.egograph.shared.core.domain.model.MessageRole
 import dev.egograph.shared.core.domain.model.ThreadMessage
 import dev.egograph.shared.core.domain.model.ThreadMessagesResponse
+import dev.egograph.shared.core.domain.repository.ApiError
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond

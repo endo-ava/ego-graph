@@ -1,5 +1,7 @@
 package dev.egograph.shared.dto.terminal
 
+import dev.egograph.shared.core.domain.model.terminal.Session
+import dev.egograph.shared.core.domain.model.terminal.SessionStatus
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json

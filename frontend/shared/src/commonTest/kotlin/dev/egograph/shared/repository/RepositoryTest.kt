@@ -1,5 +1,6 @@
 package dev.egograph.shared.repository
 
+import dev.egograph.shared.core.domain.repository.ApiError
 import dev.egograph.shared.dto.ChatRequest
 import dev.egograph.shared.dto.ChatResponse
 import dev.egograph.shared.dto.MessageRole

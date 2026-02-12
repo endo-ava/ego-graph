@@ -9,6 +9,7 @@ import dev.egograph.shared.core.domain.model.MessageRole
 import dev.egograph.shared.core.domain.model.ModelsResponse
 import dev.egograph.shared.core.domain.model.StreamChunk
 import dev.egograph.shared.core.domain.model.StreamChunkType
+import dev.egograph.shared.core.domain.repository.ApiError
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond

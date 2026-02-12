@@ -1,5 +1,6 @@
 package dev.egograph.shared.repository
 
+import dev.egograph.shared.core.domain.repository.ApiError
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest

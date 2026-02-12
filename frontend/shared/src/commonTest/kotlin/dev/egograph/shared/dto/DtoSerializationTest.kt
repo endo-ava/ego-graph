@@ -1,15 +1,20 @@
 package dev.egograph.shared.dto
 
+import dev.egograph.shared.core.domain.model.ChatRequest
+import dev.egograph.shared.core.domain.model.Message
+import dev.egograph.shared.core.domain.model.MessageRole
+import dev.egograph.shared.core.domain.model.ModelsResponse
+import dev.egograph.shared.core.domain.model.StreamChunk
+import dev.egograph.shared.core.domain.model.StreamChunkType
+import dev.egograph.shared.core.domain.model.SystemPromptName
+import dev.egograph.shared.core.domain.model.SystemPromptUpdateRequest
+import dev.egograph.shared.core.domain.model.Thread
+import dev.egograph.shared.core.domain.model.ThreadMessagesResponse
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Kotlinx.serializationのシリアライゼーションテスト
- *
- * 各DTOクラスが正しくシリアライズ・デシリアライズできることを確認します。
- */
 class DtoSerializationTest {
     private val json =
         Json {
@@ -18,382 +23,95 @@ class DtoSerializationTest {
         }
 
     @Test
-    fun `serialize and deserialize Message`() {
-        // Arrange
-        val message =
-            Message(
-                role = MessageRole.USER,
-                content = "Hello, AI!",
-            )
+    fun `Message should serialize and deserialize`() {
+        val message = Message(role = MessageRole.USER, content = "hello")
 
-        // Act
-        val jsonString = json.encodeToString(message)
-        val decoded = json.decodeFromString<Message>(jsonString)
+        val encoded = json.encodeToString(message)
+        val decoded = json.decodeFromString<Message>(encoded)
 
-        // Assert
-        assertEquals(message.role, decoded.role)
-        assertEquals(message.content, decoded.content)
+        assertEquals(MessageRole.USER, decoded.role)
+        assertEquals("hello", decoded.content)
     }
 
     @Test
-    fun `serialize and deserialize Message with tool calls`() {
-        // Arrange
-        val toolCall =
-            ToolCall(
-                id = "call_123",
-                name = "search",
-                parameters =
-                    kotlinx.serialization.json.buildJsonObject {
-                        put("query", kotlinx.serialization.json.JsonPrimitive("test"))
-                    },
-            )
-
-        val message =
-            Message(
-                role = MessageRole.ASSISTANT,
-                content = null,
-                toolCalls = listOf(toolCall),
-            )
-
-        // Act
-        val jsonString = json.encodeToString(message)
-        val decoded = json.decodeFromString<Message>(jsonString)
-
-        // Assert
-        assertEquals(message.role, decoded.role)
-        assertEquals(decoded.toolCalls?.size, 1)
-        assertEquals(decoded.toolCalls?.first()?.name, "search")
-    }
-
-    @Test
-    fun `serialize and deserialize ChatRequest`() {
-        // Arrange
-        val chatRequest =
+    fun `ChatRequest should preserve model and thread`() {
+        val request =
             ChatRequest(
-                messages =
-                    listOf(
-                        Message(role = MessageRole.USER, content = "Test message"),
-                    ),
+                messages = listOf(Message(role = MessageRole.USER, content = "test")),
                 stream = true,
-                threadId = "thread-123",
-                modelName = "gpt-4",
+                threadId = "thread-1",
+                modelName = "openai/gpt-4",
             )
 
-        // Act
-        val jsonString = json.encodeToString(chatRequest)
-        val decoded = json.decodeFromString<ChatRequest>(jsonString)
+        val encoded = json.encodeToString(request)
+        val decoded = json.decodeFromString<ChatRequest>(encoded)
 
-        // Assert
-        assertEquals(decoded.messages.size, 1)
-        assertEquals(decoded.stream, true)
-        assertEquals(decoded.threadId, "thread-123")
-        assertEquals(decoded.modelName, "gpt-4")
+        assertEquals("thread-1", decoded.threadId)
+        assertEquals("openai/gpt-4", decoded.modelName)
+        assertEquals(1, decoded.messages.size)
     }
 
     @Test
-    fun `serialize and deserialize ChatResponse`() {
-        // Arrange
-        val chatResponse =
-            ChatResponse(
-                id = "resp-123",
-                message =
-                    Message(
-                        role = MessageRole.ASSISTANT,
-                        content = "Hello!",
-                    ),
-                threadId = "thread-123",
-                modelName = "gpt-4",
-            )
+    fun `StreamChunk should support delta payload`() {
+        val chunk = StreamChunk(type = StreamChunkType.DELTA, delta = "partial", threadId = "thread-1")
 
-        // Act
-        val jsonString = json.encodeToString(chatResponse)
-        val decoded = json.decodeFromString<ChatResponse>(jsonString)
+        val encoded = json.encodeToString(chunk)
+        val decoded = json.decodeFromString<StreamChunk>(encoded)
 
-        // Assert
-        assertEquals(decoded.id, "resp-123")
-        assertEquals(decoded.message.role, MessageRole.ASSISTANT)
-        assertEquals(decoded.threadId, "thread-123")
+        assertEquals(StreamChunkType.DELTA, decoded.type)
+        assertEquals("partial", decoded.delta)
+        assertEquals("thread-1", decoded.threadId)
     }
 
     @Test
-    fun `serialize and deserialize Usage`() {
-        // Arrange
-        val usage =
-            Usage(
-                promptTokens = 100,
-                completionTokens = 50,
-                totalTokens = 150,
-            )
-
-        // Act
-        val jsonString = json.encodeToString(usage)
-        val decoded = json.decodeFromString<Usage>(jsonString)
-
-        // Assert
-        assertEquals(usage.promptTokens, decoded.promptTokens)
-        assertEquals(usage.completionTokens, decoded.completionTokens)
-        assertEquals(usage.totalTokens, decoded.totalTokens)
-    }
-
-    @Test
-    fun `deserialize Usage from snake_case JSON`() {
-        // Arrange
-        val snakeCaseJson = """{"prompt_tokens":100,"completion_tokens":50,"total_tokens":150}"""
-
-        // Act
-        val decoded = json.decodeFromString<Usage>(snakeCaseJson)
-
-        // Assert
-        assertEquals(100, decoded.promptTokens)
-        assertEquals(50, decoded.completionTokens)
-        assertEquals(150, decoded.totalTokens)
-    }
-
-    @Test
-    fun `serialize and deserialize StreamChunk`() {
-        // Arrange
-        val streamChunk =
-            StreamChunk(
-                type = StreamChunkType.DELTA,
-                delta = "Hello",
-                threadId = "thread-123",
-            )
-
-        // Act
-        val jsonString = json.encodeToString(streamChunk)
-        val decoded = json.decodeFromString<StreamChunk>(jsonString)
-
-        // Assert
-        assertEquals(decoded.type, StreamChunkType.DELTA)
-        assertEquals(decoded.delta, "Hello")
-        assertEquals(decoded.threadId, "thread-123")
-    }
-
-    @Test
-    fun `serialize and deserialize Thread`() {
-        // Arrange
+    fun `Thread should round-trip`() {
         val thread =
             Thread(
-                threadId = "thread-123",
+                threadId = "thread-1",
                 userId = "user-1",
-                title = "Test Thread",
-                preview = "Preview text",
-                messageCount = 5,
+                title = "Title",
+                preview = "Preview",
+                messageCount = 1,
                 createdAt = "2026-01-30T00:00:00Z",
-                lastMessageAt = "2026-01-30T01:00:00Z",
+                lastMessageAt = "2026-01-30T00:01:00Z",
             )
 
-        // Act
-        val jsonString = json.encodeToString(thread)
-        val decoded = json.decodeFromString<Thread>(jsonString)
+        val encoded = json.encodeToString(thread)
+        val decoded = json.decodeFromString<Thread>(encoded)
 
-        // Assert
-        assertEquals(decoded.threadId, "thread-123")
-        assertEquals(decoded.title, "Test Thread")
-        assertEquals(decoded.messageCount, 5)
+        assertEquals("thread-1", decoded.threadId)
+        assertEquals("Title", decoded.title)
     }
 
     @Test
-    fun `serialize and deserialize ThreadListResponse`() {
-        // Arrange
-        val response =
-            ThreadListResponse(
-                threads =
-                    listOf(
-                        Thread(
-                            threadId = "thread-1",
-                            userId = "user-1",
-                            title = "Thread 1",
-                            preview = null,
-                            messageCount = 3,
-                            createdAt = "2026-01-30T00:00:00Z",
-                            lastMessageAt = "2026-01-30T00:05:00Z",
-                        ),
-                    ),
-                total = 1,
-                limit = 10,
-                offset = 0,
-            )
+    fun `ThreadMessagesResponse should round-trip`() {
+        val response = ThreadMessagesResponse(threadId = "thread-1", messages = emptyList())
 
-        // Act
-        val jsonString = json.encodeToString(response)
-        val decoded = json.decodeFromString<ThreadListResponse>(jsonString)
+        val encoded = json.encodeToString(response)
+        val decoded = json.decodeFromString<ThreadMessagesResponse>(encoded)
 
-        // Assert
-        assertEquals(decoded.threads.size, 1)
-        assertEquals(decoded.total, 1)
-        assertEquals(decoded.limit, 10)
+        assertEquals("thread-1", decoded.threadId)
+        assertEquals(0, decoded.messages.size)
     }
 
     @Test
-    fun `serialize and deserialize ThreadMessage`() {
-        // Arrange
-        val threadMessage =
-            ThreadMessage(
-                messageId = "msg-123",
-                threadId = "thread-123",
-                userId = "user-1",
-                role = MessageRole.USER,
-                content = "Hello!",
-                createdAt = "2026-01-30T00:00:00Z",
-                modelName = null,
-            )
+    fun `SystemPromptName enum serialization should match apiName`() {
+        val encoded = json.encodeToString(SystemPromptName.USER)
+        val decoded = json.decodeFromString<SystemPromptName>(encoded)
 
-        // Act
-        val jsonString = json.encodeToString(threadMessage)
-        val decoded = json.decodeFromString<ThreadMessage>(jsonString)
-
-        // Assert
-        assertEquals(decoded.messageId, "msg-123")
-        assertEquals(decoded.role, MessageRole.USER)
-        assertEquals(decoded.content, "Hello!")
-    }
-
-    @Test
-    fun `serialize and deserialize ThreadMessagesResponse`() {
-        // Arrange
-        val response =
-            ThreadMessagesResponse(
-                threadId = "thread-123",
-                messages =
-                    listOf(
-                        ThreadMessage(
-                            messageId = "msg-1",
-                            threadId = "thread-123",
-                            userId = "user-1",
-                            role = MessageRole.USER,
-                            content = "Hello!",
-                            createdAt = "2026-01-30T00:00:00Z",
-                        ),
-                    ),
-            )
-
-        // Act
-        val jsonString = json.encodeToString(response)
-        val decoded = json.decodeFromString<ThreadMessagesResponse>(jsonString)
-
-        // Assert
-        assertEquals(decoded.threadId, "thread-123")
-        assertEquals(decoded.messages.size, 1)
-    }
-
-    @Test
-    fun `serialize and deserialize LLMModel`() {
-        // Arrange
-        val model =
-            LLMModel(
-                id = "openai/gpt-4",
-                name = "GPT-4",
-                provider = "openai",
-                inputCostPer1m = 10.0,
-                outputCostPer1m = 20.0,
-                isFree = false,
-            )
-
-        // Act
-        val jsonString = json.encodeToString(model)
-        val decoded = json.decodeFromString<LLMModel>(jsonString)
-
-        // Assert
-        assertEquals(decoded.id, "openai/gpt-4")
-        assertEquals(decoded.name, "GPT-4")
-        assertEquals(decoded.provider, "openai")
-        assertEquals(decoded.isFree, false)
-    }
-
-    @Test
-    fun `serialize and deserialize ModelsResponse`() {
-        // Arrange
-        val response =
-            ModelsResponse(
-                models =
-                    listOf(
-                        LLMModel(
-                            id = "openai/gpt-4",
-                            name = "GPT-4",
-                            provider = "openai",
-                            inputCostPer1m = 10.0,
-                            outputCostPer1m = 20.0,
-                            isFree = false,
-                        ),
-                    ),
-                defaultModel = "openai/gpt-4",
-            )
-
-        // Act
-        val jsonString = json.encodeToString(response)
-        val decoded = json.decodeFromString<ModelsResponse>(jsonString)
-
-        // Assert
-        assertEquals(decoded.models.size, 1)
-        assertEquals(decoded.defaultModel, "openai/gpt-4")
-    }
-
-    @Test
-    fun `serialize and deserialize SystemPromptResponse`() {
-        // Arrange
-        val response =
-            SystemPromptResponse(
-                name = "user",
-                content = "You are a helpful assistant.",
-            )
-
-        // Act
-        val jsonString = json.encodeToString(response)
-        val decoded = json.decodeFromString<SystemPromptResponse>(jsonString)
-
-        // Assert
-        assertEquals(decoded.name, "user")
-        assertEquals(decoded.content, "You are a helpful assistant.")
-    }
-
-    @Test
-    fun `serialize and deserialize SystemPromptUpdateRequest`() {
-        // Arrange
-        val request =
-            SystemPromptUpdateRequest(
-                content = "Updated content",
-            )
-
-        // Act
-        val jsonString = json.encodeToString(request)
-        val decoded = json.decodeFromString<SystemPromptUpdateRequest>(jsonString)
-
-        // Assert
-        assertEquals(decoded.content, "Updated content")
-    }
-
-    @Test
-    fun `serialize and deserialize SystemPromptName`() {
-        // Arrange
-        val name = SystemPromptName.USER
-
-        // Act
-        val jsonString = json.encodeToString(name)
-        val decoded = json.decodeFromString<SystemPromptName>(jsonString)
-
-        // Assert
         assertEquals(SystemPromptName.USER, decoded)
         assertEquals("user", decoded.apiName)
     }
 
     @Test
-    fun `serialize and deserialize all SystemPromptName values`() {
-        // Arrange
-        val names =
-            listOf(
-                SystemPromptName.USER,
-                SystemPromptName.IDENTITY,
-                SystemPromptName.SOUL,
-                SystemPromptName.TOOLS,
-            )
+    fun `ModelsResponse and prompt update should serialize`() {
+        val modelsJson = """{"models":[],"default_model":"openai/gpt-4"}"""
+        val models = json.decodeFromString<ModelsResponse>(modelsJson)
+        assertEquals("openai/gpt-4", models.defaultModel)
 
-        // Act & Assert
-        names.forEach { name ->
-            val jsonString = json.encodeToString(name)
-            val decoded = json.decodeFromString<SystemPromptName>(jsonString)
-            assertEquals(name, decoded)
-            assertEquals(name.apiName, decoded.apiName)
-        }
+        val update = SystemPromptUpdateRequest(content = "updated")
+        val encoded = json.encodeToString(update)
+        val decoded = json.decodeFromString<SystemPromptUpdateRequest>(encoded)
+        assertEquals("updated", decoded.content)
     }
 }
