@@ -69,7 +69,6 @@ android {
 
 dependencies {
     implementation(project(":shared"))
-}
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.material3)
     implementation(libs.voyager.navigator)
