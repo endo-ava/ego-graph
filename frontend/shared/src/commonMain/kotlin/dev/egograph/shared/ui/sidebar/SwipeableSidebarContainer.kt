@@ -51,10 +51,12 @@ fun SwipeableSidebarContainer(
                         val down = awaitFirstDown()
                         val startX = down.position.x
 
+                        // 画面左端（サイドバー領域）からのスワイプはModalNavigationDrawerに任せる
+                        val sidebarEdgeWidth = 20f
                         val shouldProcessSwipe =
                             when (activeView) {
                                 SidebarView.Chat -> startX > screenWidth / 2
-                                SidebarView.Terminal -> true
+                                SidebarView.Terminal -> startX > sidebarEdgeWidth
                                 else -> false
                             }
 

@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.platform.PlatformPreferences
 import dev.egograph.shared.store.chat.ChatStore
-import dev.egograph.shared.ui.ModelSelector
 
 /**
  * チャット入力コンポーネント
@@ -56,7 +55,7 @@ fun ChatInput(
                 isLoading = isLoading,
             )
 
-            ModelSelector(
+            ChatModelSelector(
                 store = store,
                 preferences = preferences,
                 modifier =

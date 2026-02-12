@@ -1,8 +1,5 @@
 package dev.egograph.shared.ui
 
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-
 private val mermaidFenceRegex =
     Regex(
         pattern = """```\s*mermaid\s*\n([\s\S]*?)\n```""",
@@ -57,9 +54,3 @@ internal fun splitAssistantContent(content: String): List<AssistantContentBlock>
         blocks
     }
 }
-
-@Composable
-internal expect fun MermaidDiagram(
-    mermaidCode: String,
-    modifier: Modifier = Modifier,
-)

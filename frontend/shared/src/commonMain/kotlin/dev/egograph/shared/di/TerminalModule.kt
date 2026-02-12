@@ -1,7 +1,7 @@
 package dev.egograph.shared.di
 
-import dev.egograph.shared.repository.TerminalRepository
-import dev.egograph.shared.repository.TerminalRepositoryImpl
+import dev.egograph.shared.core.data.repository.TerminalRepositoryImpl
+import dev.egograph.shared.core.domain.repository.TerminalRepository
 import dev.egograph.shared.store.terminal.TerminalStoreFactory
 import org.koin.core.qualifier.named
 import org.koin.dsl.module

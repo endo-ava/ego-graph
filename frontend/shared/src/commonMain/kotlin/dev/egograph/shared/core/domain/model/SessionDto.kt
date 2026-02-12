@@ -1,4 +1,4 @@
-package dev.egograph.shared.dto.terminal
+package dev.egograph.shared.core.domain.model.terminal
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

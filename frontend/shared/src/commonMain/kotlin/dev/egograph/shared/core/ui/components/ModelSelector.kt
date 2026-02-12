@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui
+package dev.egograph.shared.core.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -15,8 +15,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,39 +26,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.arkivanov.mvikotlin.extensions.coroutines.states
 import dev.egograph.shared.dto.LLMModel
-import dev.egograph.shared.platform.PlatformPreferences
-import dev.egograph.shared.platform.PlatformPrefsKeys
-import dev.egograph.shared.store.chat.ChatIntent
-import dev.egograph.shared.store.chat.ChatStore
-
-@Composable
-fun ModelSelector(
-    store: ChatStore,
-    preferences: PlatformPreferences,
-    modifier: Modifier = Modifier,
-) {
-    val state by store.states.collectAsState(initial = store.state)
-
-    LaunchedEffect(Unit) {
-        if (state.models.isEmpty() && !state.isLoadingModels) {
-            store.accept(ChatIntent.LoadModels)
-        }
-    }
-
-    ModelSelector(
-        models = state.models,
-        selectedModelId = state.selectedModel,
-        isLoading = state.isLoadingModels,
-        error = state.modelsError,
-        onModelSelected = { modelId ->
-            store.accept(ChatIntent.SelectModel(modelId))
-            preferences.putString(PlatformPrefsKeys.KEY_SELECTED_MODEL, modelId)
-        },
-        modifier = modifier,
-    )
-}
 
 @Composable
 fun ModelSelector(

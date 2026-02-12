@@ -26,6 +26,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.egograph.shared.core.ui.components.EmptyView
+import dev.egograph.shared.core.ui.components.ErrorView
+import dev.egograph.shared.core.ui.components.LoadingView
 import dev.egograph.shared.dto.Thread
 import dev.egograph.shared.ui.common.testTagResourceId
 
@@ -58,7 +61,7 @@ fun ThreadList(
 
     Box(modifier = modifier.fillMaxSize()) {
         if (isLoading && threads.isEmpty()) {
-            ThreadListLoading()
+            LoadingView()
         } else {
             PullToRefreshBox(
                 isRefreshing = isLoading,
@@ -95,7 +98,7 @@ private fun ThreadListContent(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
         ) {
-            ThreadListError(message = error)
+            ErrorView(message = error)
         }
     } else if (threads.isEmpty()) {
         Box(
@@ -104,7 +107,7 @@ private fun ThreadListContent(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
         ) {
-            ThreadListEmpty()
+            EmptyView(message = "No threads found")
         }
     } else {
         LazyColumn(
