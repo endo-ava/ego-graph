@@ -15,18 +15,25 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
-import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
+import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.core.settings.AppTheme
 import dev.egograph.shared.core.settings.ThemeRepository
+import dev.egograph.shared.features.terminal.components.SpecialKeysBar
 import dev.egograph.shared.features.terminal.components.TerminalHeader
+import dev.egograph.shared.features.terminal.components.TerminalView
+import dev.egograph.shared.features.terminal.components.rememberTerminalSettings
+import dev.egograph.shared.features.terminal.components.rememberTerminalWebView
 import org.koin.compose.koinInject
 
 class TerminalScreen(
@@ -37,25 +44,25 @@ class TerminalScreen(
 
     @Composable
     override fun Content() {
-        val screenModel = koinScreenModel<TerminalScreenModel>()
-        TerminalContent(
-            agentId = agentId,
-            screenModel = screenModel,
-        )
+        TerminalContent(agentId = agentId)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TerminalContent(
-    agentId: String,
-    screenModel: TerminalScreenModel,
-) {
+private fun TerminalContent(agentId: String) {
     val navigator = requireNotNull(LocalNavigator.current)
+    val webView = rememberTerminalWebView()
+    val preferences = koinInject<PlatformPreferences>()
     val themeRepository = koinInject<ThemeRepository>()
     val selectedTheme by themeRepository.theme.collectAsState()
     val systemDarkTheme = isSystemInDarkTheme()
-    val state by screenModel.state.collectAsState()
+    val connectionState by webView.connectionState.collectAsState(initial = false)
+
+    var isConnecting by remember { mutableStateOf(false) }
+    var showSpecialKeys by remember { mutableStateOf(true) }
+    var settingsError by remember { mutableStateOf<String?>(null) }
+    var terminalError by remember { mutableStateOf<String?>(null) }
 
     val darkMode =
         when (selectedTheme) {
@@ -64,18 +71,53 @@ private fun TerminalContent(
             AppTheme.SYSTEM -> systemDarkTheme
         }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            screenModel.clearSessionSelection()
+    val terminalSettings = rememberTerminalSettings(agentId = agentId, preferences = preferences)
+
+    LaunchedEffect(terminalSettings.error) {
+        settingsError = terminalSettings.error
+    }
+
+    LaunchedEffect(webView, terminalSettings.wsUrl, terminalSettings.apiKey) {
+        webView.loadTerminal()
+        webView.setTheme(darkMode)
+        webView.setRenderMode("xterm")
+        if (!terminalSettings.wsUrl.isNullOrBlank() && !terminalSettings.apiKey.isNullOrBlank()) {
+            webView.connect(terminalSettings.wsUrl, terminalSettings.apiKey)
+            isConnecting = true
         }
     }
+
+    LaunchedEffect(webView, darkMode) {
+        webView.setTheme(darkMode)
+    }
+
+    LaunchedEffect(connectionState) {
+        if (connectionState) {
+            isConnecting = false
+        }
+    }
+
+    LaunchedEffect(webView) {
+        webView.errors.collect { errorMessage ->
+            terminalError = errorMessage
+            isConnecting = false
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            webView.disconnect()
+        }
+    }
+
+    val displayError = settingsError ?: terminalError
 
     Scaffold(
         topBar = {
             TerminalHeader(
                 agentId = agentId,
-                isLoading = state.isLoadingSessions,
-                error = state.sessionsError,
+                isLoading = isConnecting,
+                error = displayError,
                 onClose = { navigator.pop() },
             )
         },
@@ -94,7 +136,7 @@ private fun TerminalContent(
                             .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.surfaceContainerLowest),
                 ) {
-                    if (state.isLoadingSessions) {
+                    if (isConnecting) {
                         LinearProgressIndicator(
                             modifier =
                                 Modifier
@@ -103,13 +145,25 @@ private fun TerminalContent(
                         )
                     }
 
-                    state.sessionsError?.let { error ->
+                    TerminalView(
+                        webView = webView,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    displayError?.let { error ->
                         Text(
                             text = error,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.align(Alignment.Center),
                         )
                     }
+                }
+
+                if (showSpecialKeys) {
+                    SpecialKeysBar(
+                        onKeyPress = { keySequence -> webView.sendKey(keySequence) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }
