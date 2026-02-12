@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui.sidebar
+package dev.egograph.shared.features.sidebar
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring

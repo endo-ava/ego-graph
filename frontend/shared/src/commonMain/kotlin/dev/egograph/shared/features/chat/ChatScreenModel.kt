@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ChatScreenModel(
@@ -134,7 +135,8 @@ class ChatScreenModel(
                     _state.update {
                         it.copy(
                             models = response.models,
-                            selectedModel = response.defaultModelId ?: response.models.firstOrNull()?.id,
+                            selectedModel =
+                                response.defaultModel.takeIf { model -> model.isNotBlank() } ?: response.models.firstOrNull()?.id,
                             isLoadingModels = false,
                         )
                     }
@@ -168,7 +170,7 @@ class ChatScreenModel(
                         currentState.messages.map {
                             Message(role = it.role, content = it.content)
                         } + Message(role = MessageRole.USER, content = content),
-                    model = currentState.selectedModel,
+                    modelName = currentState.selectedModel,
                 )
 
             chatRepository
@@ -178,7 +180,7 @@ class ChatScreenModel(
                         .onSuccess { chunk ->
                             // Handle streaming chunks
                             when (chunk.type) {
-                                StreamChunkType.CONTENT -> {
+                                StreamChunkType.DELTA -> {
                                     // Update streaming message content
                                 }
                                 StreamChunkType.TOOL_CALL -> {

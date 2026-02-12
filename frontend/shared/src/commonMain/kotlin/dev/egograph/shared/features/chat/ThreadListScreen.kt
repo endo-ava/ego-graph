@@ -1,11 +1,11 @@
-package dev.egograph.shared.ui
+package dev.egograph.shared.features.chat
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
-import dev.egograph.shared.features.chat.ChatScreenModel
+import dev.egograph.shared.features.chat.components.ThreadList
 
 class ThreadListScreen : Screen {
     @Composable
@@ -22,7 +22,7 @@ class ThreadListScreen : Screen {
 
 @Composable
 private fun ThreadListScreenContent(
-    state: dev.egograph.shared.features.chat.ChatState,
+    state: ChatState,
     screenModel: ChatScreenModel,
 ) {
     ThreadList(

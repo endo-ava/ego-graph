@@ -10,10 +10,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import cafe.adriel.voyager.navigator.CurrentScreen
 import cafe.adriel.voyager.navigator.Navigator
+import dev.egograph.shared.features.sidebar.SidebarScreen
 import dev.egograph.shared.platform.terminal.ActivityRecorder
 import dev.egograph.shared.settings.AppTheme
 import dev.egograph.shared.settings.ThemeRepository
-import dev.egograph.shared.ui.sidebar.SidebarScreen
 import dev.egograph.shared.ui.theme.EgoGraphTheme
 import org.koin.compose.KoinContext
 import org.koin.compose.koinInject

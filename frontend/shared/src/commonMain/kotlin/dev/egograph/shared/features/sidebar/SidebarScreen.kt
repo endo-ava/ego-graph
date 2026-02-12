@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui.sidebar
+package dev.egograph.shared.features.sidebar
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -24,13 +24,16 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
-import dev.egograph.shared.ui.ChatScreen
-import dev.egograph.shared.ui.ThreadList
-import dev.egograph.shared.ui.settings.SettingsScreen
-import dev.egograph.shared.ui.systemprompt.SystemPromptEditorScreen
-import dev.egograph.shared.ui.terminal.GatewaySettingsScreen
-import dev.egograph.shared.ui.terminal.TerminalScreen
+import dev.egograph.shared.features.chat.ChatScreen
+import dev.egograph.shared.features.chat.ChatScreenModel
+import dev.egograph.shared.features.chat.components.ThreadList
+import dev.egograph.shared.features.settings.SettingsScreen
+import dev.egograph.shared.features.systemprompt.SystemPromptEditorScreen
+import dev.egograph.shared.features.terminal.AgentListScreen
+import dev.egograph.shared.features.terminal.TerminalScreen
+import dev.egograph.shared.features.terminal.components.GatewaySettingsScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -54,15 +57,14 @@ class SidebarScreen : Screen {
         val chatScreen = remember { ChatScreen() }
         val agentListScreen =
             remember(navigator) {
-                dev.egograph.shared.ui.terminal
-                    .AgentListScreen(
-                        onSessionSelected = { sessionId ->
-                            navigator.push(TerminalScreen(agentId = sessionId))
-                        },
-                        onOpenGatewaySettings = {
-                            activeView = SidebarView.GatewaySettings
-                        },
-                    )
+                AgentListScreen(
+                    onSessionSelected = { sessionId ->
+                        navigator.push(TerminalScreen(agentId = sessionId))
+                    },
+                    onOpenGatewaySettings = {
+                        activeView = SidebarView.GatewaySettings
+                    },
+                )
             }
 
         ModalNavigationDrawer(

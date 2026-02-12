@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui.settings
+package dev.egograph.shared.features.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column

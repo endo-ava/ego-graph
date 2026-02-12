@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui.terminal
+package dev.egograph.shared.features.terminal.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -25,16 +24,14 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun TerminalHeader(
     agentId: String,
-    isConnecting: Boolean,
-    isConnected: Boolean,
+    isLoading: Boolean,
+    error: String?,
     onClose: () -> Unit,
-    onDisconnect: () -> Unit,
     onVoiceInputToggle: () -> Unit = {},
 ) {
     val title =
         when {
-            isConnecting -> "Connecting to $agentId..."
-            isConnected -> agentId
+            isLoading -> "Connecting to $agentId..."
             else -> agentId
         }
 
@@ -47,14 +44,14 @@ fun TerminalHeader(
                 Text(text = title)
                 Spacer(modifier = Modifier.size(8.dp))
                 when {
-                    isConnecting -> {
+                    isLoading -> {
                         Text(
                             "Connecting...",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    isConnected -> {
+                    error == null -> {
                         Text(
                             "●",
                             style = MaterialTheme.typography.bodySmall,
@@ -89,12 +86,6 @@ fun TerminalHeader(
                 Icon(
                     imageVector = Icons.Filled.Mic,
                     contentDescription = "Voice Input",
-                )
-            }
-            IconButton(onClick = onDisconnect) {
-                Icon(
-                    imageVector = Icons.Default.PowerSettingsNew,
-                    contentDescription = "Disconnect",
                 )
             }
         },

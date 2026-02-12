@@ -24,7 +24,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
-import dev.egograph.shared.platform.PlatformPreferences
+import dev.egograph.shared.features.terminal.components.TerminalHeader
 import dev.egograph.shared.settings.AppTheme
 import dev.egograph.shared.settings.ThemeRepository
 import org.koin.compose.koinInject
@@ -37,16 +37,21 @@ class TerminalScreen(
 
     @Composable
     override fun Content() {
-        TerminalContent(agentId = agentId)
+        val screenModel = getScreenModel<TerminalScreenModel>()
+        TerminalContent(
+            agentId = agentId,
+            screenModel = screenModel,
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TerminalContent(agentId: String) {
+private fun TerminalContent(
+    agentId: String,
+    screenModel: TerminalScreenModel,
+) {
     val navigator = requireNotNull(LocalNavigator.current)
-    val screenModel = getScreenModel<TerminalScreenModel>()
-    val preferences = koinInject<PlatformPreferences>()
     val themeRepository = koinInject<ThemeRepository>()
     val selectedTheme by themeRepository.theme.collectAsState()
     val systemDarkTheme = isSystemInDarkTheme()

@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui.systemprompt
+package dev.egograph.shared.features.systemprompt
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,7 +28,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import dev.egograph.shared.core.domain.model.SystemPromptName
-import dev.egograph.shared.repository.SystemPromptRepository
+import dev.egograph.shared.core.domain.repository.SystemPromptRepository
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 

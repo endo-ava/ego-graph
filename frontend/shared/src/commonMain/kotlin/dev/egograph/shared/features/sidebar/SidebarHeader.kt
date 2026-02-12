@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui.sidebar
+package dev.egograph.shared.features.sidebar
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row

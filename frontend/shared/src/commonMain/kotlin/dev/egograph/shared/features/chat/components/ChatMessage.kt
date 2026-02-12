@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui
+package dev.egograph.shared.features.chat.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -34,7 +34,9 @@ import com.mikepenz.markdown.m3.markdownTypography
 import dev.egograph.shared.core.domain.model.MessageRole
 import dev.egograph.shared.core.domain.model.ThreadMessage
 import dev.egograph.shared.core.ui.components.MermaidDiagram
+import dev.egograph.shared.ui.AssistantContentBlock
 import dev.egograph.shared.ui.common.testTagResourceId
+import dev.egograph.shared.ui.splitAssistantContent
 
 @Composable
 fun ChatMessage(

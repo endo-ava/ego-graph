@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui.terminal
+package dev.egograph.shared.features.terminal.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues

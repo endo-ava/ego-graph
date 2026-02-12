@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui.systemprompt
+package dev.egograph.shared.features.systemprompt
 
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth

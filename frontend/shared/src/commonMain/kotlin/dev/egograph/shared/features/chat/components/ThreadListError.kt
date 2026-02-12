@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui
+package dev.egograph.shared.features.chat.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
