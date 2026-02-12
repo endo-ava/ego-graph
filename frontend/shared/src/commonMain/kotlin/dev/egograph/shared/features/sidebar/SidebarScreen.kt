@@ -29,6 +29,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import dev.egograph.shared.features.chat.ChatScreen
 import dev.egograph.shared.features.chat.ChatScreenModel
 import dev.egograph.shared.features.chat.components.ThreadList
+import dev.egograph.shared.features.navigation.MainNavigationHost
 import dev.egograph.shared.features.settings.SettingsScreen
 import dev.egograph.shared.features.systemprompt.SystemPromptEditorScreen
 import dev.egograph.shared.features.terminal.AgentListScreen
@@ -37,7 +38,7 @@ import dev.egograph.shared.features.terminal.components.GatewaySettingsScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-enum class SidebarView {
+enum class MainView {
     Chat,
     SystemPrompt,
     Settings,
@@ -53,7 +54,7 @@ class SidebarScreen : Screen {
         val state by screenModel.state.collectAsState()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
-        var activeView by rememberSaveable { mutableStateOf(SidebarView.Chat) }
+        var activeView by rememberSaveable { mutableStateOf(MainView.Chat) }
         val chatScreen = remember { ChatScreen() }
         val agentListScreen =
             remember(navigator) {
@@ -62,7 +63,7 @@ class SidebarScreen : Screen {
                         navigator.push(TerminalScreen(agentId = sessionId))
                     },
                     onOpenGatewaySettings = {
-                        activeView = SidebarView.GatewaySettings
+                        activeView = MainView.GatewaySettings
                     },
                 )
             }
@@ -73,25 +74,25 @@ class SidebarScreen : Screen {
                 ModalDrawerSheet {
                     SidebarHeader(
                         onNewChatClick = {
-                            activeView = SidebarView.Chat
+                            activeView = MainView.Chat
                             screenModel.clearThreadSelection()
                             scope.launch { drawerState.close() }
                         },
                         onSettingsClick = {
-                            activeView = SidebarView.Settings
+                            activeView = MainView.Settings
                             scope.launch { drawerState.close() }
                         },
                         onTerminalClick = {
-                            activeView = SidebarView.Terminal
+                            activeView = MainView.Terminal
                             scope.launch { drawerState.close() }
                         },
                     )
 
                     NavigationDrawerItem(
                         label = { Text("System Prompt") },
-                        selected = activeView == SidebarView.SystemPrompt,
+                        selected = activeView == MainView.SystemPrompt,
                         onClick = {
-                            activeView = SidebarView.SystemPrompt
+                            activeView = MainView.SystemPrompt
                             scope.launch { drawerState.close() }
                         },
                         icon = { Icon(Icons.Default.Build, contentDescription = null) },
@@ -110,7 +111,7 @@ class SidebarScreen : Screen {
                         hasMore = state.hasMoreThreads,
                         error = state.threadsError,
                         onThreadClick = { threadId ->
-                            activeView = SidebarView.Chat
+                            activeView = MainView.Chat
                             screenModel.selectThread(threadId)
                             scope.launch { drawerState.close() }
                         },
@@ -124,39 +125,42 @@ class SidebarScreen : Screen {
                     )
                 }
             },
-            // チャット画面ではサイドバーのスワイプを有効化、ターミナル画面では無効化
-            gesturesEnabled = activeView == SidebarView.Chat,
+            gesturesEnabled = activeView == MainView.Chat,
         ) {
-            // メインコンテンツエリア全体をBoxで包み、スワイプジェスチャーを検知
-            SwipeableSidebarContainer(
+            MainNavigationHost(
                 activeView = activeView,
-                onSwipeToTerminal = { activeView = SidebarView.Terminal },
-                onSwipeToChat = { activeView = SidebarView.Chat },
-            ) {
-                when (activeView) {
-                    SidebarView.Chat -> chatScreen.Content()
-                    SidebarView.SystemPrompt -> {
+                onSwipeToSidebar = {
+                    scope.launch { drawerState.open() }
+                },
+                onSwipeToTerminal = { activeView = MainView.Terminal },
+                onSwipeToChat = { activeView = MainView.Chat },
+            ) { targetView ->
+                when (targetView) {
+                    MainView.Chat -> chatScreen.Content()
+                    MainView.SystemPrompt -> {
                         val promptScreen =
                             remember {
                                 SystemPromptEditorScreen(
-                                    onBack = { activeView = SidebarView.Chat },
+                                    onBack = { activeView = MainView.Chat },
                                 )
                             }
                         promptScreen.Content()
                     }
-                    SidebarView.Settings -> {
+
+                    MainView.Settings -> {
                         val preferences = koinInject<dev.egograph.shared.core.platform.PlatformPreferences>()
                         SettingsScreen(
                             preferences = preferences,
-                            onBack = { activeView = SidebarView.Chat },
+                            onBack = { activeView = MainView.Chat },
                         )
                     }
-                    SidebarView.Terminal -> agentListScreen.Content()
-                    SidebarView.GatewaySettings -> {
+
+                    MainView.Terminal -> agentListScreen.Content()
+                    MainView.GatewaySettings -> {
                         val gatewaySettingsScreen =
                             remember {
                                 GatewaySettingsScreen(
-                                    onBack = { activeView = SidebarView.Terminal },
+                                    onBack = { activeView = MainView.Terminal },
                                 )
                             }
                         gatewaySettingsScreen.Content()
