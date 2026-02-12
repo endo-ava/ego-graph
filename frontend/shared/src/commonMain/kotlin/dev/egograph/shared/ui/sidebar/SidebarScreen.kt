@@ -129,42 +129,39 @@ class SidebarScreen : Screen {
             // チャット画面ではサイドバーのスワイプを有効化、ターミナル画面では無効化
             gesturesEnabled = activeView == SidebarView.Chat,
         ) {
-            // ターミナル画面のみSwipeableSidebarContainerでラップ（チャット⇔ターミナルスワイプ用）
-            // チャット画面では適用しない - ModalNavigationDrawerのサイドバースワイプを優先
-            when (activeView) {
-                SidebarView.Chat -> chatScreen.Content()
-                SidebarView.SystemPrompt -> {
-                    val promptScreen =
-                        remember {
-                            SystemPromptEditorScreen(
-                                onBack = { activeView = SidebarView.Chat },
-                            )
-                        }
-                    promptScreen.Content()
-                }
-                SidebarView.Settings -> {
-                    val preferences = koinInject<dev.egograph.shared.platform.PlatformPreferences>()
-                    SettingsScreen(
-                        preferences = preferences,
-                        onBack = { activeView = SidebarView.Chat },
-                    )
-                }
-                SidebarView.Terminal ->
-                    SwipeableSidebarContainer(
-                        activeView = activeView,
-                        onSwipeToTerminal = { activeView = SidebarView.Terminal },
-                        onSwipeToChat = { activeView = SidebarView.Chat },
-                    ) {
-                        agentListScreen.Content()
+            SwipeableSidebarContainer(
+                activeView = activeView,
+                onSwipeToTerminal = { activeView = SidebarView.Terminal },
+                onSwipeToChat = { activeView = SidebarView.Chat },
+            ) {
+                when (activeView) {
+                    SidebarView.Chat -> chatScreen.Content()
+                    SidebarView.SystemPrompt -> {
+                        val promptScreen =
+                            remember {
+                                SystemPromptEditorScreen(
+                                    onBack = { activeView = SidebarView.Chat },
+                                )
+                            }
+                        promptScreen.Content()
                     }
-                SidebarView.GatewaySettings -> {
-                    val gatewaySettingsScreen =
-                        remember {
-                            GatewaySettingsScreen(
-                                onBack = { activeView = SidebarView.Terminal },
-                            )
-                        }
-                    gatewaySettingsScreen.Content()
+                    SidebarView.Settings -> {
+                        val preferences = koinInject<dev.egograph.shared.platform.PlatformPreferences>()
+                        SettingsScreen(
+                            preferences = preferences,
+                            onBack = { activeView = SidebarView.Chat },
+                        )
+                    }
+                    SidebarView.Terminal -> agentListScreen.Content()
+                    SidebarView.GatewaySettings -> {
+                        val gatewaySettingsScreen =
+                            remember {
+                                GatewaySettingsScreen(
+                                    onBack = { activeView = SidebarView.Terminal },
+                                )
+                            }
+                        gatewaySettingsScreen.Content()
+                    }
                 }
             }
         }
