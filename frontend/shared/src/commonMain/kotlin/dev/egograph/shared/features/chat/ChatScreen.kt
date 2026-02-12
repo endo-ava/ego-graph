@@ -19,7 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
-import cafe.adriel.voyager.koin.getScreenModel
+import cafe.adriel.voyager.koin.koinScreenModel
 import dev.egograph.shared.features.chat.components.ChatInput
 import dev.egograph.shared.features.chat.components.MessageList
 import dev.egograph.shared.platform.PlatformPreferences
@@ -28,7 +28,7 @@ import org.koin.compose.koinInject
 class ChatScreen : Screen {
     @Composable
     override fun Content() {
-        val screenModel = getScreenModel<ChatScreenModel>()
+        val screenModel = koinScreenModel<ChatScreenModel>()
         val preferences = koinInject<PlatformPreferences>()
         val state by screenModel.state.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }

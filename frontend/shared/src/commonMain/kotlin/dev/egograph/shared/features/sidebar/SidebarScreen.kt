@@ -24,7 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
-import cafe.adriel.voyager.koin.getScreenModel
+import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import dev.egograph.shared.features.chat.ChatScreen
 import dev.egograph.shared.features.chat.ChatScreenModel
@@ -49,7 +49,7 @@ class SidebarScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = requireNotNull(LocalNavigator.current)
-        val screenModel = getScreenModel<ChatScreenModel>()
+        val screenModel = koinScreenModel<ChatScreenModel>()
         val state by screenModel.state.collectAsState()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()

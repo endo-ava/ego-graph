@@ -1,4 +1,4 @@
-package dev.egograph.shared.store.chat
+package dev.egograph.shared.features.chat
 
 fun String.toThreadTitle(maxLength: Int = 48): String {
     if (maxLength <= 0) {

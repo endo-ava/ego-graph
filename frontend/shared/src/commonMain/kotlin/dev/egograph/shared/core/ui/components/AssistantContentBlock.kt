@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui
+package dev.egograph.shared.core.ui.components
 
 private val mermaidFenceRegex =
     Regex(

@@ -1,13 +1,19 @@
 package dev.egograph.shared.repository
 
+import dev.egograph.shared.core.domain.model.ChatRequest
+import dev.egograph.shared.core.domain.model.ChatResponse
+import dev.egograph.shared.core.domain.model.Message
+import dev.egograph.shared.core.domain.model.MessageRole
+import dev.egograph.shared.core.domain.model.ModelsResponse
+import dev.egograph.shared.core.domain.model.StreamChunk
+import dev.egograph.shared.core.domain.model.Thread
+import dev.egograph.shared.core.domain.model.ThreadListResponse
+import dev.egograph.shared.core.domain.model.ThreadMessagesResponse
 import dev.egograph.shared.core.domain.repository.ApiError
-import dev.egograph.shared.dto.ChatRequest
-import dev.egograph.shared.dto.ChatResponse
-import dev.egograph.shared.dto.MessageRole
-import dev.egograph.shared.dto.ModelsResponse
-import dev.egograph.shared.dto.Thread
-import dev.egograph.shared.dto.ThreadListResponse
-import dev.egograph.shared.dto.ThreadMessagesResponse
+import dev.egograph.shared.core.domain.repository.ChatRepository
+import dev.egograph.shared.core.domain.repository.MessageRepository
+import dev.egograph.shared.core.domain.repository.RepositoryResult
+import dev.egograph.shared.core.domain.repository.ThreadRepository
 import kotlinx.coroutines.flow.flow
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -189,19 +195,18 @@ class RepositoryTest {
         val mockChatRepo =
             object : ChatRepository {
                 override fun sendMessage(request: ChatRequest) =
-                    flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
+                    flow<RepositoryResult<StreamChunk>> {
                     }
 
                 override fun streamChatResponse(request: ChatRequest) =
-                    flow<RepositoryResult<dev.egograph.shared.dto.StreamChunk>> {
+                    flow<RepositoryResult<StreamChunk>> {
                     }
 
                 override suspend fun sendMessageSync(request: ChatRequest) =
                     Result.success(
                         ChatResponse(
                             "",
-                            dev.egograph.shared.dto
-                                .Message(MessageRole.ASSISTANT, "Response"),
+                            Message(MessageRole.ASSISTANT, "Response"),
                             null,
                             null,
                             "",

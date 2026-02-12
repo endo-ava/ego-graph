@@ -22,7 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
-import cafe.adriel.voyager.koin.getScreenModel
+import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import dev.egograph.shared.features.terminal.components.TerminalHeader
 import dev.egograph.shared.settings.AppTheme
@@ -37,7 +37,7 @@ class TerminalScreen(
 
     @Composable
     override fun Content() {
-        val screenModel = getScreenModel<TerminalScreenModel>()
+        val screenModel = koinScreenModel<TerminalScreenModel>()
         TerminalContent(
             agentId = agentId,
             screenModel = screenModel,

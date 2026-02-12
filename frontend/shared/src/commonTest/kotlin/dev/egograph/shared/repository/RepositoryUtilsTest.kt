@@ -1,5 +1,8 @@
 package dev.egograph.shared.repository
 
+import dev.egograph.shared.core.data.repository.InMemoryCache
+import dev.egograph.shared.core.data.repository.configureAuth
+import dev.egograph.shared.core.data.repository.generateContextHash
 import dev.egograph.shared.core.domain.repository.ApiError
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.coroutines.launch

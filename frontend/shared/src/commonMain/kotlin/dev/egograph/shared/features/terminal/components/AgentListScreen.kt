@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.core.screen.uniqueScreenKey
-import cafe.adriel.voyager.koin.getScreenModel
+import cafe.adriel.voyager.koin.koinScreenModel
 import dev.egograph.shared.features.terminal.components.SessionList
 
 class AgentListScreen(
@@ -19,7 +19,7 @@ class AgentListScreen(
 
     @Composable
     override fun Content() {
-        val screenModel = getScreenModel<TerminalScreenModel>()
+        val screenModel = koinScreenModel<TerminalScreenModel>()
         val state by screenModel.state.collectAsState()
 
         LaunchedEffect(Unit) {

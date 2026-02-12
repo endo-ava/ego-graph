@@ -1,4 +1,4 @@
-package dev.egograph.shared.ui
+package dev.egograph.shared.core.ui.components
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
