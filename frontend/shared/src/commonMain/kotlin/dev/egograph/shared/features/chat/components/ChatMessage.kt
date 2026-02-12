@@ -31,9 +31,9 @@ import com.mikepenz.markdown.compose.elements.highlightedCodeFence
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
-import dev.egograph.shared.core.ui.components.MermaidDiagram
 import dev.egograph.shared.core.domain.model.MessageRole
 import dev.egograph.shared.core.domain.model.ThreadMessage
+import dev.egograph.shared.core.ui.components.MermaidDiagram
 import dev.egograph.shared.ui.common.testTagResourceId
 
 @Composable

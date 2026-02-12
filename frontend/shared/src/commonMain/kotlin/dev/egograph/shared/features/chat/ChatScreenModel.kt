@@ -6,8 +6,6 @@ import dev.egograph.shared.core.domain.model.ChatRequest
 import dev.egograph.shared.core.domain.model.Message
 import dev.egograph.shared.core.domain.model.MessageRole
 import dev.egograph.shared.core.domain.model.StreamChunkType
-import dev.egograph.shared.core.domain.model.ThreadMessage
-import dev.egograph.shared.core.domain.model.ToolCall
 import dev.egograph.shared.core.domain.repository.ChatRepository
 import dev.egograph.shared.core.domain.repository.MessageRepository
 import dev.egograph.shared.core.domain.repository.ThreadRepository
@@ -18,14 +16,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 class ChatScreenModel(
     private val threadRepository: ThreadRepository,
     private val messageRepository: MessageRepository,
     private val chatRepository: ChatRepository,
 ) : ScreenModel {
-
     private val _state = MutableStateFlow(ChatState())
     val state: StateFlow<ChatState> = _state.asStateFlow()
 
@@ -42,8 +38,9 @@ class ChatScreenModel(
     fun loadThreads() {
         screenModelScope.launch {
             _state.update { it.copy(isLoadingThreads = true, threadsError = null) }
-            
-            threadRepository.getThreads(limit = pageLimit, offset = 0)
+
+            threadRepository
+                .getThreads(limit = pageLimit, offset = 0)
                 .collect { result ->
                     result
                         .onSuccess { response ->
@@ -51,11 +48,10 @@ class ChatScreenModel(
                                 it.copy(
                                     threads = response.threads,
                                     isLoadingThreads = false,
-                                    hasMoreThreads = response.threads.size < response.total
+                                    hasMoreThreads = response.threads.size < response.total,
                                 )
                             }
-                        }
-                        .onFailure { error ->
+                        }.onFailure { error ->
                             val message = "スレッドの読み込みに失敗: ${error.message}"
                             _state.update { it.copy(threadsError = message, isLoadingThreads = false) }
                             _effect.send(ChatEffect.ShowError(message))
@@ -70,8 +66,9 @@ class ChatScreenModel(
 
         screenModelScope.launch {
             _state.update { it.copy(isLoadingThreads = true) }
-            
-            threadRepository.getThreads(limit = pageLimit, offset = currentState.threads.size)
+
+            threadRepository
+                .getThreads(limit = pageLimit, offset = currentState.threads.size)
                 .collect { result ->
                     result
                         .onSuccess { response ->
@@ -79,11 +76,10 @@ class ChatScreenModel(
                                 it.copy(
                                     threads = it.threads + response.threads,
                                     isLoadingThreads = false,
-                                    hasMoreThreads = (it.threads.size + response.threads.size) < response.total
+                                    hasMoreThreads = (it.threads.size + response.threads.size) < response.total,
                                 )
                             }
-                        }
-                        .onFailure { error ->
+                        }.onFailure { error ->
                             val message = "追加スレッドの読み込みに失敗: ${error.message}"
                             _state.update { it.copy(threadsError = message, isLoadingThreads = false) }
                             _effect.send(ChatEffect.ShowError(message))
@@ -107,19 +103,19 @@ class ChatScreenModel(
     fun loadMessages(threadId: String) {
         screenModelScope.launch {
             _state.update { it.copy(isLoadingMessages = true, messagesError = null) }
-            
-            messageRepository.getMessages(threadId)
+
+            messageRepository
+                .getMessages(threadId)
                 .collect { result ->
                     result
                         .onSuccess { response ->
                             _state.update {
                                 it.copy(
                                     messages = response.messages,
-                                    isLoadingMessages = false
+                                    isLoadingMessages = false,
                                 )
                             }
-                        }
-                        .onFailure { error ->
+                        }.onFailure { error ->
                             val message = "メッセージの読み込みに失敗: ${error.message}"
                             _state.update { it.copy(messagesError = message, isLoadingMessages = false) }
                             _effect.send(ChatEffect.ShowError(message))
@@ -131,18 +127,18 @@ class ChatScreenModel(
     fun loadModels() {
         screenModelScope.launch {
             _state.update { it.copy(isLoadingModels = true, modelsError = null) }
-            
-            chatRepository.getModels()
+
+            chatRepository
+                .getModels()
                 .onSuccess { response ->
                     _state.update {
                         it.copy(
                             models = response.models,
                             selectedModel = response.defaultModelId ?: response.models.firstOrNull()?.id,
-                            isLoadingModels = false
+                            isLoadingModels = false,
                         )
                     }
-                }
-                .onFailure { error ->
+                }.onFailure { error ->
                     val message = "モデル一覧の取得に失敗: ${error.message}"
                     _state.update { it.copy(modelsError = message, isLoadingModels = false) }
                     _effect.send(ChatEffect.ShowError(message))
@@ -165,15 +161,18 @@ class ChatScreenModel(
         // TODO: Implement full streaming logic from ChatExecutor
         // This is a simplified version
         screenModelScope.launch {
-            val request = ChatRequest(
-                threadId = currentState.selectedThread?.threadId,
-                messages = currentState.messages.map { 
-                    Message(role = it.role, content = it.content)
-                } + Message(role = MessageRole.USER, content = content),
-                model = currentState.selectedModel
-            )
+            val request =
+                ChatRequest(
+                    threadId = currentState.selectedThread?.threadId,
+                    messages =
+                        currentState.messages.map {
+                            Message(role = it.role, content = it.content)
+                        } + Message(role = MessageRole.USER, content = content),
+                    model = currentState.selectedModel,
+                )
 
-            chatRepository.sendMessage(request)
+            chatRepository
+                .sendMessage(request)
                 .collect { result ->
                     result
                         .onSuccess { chunk ->
@@ -190,8 +189,7 @@ class ChatScreenModel(
                                 }
                                 else -> {}
                             }
-                        }
-                        .onFailure { error ->
+                        }.onFailure { error ->
                             val message = "メッセージ送信に失敗: ${error.message}"
                             _state.update { it.copy(isSending = false) }
                             _effect.send(ChatEffect.ShowError(message))
@@ -205,7 +203,7 @@ class ChatScreenModel(
             it.copy(
                 threadsError = null,
                 messagesError = null,
-                modelsError = null
+                modelsError = null,
             )
         }
     }

@@ -15,11 +15,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,12 +51,13 @@ private fun TerminalContent(agentId: String) {
     val selectedTheme by themeRepository.theme.collectAsState()
     val systemDarkTheme = isSystemInDarkTheme()
     val state by screenModel.state.collectAsState()
-    
-    val darkMode = when (selectedTheme) {
-        AppTheme.DARK -> true
-        AppTheme.LIGHT -> false
-        AppTheme.SYSTEM -> systemDarkTheme
-    }
+
+    val darkMode =
+        when (selectedTheme) {
+            AppTheme.DARK -> true
+            AppTheme.LIGHT -> false
+            AppTheme.SYSTEM -> systemDarkTheme
+        }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -71,33 +69,36 @@ private fun TerminalContent(agentId: String) {
         topBar = {
             TerminalHeader(
                 agentId = agentId,
-                isLoading = state.isLoading,
-                error = state.error,
+                isLoading = state.isLoadingSessions,
+                error = state.sessionsError,
                 onClose = { navigator.pop() },
             )
         },
     ) { paddingValues ->
         Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest),
                 ) {
-                    if (state.isLoading) {
+                    if (state.isLoadingSessions) {
                         LinearProgressIndicator(
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .fillMaxWidth(),
+                            modifier =
+                                Modifier
+                                    .align(Alignment.TopCenter)
+                                    .fillMaxWidth(),
                         )
                     }
 
-                    state.error?.let { error ->
+                    state.sessionsError?.let { error ->
                         Text(
                             text = error,
                             color = MaterialTheme.colorScheme.error,

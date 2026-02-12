@@ -12,8 +12,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.egograph.shared.features.chat.ChatScreenModel
 import dev.egograph.shared.platform.PlatformPreferences
-import dev.egograph.shared.store.chat.ChatStore
 
 /**
  * チャット入力コンポーネント
@@ -21,7 +21,7 @@ import dev.egograph.shared.store.chat.ChatStore
  * テキスト入力とマイクボタンを含むチャット入力UI。
  * マイクボタンがクリックされると、コールバックが呼び出される。
  *
- * @param store チャットストア
+ * @param screenModel チャット画面モデル
  * @param preferences プラットフォーム設定
  * @param onSendMessage メッセージ送信コールバック
  * @param isLoading ローディング状態
@@ -30,7 +30,7 @@ import dev.egograph.shared.store.chat.ChatStore
  */
 @Composable
 fun ChatInput(
-    store: ChatStore,
+    screenModel: ChatScreenModel,
     preferences: PlatformPreferences,
     onSendMessage: (String) -> Unit,
     isLoading: Boolean = false,
@@ -56,7 +56,7 @@ fun ChatInput(
             )
 
             ChatModelSelector(
-                store = store,
+                screenModel = screenModel,
                 preferences = preferences,
                 modifier =
                     Modifier

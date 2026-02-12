@@ -58,6 +58,7 @@ class ChatScreen : Screen {
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 ChatInput(
+                    screenModel = screenModel,
                     preferences = preferences,
                     onSendMessage = { text ->
                         screenModel.sendMessage(text)

@@ -5,24 +5,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import com.arkivanov.mvikotlin.extensions.coroutines.states
 import dev.egograph.shared.core.ui.components.ModelSelector
+import dev.egograph.shared.features.chat.ChatScreenModel
 import dev.egograph.shared.platform.PlatformPreferences
 import dev.egograph.shared.platform.PlatformPrefsKeys
-import dev.egograph.shared.store.chat.ChatIntent
-import dev.egograph.shared.store.chat.ChatStore
 
 @Composable
 fun ChatModelSelector(
-    store: ChatStore,
+    screenModel: ChatScreenModel,
     preferences: PlatformPreferences,
     modifier: Modifier = Modifier,
 ) {
-    val state by store.states.collectAsState(initial = store.state)
+    val state by screenModel.state.collectAsState()
 
     LaunchedEffect(Unit) {
         if (state.models.isEmpty() && !state.isLoadingModels) {
-            store.accept(ChatIntent.LoadModels)
+            screenModel.loadModels()
         }
     }
 
@@ -32,7 +30,7 @@ fun ChatModelSelector(
         isLoading = state.isLoadingModels,
         error = state.modelsError,
         onModelSelected = { modelId ->
-            store.accept(ChatIntent.SelectModel(modelId))
+            screenModel.selectModel(modelId)
             preferences.putString(PlatformPrefsKeys.KEY_SELECTED_MODEL, modelId)
         },
         modifier = modifier,

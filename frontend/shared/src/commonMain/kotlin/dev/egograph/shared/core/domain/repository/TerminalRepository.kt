@@ -1,7 +1,6 @@
 package dev.egograph.shared.core.domain.repository
 
 import dev.egograph.shared.core.domain.model.terminal.Session
-import dev.egograph.shared.repository.RepositoryResult
 import kotlinx.coroutines.flow.Flow
 
 /**

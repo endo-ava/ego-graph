@@ -25,9 +25,6 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
-import com.arkivanov.mvikotlin.extensions.coroutines.states
-import dev.egograph.shared.store.chat.ChatIntent
-import dev.egograph.shared.store.chat.ChatStore
 import dev.egograph.shared.ui.ChatScreen
 import dev.egograph.shared.ui.ThreadList
 import dev.egograph.shared.ui.settings.SettingsScreen
@@ -36,7 +33,6 @@ import dev.egograph.shared.ui.terminal.GatewaySettingsScreen
 import dev.egograph.shared.ui.terminal.TerminalScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import org.koin.core.qualifier.named
 
 enum class SidebarView {
     Chat,
@@ -50,8 +46,8 @@ class SidebarScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = requireNotNull(LocalNavigator.current)
-        val store = koinInject<ChatStore>(qualifier = named("ChatStore"))
-        val state by store.states.collectAsState(initial = store.state)
+        val screenModel = getScreenModel<ChatScreenModel>()
+        val state by screenModel.state.collectAsState()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         var activeView by rememberSaveable { mutableStateOf(SidebarView.Chat) }
@@ -76,7 +72,7 @@ class SidebarScreen : Screen {
                     SidebarHeader(
                         onNewChatClick = {
                             activeView = SidebarView.Chat
-                            store.accept(ChatIntent.ClearThreadSelection)
+                            screenModel.clearThreadSelection()
                             scope.launch { drawerState.close() }
                         },
                         onSettingsClick = {
@@ -113,14 +109,14 @@ class SidebarScreen : Screen {
                         error = state.threadsError,
                         onThreadClick = { threadId ->
                             activeView = SidebarView.Chat
-                            store.accept(ChatIntent.SelectThread(threadId))
+                            screenModel.selectThread(threadId)
                             scope.launch { drawerState.close() }
                         },
                         onRefresh = {
-                            store.accept(ChatIntent.RefreshThreads)
+                            screenModel.loadThreads()
                         },
                         onLoadMore = {
-                            store.accept(ChatIntent.LoadMoreThreads)
+                            screenModel.loadMoreThreads()
                         },
                         modifier = Modifier.weight(1f),
                     )

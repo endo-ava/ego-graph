@@ -1,39 +1,29 @@
 package dev.egograph.shared.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import cafe.adriel.voyager.core.screen.Screen
-import com.arkivanov.mvikotlin.extensions.coroutines.states
-import dev.egograph.shared.store.chat.ChatIntent
-import dev.egograph.shared.store.chat.ChatState
-import dev.egograph.shared.store.chat.ChatStore
-import org.koin.compose.koinInject
+import cafe.adriel.voyager.koin.getScreenModel
+import dev.egograph.shared.features.chat.ChatScreenModel
 
 class ThreadListScreen : Screen {
     @Composable
     override fun Content() {
-        val store = koinInject<ChatStore>()
-        val state by store.states.collectAsState(initial = store.state)
-
-        LaunchedEffect(Unit) {
-            if (state.threads.isEmpty() && !state.isLoadingThreads) {
-                store.accept(ChatIntent.LoadThreads)
-            }
-        }
+        val screenModel = getScreenModel<ChatScreenModel>()
+        val state by screenModel.state.collectAsState()
 
         ThreadListScreenContent(
             state = state,
-            onEvent = store::accept,
+            screenModel = screenModel,
         )
     }
 }
 
 @Composable
 private fun ThreadListScreenContent(
-    state: ChatState,
-    onEvent: (ChatIntent) -> Unit,
+    state: dev.egograph.shared.features.chat.ChatState,
+    screenModel: ChatScreenModel,
 ) {
     ThreadList(
         threads = state.threads,
@@ -43,13 +33,13 @@ private fun ThreadListScreenContent(
         hasMore = state.hasMoreThreads,
         error = state.threadsError,
         onThreadClick = { threadId ->
-            onEvent(ChatIntent.SelectThread(threadId))
+            screenModel.selectThread(threadId)
         },
         onRefresh = {
-            onEvent(ChatIntent.RefreshThreads)
+            screenModel.loadThreads()
         },
         onLoadMore = {
-            onEvent(ChatIntent.LoadMoreThreads)
+            screenModel.loadMoreThreads()
         },
     )
 }

@@ -12,7 +12,7 @@ import dev.egograph.shared.core.domain.model.terminal.Session
  */
 data class TerminalState(
     val sessions: List<Session> = emptyList(),
-    val isLoading: Boolean = false,
-    val error: String? = null,
+    val isLoadingSessions: Boolean = false,
+    val sessionsError: String? = null,
     val selectedSession: Session? = null,
 )

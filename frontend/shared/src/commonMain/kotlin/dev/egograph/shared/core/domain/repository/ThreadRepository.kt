@@ -2,7 +2,6 @@ package dev.egograph.shared.core.domain.repository
 
 import dev.egograph.shared.core.domain.model.Thread
 import dev.egograph.shared.core.domain.model.ThreadListResponse
-import dev.egograph.shared.repository.RepositoryResult
 import kotlinx.coroutines.flow.Flow
 
 /**

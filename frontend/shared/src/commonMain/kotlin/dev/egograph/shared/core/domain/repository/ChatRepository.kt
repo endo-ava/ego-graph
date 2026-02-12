@@ -4,7 +4,6 @@ import dev.egograph.shared.core.domain.model.ChatRequest
 import dev.egograph.shared.core.domain.model.ChatResponse
 import dev.egograph.shared.core.domain.model.ModelsResponse
 import dev.egograph.shared.core.domain.model.StreamChunk
-import dev.egograph.shared.repository.RepositoryResult
 import kotlinx.coroutines.flow.Flow
 
 /**
