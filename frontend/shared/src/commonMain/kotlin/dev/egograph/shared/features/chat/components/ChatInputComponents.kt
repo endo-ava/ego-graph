@@ -14,7 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.egograph.shared.ui.common.testTagResourceId
+import dev.egograph.shared.core.ui.common.testTagResourceId
 
 @Composable
 internal fun ChatTextField(

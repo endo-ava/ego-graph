@@ -1,8 +1,8 @@
 package dev.egograph.shared.di
 
 import dev.egograph.shared.core.domain.repository.TerminalRepository
-import dev.egograph.shared.platform.PlatformPreferences
-import dev.egograph.shared.platform.PlatformPrefsKeys
+import dev.egograph.shared.core.platform.PlatformPreferences
+import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import io.ktor.client.HttpClient
 import io.mockk.every
 import io.mockk.mockk

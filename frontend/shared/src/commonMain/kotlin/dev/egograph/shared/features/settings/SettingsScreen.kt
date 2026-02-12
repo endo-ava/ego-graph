@@ -44,12 +44,12 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import dev.egograph.shared.platform.PlatformPreferences
-import dev.egograph.shared.platform.PlatformPrefsDefaults
-import dev.egograph.shared.platform.PlatformPrefsKeys
-import dev.egograph.shared.platform.normalizeBaseUrl
-import dev.egograph.shared.settings.AppTheme
-import dev.egograph.shared.settings.ThemeRepository
+import dev.egograph.shared.core.platform.PlatformPreferences
+import dev.egograph.shared.core.platform.PlatformPrefsDefaults
+import dev.egograph.shared.core.platform.PlatformPrefsKeys
+import dev.egograph.shared.core.platform.normalizeBaseUrl
+import dev.egograph.shared.core.settings.AppTheme
+import dev.egograph.shared.core.settings.ThemeRepository
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 

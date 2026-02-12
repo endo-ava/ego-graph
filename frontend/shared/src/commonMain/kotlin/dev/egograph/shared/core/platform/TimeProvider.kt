@@ -1,0 +1,6 @@
+package dev.egograph.shared.core.platform
+
+/**
+ * 現在時刻のISO-8601文字列を返す。
+ */
+expect fun nowIsoTimestamp(): String

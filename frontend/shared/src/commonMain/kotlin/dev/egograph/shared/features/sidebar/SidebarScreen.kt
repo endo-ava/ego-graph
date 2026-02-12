@@ -145,7 +145,7 @@ class SidebarScreen : Screen {
                         promptScreen.Content()
                     }
                     SidebarView.Settings -> {
-                        val preferences = koinInject<dev.egograph.shared.platform.PlatformPreferences>()
+                        val preferences = koinInject<dev.egograph.shared.core.platform.PlatformPreferences>()
                         SettingsScreen(
                             preferences = preferences,
                             onBack = { activeView = SidebarView.Chat },

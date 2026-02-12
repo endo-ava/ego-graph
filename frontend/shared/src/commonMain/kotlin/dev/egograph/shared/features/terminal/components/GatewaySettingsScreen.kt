@@ -36,12 +36,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
-import dev.egograph.shared.platform.PlatformPreferences
-import dev.egograph.shared.platform.PlatformPrefsDefaults
-import dev.egograph.shared.platform.PlatformPrefsKeys
-import dev.egograph.shared.platform.getDefaultGatewayBaseUrl
-import dev.egograph.shared.platform.isValidUrl
-import dev.egograph.shared.platform.normalizeBaseUrl
+import dev.egograph.shared.core.platform.PlatformPreferences
+import dev.egograph.shared.core.platform.PlatformPrefsDefaults
+import dev.egograph.shared.core.platform.PlatformPrefsKeys
+import dev.egograph.shared.core.platform.getDefaultGatewayBaseUrl
+import dev.egograph.shared.core.platform.isValidUrl
+import dev.egograph.shared.core.platform.normalizeBaseUrl
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 

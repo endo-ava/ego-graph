@@ -12,8 +12,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.features.chat.ChatScreenModel
-import dev.egograph.shared.platform.PlatformPreferences
 
 /**
  * チャット入力コンポーネント

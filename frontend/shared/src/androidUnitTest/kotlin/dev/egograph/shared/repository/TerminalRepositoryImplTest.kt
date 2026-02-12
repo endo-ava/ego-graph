@@ -4,7 +4,7 @@ import dev.egograph.shared.core.data.repository.TerminalRepositoryImpl
 import dev.egograph.shared.core.domain.model.terminal.Session
 import dev.egograph.shared.core.domain.model.terminal.SessionStatus
 import dev.egograph.shared.core.domain.repository.ApiError
-import dev.egograph.shared.platform.PlatformPreferences
+import dev.egograph.shared.core.platform.PlatformPreferences
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond

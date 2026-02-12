@@ -33,10 +33,10 @@ import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
 import dev.egograph.shared.core.domain.model.MessageRole
 import dev.egograph.shared.core.domain.model.ThreadMessage
+import dev.egograph.shared.core.ui.common.testTagResourceId
 import dev.egograph.shared.core.ui.components.AssistantContentBlock
 import dev.egograph.shared.core.ui.components.MermaidDiagram
 import dev.egograph.shared.core.ui.components.splitAssistantContent
-import dev.egograph.shared.ui.common.testTagResourceId
 
 @Composable
 fun ChatMessage(

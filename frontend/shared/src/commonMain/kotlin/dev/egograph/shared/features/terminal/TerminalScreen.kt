@@ -24,9 +24,9 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
+import dev.egograph.shared.core.settings.AppTheme
+import dev.egograph.shared.core.settings.ThemeRepository
 import dev.egograph.shared.features.terminal.components.TerminalHeader
-import dev.egograph.shared.settings.AppTheme
-import dev.egograph.shared.settings.ThemeRepository
 import org.koin.compose.koinInject
 
 class TerminalScreen(

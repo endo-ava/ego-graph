@@ -2,11 +2,11 @@ package dev.egograph.shared.features.terminal.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import dev.egograph.shared.platform.PlatformPreferences
-import dev.egograph.shared.platform.PlatformPrefsDefaults
-import dev.egograph.shared.platform.PlatformPrefsKeys
-import dev.egograph.shared.platform.getDefaultGatewayBaseUrl
-import dev.egograph.shared.platform.normalizeBaseUrl
+import dev.egograph.shared.core.platform.PlatformPreferences
+import dev.egograph.shared.core.platform.PlatformPrefsDefaults
+import dev.egograph.shared.core.platform.PlatformPrefsKeys
+import dev.egograph.shared.core.platform.getDefaultGatewayBaseUrl
+import dev.egograph.shared.core.platform.normalizeBaseUrl
 import io.ktor.http.encodeURLParameter
 
 data class TerminalSettings(
