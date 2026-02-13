@@ -223,3 +223,9 @@ adb -s $DEVICE pull /sdcard/screen.png /tmp/screen.png
 | スキル                        | 用途                             |
 | ----------------------------- | -------------------------------- |
 | `adb-connection-troubleshoot` | 接続問題のトラブルシューティング |
+
+---
+
+## 追加リファレンス
+
+- WebView DOM デバッグ手順: `references/webview-dom-debug.md`
