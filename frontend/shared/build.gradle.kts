@@ -74,10 +74,6 @@ kotlin {
                 implementation(libs.bundles.voyager)
                 implementation(libs.voyager.koin)
 
-                // MVIKotlin
-                implementation(libs.bundles.mvikotlin)
-                implementation(libs.mvikotlin.logging)
-
                 // Koin DI
                 implementation(libs.koin.core)
                 implementation(libs.koin.compose)
@@ -92,6 +88,7 @@ kotlin {
                 // Kotlinx
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kotlinx.datetime)
             }
         }
 

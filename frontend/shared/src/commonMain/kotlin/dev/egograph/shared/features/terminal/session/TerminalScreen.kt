@@ -1,0 +1,186 @@
+package dev.egograph.shared.features.terminal.session
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.core.screen.ScreenKey
+import cafe.adriel.voyager.navigator.LocalNavigator
+import dev.egograph.shared.core.platform.PlatformPreferences
+import dev.egograph.shared.core.settings.AppTheme
+import dev.egograph.shared.core.settings.ThemeRepository
+import dev.egograph.shared.features.terminal.session.components.SpecialKeysBar
+import dev.egograph.shared.features.terminal.session.components.TerminalHeader
+import dev.egograph.shared.features.terminal.session.components.TerminalView
+import dev.egograph.shared.features.terminal.session.components.rememberTerminalWebView
+import org.koin.compose.koinInject
+
+/**
+ * ターミナル画面
+ *
+ * WebSocket経由でGatewayに接続し、ターミナルエミュレーションを表示する画面。
+ *
+ * @property agentId エージェントID
+ */
+class TerminalScreen(
+    private val agentId: String,
+) : Screen {
+    override val key: ScreenKey
+        get() = "TerminalScreen:$agentId"
+
+    @Composable
+    override fun Content() {
+        TerminalContent(agentId = agentId)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TerminalContent(agentId: String) {
+    val navigator = requireNotNull(LocalNavigator.current)
+    val webView = rememberTerminalWebView()
+    val preferences = koinInject<PlatformPreferences>()
+    val themeRepository = koinInject<ThemeRepository>()
+    val selectedTheme by themeRepository.theme.collectAsState()
+    val systemDarkTheme = isSystemInDarkTheme()
+    val connectionState by webView.connectionState.collectAsState(initial = false)
+
+    var isConnecting by remember { mutableStateOf(false) }
+    var settingsError by remember { mutableStateOf<String?>(null) }
+    var terminalError by remember { mutableStateOf<String?>(null) }
+    var hasConnectedOnce by remember { mutableStateOf(false) }
+
+    val darkMode =
+        when (selectedTheme) {
+            AppTheme.DARK -> true
+            AppTheme.LIGHT -> false
+            AppTheme.SYSTEM -> systemDarkTheme
+        }
+
+    val terminalSettings = rememberTerminalSettings(agentId = agentId, preferences = preferences)
+
+    LaunchedEffect(terminalSettings.error) {
+        settingsError = terminalSettings.error
+    }
+
+    LaunchedEffect(webView, terminalSettings.wsUrl, terminalSettings.apiKey) {
+        webView.loadTerminal()
+        webView.setTheme(darkMode)
+        if (!terminalSettings.wsUrl.isNullOrBlank() && !terminalSettings.apiKey.isNullOrBlank()) {
+            webView.connect(terminalSettings.wsUrl, terminalSettings.apiKey)
+            isConnecting = true
+        }
+    }
+
+    LaunchedEffect(webView, darkMode) {
+        webView.setTheme(darkMode)
+    }
+
+    LaunchedEffect(connectionState) {
+        if (connectionState) {
+            hasConnectedOnce = true
+            isConnecting = false
+            if (terminalError == "Connection lost. Reconnecting...") {
+                terminalError = null
+            }
+        } else {
+            isConnecting = true
+            if (hasConnectedOnce) {
+                terminalError = "Connection lost. Reconnecting..."
+            }
+            if (!terminalSettings.wsUrl.isNullOrBlank() && !terminalSettings.apiKey.isNullOrBlank()) {
+                webView.connect(terminalSettings.wsUrl, terminalSettings.apiKey)
+            }
+        }
+    }
+
+    LaunchedEffect(webView) {
+        webView.errors.collect { errorMessage ->
+            terminalError = errorMessage
+            isConnecting = false
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            webView.disconnect()
+        }
+    }
+
+    val displayError = settingsError ?: terminalError
+
+    Scaffold(
+        topBar = {
+            TerminalHeader(
+                agentId = agentId,
+                isLoading = isConnecting,
+                error = displayError,
+                onClose = { navigator.pop() },
+            )
+        },
+    ) { paddingValues ->
+        Surface(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                ) {
+                    if (isConnecting) {
+                        LinearProgressIndicator(
+                            modifier =
+                                Modifier
+                                    .align(Alignment.TopCenter)
+                                    .fillMaxWidth(),
+                        )
+                    }
+
+                    TerminalView(
+                        webView = webView,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    displayError?.let { error ->
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                }
+
+                SpecialKeysBar(
+                    onKeyPress = { keySequence -> webView.sendKey(keySequence) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}

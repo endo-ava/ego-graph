@@ -6,7 +6,6 @@
 import asyncio
 import json
 import logging
-import time
 from typing import Any
 
 from pydantic import ValidationError
@@ -29,8 +28,6 @@ logger = logging.getLogger(__name__)
 WS_PING_INTERVAL: int = 30  # 秒
 WS_PING_TIMEOUT: int = 20  # 秒
 BUFFER_SIZE: int = 8192  # バイト
-SNAPSHOT_POLL_INTERVAL_SECONDS: float = 0.5
-STREAM_IDLE_SNAPSHOT_SECONDS: float = 1.5
 
 
 class TerminalWebSocketHandler:
@@ -52,13 +49,6 @@ class TerminalWebSocketHandler:
         self._pty_manager = TmuxAttachManager(session_id)
         self._running = False
         self._tasks: list[asyncio.Task[None]] = []
-        self._last_snapshot: bytes = b""
-        self._last_cursor: tuple[int | None, int | None, int | None] = (
-            None,
-            None,
-            None,
-        )
-        self._last_stream_output_at: float = 0.0
 
     async def handle(self) -> None:
         """WebSocket接続を処理する。
@@ -75,16 +65,8 @@ class TerminalWebSocketHandler:
             self._tasks = [
                 asyncio.create_task(self._receive_from_client()),
                 asyncio.create_task(self._send_to_client()),
-                asyncio.create_task(self._poll_loop()),
                 asyncio.create_task(self._ping_loop()),
             ]
-
-            # 初回表示用に現在のペイン内容を送る
-            try:
-                await self._send_snapshot_if_changed(force=True)
-                self._last_stream_output_at = time.monotonic()
-            except Exception as e:
-                logger.warning("Failed to send initial pane snapshot: %s", e)
 
             # 全てのタスクが完了するのを待機
             await asyncio.gather(*self._tasks)
@@ -165,7 +147,6 @@ class TerminalWebSocketHandler:
                 message.cols,
                 message.rows,
             )
-            await self._send_snapshot_if_changed(force=True)
         except Exception as e:
             logger.error("Failed to resize session %s: %s", self._session_id, e)
             await self._send_error("resize_error", str(e))
@@ -188,7 +169,6 @@ class TerminalWebSocketHandler:
                     # Base64エンコードして送信
                     message = WSOutputMessage.from_bytes(data, is_snapshot=False)
                     await self._send_json(message.model_dump())
-                    self._last_stream_output_at = time.monotonic()
                 else:
                     await asyncio.sleep(0.05)
             except Exception as e:
@@ -196,52 +176,6 @@ class TerminalWebSocketHandler:
                     logger.error("Error sending to client: %s", e)
                     self._running = False
                 break
-
-    async def _poll_loop(self) -> None:
-        """定期的にスナップショットを取得して変更があれば送信する。"""
-        while self._running:
-            try:
-                await asyncio.sleep(SNAPSHOT_POLL_INTERVAL_SECONDS)
-                if not self._running:
-                    break
-                if (
-                    time.monotonic() - self._last_stream_output_at
-                    < STREAM_IDLE_SNAPSHOT_SECONDS
-                ):
-                    continue
-                await self._send_snapshot_if_changed()
-            except Exception as e:
-                if self._running:
-                    logger.debug("Poll loop stopped: %s", e)
-                break
-
-    async def _send_snapshot_if_changed(self, force: bool = False) -> None:
-        """tmuxスナップショットを取得し、変化がある場合のみ送信する。"""
-        snapshot = await self._pty_manager.capture_snapshot()
-        if not snapshot:
-            return
-
-        cursor_x: int | None = None
-        cursor_y: int | None = None
-        pane_rows: int | None = None
-        try:
-            cursor_x, cursor_y, pane_rows = await self._pty_manager.capture_cursor_info()
-        except Exception:
-            pass
-
-        cursor_state = (cursor_x, cursor_y, pane_rows)
-        if force or snapshot != self._last_snapshot or cursor_state != self._last_cursor:
-            self._last_snapshot = snapshot
-            self._last_cursor = cursor_state
-            await self._send_json(
-                WSOutputMessage.from_bytes(
-                    snapshot,
-                    is_snapshot=True,
-                    cursor_x=cursor_x,
-                    cursor_y=cursor_y,
-                    pane_rows=pane_rows,
-                ).model_dump()
-            )
 
     async def _ping_loop(self) -> None:
         """定期的にPingを送信するハートビートループ。"""

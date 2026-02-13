@@ -77,7 +77,7 @@ dmypy.json
 .pyre/
 
 # Project specific
-data/
+backend/data/
 *.db
 *.sqlite
 

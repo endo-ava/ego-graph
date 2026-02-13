@@ -50,83 +50,81 @@ class TestAttachSession:
     @pytest.mark.asyncio
     async def test_attach_session_success(self, pty_manager):
         """セッションへのattachが成功することを確認する。"""
-        # Arrange
         mock_process = MagicMock()
-        mock_process.stdin = MagicMock()
-        mock_process.stdout = MagicMock()
-        mock_process.stderr = MagicMock()
         mock_process.returncode = None
 
-        with patch(
-            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
+        with (
+            patch("gateway.services.pty_manager.pty.openpty", return_value=(10, 11)),
+            patch("gateway.services.pty_manager.os.close"),
+            patch("gateway.services.pty_manager.os.set_blocking"),
+            patch("gateway.services.pty_manager.fcntl.ioctl"),
+            patch(
+                "asyncio.create_subprocess_exec",
+                new=AsyncMock(return_value=mock_process),
+            ),
         ):
-            # Act
             await pty_manager.attach_session()
 
-            # Assert
             assert pty_manager.is_attached
+            assert pty_manager._master_fd == 10
 
     @pytest.mark.asyncio
     async def test_attach_session_already_attached(self, pty_manager):
         """既にattach中の場合はエラーになることを確認する。"""
-        # Arrange
         mock_process = MagicMock()
-        mock_process.stdin = MagicMock()
-        mock_process.stdout = MagicMock()
-        mock_process.stderr = MagicMock()
         mock_process.returncode = None
 
-        with patch(
-            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
+        with (
+            patch("gateway.services.pty_manager.pty.openpty", return_value=(10, 11)),
+            patch("gateway.services.pty_manager.os.close"),
+            patch("gateway.services.pty_manager.os.set_blocking"),
+            patch("gateway.services.pty_manager.fcntl.ioctl"),
+            patch(
+                "asyncio.create_subprocess_exec",
+                new=AsyncMock(return_value=mock_process),
+            ),
         ):
             await pty_manager.attach_session()
 
-            # Act & Assert
             with pytest.raises(RuntimeError, match="Already attached"):
                 await pty_manager.attach_session()
 
     @pytest.mark.asyncio
-    async def test_attach_session_creates_process_streams(self, pty_manager):
-        """プロセスストリームが正しく作成されることを確認する。"""
-        # Arrange
+    async def test_attach_session_launches_tmux_with_pty(self, pty_manager):
+        """tmux attach がPTYで起動されることを確認する。"""
         mock_process = MagicMock()
-        mock_process.stdin = MagicMock()
-        mock_process.stdout = MagicMock()
-        mock_process.stderr = MagicMock()
         mock_process.returncode = None
 
-        with patch(
-            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
+        with (
+            patch("gateway.services.pty_manager.pty.openpty", return_value=(10, 11)),
+            patch("gateway.services.pty_manager.os.close"),
+            patch("gateway.services.pty_manager.os.set_blocking"),
+            patch("gateway.services.pty_manager.fcntl.ioctl"),
+            patch(
+                "asyncio.create_subprocess_exec",
+                new=AsyncMock(return_value=mock_process),
+            ) as mock_exec,
         ):
-            # Act
             await pty_manager.attach_session()
 
-            # Assert
-            assert pty_manager.stdin is not None
-            assert pty_manager.stdout is not None
+            assert mock_exec.call_count >= 1
+            args = mock_exec.call_args_list[0].args
+            kwargs = mock_exec.call_args_list[0].kwargs
+            assert args[:4] == ("tmux", "attach", "-t", "agent-0001")
+            assert kwargs["stdin"] == 11
+            assert kwargs["stdout"] == 11
+            assert kwargs["stderr"] == 11
+            assert callable(kwargs["preexec_fn"])
+            assert kwargs["env"]["TERM"] == "xterm-256color"
 
     @pytest.mark.asyncio
-    async def test_attach_session_fails_on_stream_creation_error(self, pty_manager):
-        """ストリーム作成失敗時にエラーが発生することを確認する。"""
-        # Arrange
-        mock_process = MagicMock()
-        mock_process.stdin = None
-        mock_process.stdout = None
-        mock_process.stderr = None
-        mock_process.returncode = None  # プロセスが実行中として扱われる
-
-        # wait()メソッドをawaitableにする
-        async def mock_wait():
-            return None
-
-        mock_process.wait = mock_wait
-        mock_process.terminate = MagicMock()
-
+    async def test_attach_session_fails_on_openpty_error(self, pty_manager):
+        """PTY作成失敗時に例外を送出することを確認する。"""
         with patch(
-            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
+            "gateway.services.pty_manager.pty.openpty",
+            side_effect=OSError("openpty failed"),
         ):
-            # Act & Assert
-            with pytest.raises(RuntimeError, match="Failed to create process streams"):
+            with pytest.raises(OSError, match="openpty failed"):
                 await pty_manager.attach_session()
 
 
@@ -153,27 +151,29 @@ class TestDetachSession:
     @pytest.mark.asyncio
     async def test_detach_session_terminates_process(self, pty_manager):
         """detach時にプロセスが終了することを確認する。"""
-        # Arrange - プロセスを作成してattach
         mock_process = MagicMock()
-        mock_process.stdin = MagicMock()
-        mock_process.stdout = MagicMock()
-        mock_process.stderr = MagicMock()
         mock_process.returncode = None
         mock_process.wait = AsyncMock()
         mock_process.terminate = MagicMock()
 
-        with patch(
-            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
+        with (
+            patch("gateway.services.pty_manager.pty.openpty", return_value=(10, 11)),
+            patch("gateway.services.pty_manager.os.close") as mock_close,
+            patch("gateway.services.pty_manager.os.set_blocking"),
+            patch("gateway.services.pty_manager.fcntl.ioctl"),
+            patch(
+                "asyncio.create_subprocess_exec",
+                new=AsyncMock(return_value=mock_process),
+            ),
         ):
             await pty_manager.attach_session()
             assert pty_manager.is_attached
 
-            # Act
             await pty_manager.detach_session()
 
-            # Assert
             assert not pty_manager.is_attached
             mock_process.terminate.assert_called_once()
+            mock_close.assert_any_call(10)
 
 
 # ============================================================================
@@ -187,31 +187,26 @@ class TestWriteInput:
     @pytest.mark.asyncio
     async def test_write_input_success(self, pty_manager):
         """入力書き込みが成功することを確認する。"""
-        # Arrange
         mock_process = MagicMock()
-        mock_process.stdin = MagicMock()
-        mock_process.stdout = MagicMock()
-        mock_process.stderr = MagicMock()
         mock_process.returncode = None
 
-        mock_stdin = MagicMock()
-        mock_stdin.write = MagicMock()
-        mock_stdin.drain = AsyncMock()
-
-        mock_process.stdin = mock_stdin
-
-        with patch(
-            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
+        with (
+            patch("gateway.services.pty_manager.pty.openpty", return_value=(10, 11)),
+            patch("gateway.services.pty_manager.os.close"),
+            patch("gateway.services.pty_manager.os.set_blocking"),
+            patch("gateway.services.pty_manager.fcntl.ioctl"),
+            patch(
+                "asyncio.create_subprocess_exec",
+                new=AsyncMock(return_value=mock_process),
+            ),
+            patch("gateway.services.pty_manager.os.write", return_value=10) as mock_write,
         ):
             await pty_manager.attach_session()
 
-            # Act
             test_data = b"test input"
             await pty_manager.write_input(test_data)
 
-            # Assert
-            mock_stdin.write.assert_called_once_with(test_data)
-            mock_stdin.drain.assert_called_once()
+            mock_write.assert_called_once_with(10, test_data)
 
     @pytest.mark.asyncio
     async def test_write_input_when_not_attached_raises_error(self, pty_manager):
@@ -235,59 +230,53 @@ class TestReadOutput:
     @pytest.mark.asyncio
     async def test_read_output_success(self, pty_manager):
         """出力読み込みが成功することを確認する。"""
-        # Arrange
         mock_process = MagicMock()
-        mock_process.stdin = MagicMock()
-        mock_process.stdout = MagicMock()
-        mock_process.stderr = MagicMock()
         mock_process.returncode = None
 
         test_data = b"test output"
-        mock_stdout = MagicMock()
-        mock_stdout.read = AsyncMock(return_value=test_data)
-
-        mock_process.stdout = mock_stdout
-
-        with patch(
-            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
+        with (
+            patch("gateway.services.pty_manager.pty.openpty", return_value=(10, 11)),
+            patch("gateway.services.pty_manager.os.close"),
+            patch("gateway.services.pty_manager.os.set_blocking"),
+            patch("gateway.services.pty_manager.fcntl.ioctl"),
+            patch(
+                "asyncio.create_subprocess_exec",
+                new=AsyncMock(return_value=mock_process),
+            ),
+            patch("gateway.services.pty_manager.os.read", return_value=test_data) as mock_read,
         ):
             await pty_manager.attach_session()
 
-            # Act
             result = await pty_manager.read_output()
 
-            # Assert
             assert result == test_data
-            mock_stdout.read.assert_called_once_with(4096)
+            mock_read.assert_called_once_with(10, 4096)
 
     @pytest.mark.asyncio
     async def test_read_output_custom_buffer_size(self, pty_manager):
         """カスタムバッファサイズで読み込めることを確認する。"""
-        # Arrange
         mock_process = MagicMock()
-        mock_process.stdin = MagicMock()
-        mock_process.stdout = MagicMock()
-        mock_process.stderr = MagicMock()
         mock_process.returncode = None
 
         test_data = b"test output"
-        mock_stdout = MagicMock()
-        mock_stdout.read = AsyncMock(return_value=test_data)
-
-        mock_process.stdout = mock_stdout
-
-        with patch(
-            "asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_process)
+        with (
+            patch("gateway.services.pty_manager.pty.openpty", return_value=(10, 11)),
+            patch("gateway.services.pty_manager.os.close"),
+            patch("gateway.services.pty_manager.os.set_blocking"),
+            patch("gateway.services.pty_manager.fcntl.ioctl"),
+            patch(
+                "asyncio.create_subprocess_exec",
+                new=AsyncMock(return_value=mock_process),
+            ),
+            patch("gateway.services.pty_manager.os.read", return_value=test_data) as mock_read,
         ):
             await pty_manager.attach_session()
 
-            # Act
             custom_size = 1024
             result = await pty_manager.read_output(custom_size)
 
-            # Assert
             assert result == test_data
-            mock_stdout.read.assert_called_once_with(custom_size)
+            mock_read.assert_called_once_with(10, custom_size)
 
     @pytest.mark.asyncio
     async def test_read_output_when_not_attached_raises_error(self, pty_manager):
@@ -332,6 +321,31 @@ class TestResizeWindow:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
+
+    @pytest.mark.asyncio
+    async def test_resize_window_updates_attached_pty_size(self, pty_manager):
+        """attach中はPTYサイズを直接更新することを確認する。"""
+        mock_process = MagicMock()
+        mock_process.returncode = None
+
+        with (
+            patch("gateway.services.pty_manager.pty.openpty", return_value=(10, 11)),
+            patch("gateway.services.pty_manager.os.close"),
+            patch("gateway.services.pty_manager.os.set_blocking"),
+            patch("gateway.services.pty_manager.fcntl.ioctl") as mock_ioctl,
+            patch(
+                "asyncio.create_subprocess_exec",
+                new=AsyncMock(return_value=mock_process),
+            ) as mock_exec,
+        ):
+            await pty_manager.attach_session()
+            mock_exec.reset_mock()
+            mock_ioctl.reset_mock()
+
+            await pty_manager.resize_window(cols=120, rows=40)
+
+            mock_exec.assert_not_called()
+            mock_ioctl.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_resize_window_raises_on_failure(self, pty_manager):
