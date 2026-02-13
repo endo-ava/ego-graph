@@ -2,11 +2,12 @@ package dev.egograph.shared.core.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 // Zinc / Slate Palette
-// Light theme colors
 val Zinc50 = Color(0xFFFAFAFA)
 val Zinc100 = Color(0xFFF4F4F5)
 val Zinc200 = Color(0xFFE4E4E7)
@@ -19,12 +20,48 @@ val Zinc800 = Color(0xFF27272A)
 val Zinc900 = Color(0xFF18181B)
 val Zinc950 = Color(0xFF09090B)
 
-/**
- * EgoGraph app theme
- *
- * @param darkTheme Use dark theme
- * @param content Content to render
- */
+private val LightColorScheme =
+    lightColorScheme(
+        primary = Zinc900,
+        onPrimary = Zinc50,
+        primaryContainer = Zinc200,
+        onPrimaryContainer = Zinc900,
+        secondary = Zinc600,
+        onSecondary = Zinc50,
+        secondaryContainer = Zinc100,
+        onSecondaryContainer = Zinc900,
+        tertiary = Zinc700,
+        onTertiary = Zinc50,
+        background = Color.White,
+        onBackground = Zinc900,
+        surface = Zinc50,
+        onSurface = Zinc900,
+        surfaceVariant = Zinc100,
+        onSurfaceVariant = Zinc700,
+        outline = Zinc300,
+    )
+
+private val DarkColorScheme =
+    darkColorScheme(
+        primary = Zinc50,
+        onPrimary = Zinc900,
+        primaryContainer = Zinc700,
+        onPrimaryContainer = Zinc50,
+        secondary = Zinc400,
+        onSecondary = Zinc900,
+        secondaryContainer = Zinc800,
+        onSecondaryContainer = Zinc300,
+        tertiary = Zinc300,
+        onTertiary = Zinc900,
+        background = Zinc950,
+        onBackground = Zinc50,
+        surface = Zinc900,
+        onSurface = Zinc50,
+        surfaceVariant = Zinc800,
+        onSurfaceVariant = Zinc300,
+        outline = Zinc700,
+    )
+
 @Composable
 fun EgoGraphTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
