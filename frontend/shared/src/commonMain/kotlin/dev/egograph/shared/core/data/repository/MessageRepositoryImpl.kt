@@ -1,6 +1,9 @@
 package dev.egograph.shared.core.data.repository
 
 import dev.egograph.shared.cache.DiskCache
+import dev.egograph.shared.core.data.repository.internal.InMemoryCache
+import dev.egograph.shared.core.data.repository.internal.bodyOrThrow
+import dev.egograph.shared.core.data.repository.internal.configureAuth
 import dev.egograph.shared.core.domain.model.ThreadMessagesResponse
 import dev.egograph.shared.core.domain.repository.ApiError
 import dev.egograph.shared.core.domain.repository.MessageRepository

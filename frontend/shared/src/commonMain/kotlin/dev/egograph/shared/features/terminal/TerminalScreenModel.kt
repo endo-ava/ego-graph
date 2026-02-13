@@ -23,12 +23,8 @@ class TerminalScreenModel(
     private val _state = MutableStateFlow(TerminalState())
     val state: StateFlow<TerminalState> = _state.asStateFlow()
 
-    private val _effect = Channel<TerminalEffect>()
+    private val _effect = Channel<TerminalEffect>(capacity = 1)
     val effect: Flow<TerminalEffect> = _effect.receiveAsFlow()
-
-    init {
-        loadSessions()
-    }
 
     fun loadSessions() {
         screenModelScope.launch {
@@ -60,7 +56,9 @@ class TerminalScreenModel(
             val session = currentState.sessions.find { it.sessionId == sessionId }
             currentState.copy(selectedSession = session)
         }
-        _effect.trySend(TerminalEffect.NavigateToSession(sessionId))
+        screenModelScope.launch {
+            _effect.send(TerminalEffect.NavigateToSession(sessionId))
+        }
     }
 
     fun clearSessionSelection() {

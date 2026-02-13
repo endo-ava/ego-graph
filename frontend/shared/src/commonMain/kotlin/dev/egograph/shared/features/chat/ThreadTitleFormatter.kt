@@ -10,12 +10,17 @@ package dev.egograph.shared.features.chat
  */
 fun String.toThreadTitle(maxLength: Int = 48): String {
     if (maxLength <= 0) {
-        return "..."
+        return ""
     }
 
     val trimmed = trim()
     if (trimmed.isEmpty()) {
-        return "New chat"
+        val fallback = "New chat"
+        return if (fallback.length > maxLength) {
+            if (maxLength <= 3) "...".take(maxLength) else fallback.take(maxLength - 3) + "..."
+        } else {
+            fallback
+        }
     }
     if (trimmed.length <= maxLength) {
         return trimmed

@@ -1,6 +1,5 @@
 package dev.egograph.shared.features.terminal.components
 
-import android.webkit.WebView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -10,6 +9,8 @@ import dev.egograph.shared.core.platform.terminal.AndroidTerminalWebView
 import dev.egograph.shared.core.platform.terminal.TerminalWebView
 import dev.egograph.shared.core.platform.terminal.createTerminalWebView
 
+private const val TAG = "TerminalView"
+
 @Composable
 actual fun TerminalView(
     webView: TerminalWebView,
@@ -17,8 +18,13 @@ actual fun TerminalView(
 ) {
     AndroidView(
         factory = { context ->
-            (webView as? AndroidTerminalWebView)?.getWebView()
-                ?: WebView(context)
+            val androidWebView = (webView as? AndroidTerminalWebView)?.getWebView()
+            requireNotNull(androidWebView) {
+                "Expected AndroidTerminalWebView but got ${webView::class.simpleName}. " +
+                    "This indicates a platform-specific implementation mismatch. " +
+                    "Ensure you are using the correct WebView implementation for this platform."
+            }
+            androidWebView
         },
         modifier = modifier,
     )

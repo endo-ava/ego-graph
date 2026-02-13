@@ -21,17 +21,6 @@ interface ChatRepository {
     fun sendMessage(request: ChatRequest): Flow<RepositoryResult<StreamChunk>>
 
     /**
-     * チャットメッセージを送信する（SSEストリーミング）
-     *
-     * SSEのdataフィールドを逐次パースし、StreamChunkを順次emitします。
-     * errorタイプのチャンクを受信した場合はApiErrorとして扱います。
-     *
-     * @param request チャットリクエスト
-     * @return ストリーミングレスポンスのFlow
-     */
-    fun streamChatResponse(request: ChatRequest): Flow<RepositoryResult<StreamChunk>>
-
-    /**
      * チャットメッセージを送信する（非ストリーミング）
      *
      * @param request チャットリクエスト

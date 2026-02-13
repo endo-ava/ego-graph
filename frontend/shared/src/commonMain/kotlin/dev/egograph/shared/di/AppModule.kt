@@ -107,6 +107,7 @@ val appModule =
                 threadRepository = get(),
                 messageRepository = get(),
                 chatRepository = get(),
+                preferences = get(),
             )
         }
 

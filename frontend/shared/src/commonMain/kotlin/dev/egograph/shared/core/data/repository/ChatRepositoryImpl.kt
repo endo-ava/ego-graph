@@ -1,5 +1,7 @@
 package dev.egograph.shared.core.data.repository
 
+import dev.egograph.shared.core.data.repository.internal.bodyOrThrow
+import dev.egograph.shared.core.data.repository.internal.configureAuth
 import dev.egograph.shared.core.domain.model.ChatRequest
 import dev.egograph.shared.core.domain.model.ChatResponse
 import dev.egograph.shared.core.domain.model.ModelsResponse
@@ -41,9 +43,7 @@ class ChatRepositoryImpl(
             isLenient = true
         },
 ) : ChatRepository {
-    override fun sendMessage(request: ChatRequest): Flow<RepositoryResult<StreamChunk>> = streamChatResponse(request)
-
-    override fun streamChatResponse(request: ChatRequest): Flow<RepositoryResult<StreamChunk>> =
+    override fun sendMessage(request: ChatRequest): Flow<RepositoryResult<StreamChunk>> =
         flow {
             try {
                 val response =

@@ -20,10 +20,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
-import dev.egograph.shared.core.platform.PlatformPreferences
+import co.touchlab.kermit.Logger
 import dev.egograph.shared.features.chat.components.ChatInput
 import dev.egograph.shared.features.chat.components.MessageList
-import org.koin.compose.koinInject
 
 /**
  * チャット画面
@@ -34,7 +33,6 @@ class ChatScreen : Screen {
     @Composable
     override fun Content() {
         val screenModel = koinScreenModel<ChatScreenModel>()
-        val preferences = koinInject<PlatformPreferences>()
         val state by screenModel.state.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -49,7 +47,7 @@ class ChatScreen : Screen {
                         snackbarHostState.showSnackbar(effect.message)
                     }
                     is ChatEffect.NavigateToThread -> {
-                        // Navigation は Screen 側で処理
+                        Logger.w { "NavigateToThread effect received but navigation not implemented yet" }
                     }
                 }
             }
@@ -65,7 +63,6 @@ class ChatScreen : Screen {
             bottomBar = {
                 ChatInput(
                     screenModel = screenModel,
-                    preferences = preferences,
                     onSendMessage = { text ->
                         screenModel.sendMessage(text)
                     },

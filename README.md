@@ -43,13 +43,13 @@ ego-graph/
 
 ### コンポーネント概要
 
-| コンポーネント | 役割                           | 技術スタック                                 | 実行環境                  |
-| -------------- | ------------------------------ | -------------------------------------------- | ------------------------- |
-| **shared/**    | 共有ライブラリ（モデル、設定） | Python 3.13, Pydantic                        | ライブラリ                |
-| **ingest/**    | データ収集・変換・保存         | Python 3.13, Spotipy, DuckDB, boto3          | GitHub Actions (定期実行) |
-| **backend/**   | Agent API・データアクセス      | FastAPI, DuckDB, LLM (DeepSeek/OpenAI)       | VPS/GCP (常駐サーバー)    |
-| **gateway/**   | Terminal Gateway・tmux 接続    | Starlette, Uvicorn, WebSocket, FCM           | tmux (LXC)                |
-| **frontend/**  | チャット UI・Terminal UI       | Kotlin 2.3, Compose Multiplatform, MVIKotlin | Android (Gradle)          |
+| コンポーネント | 役割                           | 技術スタック                                                  | 実行環境                  |
+| -------------- | ------------------------------ | ------------------------------------------------------------- | ------------------------- |
+| **shared/**    | 共有ライブラリ（モデル、設定） | Python 3.13, Pydantic                                         | ライブラリ                |
+| **ingest/**    | データ収集・変換・保存         | Python 3.13, Spotipy, DuckDB, boto3                           | GitHub Actions (定期実行) |
+| **backend/**   | Agent API・データアクセス      | FastAPI, DuckDB, LLM (DeepSeek/OpenAI)                        | VPS/GCP (常駐サーバー)    |
+| **gateway/**   | Terminal Gateway・tmux 接続    | Starlette, Uvicorn, WebSocket, FCM                            | tmux (LXC)                |
+| **frontend/**  | チャット UI・Terminal UI       | Kotlin 2.3, Compose Multiplatform, MVVM (StateFlow + Channel) | Android (Gradle)          |
 
 ---
 

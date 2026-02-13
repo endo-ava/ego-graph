@@ -126,7 +126,7 @@ class ChatUtilsTest {
     }
 
     @Test
-    fun `toThreadTitle with custom maxLength of zero returns ellipsis only`() {
+    fun `toThreadTitle with custom maxLength of zero returns empty string`() {
         // Arrange
         val input = "Hello World"
         val maxLength = 0
@@ -135,7 +135,7 @@ class ChatUtilsTest {
         val result = input.toThreadTitle(maxLength)
 
         // Assert
-        assertEquals("...", result)
+        assertEquals("", result)
     }
 
     @Test
@@ -266,7 +266,7 @@ class ChatUtilsTest {
     }
 
     @Test
-    fun `toThreadTitle with negative maxLength coerces to zero`() {
+    fun `toThreadTitle with negative maxLength returns empty string`() {
         // Arrange
         val input = "Hello World"
         val maxLength = -5
@@ -275,6 +275,6 @@ class ChatUtilsTest {
         val result = input.toThreadTitle(maxLength)
 
         // Assert
-        assertEquals("...", result)
+        assertEquals("", result)
     }
 }

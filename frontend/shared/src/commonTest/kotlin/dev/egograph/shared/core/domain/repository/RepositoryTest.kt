@@ -193,10 +193,6 @@ class RepositoryTest {
                     flow<RepositoryResult<StreamChunk>> {
                     }
 
-                override fun streamChatResponse(request: ChatRequest) =
-                    flow<RepositoryResult<StreamChunk>> {
-                    }
-
                 override suspend fun sendMessageSync(request: ChatRequest) =
                     Result.success(
                         ChatResponse(

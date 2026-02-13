@@ -75,7 +75,7 @@ fun ThreadList(
         onLoadMore = onLoadMore,
     )
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (isLoading && threads.isEmpty()) {
             LoadingView()
         } else {

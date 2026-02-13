@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * メッセージRepository
  *
- * スレッド内のメッセージ取得、メッセージ送信を担当します。
+ * スレッド内のメッセージ取得を担当します。
  */
 interface MessageRepository {
     /**

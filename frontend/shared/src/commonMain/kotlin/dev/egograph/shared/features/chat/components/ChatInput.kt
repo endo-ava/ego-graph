@@ -12,7 +12,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.features.chat.ChatScreenModel
 
 /**
@@ -22,7 +21,6 @@ import dev.egograph.shared.features.chat.ChatScreenModel
  * マイクボタンがクリックされると、コールバックが呼び出される。
  *
  * @param screenModel チャット画面モデル
- * @param preferences プラットフォーム設定
  * @param onSendMessage メッセージ送信コールバック
  * @param isLoading ローディング状態
  * @param onVoiceInputClick 音声入力ボタンクリックコールバック（オプション）
@@ -31,7 +29,6 @@ import dev.egograph.shared.features.chat.ChatScreenModel
 @Composable
 fun ChatInput(
     screenModel: ChatScreenModel,
-    preferences: PlatformPreferences,
     onSendMessage: (String) -> Unit,
     isLoading: Boolean = false,
     onVoiceInputClick: (() -> Unit)? = null,
@@ -57,7 +54,6 @@ fun ChatInput(
 
             ChatModelSelector(
                 screenModel = screenModel,
-                preferences = preferences,
                 modifier =
                     Modifier
                         .padding(start = 12.dp, bottom = 8.dp)

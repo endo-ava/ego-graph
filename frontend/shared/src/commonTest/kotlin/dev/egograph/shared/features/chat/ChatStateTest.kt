@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class ChatExecutorTest {
+class ChatStateTest {
     @Test
     fun `ChatState default flags are false`() {
         val state = ChatState()

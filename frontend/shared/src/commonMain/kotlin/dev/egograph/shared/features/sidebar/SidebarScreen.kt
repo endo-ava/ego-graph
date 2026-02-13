@@ -28,6 +28,7 @@ import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import dev.egograph.shared.features.chat.ChatScreen
 import dev.egograph.shared.features.chat.ChatScreenModel
+import dev.egograph.shared.features.chat.ChatState
 import dev.egograph.shared.features.chat.components.ThreadList
 import dev.egograph.shared.features.navigation.MainNavigationHost
 import dev.egograph.shared.features.settings.SettingsScreen
@@ -59,7 +60,7 @@ class SidebarScreen : Screen {
     override fun Content() {
         val navigator = requireNotNull(LocalNavigator.current)
         val screenModel = koinScreenModel<ChatScreenModel>()
-        val state by screenModel.state.collectAsState()
+        val state: ChatState by screenModel.state.collectAsState()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         var activeView by rememberSaveable { mutableStateOf(MainView.Chat) }

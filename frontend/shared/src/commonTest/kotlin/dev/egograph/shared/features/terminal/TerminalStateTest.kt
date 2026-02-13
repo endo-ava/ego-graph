@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-class TerminalReducerTest {
+class TerminalStateTest {
     @Test
     fun `TerminalState starts with empty sessions`() {
         val state = TerminalState()

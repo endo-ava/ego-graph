@@ -57,7 +57,7 @@ frontend/
 
 ### アーキテクチャ
 
-本プロジェクトは **MVVM + MVIKotlin** アーキテクチャを採用しています。
+本プロジェクトは **MVVM (StateFlow + Channel)** アーキテクチャを採用しています。
 
 #### 画面構成（Screen + ScreenModel + State + Effect）
 

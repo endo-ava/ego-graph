@@ -1,4 +1,4 @@
-package dev.egograph.shared.core.data.repository
+package dev.egograph.shared.core.data.repository.internal
 
 import co.touchlab.kermit.Logger
 import dev.egograph.shared.core.domain.repository.ApiError
@@ -9,12 +9,13 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.Clock
 
 internal const val DEFAULT_CACHE_DURATION_MS = 60000L
 
 internal data class CacheEntry<T>(
     val data: T,
-    val timestamp: Long = System.currentTimeMillis(),
+    val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 )
 
 internal class InMemoryCache<K, V>(
@@ -26,7 +27,7 @@ internal class InMemoryCache<K, V>(
     suspend fun get(key: K): V? =
         mutex.withLock {
             val entry = cache[key]
-            if (entry != null && System.currentTimeMillis() - entry.timestamp < expirationMs) {
+            if (entry != null && Clock.System.now().toEpochMilliseconds() - entry.timestamp < expirationMs) {
                 entry.data
             } else {
                 null

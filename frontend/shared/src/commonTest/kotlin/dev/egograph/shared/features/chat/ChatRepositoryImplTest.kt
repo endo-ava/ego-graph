@@ -232,10 +232,10 @@ class ChatRepositoryImplTest {
             assertTrue(error.cause is Exception)
         }
 
-    // ==================== streamChatResponse() テスト ====================
+    // ==================== sendMessage() テスト (Streaming) ====================
 
     @Test
-    fun `streamChatResponse - SSE streaming returns chunks`() =
+    fun `sendMessage - SSE streaming returns chunks`() =
         runTest {
             // Arrange: SSEストリーミングレスポンスの設定
             val sseData =
@@ -276,7 +276,7 @@ class ChatRepositoryImplTest {
 
             // Act: ストリームからチャンクを収集
             val chunks = mutableListOf<StreamChunk>()
-            repository.streamChatResponse(request).collect { result ->
+            repository.sendMessage(request).collect { result ->
                 if (result.isSuccess) {
                     chunks.add(result.getOrNull()!!)
                 }
@@ -291,7 +291,7 @@ class ChatRepositoryImplTest {
         }
 
     @Test
-    fun `streamChatResponse - error chunk returns HttpError`() =
+    fun `sendMessage - error chunk returns HttpError`() =
         runTest {
             // Arrange: エラーチャンクを含むSSEレスポンス
             val sseData =
@@ -325,7 +325,7 @@ class ChatRepositoryImplTest {
 
             // Act: エラー結果を収集
             val errors = mutableListOf<ApiError>()
-            repository.streamChatResponse(request).collect { result ->
+            repository.sendMessage(request).collect { result ->
                 if (result.isFailure) {
                     result.exceptionOrNull()?.let {
                         assertIs<ApiError>(it)
@@ -343,7 +343,7 @@ class ChatRepositoryImplTest {
         }
 
     @Test
-    fun `streamChatResponse - includes API key header`() =
+    fun `sendMessage - includes API key header`() =
         runTest {
             // Arrange: APIキーヘッダーを検証するモック
             val sseData = "data: {\"type\":\"done\"}\n"
@@ -375,7 +375,7 @@ class ChatRepositoryImplTest {
                 )
 
             // Act
-            repository.streamChatResponse(request).collect {}
+            repository.sendMessage(request).collect {}
 
             // Assert: APIキーヘッダーが送信されたことを検証
             assertEquals(apiKey, receivedApiKey)

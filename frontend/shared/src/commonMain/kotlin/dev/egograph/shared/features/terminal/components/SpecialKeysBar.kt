@@ -16,7 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * ターミナル用特殊キーバ튼リスト
+ * ターミナル用特殊キーボタンリスト
  *
  * Ctrl+C, Esc, 矢印キーなどの特殊キーを送信するボタン群。
  *

@@ -5,15 +5,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import dev.egograph.shared.core.platform.PlatformPreferences
-import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import dev.egograph.shared.core.ui.components.ModelSelector
 import dev.egograph.shared.features.chat.ChatScreenModel
 
 @Composable
 fun ChatModelSelector(
     screenModel: ChatScreenModel,
-    preferences: PlatformPreferences,
     modifier: Modifier = Modifier,
 ) {
     val state by screenModel.state.collectAsState()
@@ -31,7 +28,6 @@ fun ChatModelSelector(
         error = state.modelsError,
         onModelSelected = { modelId ->
             screenModel.selectModel(modelId)
-            preferences.putString(PlatformPrefsKeys.KEY_SELECTED_MODEL, modelId)
         },
         modifier = modifier,
     )

@@ -9,6 +9,8 @@ import dev.egograph.shared.core.domain.model.StreamChunkType
 import dev.egograph.shared.core.domain.repository.ChatRepository
 import dev.egograph.shared.core.domain.repository.MessageRepository
 import dev.egograph.shared.core.domain.repository.ThreadRepository
+import dev.egograph.shared.core.platform.PlatformPreferences
+import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +29,7 @@ class ChatScreenModel(
     private val threadRepository: ThreadRepository,
     private val messageRepository: MessageRepository,
     private val chatRepository: ChatRepository,
+    private val preferences: PlatformPreferences,
 ) : ScreenModel {
     private val _state = MutableStateFlow(ChatState())
     val state: StateFlow<ChatState> = _state.asStateFlow()
@@ -68,10 +71,10 @@ class ChatScreenModel(
 
     fun loadMoreThreads() {
         val currentState = _state.value
-        if (currentState.isLoadingThreads || !currentState.hasMoreThreads) return
+        if (currentState.isLoadingMoreThreads || !currentState.hasMoreThreads) return
 
         screenModelScope.launch {
-            _state.update { it.copy(isLoadingThreads = true) }
+            _state.update { it.copy(isLoadingMoreThreads = true) }
 
             threadRepository
                 .getThreads(limit = pageLimit, offset = currentState.threads.size)
@@ -81,13 +84,13 @@ class ChatScreenModel(
                             _state.update {
                                 it.copy(
                                     threads = it.threads + response.threads,
-                                    isLoadingThreads = false,
+                                    isLoadingMoreThreads = false,
                                     hasMoreThreads = (it.threads.size + response.threads.size) < response.total,
                                 )
                             }
                         }.onFailure { error ->
                             val message = "追加スレッドの読み込みに失敗: ${error.message}"
-                            _state.update { it.copy(threadsError = message, isLoadingThreads = false) }
+                            _state.update { it.copy(threadsError = message, isLoadingMoreThreads = false) }
                             _effect.send(ChatEffect.ShowError(message))
                         }
                 }
@@ -155,6 +158,7 @@ class ChatScreenModel(
 
     fun selectModel(modelId: String) {
         _state.update { it.copy(selectedModel = modelId) }
+        preferences.putString(PlatformPrefsKeys.KEY_SELECTED_MODEL, modelId)
     }
 
     fun sendMessage(content: String) {
@@ -202,6 +206,7 @@ class ChatScreenModel(
                             _effect.send(ChatEffect.ShowError(message))
                         }
                 }
+            _state.update { it.copy(isSending = false) }
         }
     }
 

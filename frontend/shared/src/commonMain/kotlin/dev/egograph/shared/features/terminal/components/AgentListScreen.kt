@@ -10,6 +10,7 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.core.screen.uniqueScreenKey
 import cafe.adriel.voyager.koin.koinScreenModel
 import dev.egograph.shared.features.terminal.components.SessionList
+import kotlinx.serialization.Transient
 
 /**
  * エージェント（セッション）一覧画面
@@ -20,8 +21,8 @@ import dev.egograph.shared.features.terminal.components.SessionList
  * @param onOpenGatewaySettings Gateway設定を開くコールバック
  */
 class AgentListScreen(
-    private val onSessionSelected: (String) -> Unit = {},
-    private val onOpenGatewaySettings: () -> Unit = {},
+    @Transient private val onSessionSelected: (String) -> Unit = {},
+    @Transient private val onOpenGatewaySettings: () -> Unit = {},
 ) : Screen {
     override val key: ScreenKey = uniqueScreenKey
 
@@ -29,10 +30,6 @@ class AgentListScreen(
     override fun Content() {
         val screenModel = koinScreenModel<TerminalScreenModel>()
         val state by screenModel.state.collectAsState()
-
-        LaunchedEffect(Unit) {
-            screenModel.loadSessions()
-        }
 
         LaunchedEffect(Unit) {
             screenModel.effect.collect { effect ->
