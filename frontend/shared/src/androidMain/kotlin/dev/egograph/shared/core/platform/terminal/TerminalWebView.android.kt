@@ -43,7 +43,7 @@ class AndroidTerminalWebView(
     private var currentApiKey: String? = null
 
     @Volatile
-    private var currentRenderMode: String = "legacy"
+    private var currentRenderMode: String = "xterm"
     private val isPageReady = AtomicBoolean(false)
     private val isTerminalReady = AtomicBoolean(false)
 

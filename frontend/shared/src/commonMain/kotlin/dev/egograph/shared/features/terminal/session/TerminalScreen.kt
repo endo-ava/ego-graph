@@ -69,6 +69,7 @@ private fun TerminalContent(agentId: String) {
     var showSpecialKeys by remember { mutableStateOf(true) }
     var settingsError by remember { mutableStateOf<String?>(null) }
     var terminalError by remember { mutableStateOf<String?>(null) }
+    var hasConnectedOnce by remember { mutableStateOf(false) }
 
     val darkMode =
         when (selectedTheme) {
@@ -99,10 +100,16 @@ private fun TerminalContent(agentId: String) {
 
     LaunchedEffect(connectionState) {
         if (connectionState) {
+            hasConnectedOnce = true
             isConnecting = false
+            if (terminalError == "Connection lost. Reconnecting...") {
+                terminalError = null
+            }
         } else {
             isConnecting = true
-            terminalError = "Connection lost. Reconnecting..."
+            if (hasConnectedOnce) {
+                terminalError = "Connection lost. Reconnecting..."
+            }
             if (!terminalSettings.wsUrl.isNullOrBlank() && !terminalSettings.apiKey.isNullOrBlank()) {
                 webView.connect(terminalSettings.wsUrl, terminalSettings.apiKey)
             }
