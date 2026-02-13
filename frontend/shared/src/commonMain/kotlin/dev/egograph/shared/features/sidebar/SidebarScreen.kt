@@ -31,6 +31,7 @@ import dev.egograph.shared.features.chat.ChatScreenModel
 import dev.egograph.shared.features.chat.ChatState
 import dev.egograph.shared.features.chat.components.ThreadList
 import dev.egograph.shared.features.navigation.MainNavigationHost
+import dev.egograph.shared.features.navigation.MainView
 import dev.egograph.shared.features.settings.SettingsScreen
 import dev.egograph.shared.features.systemprompt.SystemPromptEditorScreen
 import dev.egograph.shared.features.terminal.AgentListScreen
@@ -38,17 +39,6 @@ import dev.egograph.shared.features.terminal.TerminalScreen
 import dev.egograph.shared.features.terminal.components.GatewaySettingsScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-
-/**
- * メインのViewを表す列挙型
- */
-enum class MainView {
-    Chat,
-    SystemPrompt,
-    Settings,
-    Terminal,
-    GatewaySettings,
-}
 
 /**
  * サイドバー画面

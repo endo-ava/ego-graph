@@ -1,7 +1,6 @@
 package dev.egograph.shared.features.navigation
 
 import androidx.compose.runtime.Composable
-import dev.egograph.shared.features.sidebar.MainView
 
 /**
  * メインのナビゲーションHost

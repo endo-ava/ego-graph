@@ -8,7 +8,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
-import dev.egograph.shared.features.sidebar.MainView
 
 /**
  * メインView間の遷移アニメーション

@@ -102,7 +102,7 @@ val appModule =
         }
 
         // ScreenModels
-        factory {
+        single {
             ChatScreenModel(
                 threadRepository = get(),
                 messageRepository = get(),

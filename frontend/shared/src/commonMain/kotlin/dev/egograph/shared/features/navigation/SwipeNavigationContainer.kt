@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import dev.egograph.shared.features.sidebar.MainView
 
 /**
  * スワイプジェスチャーでViewを切り替えるコンテナ
