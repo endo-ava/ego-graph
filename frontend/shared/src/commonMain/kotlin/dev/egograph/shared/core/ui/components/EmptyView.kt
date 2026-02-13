@@ -13,13 +13,13 @@ import androidx.compose.ui.unit.dp
 /**
  * 空状態表示コンポーネント
  *
- * @param modifier Modifier
+ * @param modifier 修飾子
  * @param message 表示メッセージ
  */
 @Composable
 fun EmptyView(
-    message: String = "No content",
     modifier: Modifier = Modifier,
+    message: String = "No content",
 ) {
     Box(
         modifier =

@@ -19,10 +19,14 @@ import kotlinx.serialization.Transient
  *
  * @param onSessionSelected セッション選択コールバック
  * @param onOpenGatewaySettings Gateway設定を開くコールバック
+ * @param onShowSnackbar Snackbar表示コールバック
+ * @param onShowError エラー表示コールバック
  */
 class AgentListScreen(
     @Transient private val onSessionSelected: (String) -> Unit = {},
     @Transient private val onOpenGatewaySettings: () -> Unit = {},
+    @Transient private val onShowSnackbar: (String) -> Unit = {},
+    @Transient private val onShowError: (String) -> Unit = {},
 ) : Screen {
     override val key: ScreenKey = uniqueScreenKey
 
@@ -37,7 +41,12 @@ class AgentListScreen(
                     is AgentListEffect.NavigateToSession -> {
                         onSessionSelected(effect.sessionId)
                     }
-                    else -> {}
+                    is AgentListEffect.ShowSnackbar -> {
+                        onShowSnackbar(effect.message)
+                    }
+                    is AgentListEffect.ShowError -> {
+                        onShowError(effect.message)
+                    }
                 }
             }
         }

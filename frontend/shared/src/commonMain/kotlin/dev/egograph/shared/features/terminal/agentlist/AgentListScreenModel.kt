@@ -3,6 +3,7 @@ package dev.egograph.shared.features.terminal.agentlist
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import dev.egograph.shared.core.domain.repository.TerminalRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,29 +27,33 @@ class AgentListScreenModel(
     private val _effect = Channel<AgentListEffect>(capacity = 1)
     val effect: Flow<AgentListEffect> = _effect.receiveAsFlow()
 
-    fun loadSessions() {
-        screenModelScope.launch {
-            _state.update { it.copy(isLoadingSessions = true, sessionsError = null) }
+    private var sessionsJob: Job? = null
 
-            terminalRepository
-                .getSessions()
-                .collect { result ->
-                    result
-                        .onSuccess { sessions ->
-                            _state.update {
-                                it.copy(
-                                    sessions = sessions,
-                                    isLoadingSessions = false,
-                                    sessionsError = null,
-                                )
+    fun loadSessions() {
+        sessionsJob?.cancel()
+        sessionsJob =
+            screenModelScope.launch {
+                _state.update { it.copy(isLoadingSessions = true, sessionsError = null) }
+
+                terminalRepository
+                    .getSessions()
+                    .collect { result ->
+                        result
+                            .onSuccess { sessions ->
+                                _state.update {
+                                    it.copy(
+                                        sessions = sessions,
+                                        isLoadingSessions = false,
+                                        sessionsError = null,
+                                    )
+                                }
+                            }.onFailure { error ->
+                                val message = "セッション一覧の読み込みに失敗: ${error.message}"
+                                _state.update { it.copy(sessionsError = message, isLoadingSessions = false) }
+                                _effect.send(AgentListEffect.ShowError(message))
                             }
-                        }.onFailure { error ->
-                            val message = "セッション一覧の読み込みに失敗: ${error.message}"
-                            _state.update { it.copy(sessionsError = message, isLoadingSessions = false) }
-                            _effect.send(AgentListEffect.ShowError(message))
-                        }
-                }
-        }
+                    }
+            }
     }
 
     fun selectSession(sessionId: String) {

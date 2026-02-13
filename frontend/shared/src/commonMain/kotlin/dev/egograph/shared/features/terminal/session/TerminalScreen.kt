@@ -100,6 +100,12 @@ private fun TerminalContent(agentId: String) {
     LaunchedEffect(connectionState) {
         if (connectionState) {
             isConnecting = false
+        } else {
+            isConnecting = true
+            terminalError = "Connection lost. Reconnecting..."
+            if (!terminalSettings.wsUrl.isNullOrBlank() && !terminalSettings.apiKey.isNullOrBlank()) {
+                webView.connect(terminalSettings.wsUrl, terminalSettings.apiKey)
+            }
         }
     }
 
