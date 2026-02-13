@@ -61,6 +61,7 @@ class AndroidTerminalWebView(
                 domStorageEnabled = true
                 allowContentAccess = true
                 allowFileAccess = true
+                cacheMode = WebSettings.LOAD_NO_CACHE
                 loadWithOverviewMode = false
                 useWideViewPort = false
                 textZoom = 100
@@ -177,6 +178,7 @@ class AndroidTerminalWebView(
     override fun loadTerminal() {
         isPageReady.set(false)
         isTerminalReady.set(false)
+        _webView.clearCache(true)
         _webView.loadUrl("file:///android_asset/xterm/terminal.html")
     }
 

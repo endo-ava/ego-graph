@@ -111,7 +111,13 @@ open http://localhost:8000/docs
 
 ```bash
 # tmux セッションで起動
-tmux new-session -d -s egograph-gateway 'uv run uvicorn gateway.main:app --host 127.0.0.1 --port 8001'
+tmux new-session -d -s egograph-gateway 'uv run uvicorn gateway.main:app --host 0.0.0.0 --port 8001'
+
+# tmux セッション停止
+tmux kill-session -t egograph-gateway
+
+# ログ確認
+tmux capture-pane -p -S -120 -t egograph-gateway
 
 # セッションにアタッチ
 tmux attach-session -t egograph-gateway

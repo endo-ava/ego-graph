@@ -30,6 +30,22 @@
             width: 100%;
             height: 100%;
         }
+
+        #xtermRender .xterm .xterm-helper-textarea {
+            position: fixed !important;
+            left: -10000px !important;
+            top: -10000px !important;
+            width: 1px !important;
+            height: 1px !important;
+            opacity: 0 !important;
+            z-index: -10 !important;
+            border: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            caret-color: transparent !important;
+            color: transparent !important;
+            background: transparent !important;
+        }
     </style>
 </head>
 <body>
@@ -40,7 +56,6 @@
             var xtermRender = document.getElementById('xtermRender');
             var websocket = null;
             var renderTerminal = null;
-            var ANSI_ESCAPE_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
 
             function reportError(message) {
                 if (
@@ -48,12 +63,6 @@
                     typeof window.TerminalBridge.onError === 'function'
                 ) {
                     window.TerminalBridge.onError(message);
-                }
-            }
-
-            function safeScrollToBottom() {
-                if (renderTerminal && typeof renderTerminal.scrollToBottom === 'function') {
-                    renderTerminal.scrollToBottom();
                 }
             }
 
@@ -76,14 +85,19 @@
                     renderTerminal = new window.Terminal({
                         cols: 80,
                         rows: 24,
-                        convertEol: true,
-                        cursorBlink: false,
+                        convertEol: false,
+                        cursorBlink: true,
+                        cursorStyle: 'block',
+                        cursorInactiveStyle: 'none',
+                        drawWhitespace: 'none',
                         fontFamily: 'monospace',
                         fontSize: 14,
                         lineHeight: 1.2,
                         theme: {
                             background: '#1e1e1e',
                             foreground: '#d4d4d4',
+                            cursor: '#d4d4d4',
+                            cursorAccent: '#1e1e1e',
                         },
                     });
                     renderTerminal.open(xtermRender);
@@ -96,6 +110,9 @@
                         renderTerminal.textarea.setAttribute('autocomplete', 'off');
                         renderTerminal.textarea.setAttribute('autocorrect', 'off');
                         renderTerminal.textarea.setAttribute('spellcheck', 'false');
+                        renderTerminal.textarea.style.caretColor = 'transparent';
+                        renderTerminal.textarea.style.color = 'transparent';
+                        renderTerminal.textarea.style.background = 'transparent';
                     }
                 } catch (err) {
                     renderTerminal = null;
@@ -122,8 +139,28 @@
             }
 
             function estimateTerminalSize() {
-                var cols = Math.floor((window.innerWidth - 16) / 8.4);
-                var rows = Math.floor((window.innerHeight - 16) / 18.2);
+                var cellWidth = 8.4;
+                var cellHeight = 18.2;
+
+                if (
+                    renderTerminal &&
+                    renderTerminal._core &&
+                    renderTerminal._core._renderService &&
+                    renderTerminal._core._renderService.dimensions &&
+                    renderTerminal._core._renderService.dimensions.css &&
+                    renderTerminal._core._renderService.dimensions.css.cell
+                ) {
+                    var cell = renderTerminal._core._renderService.dimensions.css.cell;
+                    if (cell.width > 0) {
+                        cellWidth = cell.width;
+                    }
+                    if (cell.height > 0) {
+                        cellHeight = cell.height;
+                    }
+                }
+
+                var cols = Math.floor((window.innerWidth - 16) / cellWidth);
+                var rows = Math.floor((window.innerHeight - 16) / cellHeight);
                 cols = Math.min(Math.max(cols, 20), 240);
                 rows = Math.min(Math.max(rows, 12), 200);
                 return { cols: cols, rows: rows };
@@ -133,10 +170,12 @@
                 var size = estimateTerminalSize();
                 if (
                     renderTerminal &&
-                    typeof renderTerminal.resize === 'function'
+                    typeof renderTerminal.resize === 'function' &&
+                    (renderTerminal.cols !== size.cols || renderTerminal.rows !== size.rows)
                 ) {
                     renderTerminal.resize(size.cols, size.rows);
                 }
+
                 return size;
             }
 
@@ -153,78 +192,12 @@
                 }));
             }
 
-            function renderSnapshotWithXterm(text, cursorX, cursorY, paneRows) {
-                if (!ensureTerminal()) {
-                    return false;
-                }
-
-                var normalized = String(text || '')
-                    .replace(/\u0000/g, '')
-                    .replace(/\r/g, '');
-                var lines = normalized.split('\n');
-
-                if (lines.length > 1 && lines[lines.length - 1] === '') {
-                    lines.pop();
-                }
-                if (lines.length === 0) {
-                    lines = [''];
-                }
-                if (
-                    typeof paneRows === 'number' &&
-                    paneRows > 0 &&
-                    lines.length > paneRows
-                ) {
-                    lines = lines.slice(lines.length - paneRows);
-                }
-
-                var rows = Math.max(
-                    typeof paneRows === 'number' && paneRows > 0 ? paneRows : 24,
-                    12
-                );
-                var cols = 80;
-                for (var i = 0; i < lines.length; i++) {
-                    var plainLength = lines[i].replace(ANSI_ESCAPE_RE, '').length;
-                    if (plainLength + 1 > cols) {
-                        cols = plainLength + 1;
-                    }
-                }
-                cols = Math.min(Math.max(cols, 20), 240);
-
-                if (typeof renderTerminal.resize === 'function') {
-                    renderTerminal.resize(cols, rows);
-                }
-                if (typeof renderTerminal.reset === 'function') {
-                    renderTerminal.reset();
-                } else if (typeof renderTerminal.clear === 'function') {
-                    renderTerminal.clear();
-                }
-                if (typeof renderTerminal.write !== 'function') {
-                    return false;
-                }
-
-                renderTerminal.write(lines.join('\r\n'));
-                if (
-                    typeof cursorX === 'number' &&
-                    typeof cursorY === 'number' &&
-                    cursorX >= 0 &&
-                    cursorY >= 0
-                ) {
-                    renderTerminal.write(
-                        '\x1b[' + (cursorY + 1) + ';' + (cursorX + 1) + 'H'
-                    );
-                }
-
-                safeScrollToBottom();
-                return true;
-            }
-
             function writeStreamChunkWithXterm(text) {
                 if (!ensureTerminal() || typeof renderTerminal.write !== 'function') {
                     return false;
                 }
 
                 renderTerminal.write(text);
-                safeScrollToBottom();
                 return true;
             }
 
@@ -239,18 +212,6 @@
                     bytes[i] = bin.charCodeAt(i);
                 }
                 var text = new TextDecoder('utf-8').decode(bytes);
-                var isSnapshot = message.is_snapshot === true;
-
-                if (isSnapshot) {
-                    renderSnapshotWithXterm(
-                        text,
-                        message.cursor_x,
-                        message.cursor_y,
-                        message.pane_rows
-                    );
-                    return;
-                }
-
                 writeStreamChunkWithXterm(text);
             }
 
@@ -336,7 +297,6 @@
 
             if (ensureTerminal()) {
                 applyViewportSize();
-                safeScrollToBottom();
             }
 
             var resizeTimeout;

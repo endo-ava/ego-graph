@@ -4,8 +4,14 @@ tmuxセッションへのattach/detachを担当する。
 """
 
 import asyncio
+import errno
+import fcntl
 import logging
+import os
+import pty
 import re
+import struct
+import termios
 from typing import Final
 
 logger = logging.getLogger(__name__)
@@ -14,6 +20,9 @@ logger = logging.getLogger(__name__)
 SESSION_ID_PATTERN: Final = re.compile(r"^[A-Za-z0-9-]+$")
 TMUX_CAPTURE_TIMEOUT_SECONDS: Final = 2.0
 TMUX_CURSOR_TIMEOUT_SECONDS: Final = 1.0
+TMUX_ATTACH_TERM: Final = "xterm-256color"
+DEFAULT_PTY_COLS: Final = 80
+DEFAULT_PTY_ROWS: Final = 24
 
 
 class TmuxAttachManager:
@@ -42,6 +51,7 @@ class TmuxAttachManager:
         self._stdin: asyncio.StreamWriter | None = None
         self._stdout: asyncio.StreamReader | None = None
         self._stderr: asyncio.StreamReader | None = None
+        self._master_fd: int | None = None
         self._attached = False
 
     @property
@@ -96,39 +106,42 @@ class TmuxAttachManager:
 
         logger.info("Attaching to session: %s", self._session_id)
         process = None  # 一時変数でプロセスを保持
+        master_fd: int | None = None
+        slave_fd: int | None = None
 
         try:
-            # 非同期プロセスとしてtmux attachを実行
-            # create_subprocess_execを使用してshell injectionを防止
+            # tmux attach はTTYが必要なため、明示的にPTYを作成して接続する。
+            master_fd, slave_fd = pty.openpty()
+            self._set_winsize(master_fd, DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS)
+
+            env = {**os.environ, "TERM": TMUX_ATTACH_TERM}
+
+            def _child_setup() -> None:
+                os.setsid()
+                fcntl.ioctl(slave_fd, termios.TIOCSCTTY, 0)
+
             process = await asyncio.create_subprocess_exec(
                 "tmux",
                 "attach",
                 "-t",
                 self._session_id,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+                stdin=slave_fd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                env=env,
+                preexec_fn=_child_setup,
             )
-
-            if (
-                process.stdin is None
-                or process.stdout is None
-                or process.stderr is None
-            ):
-                # プロセスを終了させる
-                process.terminate()
-                try:
-                    await asyncio.wait_for(process.wait(), timeout=2.0)
-                except asyncio.TimeoutError:
-                    process.kill()
-                    await process.wait()
-                raise RuntimeError("Failed to create process streams")
+            os.close(slave_fd)
+            slave_fd = None
+            os.set_blocking(master_fd, False)
 
             self._process = process
+            self._master_fd = master_fd
             self._stdin = process.stdin
             self._stdout = process.stdout
             self._stderr = process.stderr
             self._attached = True
+            await self._configure_session_for_web_client()
 
             logger.info("Successfully attached to session: %s", self._session_id)
 
@@ -142,7 +155,45 @@ class TmuxAttachManager:
                 except asyncio.TimeoutError:
                     process.kill()
                     await process.wait()
+            if slave_fd is not None:
+                try:
+                    os.close(slave_fd)
+                except OSError:
+                    pass
+            if master_fd is not None:
+                try:
+                    os.close(master_fd)
+                except OSError:
+                    pass
             raise
+
+    async def _configure_session_for_web_client(self) -> None:
+        """Web表示向けにtmuxの装飾行を無効化する。"""
+        commands = [
+            ["tmux", "set-option", "-q", "-t", self._session_id, "status", "off"],
+            [
+                "tmux",
+                "set-window-option",
+                "-q",
+                "-t",
+                self._session_id,
+                "pane-border-status",
+                "off",
+            ],
+        ]
+        for cmd in commands:
+            try:
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                await asyncio.wait_for(
+                    process.communicate(),
+                    timeout=TMUX_CAPTURE_TIMEOUT_SECONDS,
+                )
+            except Exception as e:
+                logger.debug("Failed to configure tmux option %s: %s", cmd, e)
 
     async def detach_session(self) -> None:
         """tmuxセッションからdetachする。
@@ -173,12 +224,18 @@ class TmuxAttachManager:
                 await self._stdin.wait_closed()
             except Exception as e:
                 logger.error("Error closing stdin: %s", e)
+        if self._master_fd is not None:
+            try:
+                os.close(self._master_fd)
+            except OSError as e:
+                logger.debug("Error closing master PTY fd: %s", e)
 
         # 状態をリセット
         self._process = None
         self._stdin = None
         self._stdout = None
         self._stderr = None
+        self._master_fd = None
         self._attached = False
 
         logger.info("Successfully detached from session: %s", self._session_id)
@@ -197,6 +254,10 @@ class TmuxAttachManager:
             raise RuntimeError("Not attached to session")
 
         try:
+            if self._master_fd is not None:
+                await self._write_master(data)
+                return
+
             if self._stdin is None or self._is_stream_closing(self._stdin):
                 await self._send_keys_via_tmux(data)
                 return
@@ -273,10 +334,14 @@ class TmuxAttachManager:
         Raises:
             RuntimeError: attachされていない場合
         """
-        if not self._attached or self._stdout is None:
+        if not self._attached:
             raise RuntimeError("Not attached to session")
 
         try:
+            if self._master_fd is not None:
+                return await self._read_master(n)
+            if self._stdout is None:
+                raise RuntimeError("Not attached to session")
             return await self._stdout.read(n)
         except Exception as e:
             logger.error("Failed to read output: %s", e)
@@ -294,14 +359,82 @@ class TmuxAttachManager:
         Raises:
             RuntimeError: attachされていない場合
         """
-        if not self._attached or self._stderr is None:
+        if not self._attached:
             raise RuntimeError("Not attached to session")
+        if self._stderr is None:
+            return b""
 
         try:
             return await self._stderr.read(n)
         except Exception as e:
             logger.error("Failed to read stderr: %s", e)
             raise
+
+    @staticmethod
+    def _set_winsize(
+        fd: int,
+        cols: int,
+        rows: int,
+    ) -> None:
+        """PTYの画面サイズを設定する。"""
+        fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+
+    async def _wait_fd_readable(self, fd: int) -> None:
+        """指定FDが読み取り可能になるまで待機する。"""
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[None] = loop.create_future()
+
+        def on_readable() -> None:
+            if not future.done():
+                future.set_result(None)
+
+        loop.add_reader(fd, on_readable)
+        try:
+            await future
+        finally:
+            loop.remove_reader(fd)
+
+    async def _wait_fd_writable(self, fd: int) -> None:
+        """指定FDが書き込み可能になるまで待機する。"""
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[None] = loop.create_future()
+
+        def on_writable() -> None:
+            if not future.done():
+                future.set_result(None)
+
+        loop.add_writer(fd, on_writable)
+        try:
+            await future
+        finally:
+            loop.remove_writer(fd)
+
+    async def _read_master(self, n: int) -> bytes:
+        """master PTYから非同期に読み込む。"""
+        if self._master_fd is None:
+            raise RuntimeError("Not attached to session")
+        while True:
+            try:
+                return os.read(self._master_fd, n)
+            except BlockingIOError:
+                await self._wait_fd_readable(self._master_fd)
+            except OSError as e:
+                # PTYクローズ時はEIOになるためEOFとして扱う。
+                if e.errno == errno.EIO:
+                    return b""
+                raise
+
+    async def _write_master(self, data: bytes) -> None:
+        """master PTYへ非同期に書き込む。"""
+        if self._master_fd is None:
+            raise RuntimeError("Not attached to session")
+        remaining = data
+        while remaining:
+            try:
+                written = os.write(self._master_fd, remaining)
+                remaining = remaining[written:]
+            except BlockingIOError:
+                await self._wait_fd_writable(self._master_fd)
 
     async def resize_window(
         self,
@@ -321,6 +454,10 @@ class TmuxAttachManager:
             raise ValueError(f"cols must be a positive integer, got {cols}")
         if not isinstance(rows, int) or rows <= 0:
             raise ValueError(f"rows must be a positive integer, got {rows}")
+
+        if self._attached and self._master_fd is not None:
+            self._set_winsize(self._master_fd, cols, rows)
+            return
 
         cmd = [
             "tmux",
