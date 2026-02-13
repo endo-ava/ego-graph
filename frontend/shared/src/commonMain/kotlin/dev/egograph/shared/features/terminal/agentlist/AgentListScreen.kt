@@ -1,4 +1,4 @@
-package dev.egograph.shared.features.terminal
+package dev.egograph.shared.features.terminal.agentlist
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -9,7 +9,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.core.screen.uniqueScreenKey
 import cafe.adriel.voyager.koin.koinScreenModel
-import dev.egograph.shared.features.terminal.components.SessionList
+import dev.egograph.shared.features.terminal.agentlist.components.SessionList
 import kotlinx.serialization.Transient
 
 /**
@@ -28,13 +28,13 @@ class AgentListScreen(
 
     @Composable
     override fun Content() {
-        val screenModel = koinScreenModel<TerminalScreenModel>()
+        val screenModel = koinScreenModel<AgentListScreenModel>()
         val state by screenModel.state.collectAsState()
 
         LaunchedEffect(Unit) {
             screenModel.effect.collect { effect ->
                 when (effect) {
-                    is TerminalEffect.NavigateToSession -> {
+                    is AgentListEffect.NavigateToSession -> {
                         onSessionSelected(effect.sessionId)
                     }
                     else -> {}

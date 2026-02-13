@@ -1,4 +1,4 @@
-package dev.egograph.shared.features.terminal.components
+package dev.egograph.shared.features.terminal.session.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row

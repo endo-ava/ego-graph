@@ -19,7 +19,7 @@ import dev.egograph.shared.core.platform.normalizeBaseUrl
 import dev.egograph.shared.core.settings.ThemeRepository
 import dev.egograph.shared.core.settings.ThemeRepositoryImpl
 import dev.egograph.shared.features.chat.ChatScreenModel
-import dev.egograph.shared.features.terminal.TerminalScreenModel
+import dev.egograph.shared.features.terminal.agentlist.AgentListScreenModel
 import io.ktor.client.HttpClient
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -112,7 +112,7 @@ val appModule =
         }
 
         factory {
-            TerminalScreenModel(
+            AgentListScreenModel(
                 terminalRepository = get(),
             )
         }

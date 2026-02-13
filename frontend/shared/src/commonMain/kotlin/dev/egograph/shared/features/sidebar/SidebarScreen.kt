@@ -35,9 +35,9 @@ import dev.egograph.shared.features.navigation.MainNavigationHost
 import dev.egograph.shared.features.navigation.MainView
 import dev.egograph.shared.features.settings.SettingsScreen
 import dev.egograph.shared.features.systemprompt.SystemPromptEditorScreen
-import dev.egograph.shared.features.terminal.AgentListScreen
-import dev.egograph.shared.features.terminal.TerminalScreen
-import dev.egograph.shared.features.terminal.components.GatewaySettingsScreen
+import dev.egograph.shared.features.terminal.agentlist.AgentListScreen
+import dev.egograph.shared.features.terminal.session.TerminalScreen
+import dev.egograph.shared.features.terminal.settings.GatewaySettingsScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 

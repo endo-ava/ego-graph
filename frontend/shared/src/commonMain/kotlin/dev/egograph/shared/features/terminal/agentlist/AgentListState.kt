@@ -1,4 +1,4 @@
-package dev.egograph.shared.features.terminal
+package dev.egograph.shared.features.terminal.agentlist
 
 import dev.egograph.shared.core.domain.model.terminal.Session
 
@@ -10,7 +10,7 @@ import dev.egograph.shared.core.domain.model.terminal.Session
  * @property sessionsError セッション関連のエラーメッセージ
  * @property selectedSession 選択中のセッション
  */
-data class TerminalState(
+data class AgentListState(
     val sessions: List<Session> = emptyList(),
     val isLoadingSessions: Boolean = false,
     val sessionsError: String? = null,

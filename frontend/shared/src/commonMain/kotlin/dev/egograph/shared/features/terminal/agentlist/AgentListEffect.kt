@@ -1,11 +1,11 @@
-package dev.egograph.shared.features.terminal
+package dev.egograph.shared.features.terminal.agentlist
 
 /**
  * ターミナル画面のOne-shotイベント (Effect)
  *
  * 画面遷移やSnackbar表示など、状態として保持しない単発のイベントを定義します。
  */
-sealed class TerminalEffect {
+sealed class AgentListEffect {
     /**
      * エラーメッセージを表示する
      *
@@ -13,7 +13,7 @@ sealed class TerminalEffect {
      */
     data class ShowError(
         val message: String,
-    ) : TerminalEffect()
+    ) : AgentListEffect()
 
     /**
      * Snackbarを表示する
@@ -22,7 +22,7 @@ sealed class TerminalEffect {
      */
     data class ShowSnackbar(
         val message: String,
-    ) : TerminalEffect()
+    ) : AgentListEffect()
 
     /**
      * 特定のセッションに遷移する
@@ -31,5 +31,5 @@ sealed class TerminalEffect {
      */
     data class NavigateToSession(
         val sessionId: String,
-    ) : TerminalEffect()
+    ) : AgentListEffect()
 }

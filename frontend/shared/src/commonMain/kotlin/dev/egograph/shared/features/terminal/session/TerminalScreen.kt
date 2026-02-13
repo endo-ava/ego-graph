@@ -1,4 +1,4 @@
-package dev.egograph.shared.features.terminal
+package dev.egograph.shared.features.terminal.session
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -29,11 +29,10 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.core.settings.AppTheme
 import dev.egograph.shared.core.settings.ThemeRepository
-import dev.egograph.shared.features.terminal.components.SpecialKeysBar
-import dev.egograph.shared.features.terminal.components.TerminalHeader
-import dev.egograph.shared.features.terminal.components.TerminalView
-import dev.egograph.shared.features.terminal.components.rememberTerminalSettings
-import dev.egograph.shared.features.terminal.components.rememberTerminalWebView
+import dev.egograph.shared.features.terminal.session.components.SpecialKeysBar
+import dev.egograph.shared.features.terminal.session.components.TerminalHeader
+import dev.egograph.shared.features.terminal.session.components.TerminalView
+import dev.egograph.shared.features.terminal.session.components.rememberTerminalWebView
 import org.koin.compose.koinInject
 
 /**

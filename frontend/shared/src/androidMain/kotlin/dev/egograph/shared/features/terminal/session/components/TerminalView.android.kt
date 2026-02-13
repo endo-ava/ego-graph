@@ -1,4 +1,4 @@
-package dev.egograph.shared.features.terminal.components
+package dev.egograph.shared.features.terminal.session.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember

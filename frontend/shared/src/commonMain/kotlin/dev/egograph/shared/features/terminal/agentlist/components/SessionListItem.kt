@@ -1,4 +1,4 @@
-package dev.egograph.shared.features.terminal.components
+package dev.egograph.shared.features.terminal.agentlist.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

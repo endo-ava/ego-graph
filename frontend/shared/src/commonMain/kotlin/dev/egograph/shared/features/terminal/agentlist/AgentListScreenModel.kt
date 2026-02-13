@@ -1,4 +1,4 @@
-package dev.egograph.shared.features.terminal
+package dev.egograph.shared.features.terminal.agentlist
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
@@ -17,14 +17,14 @@ import kotlinx.coroutines.launch
  *
  * セッション一覧管理、画面遷移などのビジネスロジックを担当する。
  */
-class TerminalScreenModel(
+class AgentListScreenModel(
     private val terminalRepository: TerminalRepository,
 ) : ScreenModel {
-    private val _state = MutableStateFlow(TerminalState())
-    val state: StateFlow<TerminalState> = _state.asStateFlow()
+    private val _state = MutableStateFlow(AgentListState())
+    val state: StateFlow<AgentListState> = _state.asStateFlow()
 
-    private val _effect = Channel<TerminalEffect>(capacity = 1)
-    val effect: Flow<TerminalEffect> = _effect.receiveAsFlow()
+    private val _effect = Channel<AgentListEffect>(capacity = 1)
+    val effect: Flow<AgentListEffect> = _effect.receiveAsFlow()
 
     fun loadSessions() {
         screenModelScope.launch {
@@ -45,7 +45,7 @@ class TerminalScreenModel(
                         }.onFailure { error ->
                             val message = "セッション一覧の読み込みに失敗: ${error.message}"
                             _state.update { it.copy(sessionsError = message, isLoadingSessions = false) }
-                            _effect.send(TerminalEffect.ShowError(message))
+                            _effect.send(AgentListEffect.ShowError(message))
                         }
                 }
         }
@@ -57,7 +57,7 @@ class TerminalScreenModel(
             currentState.copy(selectedSession = session)
         }
         screenModelScope.launch {
-            _effect.send(TerminalEffect.NavigateToSession(sessionId))
+            _effect.send(AgentListEffect.NavigateToSession(sessionId))
         }
     }
 
