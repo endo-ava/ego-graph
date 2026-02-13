@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package dev.egograph.shared.core.data.repository.internal
 
 import co.touchlab.kermit.Logger
@@ -9,7 +11,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 internal const val DEFAULT_CACHE_DURATION_MS = 60000L
 
