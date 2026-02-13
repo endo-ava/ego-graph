@@ -18,7 +18,6 @@ import android.webkit.WebViewClient
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.ByteArrayInputStream
 import java.util.concurrent.atomic.AtomicBoolean
@@ -30,11 +29,8 @@ class AndroidTerminalWebView(
     private val context: Context,
 ) : TerminalWebView {
     private val _webView: WebView by lazy { createWebView() }
-    private val _output = MutableSharedFlow<String>(replay = 0)
     private val _connectionState = MutableStateFlow(false)
     private val _errors = MutableSharedFlow<String>(replay = 0)
-
-    private val isConnected = AtomicBoolean(false)
 
     @Volatile
     private var currentWsUrl: String? = null
@@ -42,8 +38,6 @@ class AndroidTerminalWebView(
     @Volatile
     private var currentApiKey: String? = null
 
-    @Volatile
-    private var currentRenderMode: String = "xterm"
     private val isPageReady = AtomicBoolean(false)
     private val isTerminalReady = AtomicBoolean(false)
 
@@ -57,9 +51,8 @@ class AndroidTerminalWebView(
         }
     }
 
-    override val output: Flow<String> = _output.asSharedFlow()
     override val connectionState: Flow<Boolean> = _connectionState.asStateFlow()
-    override val errors: Flow<String> = _errors.asSharedFlow()
+    override val errors: Flow<String> = _errors
 
     private fun createWebView(): WebView {
         return WebView(context).apply {
@@ -116,14 +109,6 @@ class AndroidTerminalWebView(
                             url.endsWith("terminal.html") -> {
                                 val html = loadAsset("xterm/terminal.html")
                                 createResponse(html, "text/html")
-                            }
-                            url.endsWith("xterm.css") -> {
-                                val css = loadAsset("xterm/xterm.css")
-                                createResponse(css, "text/css")
-                            }
-                            url.endsWith("xterm.js") -> {
-                                val js = loadAsset("xterm/xterm.js")
-                                createResponse(js, "application/javascript")
                             }
                             else -> super.shouldInterceptRequest(view, request)
                         }
@@ -211,8 +196,6 @@ class AndroidTerminalWebView(
             return
         }
 
-        applyRenderModeIfReady()
-
         val escapedWsUrl = escapeJsString(wsUrl)
         val escapedApiKey = escapeJsString(apiKey)
         _webView.evaluateJavascript(
@@ -223,24 +206,6 @@ class AndroidTerminalWebView(
             """.trimIndent(),
             null,
         )
-    }
-
-    private fun applyRenderModeIfReady() {
-        if (!isPageReady.get() || !isTerminalReady.get()) {
-            return
-        }
-
-        val mode = if (currentRenderMode == "xterm") "xterm" else "legacy"
-        runOnMainThread {
-            _webView.evaluateJavascript(
-                """
-                if (window.TerminalAPI && typeof window.TerminalAPI.setRenderMode === 'function') {
-                    window.TerminalAPI.setRenderMode('$mode');
-                }
-                """.trimIndent(),
-                null,
-            )
-        }
     }
 
     override fun disconnect() {
@@ -270,25 +235,6 @@ class AndroidTerminalWebView(
         }
     }
 
-    override fun sendText(text: String) {
-        val escapedText = escapeJsString(text)
-        runOnMainThread {
-            _webView.evaluateJavascript(
-                """
-                if (window.TerminalAPI) {
-                    window.TerminalAPI.sendText('$escapedText');
-                }
-                """.trimIndent(),
-                null,
-            )
-        }
-    }
-
-    override fun setRenderMode(mode: String) {
-        currentRenderMode = if (mode == "xterm") "xterm" else "legacy"
-        applyRenderModeIfReady()
-    }
-
     override fun setTheme(darkMode: Boolean) {
         val backgroundColor = if (darkMode) "#1e1e1e" else "#FFFFFF"
         runOnMainThread {
@@ -308,27 +254,13 @@ class AndroidTerminalWebView(
         @JavascriptInterface
         fun onConnectionChanged(connected: Boolean) {
             mainHandler.post {
-                isConnected.set(connected)
                 _connectionState.tryEmit(connected)
             }
         }
 
         @JavascriptInterface
-        fun onOutput(data: String) {
-            _output.tryEmit(data)
-        }
-
-        @JavascriptInterface
         fun onError(error: String) {
             _errors.tryEmit(error)
-        }
-
-        @JavascriptInterface
-        fun onTerminalSize(
-            cols: Int,
-            rows: Int,
-        ) {
-            // Handle terminal size if needed
         }
 
         @JavascriptInterface

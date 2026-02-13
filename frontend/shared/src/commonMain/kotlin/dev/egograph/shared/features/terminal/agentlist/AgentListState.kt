@@ -15,22 +15,4 @@ data class AgentListState(
     val isLoadingSessions: Boolean = false,
     val sessionsError: String? = null,
     val selectedSession: Session? = null,
-) {
-    /**
-     * セッションが選択されているかどうか
-     */
-    val hasSelectedSession: Boolean
-        get() = selectedSession != null
-
-    /**
-     * 読み込み中かどうか
-     */
-    val isLoading: Boolean
-        get() = isLoadingSessions
-
-    /**
-     * エラーが存在するかどうか
-     */
-    val hasError: Boolean
-        get() = sessionsError != null
-}
+)

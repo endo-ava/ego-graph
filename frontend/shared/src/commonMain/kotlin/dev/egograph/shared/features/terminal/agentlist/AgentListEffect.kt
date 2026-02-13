@@ -16,15 +16,6 @@ sealed class AgentListEffect {
     ) : AgentListEffect()
 
     /**
-     * Snackbarを表示する
-     *
-     * @property message メッセージ
-     */
-    data class ShowSnackbar(
-        val message: String,
-    ) : AgentListEffect()
-
-    /**
      * 特定のセッションに遷移する
      *
      * @property sessionId 遷移先のセッションID

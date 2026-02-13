@@ -65,8 +65,4 @@ class AgentListScreenModel(
             _effect.send(AgentListEffect.NavigateToSession(sessionId))
         }
     }
-
-    fun clearSessionSelection() {
-        _state.update { it.copy(selectedSession = null) }
-    }
 }

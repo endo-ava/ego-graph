@@ -66,7 +66,6 @@ private fun TerminalContent(agentId: String) {
     val connectionState by webView.connectionState.collectAsState(initial = false)
 
     var isConnecting by remember { mutableStateOf(false) }
-    var showSpecialKeys by remember { mutableStateOf(true) }
     var settingsError by remember { mutableStateOf<String?>(null) }
     var terminalError by remember { mutableStateOf<String?>(null) }
     var hasConnectedOnce by remember { mutableStateOf(false) }
@@ -87,7 +86,6 @@ private fun TerminalContent(agentId: String) {
     LaunchedEffect(webView, terminalSettings.wsUrl, terminalSettings.apiKey) {
         webView.loadTerminal()
         webView.setTheme(darkMode)
-        webView.setRenderMode("xterm")
         if (!terminalSettings.wsUrl.isNullOrBlank() && !terminalSettings.apiKey.isNullOrBlank()) {
             webView.connect(terminalSettings.wsUrl, terminalSettings.apiKey)
             isConnecting = true
@@ -178,12 +176,10 @@ private fun TerminalContent(agentId: String) {
                     }
                 }
 
-                if (showSpecialKeys) {
-                    SpecialKeysBar(
-                        onKeyPress = { keySequence -> webView.sendKey(keySequence) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                SpecialKeysBar(
+                    onKeyPress = { keySequence -> webView.sendKey(keySequence) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }

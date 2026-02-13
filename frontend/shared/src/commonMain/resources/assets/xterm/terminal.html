@@ -328,14 +328,6 @@
                 sendKey: function(key) {
                     sendInput(key);
                 },
-                sendText: function(text) {
-                    sendInput(text);
-                },
-                setRenderMode: function(mode) {
-                    if (mode && mode !== 'xterm') {
-                        reportError('Unsupported render mode: ' + mode);
-                    }
-                },
             };
 
             if (window.TerminalBridge && window.TerminalBridge.onTerminalReady) {

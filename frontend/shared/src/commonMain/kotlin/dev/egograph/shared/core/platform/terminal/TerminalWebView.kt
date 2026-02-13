@@ -38,31 +38,11 @@ interface TerminalWebView {
     fun sendKey(key: String)
 
     /**
-     * Send text input to terminal
-     *
-     * @param text Text string to send to terminal
-     */
-    fun sendText(text: String)
-
-    /**
-     * Set terminal render mode.
-     *
-     * @param mode Render mode ("legacy" or "xterm")
-     */
-    fun setRenderMode(mode: String)
-
-    /**
      * Apply terminal color theme.
      *
      * @param darkMode true for dark theme, false for light theme
      */
     fun setTheme(darkMode: Boolean)
-
-    /**
-     * Flow of terminal output messages
-     * Emits decoded terminal output data
-     */
-    val output: Flow<String>
 
     /**
      * Flow of connection state changes
