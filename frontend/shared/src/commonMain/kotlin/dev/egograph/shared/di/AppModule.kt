@@ -1,27 +1,25 @@
 package dev.egograph.shared.di
 
-import com.arkivanov.mvikotlin.core.store.StoreFactory
-import com.arkivanov.mvikotlin.main.store.DefaultStoreFactory
 import dev.egograph.shared.cache.DiskCache
 import dev.egograph.shared.cache.DiskCacheContext
-import dev.egograph.shared.network.provideHttpClient
-import dev.egograph.shared.platform.PlatformPreferences
-import dev.egograph.shared.platform.PlatformPrefsDefaults
-import dev.egograph.shared.platform.PlatformPrefsKeys
-import dev.egograph.shared.platform.getDefaultBaseUrl
-import dev.egograph.shared.platform.normalizeBaseUrl
-import dev.egograph.shared.repository.ChatRepository
-import dev.egograph.shared.repository.ChatRepositoryImpl
-import dev.egograph.shared.repository.MessageRepository
-import dev.egograph.shared.repository.MessageRepositoryImpl
-import dev.egograph.shared.repository.SystemPromptRepository
-import dev.egograph.shared.repository.SystemPromptRepositoryImpl
-import dev.egograph.shared.repository.ThreadRepository
-import dev.egograph.shared.repository.ThreadRepositoryImpl
-import dev.egograph.shared.settings.ThemeRepository
-import dev.egograph.shared.settings.ThemeRepositoryImpl
-import dev.egograph.shared.store.chat.ChatIntent
-import dev.egograph.shared.store.chat.ChatStoreFactory
+import dev.egograph.shared.core.data.repository.ChatRepositoryImpl
+import dev.egograph.shared.core.data.repository.MessageRepositoryImpl
+import dev.egograph.shared.core.data.repository.SystemPromptRepositoryImpl
+import dev.egograph.shared.core.data.repository.ThreadRepositoryImpl
+import dev.egograph.shared.core.domain.repository.ChatRepository
+import dev.egograph.shared.core.domain.repository.MessageRepository
+import dev.egograph.shared.core.domain.repository.SystemPromptRepository
+import dev.egograph.shared.core.domain.repository.ThreadRepository
+import dev.egograph.shared.core.network.provideHttpClient
+import dev.egograph.shared.core.platform.PlatformPreferences
+import dev.egograph.shared.core.platform.PlatformPrefsDefaults
+import dev.egograph.shared.core.platform.PlatformPrefsKeys
+import dev.egograph.shared.core.platform.getDefaultBaseUrl
+import dev.egograph.shared.core.platform.normalizeBaseUrl
+import dev.egograph.shared.core.settings.ThemeRepository
+import dev.egograph.shared.core.settings.ThemeRepositoryImpl
+import dev.egograph.shared.features.chat.ChatScreenModel
+import dev.egograph.shared.features.terminal.agentlist.AgentListScreenModel
 import io.ktor.client.HttpClient
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -103,29 +101,19 @@ val appModule =
             )
         }
 
-        single<StoreFactory> {
-            DefaultStoreFactory()
+        // ScreenModels
+        single {
+            ChatScreenModel(
+                threadRepository = get(),
+                messageRepository = get(),
+                chatRepository = get(),
+                preferences = get(),
+            )
         }
 
-        single(qualifier = named("ChatStore")) {
-            val store =
-                ChatStoreFactory(
-                    storeFactory = get(),
-                    threadRepository = get(),
-                    messageRepository = get(),
-                    chatRepository = get(),
-                ).create()
-
-            val preferences = getOrNull<PlatformPreferences>()
-            val savedModelId =
-                preferences?.getString(
-                    PlatformPrefsKeys.KEY_SELECTED_MODEL,
-                    PlatformPrefsDefaults.DEFAULT_SELECTED_MODEL,
-                )
-            if (!savedModelId.isNullOrBlank()) {
-                store.accept(ChatIntent.SelectModel(savedModelId))
-            }
-
-            store
+        factory {
+            AgentListScreenModel(
+                terminalRepository = get(),
+            )
         }
     }

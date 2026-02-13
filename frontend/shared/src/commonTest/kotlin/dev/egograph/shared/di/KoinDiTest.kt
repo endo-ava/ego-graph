@@ -1,10 +1,10 @@
 package dev.egograph.shared.di
 
-import dev.egograph.shared.repository.ChatRepository
-import dev.egograph.shared.repository.MessageRepository
-import dev.egograph.shared.repository.MessageRepositoryImpl
-import dev.egograph.shared.repository.ThreadRepository
-import dev.egograph.shared.repository.ThreadRepositoryImpl
+import dev.egograph.shared.core.data.repository.MessageRepositoryImpl
+import dev.egograph.shared.core.data.repository.ThreadRepositoryImpl
+import dev.egograph.shared.core.domain.repository.ChatRepository
+import dev.egograph.shared.core.domain.repository.MessageRepository
+import dev.egograph.shared.core.domain.repository.ThreadRepository
 import io.ktor.client.HttpClient
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin

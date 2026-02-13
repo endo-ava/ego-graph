@@ -1,0 +1,57 @@
+package dev.egograph.shared.core.settings
+
+import dev.egograph.shared.core.platform.PlatformPreferences
+import dev.egograph.shared.core.platform.PlatformPrefsDefaults
+import dev.egograph.shared.core.platform.PlatformPrefsKeys
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+/**
+ * Theme repository interface
+ */
+interface ThemeRepository {
+    /**
+     * Current theme state
+     */
+    val theme: StateFlow<AppTheme>
+
+    /**
+     * Set theme
+     */
+    fun setTheme(theme: AppTheme)
+}
+
+/**
+ * Theme repository implementation
+ */
+class ThemeRepositoryImpl(
+    private val preferences: PlatformPreferences,
+) : ThemeRepository {
+    private val _theme = MutableStateFlow(AppTheme.SYSTEM)
+    override val theme: StateFlow<AppTheme> = _theme.asStateFlow()
+
+    private val scope = CoroutineScope(Dispatchers.Default)
+
+    init {
+        scope.launch {
+            val savedTheme =
+                preferences.getString(
+                    PlatformPrefsKeys.KEY_THEME,
+                    PlatformPrefsDefaults.DEFAULT_THEME,
+                )
+            _theme.value = savedTheme.toAppTheme()
+        }
+    }
+
+    override fun setTheme(theme: AppTheme) {
+        preferences.putString(
+            PlatformPrefsKeys.KEY_THEME,
+            theme.toStorageString(),
+        )
+        _theme.value = theme
+    }
+}
