@@ -147,6 +147,7 @@ private fun formatSessionDate(isoString: String): String {
             return "$datePart $timePart"
         }
     } catch (_: Exception) {
+        // パース失敗時は元の文字列を返す（フォールバック）
     }
     return isoString
 }

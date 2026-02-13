@@ -9,8 +9,6 @@ import kotlinx.coroutines.flow.flowOf
  * テストやプレビュー用のダミー実装。
  */
 class MockSpeechRecognizer : ISpeechRecognizer {
-    private var isRecognizing = false
-
     override suspend fun startRecognition(): Flow<String> =
         flowOf(
             "This is a mock speech recognition result",
@@ -19,7 +17,7 @@ class MockSpeechRecognizer : ISpeechRecognizer {
         )
 
     override fun stopRecognition() {
-        isRecognizing = false
+        // No-op for mock
     }
 }
 

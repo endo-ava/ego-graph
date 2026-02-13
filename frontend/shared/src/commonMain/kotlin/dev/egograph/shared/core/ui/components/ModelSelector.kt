@@ -139,8 +139,8 @@ private fun formatCost(model: LLMModel): String {
     val inputCost = model.inputCostPer1m
     val outputCost = model.outputCostPer1m
     return if (inputCost == outputCost) {
-        "$$inputCost/1M"
+        "$${String.format("%.2f", inputCost)}/1M"
     } else {
-        "In: $$inputCost/1M, Out: $$outputCost/1M"
+        "In: $${String.format("%.2f", inputCost)}/1M, Out: $${String.format("%.2f", outputCost)}/1M"
     }
 }

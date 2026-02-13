@@ -94,11 +94,14 @@ class DtoSerializationTest {
     }
 
     @Test
-    fun `ModelsResponse and prompt update should serialize`() {
+    fun `ModelsResponse should deserialize correctly`() {
         val modelsJson = """{"models":[],"default_model":"openai/gpt-4"}"""
         val models = json.decodeFromString<ModelsResponse>(modelsJson)
         assertEquals("openai/gpt-4", models.defaultModel)
+    }
 
+    @Test
+    fun `SystemPromptUpdateRequest should round-trip`() {
         val update = SystemPromptUpdateRequest(content = "updated")
         val encoded = json.encodeToString(update)
         val decoded = json.decodeFromString<SystemPromptUpdateRequest>(encoded)

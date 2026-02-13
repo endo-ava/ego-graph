@@ -7,13 +7,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 /**
- * SessionDto のシリアライゼーションテスト
+ * Session のシリアライゼーションテスト
  *
- * SessionDto クラスが正しくシリアライズ・デシリアライズできることを確認します。
+ * Session クラスが正しくシリアライズ・デシリアライズできることを確認します。
  */
-class SessionDtoTest {
+class SessionTest {
     private val json =
         Json {
             ignoreUnknownKeys = true
@@ -169,9 +170,9 @@ class SessionDtoTest {
         val jsonString = json.encodeToString(session)
 
         // Assert: snake_caseフィールド名が含まれることを検証
-        assert(jsonString.contains("\"session_id\""))
-        assert(jsonString.contains("\"last_activity\""))
-        assert(jsonString.contains("\"created_at\""))
-        assert(jsonString.contains("\"status\":\"connected\""))
+        assertTrue(jsonString.contains("\"session_id\""))
+        assertTrue(jsonString.contains("\"last_activity\""))
+        assertTrue(jsonString.contains("\"created_at\""))
+        assertTrue(jsonString.contains("\"status\":\"connected\""))
     }
 }

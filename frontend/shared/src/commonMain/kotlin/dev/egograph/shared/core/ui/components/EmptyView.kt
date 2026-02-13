@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun EmptyView(
-    modifier: Modifier = Modifier,
     message: String = "No content",
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier =

@@ -21,4 +21,7 @@ fun String.toAppTheme(): AppTheme =
         else -> AppTheme.LIGHT
     }
 
+/**
+ * AppThemeをStringに変換する
+ */
 fun AppTheme.toStorageString(): String = this.name.lowercase()

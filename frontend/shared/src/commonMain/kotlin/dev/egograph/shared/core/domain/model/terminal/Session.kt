@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Terminal Session DTO
+ * Terminal Session モデル
  *
  * ターミナルセッションの情報を表現します。
  *

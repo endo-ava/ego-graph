@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
+import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.features.chat.ChatScreen
 import dev.egograph.shared.features.chat.ChatScreenModel
 import dev.egograph.shared.features.chat.ChatState
@@ -147,7 +148,7 @@ class SidebarScreen : Screen {
                     }
 
                     MainView.Settings -> {
-                        val preferences = koinInject<dev.egograph.shared.core.platform.PlatformPreferences>()
+                        val preferences = koinInject<PlatformPreferences>()
                         SettingsScreen(
                             preferences = preferences,
                             onBack = { activeView = MainView.Chat },

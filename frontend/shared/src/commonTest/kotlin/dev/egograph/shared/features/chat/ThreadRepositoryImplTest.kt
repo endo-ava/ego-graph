@@ -237,7 +237,7 @@ class ThreadRepositoryImplTest {
             val errors = mutableListOf<ApiError>()
             repository.getThreads(limit = 20, offset = 0).collect { result ->
                 if (result.isFailure) {
-                    result.exceptionOrNull()?.let { errors.add(it as ApiError) }
+                    result.exceptionOrNull()?.let { errors.add(assertIs<ApiError>(it)) }
                 }
             }
 
@@ -269,7 +269,7 @@ class ThreadRepositoryImplTest {
                 MockEngine {
                     // HTTPリクエストのアサーション
                     assertEquals(HttpMethod.Get, it.method)
-                    assertEquals("$baseUrl/v1/threads/thread-123", it.url.toString())
+                    assertEquals("/v1/threads/thread-123", it.url.encodedPath)
                     assertEquals(apiKey, it.headers["X-API-Key"])
 
                     respond(
@@ -323,7 +323,7 @@ class ThreadRepositoryImplTest {
             val errors = mutableListOf<ApiError>()
             repository.getThread("nonexistent").collect { result ->
                 if (result.isFailure) {
-                    result.exceptionOrNull()?.let { errors.add(it as ApiError) }
+                    result.exceptionOrNull()?.let { errors.add(assertIs<ApiError>(it)) }
                 }
             }
 
