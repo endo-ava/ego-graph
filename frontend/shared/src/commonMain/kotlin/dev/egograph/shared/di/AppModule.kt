@@ -6,6 +6,8 @@ import dev.egograph.shared.core.data.repository.ChatRepositoryImpl
 import dev.egograph.shared.core.data.repository.MessageRepositoryImpl
 import dev.egograph.shared.core.data.repository.SystemPromptRepositoryImpl
 import dev.egograph.shared.core.data.repository.ThreadRepositoryImpl
+import dev.egograph.shared.core.data.repository.internal.InMemoryCache
+import dev.egograph.shared.core.data.repository.internal.RepositoryClient
 import dev.egograph.shared.core.domain.repository.ChatRepository
 import dev.egograph.shared.core.domain.repository.MessageRepository
 import dev.egograph.shared.core.domain.repository.SystemPromptRepository
@@ -31,77 +33,76 @@ import org.koin.dsl.module
  */
 val appModule =
     module {
-        single<String>(
-            qualifier = named("BaseUrl"),
-        ) {
+        // === Configuration ===
+        single<String>(qualifier = named("BaseUrl")) {
             val preferences = getOrNull<PlatformPreferences>()
             val savedUrl = preferences?.getString(PlatformPrefsKeys.KEY_API_URL, PlatformPrefsDefaults.DEFAULT_API_URL)
             val rawUrl = if (savedUrl.isNullOrBlank()) getDefaultBaseUrl() else savedUrl
-            // URLを正規化してパスの重複を防ぐ
             try {
                 normalizeBaseUrl(rawUrl)
             } catch (e: IllegalArgumentException) {
-                // 無効なURLの場合はデフォルトを使用
                 getDefaultBaseUrl()
             }
         }
 
-        single<String>(
-            qualifier = named("ApiKey"),
-        ) {
+        single<String>(qualifier = named("ApiKey")) {
             val preferences = getOrNull<PlatformPreferences>()
             preferences?.getString(PlatformPrefsKeys.KEY_API_KEY, PlatformPrefsDefaults.DEFAULT_API_KEY) ?: ""
         }
 
-        single<ThemeRepository> {
-            ThemeRepositoryImpl(preferences = get())
-        }
-
-        single<HttpClient> {
-            provideHttpClient()
-        }
+        // === Core ===
+        single<HttpClient> { provideHttpClient() }
 
         single<DiskCache?> {
             val context = getOrNull<DiskCacheContext>()
             context?.let { DiskCache(it) }
         }
 
-        single<ThreadRepository> {
-            ThreadRepositoryImpl(
+        // === RepositoryClient (Backend API) ===
+        single<RepositoryClient>(qualifier = named("BackendClient")) {
+            RepositoryClient(
                 httpClient = get(),
                 baseUrl = get(qualifier = named("BaseUrl")),
                 apiKey = get(qualifier = named("ApiKey")),
+            )
+        }
+
+        // === Cache ===
+        single<InMemoryCache<String, Any>> { InMemoryCache() }
+
+        // === Repositories ===
+        single<ThreadRepository> {
+            ThreadRepositoryImpl(
+                repositoryClient = get(qualifier = named("BackendClient")),
                 diskCache = getOrNull(),
             )
         }
 
         single<SystemPromptRepository> {
             SystemPromptRepositoryImpl(
-                httpClient = get(),
-                baseUrl = get(qualifier = named("BaseUrl")),
-                apiKey = get(qualifier = named("ApiKey")),
+                repositoryClient = get(qualifier = named("BackendClient")),
                 diskCache = getOrNull(),
             )
         }
 
         single<MessageRepository> {
             MessageRepositoryImpl(
-                httpClient = get(),
-                baseUrl = get(qualifier = named("BaseUrl")),
-                apiKey = get(qualifier = named("ApiKey")),
+                repositoryClient = get(qualifier = named("BackendClient")),
                 diskCache = getOrNull(),
             )
         }
 
         single<ChatRepository> {
             ChatRepositoryImpl(
-                httpClient = get(),
-                baseUrl = get(qualifier = named("BaseUrl")),
-                apiKey = get(qualifier = named("ApiKey")),
+                repositoryClient = get(qualifier = named("BackendClient")),
             )
         }
 
-        // ScreenModels
+        single<ThemeRepository> {
+            ThemeRepositoryImpl(preferences = get())
+        }
+
+        // === ScreenModels ===
         single {
             ChatScreenModel(
                 threadRepository = get(),

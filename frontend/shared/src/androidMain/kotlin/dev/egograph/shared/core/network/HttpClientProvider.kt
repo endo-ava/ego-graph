@@ -3,6 +3,7 @@ package dev.egograph.shared.core.network
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpRequestRetry
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -11,6 +12,7 @@ import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import java.io.IOException
 import co.touchlab.kermit.Logger as KermitLogger
 
 /**
@@ -19,7 +21,7 @@ import co.touchlab.kermit.Logger as KermitLogger
  * Creates a Ktor HttpClient configured with:
  * - OkHttp engine
  * - Timeout settings (30s request, 10s connect)
- * - Retry logic disabled (explicitly no automatic retries)
+ * - Retry logic with exponential backoff (3 retries)
  * - JSON content negotiation with kotlinx.serialization
  * - Request/response logging with Kermit
  */
@@ -37,16 +39,22 @@ actual fun provideHttpClient(): HttpClient =
         }
 
         install(HttpRequestRetry) {
-            maxRetries = 0
-            retryOnServerErrors(maxRetries = 0)
-            retryIf { _, _ -> false }
-            retryOnExceptionIf { _, _ -> false }
+            maxRetries = 3
+            exponentialDelay(baseDelayMs = 1000, maxDelayMs = 4000)
+            retryOnServerErrors(maxRetries = 3)
+            retryOnExceptionIf { _, cause ->
+                cause is IOException || cause is HttpRequestTimeoutException
+            }
+            modifyRequest {
+                KermitLogger.withTag("HttpClient").w {
+                    "Request failed (attempt $retryCount/3), retrying..."
+                }
+            }
         }
 
         install(ContentEncoding) {
             gzip()
             deflate()
-            // brotli() // Only if backend supports Brotli
         }
 
         install(ContentNegotiation) {

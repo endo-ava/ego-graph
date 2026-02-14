@@ -2,14 +2,11 @@ package dev.egograph.shared.core.data.repository
 
 import dev.egograph.shared.cache.DiskCache
 import dev.egograph.shared.core.data.repository.internal.InMemoryCache
-import dev.egograph.shared.core.data.repository.internal.bodyOrThrow
-import dev.egograph.shared.core.data.repository.internal.configureAuth
+import dev.egograph.shared.core.data.repository.internal.RepositoryClient
 import dev.egograph.shared.core.domain.model.ThreadMessagesResponse
 import dev.egograph.shared.core.domain.repository.ApiError
 import dev.egograph.shared.core.domain.repository.MessageRepository
 import dev.egograph.shared.core.domain.repository.RepositoryResult
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -19,12 +16,10 @@ import kotlin.coroutines.cancellation.CancellationException
 /**
  * MessageRepositoryの実装
  *
- * HTTPクライアントを使用してバックエンドAPIと通信します。
+ * RepositoryClient を使用してバックエンドAPIと通信します。
  */
 class MessageRepositoryImpl(
-    private val httpClient: HttpClient,
-    private val baseUrl: String,
-    private val apiKey: String = "",
+    private val repositoryClient: RepositoryClient,
     private val diskCache: DiskCache? = null,
 ) : MessageRepository {
     private val messagesCache = InMemoryCache<String, ThreadMessagesResponse>()
@@ -64,8 +59,5 @@ class MessageRepositoryImpl(
     }
 
     private suspend fun fetchThreadMessages(threadId: String): ThreadMessagesResponse =
-        httpClient
-            .get("$baseUrl/v1/threads/$threadId/messages") {
-                configureAuth(apiKey)
-            }.bodyOrThrow()
+        repositoryClient.get("/v1/threads/$threadId/messages")
 }
