@@ -1,4 +1,4 @@
-package dev.egograph.shared.features.chat
+package dev.egograph.shared.features.chat.threads
 
 /**
  * スレッドタイトルをフォーマットする

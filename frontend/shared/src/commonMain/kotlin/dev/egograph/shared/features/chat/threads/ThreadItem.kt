@@ -1,4 +1,4 @@
-package dev.egograph.shared.features.chat.components
+package dev.egograph.shared.features.chat.threads
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
