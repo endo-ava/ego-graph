@@ -32,19 +32,23 @@
         }
 
         #xtermRender .xterm .xterm-helper-textarea {
-            position: fixed !important;
-            left: -10000px !important;
-            top: -10000px !important;
+            /* Keep the helper textarea inside viewport to avoid WebView auto-scroll jumps on focus. */
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 1px !important;
             height: 1px !important;
             opacity: 0 !important;
-            z-index: -10 !important;
+            z-index: -5 !important;
             border: 0 !important;
             padding: 0 !important;
             margin: 0 !important;
             caret-color: transparent !important;
             color: transparent !important;
             background: transparent !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            resize: none !important;
         }
     </style>
 </head>
@@ -70,6 +74,11 @@
                 if (renderTerminal && typeof renderTerminal.focus === 'function') {
                     renderTerminal.focus();
                 }
+
+                // Android WebView may try to keep focused input centered; force top-left origin.
+                window.scrollTo(0, 0);
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
             }
 
             function ensureTerminal() {
@@ -110,6 +119,11 @@
                         renderTerminal.textarea.setAttribute('autocomplete', 'off');
                         renderTerminal.textarea.setAttribute('autocorrect', 'off');
                         renderTerminal.textarea.setAttribute('spellcheck', 'false');
+                        renderTerminal.textarea.style.position = 'absolute';
+                        renderTerminal.textarea.style.left = '0px';
+                        renderTerminal.textarea.style.top = '0px';
+                        renderTerminal.textarea.style.width = '1px';
+                        renderTerminal.textarea.style.height = '1px';
                         renderTerminal.textarea.style.caretColor = 'transparent';
                         renderTerminal.textarea.style.color = 'transparent';
                         renderTerminal.textarea.style.background = 'transparent';
@@ -215,11 +229,100 @@
                 writeStreamChunkWithXterm(text);
             }
 
+            function getEstimatedCellHeight() {
+                if (
+                    renderTerminal &&
+                    renderTerminal._core &&
+                    renderTerminal._core._renderService &&
+                    renderTerminal._core._renderService.dimensions &&
+                    renderTerminal._core._renderService.dimensions.css &&
+                    renderTerminal._core._renderService.dimensions.css.cell &&
+                    renderTerminal._core._renderService.dimensions.css.cell.height > 0
+                ) {
+                    return renderTerminal._core._renderService.dimensions.css.cell.height;
+                }
+
+                return 18.2;
+            }
+
+            var touchScrollState = {
+                startX: 0,
+                startY: 0,
+                lastY: 0,
+                accumulatedPixels: 0,
+                isVerticalGesture: null,
+            };
+
+            function resetTouchScrollState() {
+                touchScrollState.accumulatedPixels = 0;
+                touchScrollState.isVerticalGesture = null;
+            }
+
             xtermRender.addEventListener('click', function() {
                 focusTerminal();
             });
-            xtermRender.addEventListener('touchstart', function() {
+
+            xtermRender.addEventListener('touchstart', function(event) {
                 focusTerminal();
+
+                if (!event.touches || event.touches.length !== 1) {
+                    resetTouchScrollState();
+                    return;
+                }
+
+                var touch = event.touches[0];
+                touchScrollState.startX = touch.clientX;
+                touchScrollState.startY = touch.clientY;
+                touchScrollState.lastY = touch.clientY;
+                touchScrollState.accumulatedPixels = 0;
+                touchScrollState.isVerticalGesture = null;
+            }, { passive: true });
+
+            xtermRender.addEventListener('touchmove', function(event) {
+                if (!renderTerminal || !event.touches || event.touches.length !== 1) {
+                    return;
+                }
+
+                var touch = event.touches[0];
+                var deltaX = touch.clientX - touchScrollState.startX;
+                var deltaY = touch.clientY - touchScrollState.startY;
+
+                if (touchScrollState.isVerticalGesture === null) {
+                    if (Math.abs(deltaX) < 4 && Math.abs(deltaY) < 4) {
+                        return;
+                    }
+                    touchScrollState.isVerticalGesture = Math.abs(deltaY) >= Math.abs(deltaX);
+                }
+
+                if (!touchScrollState.isVerticalGesture) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                var movedY = touch.clientY - touchScrollState.lastY;
+                touchScrollState.lastY = touch.clientY;
+                touchScrollState.accumulatedPixels += movedY;
+
+                var cellHeight = getEstimatedCellHeight();
+                if (cellHeight <= 0) {
+                    return;
+                }
+
+                var lines = Math.trunc(touchScrollState.accumulatedPixels / cellHeight);
+                if (lines !== 0 && typeof renderTerminal.scrollLines === 'function') {
+                    // Finger down should reveal older output, so invert scroll direction.
+                    renderTerminal.scrollLines(-lines);
+                    touchScrollState.accumulatedPixels -= lines * cellHeight;
+                }
+            }, { passive: false });
+
+            xtermRender.addEventListener('touchend', function() {
+                resetTouchScrollState();
+            }, { passive: true });
+
+            xtermRender.addEventListener('touchcancel', function() {
+                resetTouchScrollState();
             }, { passive: true });
 
             window.TerminalAPI = {
