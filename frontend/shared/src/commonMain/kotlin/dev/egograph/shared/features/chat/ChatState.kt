@@ -22,43 +22,55 @@ import dev.egograph.shared.core.domain.model.ThreadMessage
  * @property modelsError モデル関連のエラーメッセージ
  */
 data class ChatState(
-    val threads: List<Thread> = emptyList(),
-    val selectedThread: Thread? = null,
-    val messages: List<ThreadMessage> = emptyList(),
-    val models: List<LLMModel> = emptyList(),
-    val selectedModel: String? = null,
-    val isLoadingThreads: Boolean = false,
-    val isLoadingMoreThreads: Boolean = false,
-    val hasMoreThreads: Boolean = false,
-    val isLoadingMessages: Boolean = false,
-    val isLoadingModels: Boolean = false,
-    val isSending: Boolean = false,
-    val streamingMessageId: String? = null,
-    val activeAssistantTask: String? = null,
-    val threadsError: String? = null,
-    val messagesError: String? = null,
-    val modelsError: String? = null,
+    val threadList: ThreadListState = ThreadListState(),
+    val messageList: MessageListState = MessageListState(),
+    val composer: ComposerState = ComposerState(),
 ) {
     /**
      * スレッドが選択されているかどうか
      */
     val hasSelectedThread: Boolean
-        get() = selectedThread != null
+        get() = threadList.selectedThread != null
 
     /**
      * いずれかの読み込み中フラグが有効かどうか
      */
     val isLoading: Boolean
         get() =
-            isLoadingThreads ||
-                isLoadingMoreThreads ||
-                isLoadingMessages ||
-                isLoadingModels ||
-                isSending
+            threadList.isLoading ||
+                threadList.isLoadingMore ||
+                messageList.isLoading ||
+                composer.isLoadingModels ||
+                composer.isSending
 
     /**
      * いずれかのエラーが存在するかどうか
      */
     val hasError: Boolean
-        get() = threadsError != null || messagesError != null || modelsError != null
+        get() = threadList.error != null || messageList.error != null || composer.modelsError != null
 }
+
+data class ThreadListState(
+    val threads: List<Thread> = emptyList(),
+    val selectedThread: Thread? = null,
+    val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val hasMore: Boolean = false,
+    val error: String? = null,
+)
+
+data class MessageListState(
+    val messages: List<ThreadMessage> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val streamingMessageId: String? = null,
+    val activeAssistantTask: String? = null,
+)
+
+data class ComposerState(
+    val models: List<LLMModel> = emptyList(),
+    val selectedModelId: String? = null,
+    val isLoadingModels: Boolean = false,
+    val modelsError: String? = null,
+    val isSending: Boolean = false,
+)

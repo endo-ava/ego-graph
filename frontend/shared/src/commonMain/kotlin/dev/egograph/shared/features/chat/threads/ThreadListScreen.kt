@@ -1,11 +1,12 @@
-package dev.egograph.shared.features.chat
+package dev.egograph.shared.features.chat.threads
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
-import dev.egograph.shared.features.chat.components.ThreadList
+import dev.egograph.shared.features.chat.ChatScreenModel
+import dev.egograph.shared.features.chat.ChatState
 
 /**
  * スレッド一覧画面
@@ -31,12 +32,12 @@ private fun ThreadListScreenContent(
     screenModel: ChatScreenModel,
 ) {
     ThreadList(
-        threads = state.threads,
-        selectedThreadId = state.selectedThread?.threadId,
-        isLoading = state.isLoadingThreads,
-        isLoadingMore = state.isLoadingMoreThreads,
-        hasMore = state.hasMoreThreads,
-        error = state.threadsError,
+        threads = state.threadList.threads,
+        selectedThreadId = state.threadList.selectedThread?.threadId,
+        isLoading = state.threadList.isLoading,
+        isLoadingMore = state.threadList.isLoadingMore,
+        hasMore = state.threadList.hasMore,
+        error = state.threadList.error,
         onThreadClick = { threadId ->
             screenModel.selectThread(threadId)
         },

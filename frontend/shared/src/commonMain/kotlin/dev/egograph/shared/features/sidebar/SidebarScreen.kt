@@ -11,6 +11,7 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,7 +19,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -30,7 +34,7 @@ import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.features.chat.ChatScreen
 import dev.egograph.shared.features.chat.ChatScreenModel
 import dev.egograph.shared.features.chat.ChatState
-import dev.egograph.shared.features.chat.components.ThreadList
+import dev.egograph.shared.features.chat.threads.ThreadList
 import dev.egograph.shared.features.navigation.MainNavigationHost
 import dev.egograph.shared.features.navigation.MainView
 import dev.egograph.shared.features.settings.SettingsScreen
@@ -56,6 +60,19 @@ class SidebarScreen : Screen {
         val scope = rememberCoroutineScope()
         var activeView by rememberSaveable { mutableStateOf(MainView.Chat) }
         val chatScreen = remember { ChatScreen() }
+        val keyboardController = LocalSoftwareKeyboardController.current
+        val focusManager = LocalFocusManager.current
+
+        LaunchedEffect(drawerState) {
+            snapshotFlow { drawerState.isOpen }
+                .collect { isOpen ->
+                    if (isOpen) {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                    }
+                }
+        }
+
         val agentListScreen =
             remember(navigator) {
                 AgentListScreen(
@@ -104,12 +121,12 @@ class SidebarScreen : Screen {
                     )
 
                     ThreadList(
-                        threads = state.threads,
-                        selectedThreadId = state.selectedThread?.threadId,
-                        isLoading = state.isLoadingThreads,
-                        isLoadingMore = state.isLoadingMoreThreads,
-                        hasMore = state.hasMoreThreads,
-                        error = state.threadsError,
+                        threads = state.threadList.threads,
+                        selectedThreadId = state.threadList.selectedThread?.threadId,
+                        isLoading = state.threadList.isLoading,
+                        isLoadingMore = state.threadList.isLoadingMore,
+                        hasMore = state.threadList.hasMore,
+                        error = state.threadList.error,
                         onThreadClick = { threadId ->
                             activeView = MainView.Chat
                             screenModel.selectThread(threadId)

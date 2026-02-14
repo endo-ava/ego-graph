@@ -5,12 +5,14 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import dev.egograph.shared.core.domain.model.ChatRequest
 import dev.egograph.shared.core.domain.model.Message
 import dev.egograph.shared.core.domain.model.MessageRole
-import dev.egograph.shared.core.domain.model.StreamChunkType
+import dev.egograph.shared.core.domain.model.StreamChunk
+import dev.egograph.shared.core.domain.model.ThreadMessage
 import dev.egograph.shared.core.domain.repository.ChatRepository
 import dev.egograph.shared.core.domain.repository.MessageRepository
 import dev.egograph.shared.core.domain.repository.ThreadRepository
 import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.core.platform.PlatformPrefsKeys
+import dev.egograph.shared.features.chat.reducer.reduceChatStreamChunk
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,24 +48,24 @@ class ChatScreenModel(
 
     fun loadThreads() {
         screenModelScope.launch {
-            _state.update { it.copy(isLoadingThreads = true, threadsError = null) }
+            updateThreadList { it.copy(isLoading = true, error = null) }
 
             threadRepository
                 .getThreads(limit = pageLimit, offset = 0)
                 .collect { result ->
                     result
                         .onSuccess { response ->
-                            _state.update {
+                            updateThreadList {
                                 it.copy(
                                     threads = response.threads,
-                                    isLoadingThreads = false,
-                                    hasMoreThreads = response.threads.size < response.total,
+                                    isLoading = false,
+                                    hasMore = response.threads.size < response.total,
                                 )
                             }
                         }.onFailure { error ->
                             val message = "スレッドの読み込みに失敗: ${error.message}"
-                            _state.update { it.copy(threadsError = message, isLoadingThreads = false) }
-                            _effect.send(ChatEffect.ShowError(message))
+                            updateThreadList { it.copy(error = message, isLoading = false) }
+                            emitMessage(message)
                         }
                 }
         }
@@ -71,63 +73,64 @@ class ChatScreenModel(
 
     fun loadMoreThreads() {
         val currentState = _state.value
-        if (currentState.isLoadingMoreThreads || !currentState.hasMoreThreads) return
+        if (currentState.threadList.isLoadingMore || !currentState.threadList.hasMore) return
 
         screenModelScope.launch {
-            _state.update { it.copy(isLoadingMoreThreads = true) }
+            updateThreadList { it.copy(isLoadingMore = true) }
 
             threadRepository
-                .getThreads(limit = pageLimit, offset = currentState.threads.size)
+                .getThreads(limit = pageLimit, offset = currentState.threadList.threads.size)
                 .collect { result ->
                     result
                         .onSuccess { response ->
-                            _state.update {
+                            updateThreadList {
+                                val mergedThreads = it.threads + response.threads
                                 it.copy(
-                                    threads = it.threads + response.threads,
-                                    isLoadingMoreThreads = false,
-                                    hasMoreThreads = (it.threads.size + response.threads.size) < response.total,
+                                    threads = mergedThreads,
+                                    isLoadingMore = false,
+                                    hasMore = mergedThreads.size < response.total,
                                 )
                             }
                         }.onFailure { error ->
                             val message = "追加スレッドの読み込みに失敗: ${error.message}"
-                            _state.update { it.copy(threadsError = message, isLoadingMoreThreads = false) }
-                            _effect.send(ChatEffect.ShowError(message))
+                            updateThreadList { it.copy(error = message, isLoadingMore = false) }
+                            emitMessage(message)
                         }
                 }
         }
     }
 
     fun selectThread(threadId: String) {
-        _state.update { currentState ->
-            val thread = currentState.threads.find { it.threadId == threadId }
-            currentState.copy(selectedThread = thread)
+        updateThreadList { threadList ->
+            threadList.copy(selectedThread = threadList.threads.find { it.threadId == threadId })
         }
         loadMessages(threadId)
     }
 
     fun clearThreadSelection() {
-        _state.update { it.copy(selectedThread = null, messages = emptyList()) }
+        updateThreadList { it.copy(selectedThread = null) }
+        updateMessageList { it.copy(messages = emptyList()) }
     }
 
     fun loadMessages(threadId: String) {
         screenModelScope.launch {
-            _state.update { it.copy(isLoadingMessages = true, messagesError = null) }
+            updateMessageList { it.copy(isLoading = true, error = null) }
 
             messageRepository
                 .getMessages(threadId)
                 .collect { result ->
                     result
                         .onSuccess { response ->
-                            _state.update {
+                            updateMessageList {
                                 it.copy(
                                     messages = response.messages,
-                                    isLoadingMessages = false,
+                                    isLoading = false,
                                 )
                             }
                         }.onFailure { error ->
                             val message = "メッセージの読み込みに失敗: ${error.message}"
-                            _state.update { it.copy(messagesError = message, isLoadingMessages = false) }
-                            _effect.send(ChatEffect.ShowError(message))
+                            updateMessageList { it.copy(error = message, isLoading = false) }
+                            emitMessage(message)
                         }
                 }
         }
@@ -135,29 +138,29 @@ class ChatScreenModel(
 
     fun loadModels() {
         screenModelScope.launch {
-            _state.update { it.copy(isLoadingModels = true, modelsError = null) }
+            updateComposer { it.copy(isLoadingModels = true, modelsError = null) }
 
             chatRepository
                 .getModels()
                 .onSuccess { response ->
-                    _state.update {
+                    updateComposer {
+                        val selectedModelId = response.defaultModel.takeIf { model -> model.isNotBlank() } ?: response.models.firstOrNull()?.id
                         it.copy(
                             models = response.models,
-                            selectedModel =
-                                response.defaultModel.takeIf { model -> model.isNotBlank() } ?: response.models.firstOrNull()?.id,
+                            selectedModelId = selectedModelId,
                             isLoadingModels = false,
                         )
                     }
                 }.onFailure { error ->
                     val message = "モデル一覧の取得に失敗: ${error.message}"
-                    _state.update { it.copy(modelsError = message, isLoadingModels = false) }
-                    _effect.send(ChatEffect.ShowError(message))
+                    updateComposer { it.copy(modelsError = message, isLoadingModels = false) }
+                    emitMessage(message)
                 }
         }
     }
 
     fun selectModel(modelId: String) {
-        _state.update { it.copy(selectedModel = modelId) }
+        updateComposer { it.copy(selectedModelId = modelId) }
         preferences.putString(PlatformPrefsKeys.KEY_SELECTED_MODEL, modelId)
     }
 
@@ -165,21 +168,45 @@ class ChatScreenModel(
         if (content.isBlank()) return
 
         val currentState = _state.value
-        if (currentState.isSending) return
+        if (currentState.composer.isSending) return
 
-        _state.update { it.copy(isSending = true) }
+        updateComposer { it.copy(isSending = true) }
+        val selectedThreadId = currentState.threadList.selectedThread?.threadId ?: "local-thread"
+        val userMessage =
+            createLocalMessage(
+                messageId = createLocalMessageId(prefix = "user"),
+                threadId = selectedThreadId,
+                role = MessageRole.USER,
+                content = content,
+                modelName = null,
+            )
+        val streamingMessageId = createLocalMessageId(prefix = "assistant")
+        val streamingAssistantMessage =
+            createLocalMessage(
+                messageId = streamingMessageId,
+                threadId = selectedThreadId,
+                role = MessageRole.ASSISTANT,
+                content = "",
+                modelName = currentState.composer.selectedModelId,
+            )
 
-        // TODO: Implement full streaming logic from ChatExecutor
-        // This is a simplified version
+        updateMessageList {
+            it.copy(
+                messages = it.messages + userMessage + streamingAssistantMessage,
+                streamingMessageId = streamingMessageId,
+                activeAssistantTask = null,
+            )
+        }
+
         screenModelScope.launch {
             val request =
                 ChatRequest(
-                    threadId = currentState.selectedThread?.threadId,
+                    threadId = currentState.threadList.selectedThread?.threadId,
                     messages =
-                        currentState.messages.map {
+                        currentState.messageList.messages.map {
                             Message(role = it.role, content = it.content)
                         } + Message(role = MessageRole.USER, content = content),
-                    modelName = currentState.selectedModel,
+                    modelName = currentState.composer.selectedModelId,
                 )
 
             chatRepository
@@ -187,36 +214,72 @@ class ChatScreenModel(
                 .collect { result ->
                     result
                         .onSuccess { chunk ->
-                            // Handle streaming chunks
-                            when (chunk.type) {
-                                StreamChunkType.DELTA -> {
-                                    // Update streaming message content
-                                }
-                                StreamChunkType.TOOL_CALL -> {
-                                    // Handle tool calls
-                                }
-                                StreamChunkType.ERROR -> {
-                                    _effect.send(ChatEffect.ShowError(chunk.error ?: "不明なエラー"))
-                                }
-                                else -> {}
+                            var uiMessage: String? = null
+                            updateMessageList { currentState ->
+                                val reduced = reduceChatStreamChunk(currentState, chunk, streamingMessageId)
+                                uiMessage = reduced.uiMessage
+                                reduced.state
+                            }
+                            uiMessage?.let { message ->
+                                emitMessage(message)
                             }
                         }.onFailure { error ->
                             val message = "メッセージ送信に失敗: ${error.message}"
-                            _state.update { it.copy(isSending = false) }
-                            _effect.send(ChatEffect.ShowError(message))
+                            updateMessageList {
+                                it.copy(
+                                    streamingMessageId = null,
+                                    activeAssistantTask = null,
+                                )
+                            }
+                            emitMessage(message)
                         }
                 }
-            _state.update { it.copy(isSending = false) }
+            updateComposer { it.copy(isSending = false) }
         }
     }
 
     fun clearErrors() {
-        _state.update {
-            it.copy(
-                threadsError = null,
-                messagesError = null,
-                modelsError = null,
-            )
-        }
+        updateThreadList { it.copy(error = null) }
+        updateMessageList { it.copy(error = null) }
+        updateComposer { it.copy(modelsError = null) }
     }
+
+    private fun updateThreadList(transform: (ThreadListState) -> ThreadListState) {
+        _state.update { state -> state.copy(threadList = transform(state.threadList)) }
+    }
+
+    private fun updateMessageList(transform: (MessageListState) -> MessageListState) {
+        _state.update { state -> state.copy(messageList = transform(state.messageList)) }
+    }
+
+    private fun updateComposer(transform: (ComposerState) -> ComposerState) {
+        _state.update { state -> state.copy(composer = transform(state.composer)) }
+    }
+
+    private suspend fun emitMessage(message: String) {
+        _effect.send(ChatEffect.ShowMessage(message))
+    }
+
+    private fun createLocalMessageId(prefix: String): String {
+        return "$prefix-${kotlin.random.Random.nextLong().toString().replace('-', '0')}"
+    }
+
+    private fun createLocalMessage(
+        messageId: String,
+        threadId: String,
+        role: MessageRole,
+        content: String,
+        modelName: String?,
+    ): ThreadMessage {
+        return ThreadMessage(
+            messageId = messageId,
+            threadId = threadId,
+            userId = "local",
+            role = role,
+            content = content,
+            createdAt = "",
+            modelName = modelName,
+        )
+    }
+
 }
