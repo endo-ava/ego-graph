@@ -3,6 +3,9 @@ package dev.egograph.shared.features.terminal.agentlist
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import dev.egograph.shared.core.domain.repository.TerminalRepository
+import dev.egograph.shared.core.platform.PlatformPreferences
+import dev.egograph.shared.core.platform.PlatformPrefsDefaults
+import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -20,6 +23,7 @@ import kotlinx.coroutines.launch
  */
 class AgentListScreenModel(
     private val terminalRepository: TerminalRepository,
+    private val preferences: PlatformPreferences,
 ) : ScreenModel {
     private val _state = MutableStateFlow(AgentListState())
     val state: StateFlow<AgentListState> = _state.asStateFlow()
@@ -61,8 +65,22 @@ class AgentListScreenModel(
             val session = currentState.sessions.find { it.sessionId == sessionId }
             currentState.copy(selectedSession = session)
         }
+        saveLastSession(sessionId)
         screenModelScope.launch {
             _effect.send(AgentListEffect.NavigateToSession(sessionId))
         }
+    }
+
+    fun saveLastSession(sessionId: String) {
+        preferences.putString(PlatformPrefsKeys.KEY_LAST_TERMINAL_SESSION, sessionId)
+    }
+
+    fun getLastSession(): String? {
+        val sessionId =
+            preferences.getString(
+                PlatformPrefsKeys.KEY_LAST_TERMINAL_SESSION,
+                PlatformPrefsDefaults.DEFAULT_LAST_TERMINAL_SESSION,
+            )
+        return if (sessionId.isNotBlank()) sessionId else null
     }
 }

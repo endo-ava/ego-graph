@@ -31,6 +31,8 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import dev.egograph.shared.core.platform.PlatformPreferences
+import dev.egograph.shared.core.platform.PlatformPrefsDefaults
+import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import dev.egograph.shared.features.chat.ChatScreen
 import dev.egograph.shared.features.chat.ChatScreenModel
 import dev.egograph.shared.features.chat.ChatState
@@ -48,7 +50,7 @@ import org.koin.compose.koinInject
 /**
  * サイドバー画面
  *
- * ナビゲーションドロワーと画面コンテンツを管理するメイン画面。
+ * ナビゲーションコントローラーと画面コンテンツを管理するメイン画面。
  */
 class SidebarScreen : Screen {
     @Composable
@@ -77,11 +79,13 @@ class SidebarScreen : Screen {
                 }
         }
 
+        val preferences = koinInject<PlatformPreferences>()
+
         val agentListScreen =
             remember(navigator) {
                 AgentListScreen(
                     onSessionSelected = { sessionId ->
-                        navigator.push(TerminalScreen(agentId = sessionId))
+                        activeView = MainView.TerminalSession
                     },
                     onOpenGatewaySettings = {
                         activeView = MainView.GatewaySettings
@@ -146,7 +150,7 @@ class SidebarScreen : Screen {
                     )
                 }
             },
-            gesturesEnabled = activeView == MainView.Chat,
+            gesturesEnabled = activeView == MainView.Chat || activeView == MainView.TerminalSession,
         ) {
             MainNavigationHost(
                 activeView = activeView,
@@ -154,7 +158,18 @@ class SidebarScreen : Screen {
                     dismissKeyboard()
                     scope.launch { drawerState.open() }
                 },
-                onSwipeToTerminal = { activeView = MainView.Terminal },
+                onSwipeToTerminal = {
+                    val lastSessionId =
+                        preferences.getString(
+                            PlatformPrefsKeys.KEY_LAST_TERMINAL_SESSION,
+                            PlatformPrefsDefaults.DEFAULT_LAST_TERMINAL_SESSION,
+                        )
+                    if (lastSessionId.isNotBlank()) {
+                        activeView = MainView.TerminalSession
+                    } else {
+                        activeView = MainView.Terminal
+                    }
+                },
                 onSwipeToChat = { activeView = MainView.Chat },
             ) { targetView ->
                 when (targetView) {
@@ -170,7 +185,6 @@ class SidebarScreen : Screen {
                     }
 
                     MainView.Settings -> {
-                        val preferences = koinInject<PlatformPreferences>()
                         SettingsScreen(
                             preferences = preferences,
                             onBack = { activeView = MainView.Chat },
@@ -186,6 +200,28 @@ class SidebarScreen : Screen {
                                 )
                             }
                         gatewaySettingsScreen.Content()
+                    }
+
+                    MainView.TerminalSession -> {
+                        val lastSessionId =
+                            preferences.getString(
+                                PlatformPrefsKeys.KEY_LAST_TERMINAL_SESSION,
+                                PlatformPrefsDefaults.DEFAULT_LAST_TERMINAL_SESSION,
+                            )
+                        if (lastSessionId.isNotBlank()) {
+                            val terminalScreen =
+                                remember(lastSessionId) {
+                                    TerminalScreen(
+                                        agentId = lastSessionId,
+                                        onClose = { activeView = MainView.Terminal },
+                                    )
+                                }
+                            terminalScreen.Content()
+                        } else {
+                            LaunchedEffect(lastSessionId) {
+                                activeView = MainView.Terminal
+                            }
+                        }
                     }
                 }
             }

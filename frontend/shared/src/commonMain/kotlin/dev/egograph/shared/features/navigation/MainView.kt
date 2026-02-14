@@ -9,4 +9,5 @@ enum class MainView {
     Settings,
     Terminal,
     GatewaySettings,
+    TerminalSession,
 }

@@ -8,9 +8,9 @@ import androidx.compose.runtime.Composable
  * スワイプジェスチャーと画面遷移を管理する。
  *
  * @param activeView 現在のアクティブなView
- * @param onSwipeToSidebar スワイプでサイドバーへ移動するコールバック
- * @param onSwipeToTerminal スワイプでターミナルへ移動するコールバック
- * @param onSwipeToChat スワイプでチャットへ移動するコールバック
+ * @param onSwipeToSidebar スワイプでサイドバーへ遷移するコールバック
+ * @param onSwipeToTerminal スワイプでターミナルへ遷移するコールバック
+ * @param onSwipeToChat スワイプでチャットへ遷移するコールバック
  * @param content 表示するコンテンツ
  */
 @Composable

@@ -114,6 +114,7 @@ val appModule =
         factory {
             AgentListScreenModel(
                 terminalRepository = get(),
+                preferences = get(),
             )
         }
     }

@@ -27,6 +27,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import dev.egograph.shared.core.platform.PlatformPreferences
+import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import dev.egograph.shared.core.settings.AppTheme
 import dev.egograph.shared.core.settings.ThemeRepository
 import dev.egograph.shared.features.terminal.session.components.SpecialKeysBar
@@ -41,22 +42,27 @@ import org.koin.compose.koinInject
  * WebSocket経由でGatewayに接続し、ターミナルエミュレーションを表示する画面。
  *
  * @property agentId エージェントID
+ * @property onClose 閉じるボタンが押された時のコールバック
  */
 class TerminalScreen(
     private val agentId: String,
+    private val onClose: (() -> Unit)? = null,
 ) : Screen {
     override val key: ScreenKey
         get() = "TerminalScreen:$agentId"
 
     @Composable
     override fun Content() {
-        TerminalContent(agentId = agentId)
+        TerminalContent(agentId = agentId, onClose = onClose)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TerminalContent(agentId: String) {
+private fun TerminalContent(
+    agentId: String,
+    onClose: (() -> Unit)? = null,
+) {
     val navigator = requireNotNull(LocalNavigator.current)
     val webView = rememberTerminalWebView()
     val preferences = koinInject<PlatformPreferences>()
@@ -78,6 +84,10 @@ private fun TerminalContent(agentId: String) {
         }
 
     val terminalSettings = rememberTerminalSettings(agentId = agentId, preferences = preferences)
+
+    LaunchedEffect(agentId) {
+        preferences.putString(PlatformPrefsKeys.KEY_LAST_TERMINAL_SESSION, agentId)
+    }
 
     LaunchedEffect(terminalSettings.error) {
         settingsError = terminalSettings.error
@@ -135,7 +145,7 @@ private fun TerminalContent(agentId: String) {
                 agentId = agentId,
                 isLoading = isConnecting,
                 error = displayError,
-                onClose = { navigator.pop() },
+                onClose = { onClose?.invoke() ?: navigator.pop() },
             )
         },
     ) { paddingValues ->

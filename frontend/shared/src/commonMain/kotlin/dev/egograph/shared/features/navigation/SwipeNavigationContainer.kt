@@ -12,9 +12,9 @@ import androidx.compose.ui.input.pointer.pointerInput
  * スワイプジェスチャーでViewを切り替えるコンテナ
  *
  * @param activeView 現在のアクティブなView
- * @param onSwipeToSidebar スワイプでサイドバーへ移動するコールバック
- * @param onSwipeToTerminal スワイプでターミナルへ移動するコールバック
- * @param onSwipeToChat スワイプでチャットへ移動するコールバック
+ * @param onSwipeToSidebar スワイプでサイドバーへ遷移するコールバック
+ * @param onSwipeToTerminal スワイプでターミナルへ遷移するコールバック
+ * @param onSwipeToChat スワイプでチャットへ遷移するコールバック
  * @param content 表示するコンテンツ
  */
 @Composable
@@ -52,14 +52,17 @@ fun SwipeNavigationContainer(
                                     onSwipeToSidebar()
                                     change.consume()
                                 }
-
                                 activeView == MainView.Chat && accumulatedDragX <= -swipeThreshold -> {
                                     handled = true
                                     onSwipeToTerminal()
                                     change.consume()
                                 }
-
                                 activeView == MainView.Terminal && accumulatedDragX >= swipeThreshold -> {
+                                    handled = true
+                                    onSwipeToChat()
+                                    change.consume()
+                                }
+                                activeView == MainView.TerminalSession && accumulatedDragX >= swipeThreshold -> {
                                     handled = true
                                     onSwipeToChat()
                                     change.consume()

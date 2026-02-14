@@ -54,16 +54,10 @@ fun SessionList(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
+        modifier = modifier.fillMaxSize().statusBarsPadding(),
     ) {
         Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -102,7 +96,6 @@ fun SessionList(
             isLoading && sessions.isEmpty() -> {
                 SessionListLoading(modifier = Modifier.fillMaxSize())
             }
-
             error != null -> {
                 SessionListError(
                     error = error,
@@ -110,11 +103,9 @@ fun SessionList(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-
             sessions.isEmpty() -> {
                 SessionListEmpty(modifier = Modifier.fillMaxSize())
             }
-
             else -> {
                 SessionListContent(
                     sessions = sessions,
@@ -135,10 +126,9 @@ private fun SessionListContent(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
-
     LazyColumn(
+        modifier = modifier.padding(vertical = 8.dp),
         state = listState,
-        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
