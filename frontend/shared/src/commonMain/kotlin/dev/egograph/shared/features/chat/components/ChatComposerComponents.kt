@@ -1,15 +1,15 @@
 package dev.egograph.shared.features.chat.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -75,14 +75,7 @@ internal fun ChatComposerField(
                 .fillMaxWidth()
                 .heightIn(min = ChatComposerMetrics.containerMinHeight),
         textStyle =
-            LocalTextStyle.current.copy(
-                color =
-                    if (isFocused) {
-                        colors.focusedTextColor
-                    } else {
-                        colors.unfocusedTextColor
-                    },
-            ),
+            LocalTextStyle.current.copy(color = colors.unfocusedTextColor),
         enabled = !isLoading,
         minLines = ChatComposerMetrics.inputMinLines,
         maxLines = ChatComposerMetrics.inputMaxLines,
@@ -94,28 +87,13 @@ internal fun ChatComposerField(
                         .fillMaxWidth()
                         .clip(shape)
                         .border(
-                            width = if (isFocused) 2.dp else 1.dp,
-                            color =
-                                if (isFocused) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.outline
-                                },
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outline,
                             shape = shape,
                         ),
                 shape = shape,
-                color =
-                    if (isFocused) {
-                        colors.focusedContainerColor
-                    } else {
-                        colors.unfocusedContainerColor
-                    },
-                contentColor =
-                    if (isFocused) {
-                        colors.focusedTextColor
-                    } else {
-                        colors.unfocusedTextColor
-                    },
+                color = colors.unfocusedContainerColor,
+                contentColor = colors.unfocusedTextColor,
             ) {
                 Column(
                     modifier =

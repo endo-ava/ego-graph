@@ -5,7 +5,6 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import dev.egograph.shared.core.domain.model.ChatRequest
 import dev.egograph.shared.core.domain.model.Message
 import dev.egograph.shared.core.domain.model.MessageRole
-import dev.egograph.shared.core.domain.model.StreamChunk
 import dev.egograph.shared.core.domain.model.ThreadMessage
 import dev.egograph.shared.core.domain.repository.ChatRepository
 import dev.egograph.shared.core.domain.repository.MessageRepository
@@ -144,7 +143,8 @@ class ChatScreenModel(
                 .getModels()
                 .onSuccess { response ->
                     updateComposer {
-                        val selectedModelId = response.defaultModel.takeIf { model -> model.isNotBlank() } ?: response.models.firstOrNull()?.id
+                        val selectedModelId =
+                            response.defaultModel.takeIf { model -> model.isNotBlank() } ?: response.models.firstOrNull()?.id
                         it.copy(
                             models = response.models,
                             selectedModelId = selectedModelId,
@@ -260,9 +260,7 @@ class ChatScreenModel(
         _effect.send(ChatEffect.ShowMessage(message))
     }
 
-    private fun createLocalMessageId(prefix: String): String {
-        return "$prefix-${kotlin.random.Random.nextLong().toString().replace('-', '0')}"
-    }
+    private fun createLocalMessageId(prefix: String): String = "$prefix-${kotlin.random.Random.nextLong().toString().replace('-', '0')}"
 
     private fun createLocalMessage(
         messageId: String,
@@ -270,8 +268,8 @@ class ChatScreenModel(
         role: MessageRole,
         content: String,
         modelName: String?,
-    ): ThreadMessage {
-        return ThreadMessage(
+    ): ThreadMessage =
+        ThreadMessage(
             messageId = messageId,
             threadId = threadId,
             userId = "local",
@@ -280,6 +278,4 @@ class ChatScreenModel(
             createdAt = "",
             modelName = modelName,
         )
-    }
-
 }

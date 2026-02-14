@@ -1,4 +1,4 @@
-package dev.egograph.shared.core.ui.components
+package dev.egograph.shared.features.chat.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box

@@ -13,8 +13,8 @@ fun reduceChatStreamChunk(
     state: MessageListState,
     chunk: StreamChunk,
     streamingMessageId: String,
-): ChatStreamReduceResult {
-    return when (chunk.type) {
+): ChatStreamReduceResult =
+    when (chunk.type) {
         StreamChunkType.DELTA -> {
             val delta = chunk.delta.orEmpty()
             if (delta.isEmpty()) {
@@ -66,4 +66,3 @@ fun reduceChatStreamChunk(
             )
         }
     }
-}

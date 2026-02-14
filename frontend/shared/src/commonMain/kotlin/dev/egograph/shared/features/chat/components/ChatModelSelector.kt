@@ -3,7 +3,6 @@ package dev.egograph.shared.features.chat.components
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import dev.egograph.shared.core.domain.model.LLMModel
-import dev.egograph.shared.core.ui.components.ModelSelector
 
 @Composable
 fun ChatModelSelector(
