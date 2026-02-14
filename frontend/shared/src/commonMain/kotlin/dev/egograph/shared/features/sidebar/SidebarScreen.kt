@@ -63,12 +63,16 @@ class SidebarScreen : Screen {
         val keyboardController = LocalSoftwareKeyboardController.current
         val focusManager = LocalFocusManager.current
 
+        val dismissKeyboard = {
+            keyboardController?.hide()
+            focusManager.clearFocus(force = true)
+        }
+
         LaunchedEffect(drawerState) {
-            snapshotFlow { drawerState.isOpen }
-                .collect { isOpen ->
-                    if (isOpen) {
-                        keyboardController?.hide()
-                        focusManager.clearFocus()
+            snapshotFlow { drawerState.targetValue }
+                .collect { targetValue ->
+                    if (targetValue == DrawerValue.Open) {
+                        dismissKeyboard()
                     }
                 }
         }
@@ -147,6 +151,7 @@ class SidebarScreen : Screen {
             MainNavigationHost(
                 activeView = activeView,
                 onSwipeToSidebar = {
+                    dismissKeyboard()
                     scope.launch { drawerState.open() }
                 },
                 onSwipeToTerminal = { activeView = MainView.Terminal },
