@@ -12,15 +12,20 @@ interface TerminalRepository {
     /**
      * セッション一覧を取得する（Flowベース）
      *
+     * @param forceRefresh trueの場合、キャッシュを無視してAPIから取得
      * @return セッション一覧のFlow
      */
-    fun getSessions(): Flow<RepositoryResult<List<Session>>>
+    fun getSessions(forceRefresh: Boolean = false): Flow<RepositoryResult<List<Session>>>
 
     /**
      * 特定のセッションを取得する（Flowベース）
      *
      * @param sessionId セッションID
+     * @param forceRefresh trueの場合、キャッシュを無視してAPIから取得
      * @return セッションのFlow
      */
-    fun getSession(sessionId: String): Flow<RepositoryResult<Session>>
+    fun getSession(
+        sessionId: String,
+        forceRefresh: Boolean = false,
+    ): Flow<RepositoryResult<Session>>
 }

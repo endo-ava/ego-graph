@@ -33,6 +33,10 @@ class AgentListScreenModel(
 
     private var sessionsJob: Job? = null
 
+    init {
+        loadSessions()
+    }
+
     fun loadSessions() {
         sessionsJob?.cancel()
         sessionsJob =
@@ -40,7 +44,7 @@ class AgentListScreenModel(
                 _state.update { it.copy(isLoadingSessions = true, sessionsError = null) }
 
                 terminalRepository
-                    .getSessions()
+                    .getSessions(forceRefresh = true)
                     .collect { result ->
                         result
                             .onSuccess { sessions ->

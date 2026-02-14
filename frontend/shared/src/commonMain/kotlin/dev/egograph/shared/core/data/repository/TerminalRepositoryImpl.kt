@@ -24,13 +24,16 @@ class TerminalRepositoryImpl(
     private val sessionsCache = InMemoryCache<String, List<Session>>()
     private val sessionCache = InMemoryCache<String, Session>()
 
-    override fun getSessions(): Flow<RepositoryResult<List<Session>>> =
+    override fun getSessions(forceRefresh: Boolean): Flow<RepositoryResult<List<Session>>> =
         flow {
             val cacheKey = "terminal:sessions:list"
-            val cached = sessionsCache.get(cacheKey)
-            if (cached != null) {
-                emit(Result.success(cached))
-                return@flow
+
+            if (!forceRefresh) {
+                val cached = sessionsCache.get(cacheKey)
+                if (cached != null) {
+                    emit(Result.success(cached))
+                    return@flow
+                }
             }
 
             val result =
@@ -42,13 +45,19 @@ class TerminalRepositoryImpl(
             emit(result)
         }.flowOn(Dispatchers.IO)
 
-    override fun getSession(sessionId: String): Flow<RepositoryResult<Session>> =
+    override fun getSession(
+        sessionId: String,
+        forceRefresh: Boolean,
+    ): Flow<RepositoryResult<Session>> =
         flow {
             val cacheKey = "terminal:session:$sessionId"
-            val cached = sessionCache.get(cacheKey)
-            if (cached != null) {
-                emit(Result.success(cached))
-                return@flow
+
+            if (!forceRefresh) {
+                val cached = sessionCache.get(cacheKey)
+                if (cached != null) {
+                    emit(Result.success(cached))
+                    return@flow
+                }
             }
 
             val encodedSessionId = sessionId.encodeURLPathPart()
