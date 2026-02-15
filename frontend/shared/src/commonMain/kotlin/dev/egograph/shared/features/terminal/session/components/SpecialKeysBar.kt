@@ -37,6 +37,7 @@ fun SpecialKeysBar(
                 .horizontalScroll(scrollState)
                 .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
+        SpecialKeyButton("/", "/", onKeyPress)
         SpecialKeyButton("Ctrl+C", "\u0003", onKeyPress)
         SpecialKeyButton("Ctrl+D", "\u0004", onKeyPress)
         SpecialKeyButton("Ctrl+Z", "\u001A", onKeyPress)
@@ -55,12 +56,7 @@ fun SpecialKeysBar(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        SpecialKeyButton("/", "/", onKeyPress)
         SpecialKeyButton("Shift+Tab", "\u001B[Z", onKeyPress)
-        SpecialKeyButton("Ctrl+O", "\u000F", onKeyPress)
-        SpecialKeyButton("Ctrl+A", "\u0001", onKeyPress)
-        SpecialKeyButton("Ctrl+E", "\u0005", onKeyPress)
-        SpecialKeyButton("Ctrl+L", "\u000C", onKeyPress)
     }
 }
 
@@ -72,7 +68,6 @@ private fun SpecialKeyButton(
 ) {
     Button(
         onClick = { onKeyPress(keySequence) },
-        modifier = Modifier.padding(end = 4.dp),
         colors =
             ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,

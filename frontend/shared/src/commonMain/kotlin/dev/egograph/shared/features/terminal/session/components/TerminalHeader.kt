@@ -3,6 +3,7 @@ package dev.egograph.shared.features.terminal.session.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -40,11 +41,7 @@ fun TerminalHeader(
     onClose: () -> Unit,
     onVoiceInputToggle: () -> Unit = {},
 ) {
-    val title =
-        when {
-            isLoading -> "Connecting to $agentId..."
-            else -> agentId
-        }
+    val title = agentId
 
     CenterAlignedTopAppBar(
         title = {
@@ -87,6 +84,7 @@ fun TerminalHeader(
                 }
             }
         },
+        modifier = Modifier.height(96.dp),
         navigationIcon = {
             IconButton(onClick = onClose) {
                 Icon(Icons.Default.Close, contentDescription = "Close")

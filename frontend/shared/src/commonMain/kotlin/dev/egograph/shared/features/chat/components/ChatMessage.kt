@@ -260,7 +260,14 @@ private fun calculateTableColumnWeights(
 
     rows.forEach { row ->
         row.children.filter { it.type == CELL }.forEachIndexed { index, cell ->
-            val normalizedLength = cell.getTextInNode(content).toString().trim().replace('\n', ' ').length.coerceAtLeast(1)
+            val normalizedLength =
+                cell
+                    .getTextInNode(content)
+                    .toString()
+                    .trim()
+                    .replace('\n', ' ')
+                    .length
+                    .coerceAtLeast(1)
             if (normalizedLength > maxLengths[index]) {
                 maxLengths[index] = normalizedLength
             }
