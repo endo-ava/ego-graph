@@ -22,7 +22,7 @@ from backend.usecases.chat.tool_executor import (
     ToolExecutor,
 )
 from backend.usecases.tools import ToolRegistry, build_tool_registry
-from shared.config import R2Config
+from backend.config import R2Config
 
 logger = logging.getLogger(__name__)
 

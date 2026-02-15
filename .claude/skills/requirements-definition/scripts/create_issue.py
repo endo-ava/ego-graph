@@ -24,7 +24,7 @@ from pathlib import Path
 
 # ラベル例（参考）
 CATEGORY_EXAMPLES = ["feature", "fix"]
-COMPONENT_EXAMPLES = ["backend", "frontend", "ingest", "shared"]
+COMPONENT_EXAMPLES = ["backend", "frontend", "ingest"]
 
 
 def create_issue_with_gh(

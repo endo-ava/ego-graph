@@ -1,10 +1,10 @@
 package dev.egograph.shared.features.terminal
 
 import dev.egograph.shared.core.data.repository.TerminalRepositoryImpl
+import dev.egograph.shared.core.data.repository.internal.RepositoryClient
 import dev.egograph.shared.core.domain.model.terminal.Session
 import dev.egograph.shared.core.domain.model.terminal.SessionStatus
 import dev.egograph.shared.core.domain.repository.ApiError
-import dev.egograph.shared.core.platform.PlatformPreferences
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -13,8 +13,6 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
-import io.mockk.every
-import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
@@ -48,16 +46,11 @@ class TerminalRepositoryImplTest {
         }
 
     /**
-     * テスト用PlatformPreferencesのMockを作成する
+     * テスト用RepositoryClientを作成する
      */
-    private fun createMockPreferences(
-        gatewayUrl: String = baseUrl,
-        gatewayApiKey: String = apiKey,
-    ): PlatformPreferences {
-        val mockPrefs = mockk<PlatformPreferences>()
-        every { mockPrefs.getString("gateway_api_url", any()) } returns gatewayUrl
-        every { mockPrefs.getString("gateway_api_key", any()) } returns gatewayApiKey
-        return mockPrefs
+    private fun createMockRepositoryClient(engine: MockEngine): RepositoryClient {
+        val httpClient = createMockHttpClient(engine)
+        return RepositoryClient(httpClient, baseUrl, apiKey)
     }
 
     // ==================== getSessions() テスト ====================
@@ -103,9 +96,8 @@ class TerminalRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val preferences = createMockPreferences()
-            val repository = TerminalRepositoryImpl(httpClient, preferences)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = TerminalRepositoryImpl(repositoryClient)
 
             // Act: セッション一覧を収集
             val results = mutableListOf<List<Session>>()
@@ -143,9 +135,8 @@ class TerminalRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val preferences = createMockPreferences()
-            val repository = TerminalRepositoryImpl(httpClient, preferences)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = TerminalRepositoryImpl(repositoryClient)
 
             // Act: エラー結果を収集
             val errors = mutableListOf<ApiError>()
@@ -177,9 +168,8 @@ class TerminalRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val preferences = createMockPreferences()
-            val repository = TerminalRepositoryImpl(httpClient, preferences)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = TerminalRepositoryImpl(repositoryClient)
 
             // Act: エラー結果を収集
             val errors = mutableListOf<ApiError>()
@@ -219,9 +209,8 @@ class TerminalRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val preferences = createMockPreferences()
-            val repository = TerminalRepositoryImpl(httpClient, preferences)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = TerminalRepositoryImpl(repositoryClient)
 
             // Act
             val results = mutableListOf<List<Session>>()
@@ -235,35 +224,5 @@ class TerminalRepositoryImplTest {
             assertEquals(1, results.size)
             val actual = results[0]
             assertTrue(actual.isEmpty())
-        }
-
-    @Test
-    fun `resolveGatewayConfig - invalid baseUrl throws ValidationError`() =
-        runTest {
-            // Arrange: 不正なURL（http://またはhttps://で始まらない）でpreferencesを作成
-            val httpClient =
-                createMockHttpClient(
-                    MockEngine {
-                        throw IllegalStateException("Should not be called")
-                    },
-                )
-            val preferences = createMockPreferences(gatewayUrl = "invalid-url")
-            val repository = TerminalRepositoryImpl(httpClient, preferences)
-
-            // Act: エラー結果を収集
-            val errors = mutableListOf<ApiError>()
-            repository.getSessions().collect { result ->
-                if (result.isFailure) {
-                    result.exceptionOrNull()?.let {
-                        assertIs<ApiError>(it)
-                        errors.add(it)
-                    }
-                }
-            }
-
-            // Assert: ValidationErrorがスローされることを検証
-            assertTrue(errors.isNotEmpty())
-            val error = assertIs<ApiError.ValidationError>(errors.first())
-            assertTrue(error.errorMessage.contains("Gateway API URL") || error.errorMessage.contains("invalid"))
         }
 }

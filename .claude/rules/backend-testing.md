@@ -86,7 +86,7 @@ backend/tests/
 
 GitHub Actions (`ci-backend.yml`) において、以下のポリシーでテストを実行する。
 
-- **トリガー**: 関連ディレクトリ (`backend/**`, `shared/**`) の変更時。
+- **トリガー**: 関連ディレクトリ の変更時。
 - **実行コマンド**: `uv run pytest tests/ -v --cov=backend --cov-report=xml --cov-report=term`
 - **環境変数**: CI では `R2_*` をダミー値で与える。
 - **カバレッジ**: ワークフロー内で計測する。Codecov 連携は将来的に有効化予定。

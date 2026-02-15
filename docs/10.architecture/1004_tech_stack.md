@@ -8,13 +8,12 @@
 
 | コンポーネント | 言語/FW     | パッケージマネージャー | 主要ライブラリ                        |
 | -------------- | ----------- | ---------------------- | ------------------------------------- |
-| **shared/**    | Python 3.13 | uv                     | Pydantic, python-dotenv               |
 | **ingest/**    | Python 3.13 | uv                     | Spotipy, DuckDB, boto3, pyarrow       |
 | **backend/**   | Python 3.13 | uv                     | FastAPI, Uvicorn, DuckDB              |
 | **gateway/**   | Python 3.13 | uv                     | Starlette, Uvicorn, WebSocket, FCM    |
 | **frontend/**  | Kotlin 2.3  | Gradle                 | Compose Multiplatform, MVIKotlin, FCM |
 
-- **Python Workspace**: uv で shared, ingest, backend, gateway を一元管理
+- **Python Workspace**: uv で ingest, backend, gateway を一元管理
 - **Frontend**: Kotlin Multiplatform (Gradle)
 
 ---
@@ -48,18 +47,7 @@
 
 ---
 
-## 2. Shared Library（共有ライブラリ）
-
-- **Language**: Python 3.13
-- **主要ライブラリ**:
-  - `pydantic`: データモデル定義
-  - `python-dotenv`: 環境変数管理
-- **パッケージング**: Hatchling でビルド、`__init__.py` で公開 API を再エクスポート
-- **用途**: ingest, backend で共通利用するモデル・設定・ユーティリティ
-
----
-
-## 3. Ingest Pipeline（データ収集）
+## 2. Ingest Pipeline（データ収集）
 
 - **Language**: Python 3.13
 - **実行環境**: GitHub Actions（定期実行: 1日2回）
@@ -72,7 +60,7 @@
 
 ---
 
-## 4. Backend（Agent API Server）
+## 3. Backend（Agent API Server）
 
 - **Framework**: FastAPI (Python 3.13)
 - **Web Server**: Uvicorn (ASGI)
@@ -89,7 +77,7 @@
 
 ---
 
-## 4.5. Gateway（Terminal Gateway）
+## 4. Gateway（Terminal Gateway）
 
 モバイル端末からの tmux セッション接続とプッシュ通知を担当する独立サービス。
 
@@ -134,13 +122,13 @@
 
 ### GitHub Actions
 
-| ワークフロー             | トリガー                  | 用途                    |
-| ------------------------ | ------------------------- | ----------------------- |
-| `ci-backend.yml`         | `backend/**`, `shared/**` | Backend テスト・Lint    |
-| `ci-ingest.yml`          | `ingest/**`, `shared/**`  | Ingest テスト・Lint     |
-| `ci-gateway.yml`         | `gateway/**`, `shared/**` | Gateway テスト・Lint    |
-| `ci-frontend.yml`        | `frontend/**`             | Frontend テスト (JUnit) |
-| `job-ingest-spotify.yml` | Cron (1日2回)             | Spotify データ収集      |
+| ワークフロー             | トリガー      | 用途                    |
+| ------------------------ | ------------- | ----------------------- |
+| `ci-backend.yml`         | `backend/**`  | Backend テスト・Lint    |
+| `ci-ingest.yml`          | `ingest/**`   | Ingest テスト・Lint     |
+| `ci-gateway.yml`         | `gateway/**`  | Gateway テスト・Lint    |
+| `ci-frontend.yml`        | `frontend/**` | Frontend テスト (JUnit) |
+| `job-ingest-spotify.yml` | Cron (1日2回) | Spotify データ収集      |
 
 ### テストツール
 
@@ -178,8 +166,8 @@
 
 ### モノレポ + uv workspace
 
-1. **コード共有**: shared/ で型安全なモデル・設定を一元管理
-2. **依存関係の透明性**: workspace 依存で ingest/backend の共通基盤を明示
+1. **コンポーネント分離**: 各層（ingest/backend/gateway）が独立した責任範囲
+2. **依存関係の透明性**: workspace 依存で Python パッケージの共通基盤を明示
 3. **開発効率**: `uv sync` 一発で全 Python パッケージをセットアップ
 4. **CI/CD の最適化**: コンポーネント別テストで高速フィードバック
 

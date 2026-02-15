@@ -8,13 +8,13 @@ import logging
 from datetime import date
 from typing import Any
 
+from backend.config import R2Config
 from backend.infrastructure.database import (
     DuckDBConnection,
     QueryParams,
     get_listening_stats,
     get_top_tracks,
 )
-from shared.config import R2Config
 
 logger = logging.getLogger(__name__)
 

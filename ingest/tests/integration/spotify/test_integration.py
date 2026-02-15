@@ -16,7 +16,7 @@ from ingest.tests.fixtures.spotify_responses import (
     get_mock_recently_played,
     get_mock_recently_played_with_timestamps,
 )
-from shared import iso8601_to_unix_ms
+from ingest.utils import iso8601_to_unix_ms
 
 
 @pytest.mark.integration

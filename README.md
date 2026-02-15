@@ -28,7 +28,6 @@ EgoGraph は、個人のデジタルライフログ（Spotify, Web, Bank, etc.�
 
 ```text
 ego-graph/
-├── shared/                # 共有Pythonライブラリ（uv workspace メンバー）
 ├── ingest/                # データ収集ワーカー（uv workspace メンバー）
 ├── backend/               # FastAPI サーバー（uv workspace メンバー）
 ├── gateway/               # Terminal Gateway（uv workspace メンバー）
@@ -43,13 +42,12 @@ ego-graph/
 
 ### コンポーネント概要
 
-| コンポーネント | 役割                           | 技術スタック                                                  | 実行環境                  |
-| -------------- | ------------------------------ | ------------------------------------------------------------- | ------------------------- |
-| **shared/**    | 共有ライブラリ（モデル、設定） | Python 3.13, Pydantic                                         | ライブラリ                |
-| **ingest/**    | データ収集・変換・保存         | Python 3.13, Spotipy, DuckDB, boto3                           | GitHub Actions (定期実行) |
-| **backend/**   | Agent API・データアクセス      | FastAPI, DuckDB, LLM (DeepSeek/OpenAI)                        | VPS/GCP (常駐サーバー)    |
-| **gateway/**   | Terminal Gateway・tmux 接続    | Starlette, Uvicorn, WebSocket, FCM                            | tmux (LXC)                |
-| **frontend/**  | チャット UI・Terminal UI       | Kotlin 2.3, Compose Multiplatform, MVVM (StateFlow + Channel) | Android (Gradle)          |
+| コンポーネント | 役割                        | 技術スタック                                                  | 実行環境                  |
+| -------------- | --------------------------- | ------------------------------------------------------------- | ------------------------- |
+| **ingest/**    | データ収集・変換・保存      | Python 3.13, Spotipy, DuckDB, boto3                           | GitHub Actions (定期実行) |
+| **backend/**   | Agent API・データアクセス   | FastAPI, DuckDB, LLM (DeepSeek/OpenAI)                        | VPS/GCP (常駐サーバー)    |
+| **gateway/**   | Terminal Gateway・tmux 接続 | Starlette, Uvicorn, WebSocket, FCM                            | tmux (LXC)                |
+| **frontend/**  | チャット UI・Terminal UI    | Kotlin 2.3, Compose Multiplatform, MVVM (StateFlow + Channel) | Android (Gradle)          |
 
 ---
 
@@ -68,7 +66,7 @@ ego-graph/
 # uv のインストール（未インストールの場合）
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Python 依存関係の同期（shared, ingest, backend を一括）
+# Python 依存関係の同期（ingest, backend, gateway を一括）
 uv sync
 ```
 
@@ -187,9 +185,9 @@ cd frontend && ./gradlew ktlintFormat
 
 GitHub Actions でコンポーネント別に自動テストが実行されます。
 
-- **ci-backend.yml**: `backend/`, `shared/` の変更時
-- **ci-ingest.yml**: `ingest/`, `shared/` の変更時
-- **ci-gateway.yml**: `gateway/`, `shared/` の変更時
+- **ci-backend.yml**: `backend/` の変更時
+- **ci-ingest.yml**: `ingest/` の変更時
+- **ci-gateway.yml**: `gateway/` の変更時
 - **ci-frontend.yml**: `frontend/` の変更時
 - **job-ingest-spotify.yml**: 1日2回（02:00, 14:00 UTC）定期実行
 
@@ -199,7 +197,6 @@ GitHub Actions でコンポーネント別に自動テストが実行されま�
 
 ### コンポーネント詳細
 
-- **[Shared](./shared/README.md)**: 共有ライブラリ（モデル、設定、ユーティリティ）
 - **[Ingest](./ingest/README.md)**: データ収集ワーカー、R2 ストレージロジック
 - **[Backend](./backend/README.md)**: Agent API、DuckDB 接続、LLM 統合
 - **[Gateway](./gateway/README.md)**: Terminal Gateway、tmux 接続、FCM 通知

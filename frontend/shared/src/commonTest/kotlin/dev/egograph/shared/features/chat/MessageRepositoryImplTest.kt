@@ -1,6 +1,7 @@
 package dev.egograph.shared.features.chat
 
 import dev.egograph.shared.core.data.repository.MessageRepositoryImpl
+import dev.egograph.shared.core.data.repository.internal.RepositoryClient
 import dev.egograph.shared.core.domain.model.MessageRole
 import dev.egograph.shared.core.domain.model.ThreadMessage
 import dev.egograph.shared.core.domain.model.ThreadMessagesResponse
@@ -45,6 +46,14 @@ class MessageRepositoryImplTest {
                 json(json)
             }
         }
+
+    /**
+     * テスト用RepositoryClientを作成する
+     */
+    private fun createMockRepositoryClient(engine: MockEngine): RepositoryClient {
+        val httpClient = createMockHttpClient(engine)
+        return RepositoryClient(httpClient, baseUrl, apiKey)
+    }
 
     // ==================== getMessages() テスト ====================
 
@@ -93,8 +102,7 @@ class MessageRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = MessageRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = MessageRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: メッセージ一覧を収集
             val results = mutableListOf<ThreadMessagesResponse>()
@@ -134,8 +142,7 @@ class MessageRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = MessageRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = MessageRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: エラー結果を収集
             val errors = mutableListOf<ApiError>()
@@ -176,8 +183,7 @@ class MessageRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = MessageRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = MessageRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act
             val results = mutableListOf<ThreadMessagesResponse>()
@@ -207,8 +213,7 @@ class MessageRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = MessageRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = MessageRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: エラー結果を収集
             val errors = mutableListOf<ApiError>()
@@ -260,8 +265,7 @@ class MessageRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = MessageRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = MessageRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: 同じスレッドのメッセージを2回取得
             val firstResults = mutableListOf<ThreadMessagesResponse>()

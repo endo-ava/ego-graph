@@ -38,8 +38,8 @@ internal object ChatComposerMetrics {
     val outerVerticalPadding = 12.dp
     val actionButtonsSpacing = 8.dp
     val containerMinHeight = 100.dp
-    const val inputMinLines = 2
-    const val inputMaxLines = 5
+    const val INPUT_MIN_LINES = 2
+    const val INPUT_MAX_LINES = 5
     val contentHorizontalPadding = 16.dp
     val contentTopPadding = 12.dp
     val contentBottomPadding = 8.dp
@@ -77,8 +77,8 @@ internal fun ChatComposerField(
         textStyle =
             LocalTextStyle.current.copy(color = colors.unfocusedTextColor),
         enabled = !isLoading,
-        minLines = ChatComposerMetrics.inputMinLines,
-        maxLines = ChatComposerMetrics.inputMaxLines,
+        minLines = ChatComposerMetrics.INPUT_MIN_LINES,
+        maxLines = ChatComposerMetrics.INPUT_MAX_LINES,
         interactionSource = interactionSource,
         decorationBox = { innerTextField ->
             Surface(

@@ -15,7 +15,7 @@ from ingest.google_activity.config import AccountConfig
 from ingest.google_activity.pipeline import run_all_accounts_pipeline
 from ingest.google_activity.storage import YouTubeStorage
 from ingest.settings import ENV_FILES, IngestSettings
-from shared import log_execution_time
+from ingest.utils import log_execution_time
 
 logger = logging.getLogger(__name__)
 

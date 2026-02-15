@@ -267,7 +267,7 @@ sudo systemctl restart egograph-backend
 
 将来的にVM上でDocker運用に切り替える場合の参考。
 リポジトリ直下の `Dockerfile` を使用する。
-`shared` に依存するため、build contextはリポジトリ全体を指定する。
+各Pythonパッケージはuv workspaceで管理されているため、build contextはリポジトリ全体を指定する。
 
 ### 8.1 ビルド
 

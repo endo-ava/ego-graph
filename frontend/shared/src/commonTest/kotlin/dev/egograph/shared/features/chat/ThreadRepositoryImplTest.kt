@@ -1,6 +1,7 @@
 package dev.egograph.shared.features.chat
 
 import dev.egograph.shared.core.data.repository.ThreadRepositoryImpl
+import dev.egograph.shared.core.data.repository.internal.RepositoryClient
 import dev.egograph.shared.core.domain.model.Thread
 import dev.egograph.shared.core.domain.model.ThreadListResponse
 import dev.egograph.shared.core.domain.repository.ApiError
@@ -44,6 +45,14 @@ class ThreadRepositoryImplTest {
                 json(json)
             }
         }
+
+    /**
+     * テスト用RepositoryClientを作成する
+     */
+    private fun createMockRepositoryClient(engine: MockEngine): RepositoryClient {
+        val httpClient = createMockHttpClient(engine)
+        return RepositoryClient(httpClient, baseUrl, apiKey)
+    }
 
     // ==================== getThreads() テスト ====================
 
@@ -96,8 +105,7 @@ class ThreadRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ThreadRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = ThreadRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: スレッド一覧を収集
             val results = mutableListOf<ThreadListResponse>()
@@ -156,8 +164,7 @@ class ThreadRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ThreadRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = ThreadRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act
             val results = mutableListOf<ThreadListResponse>()
@@ -199,8 +206,7 @@ class ThreadRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ThreadRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = ThreadRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act
             val results = mutableListOf<ThreadListResponse>()
@@ -230,8 +236,7 @@ class ThreadRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ThreadRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = ThreadRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: エラー結果を収集
             val errors = mutableListOf<ApiError>()
@@ -279,8 +284,7 @@ class ThreadRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ThreadRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = ThreadRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: スレッド詳細を収集
             val results = mutableListOf<Thread>()
@@ -316,8 +320,7 @@ class ThreadRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ThreadRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = ThreadRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: エラー結果を収集
             val errors = mutableListOf<ApiError>()
@@ -362,8 +365,7 @@ class ThreadRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ThreadRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = ThreadRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: 同じスレッドを2回取得
             val firstResults = mutableListOf<Thread>()
@@ -400,8 +402,7 @@ class ThreadRepositoryImplTest {
                     throw Exception("HTTP request should not be sent")
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ThreadRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = ThreadRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act
             val result = repository.createThread("New Thread")

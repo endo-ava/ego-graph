@@ -6,12 +6,10 @@ on:
     branches: [main]
     paths:
       - 'ingest/**'
-      - 'shared/**'
   pull_request:
     branches: [main]
     paths:
       - 'ingest/**'
-      - 'shared/**'
 
 jobs:
   test:

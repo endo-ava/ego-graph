@@ -185,6 +185,10 @@ class RepositoryTest {
                     flow<RepositoryResult<ThreadMessagesResponse>> {
                         emit(Result.success(ThreadMessagesResponse(threadId, emptyList())))
                     }
+
+                override suspend fun invalidateCache(threadId: String) {
+                    // No-op for test
+                }
             }
 
         val mockChatRepo =

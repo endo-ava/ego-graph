@@ -39,7 +39,12 @@ fun reduceChatStreamChunk(
 
         StreamChunkType.TOOL_CALL -> {
             val taskName = chunk.toolName ?: chunk.toolCalls?.firstOrNull()?.name
-            ChatStreamReduceResult(state = state.copy(activeAssistantTask = taskName))
+            // タスク名が取得できない場合は現在の状態を維持
+            if (taskName != null) {
+                ChatStreamReduceResult(state = state.copy(activeAssistantTask = taskName))
+            } else {
+                ChatStreamReduceResult(state = state)
+            }
         }
 
         StreamChunkType.TOOL_RESULT -> {
