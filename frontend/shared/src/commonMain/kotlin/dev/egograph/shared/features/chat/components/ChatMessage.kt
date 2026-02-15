@@ -4,12 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
@@ -24,19 +27,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mikepenz.markdown.annotator.annotatorSettings
+import com.mikepenz.markdown.compose.LocalMarkdownDimens
 import com.mikepenz.markdown.compose.components.markdownComponents
+import com.mikepenz.markdown.compose.elements.MarkdownTable
+import com.mikepenz.markdown.compose.elements.MarkdownTableBasicText
 import com.mikepenz.markdown.compose.elements.highlightedCodeBlock
 import com.mikepenz.markdown.compose.elements.highlightedCodeFence
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
+import com.mikepenz.markdown.model.markdownDimens
 import dev.egograph.shared.core.domain.model.MessageRole
 import dev.egograph.shared.core.domain.model.ThreadMessage
 import dev.egograph.shared.core.ui.common.testTagResourceId
 import dev.egograph.shared.core.ui.components.AssistantContentBlock
 import dev.egograph.shared.core.ui.components.MermaidDiagram
 import dev.egograph.shared.core.ui.components.splitAssistantContent
+import org.intellij.markdown.ast.ASTNode
+import org.intellij.markdown.ast.getTextInNode
+import org.intellij.markdown.flavours.gfm.GFMElementTypes.HEADER
+import org.intellij.markdown.flavours.gfm.GFMElementTypes.ROW
+import org.intellij.markdown.flavours.gfm.GFMTokenTypes.CELL
 
 /**
  * チャットメッセージコンポーネント
@@ -113,13 +128,46 @@ private fun AssistantMessage(
             h6 = MaterialTheme.typography.bodyMedium,
             text = MaterialTheme.typography.bodyMedium,
             paragraph = MaterialTheme.typography.bodyMedium,
+            table = MaterialTheme.typography.bodySmall,
         )
     val markdownColors = markdownColor(text = textColor)
+    val markdownDimens =
+        markdownDimens(
+            tableCellWidth = 96.dp,
+            tableMaxWidth = 360.dp,
+            tableCellPadding = 6.dp,
+        )
     val markdownRendererComponents =
         remember {
             markdownComponents(
                 codeBlock = highlightedCodeBlock,
                 codeFence = highlightedCodeFence,
+                table = { model ->
+                    val columnWeights = remember(model.node, model.content) { calculateTableColumnWeights(model.node, model.content) }
+                    MarkdownTable(
+                        content = model.content,
+                        node = model.node,
+                        style = model.typography.table,
+                        headerBlock = { content, header, tableWidth, style ->
+                            DynamicTableLine(
+                                content = content,
+                                row = header,
+                                tableWidth = tableWidth,
+                                style = style.copy(fontWeight = FontWeight.Bold),
+                                columnWeights = columnWeights,
+                            )
+                        },
+                        rowBlock = { content, row, tableWidth, style ->
+                            DynamicTableLine(
+                                content = content,
+                                row = row,
+                                tableWidth = tableWidth,
+                                style = style,
+                                columnWeights = columnWeights,
+                            )
+                        },
+                    )
+                },
             )
         }
 
@@ -147,6 +195,7 @@ private fun AssistantMessage(
                                 colors = markdownColors,
                                 typography = markdownTextStyles,
                                 components = markdownRendererComponents,
+                                dimens = markdownDimens,
                             )
                         }
 
@@ -184,6 +233,7 @@ private fun AssistantMessage(
                         colors = markdownColors,
                         typography = markdownTextStyles,
                         components = markdownRendererComponents,
+                        dimens = markdownDimens,
                     )
                 }
             }
@@ -194,6 +244,65 @@ private fun AssistantMessage(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier.padding(top = 4.dp, start = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+private fun calculateTableColumnWeights(
+    tableNode: ASTNode,
+    content: String,
+): List<Float> {
+    val rows = tableNode.children.filter { it.type == HEADER || it.type == ROW }
+    val columnCount = rows.maxOfOrNull { row -> row.children.count { it.type == CELL } } ?: return emptyList()
+    val maxLengths = MutableList(columnCount) { 1 }
+
+    rows.forEach { row ->
+        row.children.filter { it.type == CELL }.forEachIndexed { index, cell ->
+            val normalizedLength = cell.getTextInNode(content).toString().trim().replace('\n', ' ').length.coerceAtLeast(1)
+            if (normalizedLength > maxLengths[index]) {
+                maxLengths[index] = normalizedLength
+            }
+        }
+    }
+
+    return maxLengths.map { length ->
+        val boundedLength = length.coerceIn(6, 36)
+        boundedLength.toFloat()
+    }
+}
+
+@Composable
+private fun DynamicTableLine(
+    content: String,
+    row: ASTNode,
+    tableWidth: androidx.compose.ui.unit.Dp,
+    style: androidx.compose.ui.text.TextStyle,
+    columnWeights: List<Float>,
+) {
+    val tableCellPadding = LocalMarkdownDimens.current.tableCellPadding
+    val cells = row.children.filter { it.type == CELL }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.widthIn(tableWidth).height(IntrinsicSize.Max),
+    ) {
+        cells.forEachIndexed { index, cell ->
+            val columnWeight = columnWeights.getOrNull(index) ?: 1f
+            Column(
+                modifier =
+                    Modifier
+                        .padding(tableCellPadding)
+                        .weight(columnWeight.coerceAtLeast(1f)),
+            ) {
+                MarkdownTableBasicText(
+                    content = content,
+                    cell = cell,
+                    style = style,
+                    maxLines = Int.MAX_VALUE,
+                    overflow = TextOverflow.Clip,
+                    annotatorSettings = annotatorSettings(),
                 )
             }
         }
