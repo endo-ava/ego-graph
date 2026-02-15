@@ -293,7 +293,7 @@ private fun DynamicTableLine(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.widthIn(tableWidth).height(IntrinsicSize.Max),
+        modifier = Modifier.widthIn(max = tableWidth).height(IntrinsicSize.Max),
     ) {
         cells.forEachIndexed { index, cell ->
             val columnWeight = columnWeights.getOrNull(index) ?: 1f
