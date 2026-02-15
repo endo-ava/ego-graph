@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,12 +24,12 @@ import androidx.compose.ui.unit.dp
 /**
  * ターミナル画面のヘッダー
  *
- * エージェントID、接続状態、閉じるボタン、音声入力を含む。
+ * エージェントID、接続状態、戻るボタン、音声入力を含む。
  *
  * @param agentId エージェントID
  * @param isLoading 接続中フラグ
  * @param error エラーメッセージ（nullの場合は正常）
- * @param onClose 閉じるボタンコールバック
+ * @param onClose 戻るボタンコールバック
  * @param onVoiceInputToggle 音声入力切替コールバック
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,7 +87,7 @@ fun TerminalHeader(
         modifier = Modifier.height(96.dp),
         navigationIcon = {
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Close")
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back to list")
             }
         },
         actions = {
