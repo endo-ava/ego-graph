@@ -42,17 +42,14 @@ fun SpecialKeysBar(
         SpecialKeyButton("↓", "\u001B[B", onKeyPress)
         SpecialKeyButton("←", "\u001B[D", onKeyPress)
         SpecialKeyButton("→", "\u001B[C", onKeyPress)
-
-        
         Spacer(modifier = Modifier.width(8.dp))
-        
+
         SpecialKeyButton("Ctrl+C", "\u0003", onKeyPress)
         SpecialKeyButton("Esc", "\u001B", onKeyPress)
         SpecialKeyButton("Tab", "\t", onKeyPress)
         SpecialKeyButton("Shift+Tab", "\u001B[Z", onKeyPress)
-        
         Spacer(modifier = Modifier.width(8.dp))
-        
+
         SpecialKeyButton("Ctrl", "\u0000", onKeyPress)
         SpecialKeyButton("Ctrl+D", "\u0004", onKeyPress)
     }

@@ -38,7 +38,6 @@
             height: 100%;
             overflow-y: auto !important;
             -webkit-overflow-scrolling: touch;
-            touch-action: pan-y;
         }
 
         #xtermRender .xterm .xterm-helper-textarea {
@@ -250,14 +249,7 @@
                 root.addEventListener('pointermove', handlePointerScrollMove, { passive: false, capture: true });
                 root.addEventListener('pointerup', handlePointerScrollEnd, { passive: true, capture: true });
                 root.addEventListener('pointercancel', handlePointerScrollEnd, { passive: true, capture: true });
-                root.addEventListener('mousedown', handlePointerScrollStart, { passive: true, capture: true });
-                root.addEventListener('mousemove', handlePointerScrollMove, { passive: false, capture: true });
-                root.addEventListener('mouseup', handlePointerScrollEnd, { passive: true, capture: true });
-                root.addEventListener('mouseleave', handlePointerScrollEnd, { passive: true, capture: true });
 
-                if (viewport) {
-                    viewport.addEventListener('wheel', handleMouseWheelScroll, { passive: false, capture: true });
-                }
                 viewportListenersBound = true;
             }
 
