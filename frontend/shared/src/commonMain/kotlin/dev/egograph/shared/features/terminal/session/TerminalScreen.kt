@@ -1,11 +1,18 @@
 package dev.egograph.shared.features.terminal.session
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
@@ -28,6 +35,7 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.core.platform.PlatformPrefsKeys
+import dev.egograph.shared.core.platform.rememberKeyboardState
 import dev.egograph.shared.core.settings.AppTheme
 import dev.egograph.shared.core.settings.ThemeRepository
 import dev.egograph.shared.features.terminal.session.components.SpecialKeysBar
@@ -70,6 +78,7 @@ private fun TerminalContent(
     val selectedTheme by themeRepository.theme.collectAsState()
     val systemDarkTheme = isSystemInDarkTheme()
     val connectionState by webView.connectionState.collectAsState(initial = false)
+    val keyboardState = rememberKeyboardState()
 
     var isConnecting by remember { mutableStateOf(false) }
     var settingsError by remember { mutableStateOf<String?>(null) }
@@ -186,10 +195,27 @@ private fun TerminalContent(
                     }
                 }
 
-                SpecialKeysBar(
-                    onKeyPress = { keySequence -> webView.sendKey(keySequence) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                AnimatedVisibility(
+                    visible = keyboardState.isVisible,
+                    enter =
+                        slideInVertically(
+                            initialOffsetY = { fullHeight -> fullHeight },
+                            animationSpec = tween(durationMillis = 300),
+                        ) + fadeIn(animationSpec = tween(300)),
+                    exit =
+                        slideOutVertically(
+                            targetOffsetY = { fullHeight -> fullHeight },
+                            animationSpec = tween(durationMillis = 300),
+                        ) + fadeOut(animationSpec = tween(300)),
+                ) {
+                    SpecialKeysBar(
+                        onKeyPress = { keySequence -> webView.sendKey(keySequence) },
+                        modifier =
+                            Modifier
+                                .imePadding()
+                                .fillMaxWidth(),
+                    )
+                }
             }
         }
     }

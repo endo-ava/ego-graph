@@ -15,6 +15,7 @@
 
         <activity
             android:name="dev.egograph.app.MainActivity"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true"
             android:theme="@style/Theme.App">
             <intent-filter>
