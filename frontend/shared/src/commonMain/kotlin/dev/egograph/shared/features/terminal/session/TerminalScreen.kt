@@ -154,7 +154,7 @@ private fun TerminalContent(
                 agentId = agentId,
                 isLoading = isConnecting,
                 error = displayError,
-                onClose = { onClose?.invoke() ?: navigator.pop() },
+                onBack = { onClose?.invoke() ?: navigator.pop() },
             )
         },
     ) { paddingValues ->

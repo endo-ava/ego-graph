@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
  * @param agentId エージェントID
  * @param isLoading 接続中フラグ
  * @param error エラーメッセージ（nullの場合は正常）
- * @param onClose 戻るボタンコールバック
+ * @param onBack 戻るボタンコールバック
  * @param onVoiceInputToggle 音声入力切替コールバック
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,18 +38,16 @@ fun TerminalHeader(
     agentId: String,
     isLoading: Boolean,
     error: String?,
-    onClose: () -> Unit,
+    onBack: () -> Unit,
     onVoiceInputToggle: () -> Unit = {},
 ) {
-    val title = agentId
-
     CenterAlignedTopAppBar(
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
-                Text(text = title)
+                Text(text = agentId)
                 Spacer(modifier = Modifier.size(8.dp))
                 when {
                     isLoading -> {
@@ -86,7 +84,7 @@ fun TerminalHeader(
         },
         modifier = Modifier.height(96.dp),
         navigationIcon = {
-            IconButton(onClick = onClose) {
+            IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to list")
             }
         },

@@ -65,7 +65,6 @@
             var xtermRender = document.getElementById('xtermRender');
             var websocket = null;
             var renderTerminal = null;
-            var touchScrollLastY = null;
             var touchScrollRemainder = 0;
             var pointerScrollLastY = null;
             var pointerDragActive = false;
@@ -100,6 +99,8 @@
                 return renderTerminal.element;
             }
 
+            // Note: xterm.js _core is a private API - may break on version upgrades
+            // Consider using xterm-addon-fit for official cell size access
             function getCellHeight() {
                 if (
                     renderTerminal &&
@@ -140,44 +141,6 @@
                     sendInput(sgrSequence);
                 }
                 return true;
-            }
-
-            function handleTouchScrollStart(event) {
-                if (!event.touches || event.touches.length !== 1) {
-                    touchScrollLastY = null;
-                    return;
-                }
-
-                touchScrollLastY = event.touches[0].clientY;
-            }
-
-            function handleTouchScrollMove(event) {
-                if (!event.touches || event.touches.length !== 1) {
-                    touchScrollLastY = null;
-                    return;
-                }
-
-                var currentY = event.touches[0].clientY;
-                if (touchScrollLastY === null) {
-                    touchScrollLastY = currentY;
-                    return;
-                }
-
-                var deltaY = touchScrollLastY - currentY;
-                if (Math.abs(deltaY) < 1) {
-                    return;
-                }
-
-                var didScroll = scrollTerminalByPixels(deltaY);
-                touchScrollLastY = currentY;
-                if (didScroll) {
-                    event.preventDefault();
-                }
-            }
-
-            function handleTouchScrollEnd() {
-                touchScrollLastY = null;
-                touchScrollRemainder = 0;
             }
 
             function handleMouseWheelScroll(event) {
@@ -235,7 +198,6 @@
                 }
 
                 var root = getXtermRoot();
-                var viewport = getXtermViewport();
                 if (!root) {
                     return;
                 }
@@ -245,6 +207,7 @@
                 root.addEventListener('pointermove', handlePointerScrollMove, { passive: false, capture: true });
                 root.addEventListener('pointerup', handlePointerScrollEnd, { passive: true, capture: true });
                 root.addEventListener('pointercancel', handlePointerScrollEnd, { passive: true, capture: true });
+                root.addEventListener('pointerleave', handlePointerScrollEnd, { passive: true, capture: true });
 
                 viewportListenersBound = true;
             }
