@@ -12,6 +12,8 @@
             height: 100%;
             background: #1e1e1e;
             overflow: hidden;
+            touch-action: pan-y;
+            overscroll-behavior: contain;
         }
 
         #xtermRender {
@@ -21,14 +23,22 @@
             right: 0;
             bottom: 0;
             margin: 0;
-            padding: 8px;
+            padding: 0px;
             box-sizing: border-box;
             background: #1e1e1e;
+            touch-action: pan-y;
         }
 
         #xtermRender .xterm {
             width: 100%;
             height: 100%;
+        }
+
+        #xtermRender .xterm .xterm-viewport {
+            height: 100%;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
         }
 
         #xtermRender .xterm .xterm-helper-textarea {
@@ -56,6 +66,11 @@
             var xtermRender = document.getElementById('xtermRender');
             var websocket = null;
             var renderTerminal = null;
+            var touchScrollLastY = null;
+            var touchScrollRemainder = 0;
+            var pointerScrollLastY = null;
+            var pointerDragActive = false;
+            var viewportListenersBound = false;
 
             function reportError(message) {
                 if (
@@ -72,6 +87,180 @@
                 }
             }
 
+            function getXtermViewport() {
+                if (!renderTerminal || !renderTerminal.element) {
+                    return null;
+                }
+                return renderTerminal.element.querySelector('.xterm-viewport');
+            }
+
+            function getXtermRoot() {
+                if (!renderTerminal || !renderTerminal.element) {
+                    return null;
+                }
+                return renderTerminal.element;
+            }
+
+            function getCellHeight() {
+                if (
+                    renderTerminal &&
+                    renderTerminal._core &&
+                    renderTerminal._core._renderService &&
+                    renderTerminal._core._renderService.dimensions &&
+                    renderTerminal._core._renderService.dimensions.css &&
+                    renderTerminal._core._renderService.dimensions.css.cell &&
+                    renderTerminal._core._renderService.dimensions.css.cell.height > 0
+                ) {
+                    return renderTerminal._core._renderService.dimensions.css.cell.height;
+                }
+                return 18;
+            }
+
+            function scrollTerminalByPixels(pixelDelta) {
+                if (!renderTerminal || !websocket || websocket.readyState !== 1) {
+                    return false;
+                }
+
+                var cellHeight = Math.max(getCellHeight(), 1);
+                touchScrollRemainder += pixelDelta;
+                var lineDelta = Math.trunc(touchScrollRemainder / cellHeight);
+                touchScrollRemainder -= lineDelta * cellHeight;
+
+                if (lineDelta === 0) {
+                    return false;
+                }
+
+                var steps = Math.min(Math.abs(lineDelta), 10);
+                var isWheelUp = lineDelta < 0;
+                var buttonCode = isWheelUp ? 64 : 65;
+                var col = Math.max(1, Math.floor(renderTerminal.cols / 2));
+                var row = Math.max(1, Math.floor(renderTerminal.rows / 2));
+                var sgrSequence = '\u001b[<' + buttonCode + ';' + col + ';' + row + 'M';
+
+                for (var i = 0; i < steps; i++) {
+                    sendInput(sgrSequence);
+                }
+                return true;
+            }
+
+            function handleTouchScrollStart(event) {
+                if (!event.touches || event.touches.length !== 1) {
+                    touchScrollLastY = null;
+                    return;
+                }
+
+                touchScrollLastY = event.touches[0].clientY;
+            }
+
+            function handleTouchScrollMove(event) {
+                if (!event.touches || event.touches.length !== 1) {
+                    touchScrollLastY = null;
+                    return;
+                }
+
+                var currentY = event.touches[0].clientY;
+                if (touchScrollLastY === null) {
+                    touchScrollLastY = currentY;
+                    return;
+                }
+
+                var deltaY = touchScrollLastY - currentY;
+                if (Math.abs(deltaY) < 1) {
+                    return;
+                }
+
+                var didScroll = scrollTerminalByPixels(deltaY);
+                touchScrollLastY = currentY;
+                if (didScroll) {
+                    event.preventDefault();
+                }
+            }
+
+            function handleTouchScrollEnd() {
+                touchScrollLastY = null;
+                touchScrollRemainder = 0;
+            }
+
+            function handleMouseWheelScroll(event) {
+                if (!event || typeof event.deltaY !== 'number' || Math.abs(event.deltaY) < 1) {
+                    return;
+                }
+
+                var didScroll = scrollTerminalByPixels(event.deltaY);
+                if (didScroll) {
+                    event.preventDefault();
+                }
+            }
+
+            function handlePointerScrollStart(event) {
+                if (!event) {
+                    return;
+                }
+
+                pointerDragActive = true;
+                pointerScrollLastY = event.clientY;
+            }
+
+            function handlePointerScrollMove(event) {
+                if (!event || !pointerDragActive) {
+                    return;
+                }
+
+                var currentY = event.clientY;
+                if (pointerScrollLastY === null || typeof currentY !== 'number') {
+                    pointerScrollLastY = currentY;
+                    return;
+                }
+
+                var deltaY = pointerScrollLastY - currentY;
+                if (Math.abs(deltaY) < 1) {
+                    return;
+                }
+
+                var didScroll = scrollTerminalByPixels(deltaY);
+                pointerScrollLastY = currentY;
+                if (didScroll) {
+                    event.preventDefault();
+                }
+            }
+
+            function handlePointerScrollEnd() {
+                pointerDragActive = false;
+                pointerScrollLastY = null;
+                touchScrollRemainder = 0;
+            }
+
+            function bindViewportScrollListeners() {
+                if (viewportListenersBound) {
+                    return;
+                }
+
+                var root = getXtermRoot();
+                var viewport = getXtermViewport();
+                if (!root) {
+                    return;
+                }
+
+                root.addEventListener('touchstart', handleTouchScrollStart, { passive: true, capture: true });
+                root.addEventListener('touchmove', handleTouchScrollMove, { passive: false, capture: true });
+                root.addEventListener('touchend', handleTouchScrollEnd, { passive: true, capture: true });
+                root.addEventListener('touchcancel', handleTouchScrollEnd, { passive: true, capture: true });
+                root.addEventListener('wheel', handleMouseWheelScroll, { passive: false, capture: true });
+                root.addEventListener('pointerdown', handlePointerScrollStart, { passive: true, capture: true });
+                root.addEventListener('pointermove', handlePointerScrollMove, { passive: false, capture: true });
+                root.addEventListener('pointerup', handlePointerScrollEnd, { passive: true, capture: true });
+                root.addEventListener('pointercancel', handlePointerScrollEnd, { passive: true, capture: true });
+                root.addEventListener('mousedown', handlePointerScrollStart, { passive: true, capture: true });
+                root.addEventListener('mousemove', handlePointerScrollMove, { passive: false, capture: true });
+                root.addEventListener('mouseup', handlePointerScrollEnd, { passive: true, capture: true });
+                root.addEventListener('mouseleave', handlePointerScrollEnd, { passive: true, capture: true });
+
+                if (viewport) {
+                    viewport.addEventListener('wheel', handleMouseWheelScroll, { passive: false, capture: true });
+                }
+                viewportListenersBound = true;
+            }
+
             function ensureTerminal() {
                 if (renderTerminal) {
                     return true;
@@ -85,6 +274,7 @@
                     renderTerminal = new window.Terminal({
                         cols: 80,
                         rows: 24,
+                        scrollback: 5000,
                         convertEol: false,
                         cursorBlink: true,
                         cursorStyle: 'block',
@@ -101,6 +291,7 @@
                         },
                     });
                     renderTerminal.open(xtermRender);
+                    bindViewportScrollListeners();
                     if (typeof renderTerminal.onData === 'function') {
                         renderTerminal.onData(routeInput);
                     }
@@ -159,8 +350,8 @@
                     }
                 }
 
-                var cols = Math.floor((window.innerWidth - 16) / cellWidth);
-                var rows = Math.floor((window.innerHeight - 16) / cellHeight);
+                var cols = Math.floor((window.innerWidth) / cellWidth);
+                var rows = Math.floor((window.innerHeight) / cellHeight);
                 cols = Math.min(Math.max(cols, 20), 240);
                 rows = Math.min(Math.max(rows, 12), 200);
                 return { cols: cols, rows: rows };
@@ -288,6 +479,12 @@
                 },
                 sendKey: function(key) {
                     sendInput(key);
+                },
+                scrollByPixels: function(pixelDelta) {
+                    if (typeof pixelDelta !== 'number' || Math.abs(pixelDelta) < 1) {
+                        return;
+                    }
+                    scrollTerminalByPixels(pixelDelta);
                 },
             };
 

@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.view.MotionEvent
 import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.abs
 import java.io.ByteArrayInputStream
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -42,6 +44,8 @@ class AndroidTerminalWebView(
     private val isTerminalReady = AtomicBoolean(false)
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var touchLastY: Float? = null
+    private var touchLastX: Float? = null
 
     private fun runOnMainThread(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -53,6 +57,22 @@ class AndroidTerminalWebView(
 
     override val connectionState: Flow<Boolean> = _connectionState.asStateFlow()
     override val errors: Flow<String> = _errors
+
+    private fun sendScrollByPixels(pixelDelta: Float) {
+        val delta = pixelDelta.toInt()
+        if (delta == 0) {
+            return
+        }
+
+        _webView.evaluateJavascript(
+            """
+            if (window.TerminalAPI && typeof window.TerminalAPI.scrollByPixels === 'function') {
+                window.TerminalAPI.scrollByPixels($delta);
+            }
+            """.trimIndent(),
+            null,
+        )
+    }
 
     private fun createWebView(): WebView {
         return WebView(context).apply {
@@ -123,6 +143,46 @@ class AndroidTerminalWebView(
 
             setLayerType(View.LAYER_TYPE_SOFTWARE, null)
             setBackgroundColor(Color.parseColor("#1e1e1e"))
+            setOnTouchListener { view, event ->
+                var handledVerticalMove = false
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        touchLastY = event.y
+                        touchLastX = event.x
+                    }
+
+                    MotionEvent.ACTION_MOVE -> {
+                        val previousY = touchLastY
+                        val previousX = touchLastX
+                        if (previousY != null && previousX != null) {
+                            val deltaY = previousY - event.y
+                            val deltaX = previousX - event.x
+                            if (abs(deltaY) > abs(deltaX) && abs(deltaY) >= 1f) {
+                                sendScrollByPixels(deltaY)
+                                handledVerticalMove = true
+                            }
+                        }
+                        touchLastY = event.y
+                        touchLastX = event.x
+                    }
+
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        touchLastY = null
+                        touchLastX = null
+                    }
+                }
+
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                        view.parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        view.parent?.requestDisallowInterceptTouchEvent(false)
+                    }
+                }
+                handledVerticalMove
+            }
         }
     }
 
