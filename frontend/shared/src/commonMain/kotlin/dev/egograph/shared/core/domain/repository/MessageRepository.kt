@@ -16,4 +16,11 @@ interface MessageRepository {
      * @return メッセージ一覧のFlow
      */
     fun getMessages(threadId: String): Flow<RepositoryResult<ThreadMessagesResponse>>
+
+    /**
+     * 指定されたスレッドIDのメッセージキャッシュを無効化する
+     *
+     * @param threadId スレッドID
+     */
+    suspend fun invalidateCache(threadId: String)
 }

@@ -7,6 +7,7 @@ import dev.egograph.shared.features.chat.MessageListState
 data class ChatStreamReduceResult(
     val state: MessageListState,
     val uiMessage: String? = null,
+    val newThreadId: String? = null,
 )
 
 fun reduceChatStreamChunk(
@@ -52,6 +53,7 @@ fun reduceChatStreamChunk(
                         streamingMessageId = null,
                         activeAssistantTask = null,
                     ),
+                newThreadId = chunk.threadId,
             )
         }
 

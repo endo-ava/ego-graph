@@ -53,7 +53,7 @@ class MessageRepositoryImpl(
             }
         }.flowOn(Dispatchers.IO)
 
-    private suspend fun invalidateCache(threadId: String) {
+    override suspend fun invalidateCache(threadId: String) {
         messagesCache.remove(threadId)
         diskCache?.remove(threadId)
     }

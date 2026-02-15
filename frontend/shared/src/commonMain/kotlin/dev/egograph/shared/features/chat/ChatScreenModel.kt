@@ -215,13 +215,18 @@ class ChatScreenModel(
                     result
                         .onSuccess { chunk ->
                             var uiMessage: String? = null
+                            var newThreadId: String? = null
                             updateMessageList { currentState ->
                                 val reduced = reduceChatStreamChunk(currentState, chunk, streamingMessageId)
                                 uiMessage = reduced.uiMessage
+                                newThreadId = reduced.newThreadId
                                 reduced.state
                             }
                             uiMessage?.let { message ->
                                 emitMessage(message)
+                            }
+                            newThreadId?.let { threadId ->
+                                handleNewThreadCreated(threadId, selectedThreadId)
                             }
                         }.onFailure { error ->
                             val message = "メッセージ送信に失敗: ${error.message}"
@@ -234,6 +239,9 @@ class ChatScreenModel(
                             emitMessage(message)
                         }
                 }
+            if (currentState.threadList.selectedThread?.threadId != null) {
+                messageRepository.invalidateCache(currentState.threadList.selectedThread.threadId)
+            }
             updateComposer { it.copy(isSending = false) }
         }
     }
@@ -261,6 +269,33 @@ class ChatScreenModel(
     }
 
     private fun createLocalMessageId(prefix: String): String = "$prefix-${kotlin.random.Random.nextLong().toString().replace('-', '0')}"
+
+    private fun handleNewThreadCreated(
+        newThreadId: String,
+        oldThreadId: String,
+    ) {
+        screenModelScope.launch {
+            messageRepository.invalidateCache(oldThreadId)
+            threadRepository.getThread(newThreadId).collect { result ->
+                result.onSuccess { thread ->
+                    updateThreadList { state ->
+                        val existingIndex = state.threads.indexOfFirst { it.threadId == newThreadId }
+                        val updatedThreads =
+                            if (existingIndex >= 0) {
+                                state.threads
+                            } else {
+                                listOf(thread) + state.threads
+                            }
+                        state.copy(
+                            threads = updatedThreads,
+                            selectedThread = thread,
+                        )
+                    }
+                    loadMessages(newThreadId)
+                }
+            }
+        }
+    }
 
     private fun createLocalMessage(
         messageId: String,
