@@ -81,7 +81,7 @@ uv run pytest backend/tests --cov=backend
 uv run python -m backend.dev_tools.chat_cli   # デバッグ用CLIツール
 
 # === Gateway ===
-tmux new-session -d -s egograph-gateway 'uv run uvicorn gateway.main:app --host 0.0.0.1 --port 8001' # tmux起動を推奨
+tmux new-session -d -s egograph-gateway 'uv run uvicorn gateway.main:app --host 0.0.0.0 --port 8001' # tmux起動を推奨
 uv run pytest gateway/tests --cov=gateway
 
 # === Frontend (cd frontend) ===
