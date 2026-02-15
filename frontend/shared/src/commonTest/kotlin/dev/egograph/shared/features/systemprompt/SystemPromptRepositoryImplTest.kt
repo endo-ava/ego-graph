@@ -1,6 +1,7 @@
 package dev.egograph.shared.features.systemprompt
 
 import dev.egograph.shared.core.data.repository.SystemPromptRepositoryImpl
+import dev.egograph.shared.core.data.repository.internal.RepositoryClient
 import dev.egograph.shared.core.domain.model.SystemPromptName
 import dev.egograph.shared.core.domain.model.SystemPromptResponse
 import dev.egograph.shared.core.domain.repository.ApiError
@@ -45,6 +46,14 @@ class SystemPromptRepositoryImplTest {
             }
         }
 
+    /**
+     * テスト用RepositoryClientを作成する
+     */
+    private fun createMockRepositoryClient(engine: MockEngine): RepositoryClient {
+        val httpClient = createMockHttpClient(engine)
+        return RepositoryClient(httpClient, baseUrl, apiKey)
+    }
+
     // ==================== getSystemPrompt() テスト ====================
 
     @Test
@@ -72,8 +81,7 @@ class SystemPromptRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = SystemPromptRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = SystemPromptRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: テスト対象メソッドの実行
             val result = repository.getSystemPrompt(SystemPromptName.USER)
@@ -101,8 +109,7 @@ class SystemPromptRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = SystemPromptRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = SystemPromptRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act
             val result = repository.getSystemPrompt(SystemPromptName.IDENTITY)
@@ -128,8 +135,7 @@ class SystemPromptRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = SystemPromptRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = SystemPromptRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act
             val result = repository.getSystemPrompt(SystemPromptName.SOUL)
@@ -162,8 +168,7 @@ class SystemPromptRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = SystemPromptRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = SystemPromptRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: 同じSystemPromptを2回取得
             val firstResult = repository.getSystemPrompt(SystemPromptName.TOOLS)
@@ -214,8 +219,7 @@ class SystemPromptRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = SystemPromptRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = SystemPromptRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act: テスト対象メソッドの実行
             val result = repository.updateSystemPrompt(SystemPromptName.USER, "Updated content")
@@ -263,8 +267,7 @@ class SystemPromptRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = SystemPromptRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = SystemPromptRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act
             val result = repository.updateSystemPrompt(SystemPromptName.IDENTITY, "You are Claude.")
@@ -293,8 +296,7 @@ class SystemPromptRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = SystemPromptRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = SystemPromptRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act
             val result = repository.updateSystemPrompt(SystemPromptName.SOUL, "New content")
@@ -320,8 +322,7 @@ class SystemPromptRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = SystemPromptRepositoryImpl(httpClient, baseUrl, apiKey)
+            val repository = SystemPromptRepositoryImpl(createMockRepositoryClient(mockEngine))
 
             // Act
             val result = repository.updateSystemPrompt(SystemPromptName.TOOLS, "New tools")

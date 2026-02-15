@@ -1,6 +1,7 @@
 package dev.egograph.shared.features.chat
 
 import dev.egograph.shared.core.data.repository.ChatRepositoryImpl
+import dev.egograph.shared.core.data.repository.internal.RepositoryClient
 import dev.egograph.shared.core.domain.model.ChatRequest
 import dev.egograph.shared.core.domain.model.ChatResponse
 import dev.egograph.shared.core.domain.model.LLMModel
@@ -54,6 +55,14 @@ class ChatRepositoryImplTest {
             }
         }
 
+    /**
+     * テスト用RepositoryClientを作成する
+     */
+    private fun createMockRepositoryClient(engine: MockEngine): RepositoryClient {
+        val httpClient = createMockHttpClient(engine)
+        return RepositoryClient(httpClient, baseUrl, apiKey)
+    }
+
     // ==================== sendMessageSync() テスト ====================
 
     @Test
@@ -87,8 +96,8 @@ class ChatRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ChatRepositoryImpl(httpClient, baseUrl, apiKey, json)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = ChatRepositoryImpl(repositoryClient, json)
 
             val request =
                 ChatRequest(
@@ -122,8 +131,8 @@ class ChatRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ChatRepositoryImpl(httpClient, baseUrl, apiKey, json)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = ChatRepositoryImpl(repositoryClient, json)
 
             val request =
                 ChatRequest(
@@ -155,8 +164,8 @@ class ChatRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ChatRepositoryImpl(httpClient, baseUrl, apiKey, json)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = ChatRepositoryImpl(repositoryClient, json)
 
             val request =
                 ChatRequest(
@@ -187,8 +196,8 @@ class ChatRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ChatRepositoryImpl(httpClient, baseUrl, apiKey, json)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = ChatRepositoryImpl(repositoryClient, json)
 
             val request =
                 ChatRequest(
@@ -214,8 +223,8 @@ class ChatRepositoryImplTest {
                     throw Exception("Connection timeout")
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ChatRepositoryImpl(httpClient, baseUrl, apiKey, json)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = ChatRepositoryImpl(repositoryClient, json)
 
             val request =
                 ChatRequest(
@@ -265,8 +274,8 @@ class ChatRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ChatRepositoryImpl(httpClient, baseUrl, apiKey, json)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = ChatRepositoryImpl(repositoryClient, json)
 
             val request =
                 ChatRequest(
@@ -314,8 +323,8 @@ class ChatRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ChatRepositoryImpl(httpClient, baseUrl, apiKey, json)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = ChatRepositoryImpl(repositoryClient, json)
 
             val request =
                 ChatRequest(
@@ -365,8 +374,8 @@ class ChatRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ChatRepositoryImpl(httpClient, baseUrl, apiKey, json)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = ChatRepositoryImpl(repositoryClient, json)
 
             val request =
                 ChatRequest(
@@ -425,8 +434,8 @@ class ChatRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ChatRepositoryImpl(httpClient, baseUrl, apiKey, json)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = ChatRepositoryImpl(repositoryClient, json)
 
             // Act
             val result = repository.getModels()
@@ -455,8 +464,8 @@ class ChatRepositoryImplTest {
                     )
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ChatRepositoryImpl(httpClient, baseUrl, apiKey, json)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = ChatRepositoryImpl(repositoryClient, json)
 
             // Act
             val result = repository.getModels()
@@ -478,8 +487,8 @@ class ChatRepositoryImplTest {
                     throw Exception("Network unreachable")
                 }
 
-            val httpClient = createMockHttpClient(mockEngine)
-            val repository = ChatRepositoryImpl(httpClient, baseUrl, apiKey, json)
+            val repositoryClient = createMockRepositoryClient(mockEngine)
+            val repository = ChatRepositoryImpl(repositoryClient, json)
 
             // Act
             val result = repository.getModels()

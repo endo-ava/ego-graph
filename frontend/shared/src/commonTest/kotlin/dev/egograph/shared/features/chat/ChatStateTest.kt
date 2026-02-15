@@ -16,28 +16,28 @@ class ChatStateTest {
     fun `ChatState starts with empty collections`() {
         val state = ChatState()
 
-        assertEquals(0, state.threads.size)
-        assertEquals(0, state.messages.size)
-        assertEquals(0, state.models.size)
+        assertEquals(0, state.threadList.threads.size)
+        assertEquals(0, state.messageList.messages.size)
+        assertEquals(0, state.composer.models.size)
     }
 
     @Test
     fun `ChatState starts without selected thread and model`() {
         val state = ChatState()
 
-        assertNull(state.selectedThread)
-        assertNull(state.selectedModel)
+        assertNull(state.threadList.selectedThread)
+        assertNull(state.composer.selectedModelId)
     }
 
     @Test
     fun `ChatState default flags are false`() {
         val state = ChatState()
 
-        assertFalse(state.isLoadingThreads)
-        assertFalse(state.isLoadingMessages)
-        assertFalse(state.isLoadingModels)
-        assertFalse(state.isSending)
-        assertFalse(state.isLoadingMoreThreads)
+        assertFalse(state.threadList.isLoading)
+        assertFalse(state.messageList.isLoading)
+        assertFalse(state.composer.isLoadingModels)
+        assertFalse(state.composer.isSending)
+        assertFalse(state.threadList.isLoadingMore)
     }
 
     @Test
@@ -49,35 +49,35 @@ class ChatStateTest {
 
     @Test
     fun `ChatState isLoading becomes true when a loading flag is true`() {
-        val state = ChatState(isLoadingMessages = true)
+        val state = ChatState(messageList = MessageListState(isLoading = true))
 
         assertTrue(state.isLoading)
     }
 
     @Test
     fun `ChatState isLoading is true when sending`() {
-        val state = ChatState(isSending = true)
+        val state = ChatState(composer = ComposerState(isSending = true))
 
         assertTrue(state.isLoading)
     }
 
     @Test
-    fun `ChatState hasError is true when threadsError exists`() {
-        val state = ChatState(threadsError = "failed")
+    fun `ChatState hasError is true when threadList error exists`() {
+        val state = ChatState(threadList = ThreadListState(error = "failed"))
 
         assertTrue(state.hasError)
     }
 
     @Test
-    fun `ChatState hasError is true when messagesError exists`() {
-        val state = ChatState(messagesError = "failed")
+    fun `ChatState hasError is true when messageList error exists`() {
+        val state = ChatState(messageList = MessageListState(error = "failed"))
 
         assertTrue(state.hasError)
     }
 
     @Test
-    fun `ChatState hasError is true when modelsError exists`() {
-        val state = ChatState(modelsError = "failed")
+    fun `ChatState hasError is true when composer modelsError exists`() {
+        val state = ChatState(composer = ComposerState(modelsError = "failed"))
 
         assertTrue(state.hasError)
     }
@@ -91,11 +91,21 @@ class ChatStateTest {
 
     @Test
     fun `ChatState isLoading is true when any loading flag is true`() {
-        assertTrue(ChatState(isLoadingThreads = true).isLoading)
-        assertTrue(ChatState(isLoadingMessages = true).isLoading)
-        assertTrue(ChatState(isSending = true).isLoading)
-        assertTrue(ChatState(isLoadingModels = true).isLoading)
-        assertTrue(ChatState(isLoadingMoreThreads = true).isLoading)
+        assertTrue(
+            ChatState(threadList = ThreadListState(isLoading = true)).isLoading,
+        )
+        assertTrue(
+            ChatState(messageList = MessageListState(isLoading = true)).isLoading,
+        )
+        assertTrue(
+            ChatState(composer = ComposerState(isSending = true)).isLoading,
+        )
+        assertTrue(
+            ChatState(composer = ComposerState(isLoadingModels = true)).isLoading,
+        )
+        assertTrue(
+            ChatState(threadList = ThreadListState(isLoadingMore = true)).isLoading,
+        )
     }
 
     @Test
@@ -109,6 +119,6 @@ class ChatStateTest {
     fun `ChatState isLoadingMoreThreads is false by default`() {
         val state = ChatState()
 
-        assertFalse(state.isLoadingMoreThreads)
+        assertFalse(state.threadList.isLoadingMore)
     }
 }

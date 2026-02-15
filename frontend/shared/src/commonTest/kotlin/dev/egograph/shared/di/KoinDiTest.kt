@@ -2,6 +2,7 @@ package dev.egograph.shared.di
 
 import dev.egograph.shared.core.data.repository.MessageRepositoryImpl
 import dev.egograph.shared.core.data.repository.ThreadRepositoryImpl
+import dev.egograph.shared.core.data.repository.internal.RepositoryClient
 import dev.egograph.shared.core.domain.repository.ChatRepository
 import dev.egograph.shared.core.domain.repository.MessageRepository
 import dev.egograph.shared.core.domain.repository.ThreadRepository
@@ -26,11 +27,16 @@ class KoinDiTest : KoinTest {
                 modules(
                     module {
                         single { HttpClient() }
-                        single<ThreadRepository> {
-                            ThreadRepositoryImpl(
+                        single {
+                            RepositoryClient(
                                 httpClient = get(),
                                 baseUrl = "http://localhost:8000",
                                 apiKey = "test-api-key",
+                            )
+                        }
+                        single<ThreadRepository> {
+                            ThreadRepositoryImpl(
+                                repositoryClient = get(),
                                 diskCache = null,
                             )
                         }
@@ -67,11 +73,16 @@ class KoinDiTest : KoinTest {
                 modules(
                     module {
                         single { HttpClient() }
-                        single<MessageRepository> {
-                            MessageRepositoryImpl(
+                        single {
+                            RepositoryClient(
                                 httpClient = get(),
                                 baseUrl = "http://localhost:8000",
                                 apiKey = "test-api-key",
+                            )
+                        }
+                        single<MessageRepository> {
+                            MessageRepositoryImpl(
+                                repositoryClient = get(),
                                 diskCache = null,
                             )
                         }
