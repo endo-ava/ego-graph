@@ -7,13 +7,11 @@ on:
     paths:
       - "gateway/**"
       - ".github/workflows/ci-gateway.yml"
-      - "shared/**"
   pull_request:
     branches: [main]
     paths:
       - "gateway/**"
       - ".github/workflows/ci-gateway.yml"
-      - "shared/**"
 
 jobs:
   test:

@@ -9,6 +9,7 @@ from collections.abc import Callable
 from datetime import date
 from typing import Any
 
+from backend.config import R2Config
 from backend.infrastructure.database import DuckDBConnection
 from backend.infrastructure.database.youtube_queries import (
     YouTubeQueryParams,
@@ -16,7 +17,6 @@ from backend.infrastructure.database.youtube_queries import (
     get_watch_history,
     get_watching_stats,
 )
-from shared.config import R2Config
 
 logger = logging.getLogger(__name__)
 

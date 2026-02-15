@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import duckdb
 from dateutil import parser
 
+from ingest.config import Config
 from ingest.spotify.collector import SpotifyCollector
 from ingest.spotify.storage import SpotifyStorage
 from ingest.spotify.transform import (
@@ -16,8 +17,7 @@ from ingest.spotify.transform import (
     transform_plays_to_events,
     transform_track_info,
 )
-from shared import iso8601_to_unix_ms
-from shared.config import Config
+from ingest.utils import iso8601_to_unix_ms
 
 logger = logging.getLogger(__name__)
 

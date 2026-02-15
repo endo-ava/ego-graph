@@ -1,19 +1,30 @@
 """EgoGraph Backend設定管理。
 
-shared.configを拡張し、LLM APIとバックエンドサーバー固有の設定を追加します。
+LLM APIとバックエンドサーバー固有の設定を追加します。
 """
 
 import logging
 import os
 
-from pydantic import Field, SecretStr, ValidationError
+from pydantic import BaseModel, Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-from shared.config import R2Config
 
 # 環境変数で .env ファイルの使用を制御（デフォルトは使用）
 USE_ENV_FILE = os.getenv("USE_ENV_FILE", "true").lower() in ("true", "1", "yes")
 BACKEND_ENV_FILES = ["backend/.env"] if USE_ENV_FILE else []
+
+
+class R2Config(BaseModel):
+    """Cloudflare R2設定 (S3互換)。"""
+
+    endpoint_url: str
+    access_key_id: str
+    secret_access_key: SecretStr
+    bucket_name: str = "egograph"
+    raw_path: str = "raw/"
+    events_path: str = "events/"
+    master_path: str = "master/"
+
 
 PROVIDERS_CONFIG = {
     "openai": {

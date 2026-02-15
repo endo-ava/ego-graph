@@ -7,7 +7,7 @@ from typing import TypeVar
 from pydantic import Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from shared.config import (
+from ingest.config import (
     Config,
     DuckDBConfig,
     EmbeddingConfig,

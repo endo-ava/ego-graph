@@ -63,9 +63,8 @@ You are working on the EgoGraph project, a personal data integration RAG system.
 - Local embedding models are preferred over external APIs for privacy
 
 When reviewing or implementing code:
-- Ensure consistency with the `UnifiedDataModel` schema in `shared/models.py`
 - Follow the established ETL pipeline pattern (Collector → Transformer → ETL → Embedder → Storage)
-- Respect the workspace dependency structure between `shared/`, `ingest/`, and `backend/`
+- Respect the workspace dependency structure between `ingest/`, and `backend/`
 - Use type hints consistently for better maintainability
 - Consider the privacy implications of data handling decisions
 

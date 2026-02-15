@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 import duckdb
 
-from shared.config import R2Config
+from backend.config import R2Config
 
 logger = logging.getLogger(__name__)
 

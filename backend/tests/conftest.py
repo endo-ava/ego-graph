@@ -17,7 +17,7 @@ from backend.infrastructure.database import (
     create_chat_tables,
 )
 from backend.main import create_app
-from shared.config import R2Config
+from backend.config import R2Config
 
 # ========================================
 # 環境変数クリア（テスト用）

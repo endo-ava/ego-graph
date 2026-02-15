@@ -1,4 +1,7 @@
-"""EgoGraphの設定モデル。"""
+"""EgoGraph Ingest設定モデル。
+
+shared.configから移行 - Ingestサービス用の設定クラスを定義します。
+"""
 
 from pydantic import BaseModel, SecretStr, field_validator
 
@@ -97,3 +100,16 @@ class Config(BaseModel):
             raise ValueError("Embedding configuration is required")
         if not self.qdrant:
             raise ValueError("Qdrant configuration is required")
+
+
+__all__ = [
+    "Config",
+    "DuckDBConfig",
+    "EmbeddingConfig",
+    "GoogleActivityConfig",
+    "LastFmConfig",
+    "QdrantConfig",
+    "R2Config",
+    "SpotifyConfig",
+    "YouTubeConfig",
+]

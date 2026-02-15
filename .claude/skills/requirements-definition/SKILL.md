@@ -127,7 +127,7 @@ gh issue create --title "[REQ] 機能名" --body "$(cat requirements.md)" \
 
 ラベル例:
 CATEGORY_EXAMPLES = ["feature", "fix"]
-COMPONENT_EXAMPLES = ["backend", "frontend", "ingest", "shared"]
+COMPONENT_EXAMPLES = ["backend", "frontend"]
 
 ## Best Practices
 

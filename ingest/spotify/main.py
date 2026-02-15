@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from ingest.settings import IngestSettings
 from ingest.spotify.pipeline import run_pipeline
-from shared import log_execution_time
+from ingest.utils import log_execution_time
 
 logger = logging.getLogger(__name__)
 
