@@ -2,17 +2,63 @@
 
 ## 概要
 
-**EgoGraph**: Personal AI Agent and Personal Data Warehouse（DuckDB, サーバーレス・ローカルファースト）
+Personal AI Agent and Personal Data Warehouse and Personal Mobile App（サーバーレス・ローカルファースト）
 
-**構成**: Python (uv workspace) + Kotlin Multiplatform / Compose Multiplatform
+構成: Python (uv workspace) + Kotlin Multiplatform / Compose Multiplatform
 
-| コンポーネント | 役割           | 技術                                         | エントリポイント                     |
-| -------------- | -------------- | -------------------------------------------- | ------------------------------------ |
-| **shared/**    | 共有ライブラリ | Python 3.13, Pydantic                        | `__init__.py`                        |
-| **ingest/**    | データ収集     | Spotipy, DuckDB, boto3                       | `ingest.spotify.main:main`           |
-| **backend/**   | Agent API      | FastAPI, DuckDB, LLM                         | `backend.main:create_app()`          |
-| **gateway/**   | Terminal GW    | Starlette, Uvicorn, WebSocket, FCM           | `gateway.main:create_app()`          |
-| **frontend/**  | チャット UI    | Kotlin 2.3, Compose Multiplatform, MVIKotlin | `./gradlew :androidApp:installDebug` |
+## アーキテクチャ
+
+### ingest (データ収集)
+
+ETL/ELT Pipeline: Provider → Collector → Transform → Storage → Data Lake
+
+- Collector: API から生データ取得
+- Transform: クレンジング & スキーママッピング
+- Storage: Parquet (分析用) + JSON (Raw) を R2 に保存
+- Stateful: R2 内のカーソル位置を追跡し、増分取り込みをサポート
+- Tech Stack: Python 3.12+, DuckDB, boto3
+
+### backend (Agent API)
+
+DDD (Domain-Driven Design) - レイヤードアーキテクチャ
+
+- api/: プレゼンテーション (FastAPI ルート、リクエスト/レスポンス)
+- usecases/: アプリケーション (ユースケース、ツールファクトリ、LLM調整)
+- infrastructure/: インフラストラクチャ (DuckDB、LLMプロバイダ、Repository実装)
+- database/: DuckDB ステートレス設計（`:memory:`）、R2 から直接 Parquet 読み込み
+- Tech Stack: FastAPI, Uvicorn, DuckDB, pandas, httpx, Pydantic
+
+### frontend (Mobile App)
+
+MVVM (StateFlow + Channel) - Kotlin Multiplatform + Compose Multiplatform
+
+- core/domain/: DTOs, Repository インターフェース
+- core/network/: HTTP クライアント (Ktor)
+- features/: 機能モジュール (Screen + ScreenModel + State + Effect)
+- di/: 依存性注入 (Koin)
+
+| レイヤー    | 役割                       | 例                 |
+| ----------- | -------------------------- | ------------------ |
+| Screen      | Compose UI 表示            | ChatScreen.kt      |
+| ScreenModel | ビジネスロジック・状態更新 | ChatScreenModel.kt |
+| State       | UI 状態（データクラス）    | ChatState.kt       |
+| Effect      | One-shot イベント          | ChatEffect.kt      |
+
+- DI: Koin 4.0.0
+- State Management: StateFlow + Channel (Kotlin Coroutines)
+- Tech Stack: Kotlin 2.2.21, Compose Multiplatform 1.9.0, Ktor 3.3.3, Voyager 1.1.0-beta03, Kermit
+- Testing: kotlin-test, Turbine, MockK, Ktor MockEngine
+
+- 注意：`frontend-capacitor`は旧バージョンのため無視してください
+
+### gateway (Terminal GW)
+
+Layered Architecture - Starlette ベースの軽量 API
+
+- tmux Integration: `agent-XXXX` 形式のセッションを列挙・管理
+- WebSocket: 端末入出力の双方向通信
+- Push Notification: FCM 経由の通知送信
+- Tech Stack: Starlette, Uvicorn, WebSocket, libtmux
 
 ## 開発コマンド
 
@@ -29,14 +75,14 @@ uv run python -m ingest.spotify.main
 uv run pytest ingest/tests --cov=ingest
 
 # === Backend ===
-uv run python -m backend.main                 # http://localhost:8000/docs
+tmux new-session -d -s fastapi 'uv run python -m backend.main'
+uv run python -m backend.main
 uv run pytest backend/tests --cov=backend
 uv run python -m backend.dev_tools.chat_cli   # デバッグ用CLIツール
 
 # === Gateway ===
-uv run uvicorn gateway.main:app --host 127.0.0.1 --port 8001  # http://localhost:8001/health
+tmux new-session -d -s egograph-gateway 'uv run uvicorn gateway.main:app --host 0.0.0.1 --port 8001' # tmux起動を推奨
 uv run pytest gateway/tests --cov=gateway
-# tmux で起動: tmux new-session -d -s egograph-gateway 'uv run uvicorn gateway.main:app --host 127.0.0.1 --port 8001'
 
 # === Frontend (cd frontend) ===
 cd frontend # PJルートからはgradlewは使えないことに注意
@@ -51,32 +97,26 @@ cd frontend # PJルートからはgradlewは使えないことに注意
 
 # === E2E Test (Maestro) ===
 maestro test maestro/flows/           # 全テスト一括実行
-```
 
-## アーキテクチャ
-
+# === Coderabbit review ===
+coderabbit --prompt-only -t uncommitted              # Commit前
+coderabbit --prompt-only -t committed --base main    # PR作成前
 ```
-External APIs → GitHub Actions (Ingest) → R2 (Parquet) → Backend (DuckDB) → Frontend
-                                                     ↓
-                                                  Gateway (tmux) → Frontend (Terminal)
-```
-
-| ストレージ | 役割                                     |
-| ---------- | ---------------------------------------- |
-| R2         | 正本（Parquet/JSON、年月パーティション） |
-| DuckDB     | View（`:memory:` で R2 直接クエリ）      |
-| Qdrant     | 意味検索インデックス                     |
-| tmux       | エージェントセッション管理               |
 
 ## 規約
 
-### Git / CI
-
-- **GitHub Flow**: `main` 直接コミット禁止、ブランチ `<type>/<desc>`
-- **コミット**: Conventional Commits（英語）
-- **ワークフロー**: `ci-*.yml`(テスト), `job-*.yml`(定期), `deploy-*.yml`, `release-*.yml`
-
 ### コーディング
+
+#### 基本原則
+
+- **「長期的な保守性」「コードの美しさ」「堅牢性」**を担保するようなコーディングを意識
+  - SOLID原則
+  - KISS (Keep It Simple, Stupid) & YAGNI (You Ain't Gonna Need It):
+  - DRY (Don't Repeat Yourself)
+  - 責務の分離 (Separation of Concerns): ビジネスロジック、UI、データアクセスなどが適切に分離されているか？
+  - 可読性と美しさ
+
+#### その他のルール
 
 | 項目      | ルール                                             |
 | --------- | -------------------------------------------------- |
@@ -86,16 +126,21 @@ External APIs → GitHub Actions (Ingest) → R2 (Parquet) → Backend (DuckDB) 
 | Docstring | 日本語                                             |
 | テスト    | AAA パターン必須、Python: pytest、Frontend: Kotest |
 
+### Git / CI
+
+- GitHub Flow: `main` 直接コミット禁止、ブランチ `<type>/<desc>`
+- コミット: Conventional Commits（英語）
+- ワークフロー: `ci-*.yml`(テスト), `job-*.yml`(定期), `deploy-*.yml`, `release-*.yml`
+
 ## デバッグ
 
 ### スキル選択
 
 | シナリオ             | 使用スキル                             | 説明                                           |
 | -------------------- | -------------------------------------- | ---------------------------------------------- |
-| **APIのみ**          | `tmux-api-debug`                       | Backend APIの動作確認・デバッグ                |
-| **UI + API（E2E）**  | `android-adb-debug` + `tmux-api-debug` | フロントエンドからバックエンドまでの統合テスト |
-| **接続トラブル**     | `adb-connection-troubleshoot`          | ADB接続問題の診断・解決                        |
-| **LLM ToolCall検証** | `agent-tool-test`                      | 各LLMモデルの全ツール使用可否テスト            |
+| APIのみ          | `tmux-api-debug`                       | Backend APIの動作確認・デバッグ                |
+| UI + API（E2E）  | `android-adb-debug` + `tmux-api-debug` | フロントエンドからバックエンドまでの統合テスト |
+| LLM ToolCall検証 | `agent-tool-test`                      | 各LLMモデルの全ツール使用可否テスト            |
 
 ### 環境構成
 
@@ -107,43 +152,21 @@ Windows ─ netsh (0.0.0.0:5559→127.0.0.1:5555) ─ Android Emulator (:5555)
 
 ※ 5559を外部公開する理由: エミュレータの:5555とのポート競合回避
 
-### Frontend開発フロー
+### Frontend～Backend間の検証方法
 
 1. Windows側でエミュ起動（ユーザー作業、要確認）
-2. Linux から ADB 接続
-
-   ```bash
-   adb connect <WINDOWS_IP>:5559
-   adb devices
-   ```
-
-   - `<WINDOWS_IP>` は `frontend/.env.local` の `WINDOWS_IP`
-
-3. Backend を起動
-
-   ```bash
-   uv run python -m backend.main
-
-   - tmuxを使ってもよい
-   ```
-
+2. Linux から ADB 接続（`adb connect <WINDOWS_IP>:5559`）
+3. Backend を起動（tmux推奨）
 4. adb コマンドで現在の挙動を確認しながら実装
 5. ビルド & インストール
-   ```bash
-   cd frontend && ./gradlew :androidApp:installDebug
-   ```
 6. adb コマンドでビルド内容の確認
-
-## CodeRabbit
-
-```bash
-coderabbit --prompt-only -t uncommitted              # Commit前
-coderabbit --prompt-only -t committed --base main    # PR作成前
-```
 
 ## その他
 
-- 質問は `AskUserQuestion` 等を活用
+- 質問は `AskUserQuestion` 等を積極的に活用
 - サブエージェント活用でコンテキストをクリーンに（`delegate_task` を使用、`task` は使わない）
 - コード変更後はテスト確認必須
+- **コードレビューで一つも指摘されないレベル**のコード品質を目指す。不十分なコードの場合、レビュー指摘によりより多くの時間とトークンを消費します
+- 場当たり的なフォールバック処理（Magic Valuesの返却など）は禁止
+- ui/uxの調整タスクは言葉での認識合わせが難しいことを考慮し、必要に応じてASCII等を使いながらユーザーに確認する
 - `.env`系を読むことは禁止

@@ -85,7 +85,7 @@ frontend/
 
 ### テストフレームワーク
 
-- **Kotest**: 記述的なテストDSL（`shouldBe`, `shouldNotBe`）
+- **kotlin-test**: Kotlin 標準テスト
 - **Turbine**: Flowのテスト
 - **MockK**: モックライブラリ
 - **Ktor MockEngine**: HTTPモック
