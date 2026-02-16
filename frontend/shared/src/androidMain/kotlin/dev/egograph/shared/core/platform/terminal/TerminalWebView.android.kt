@@ -46,6 +46,10 @@ class AndroidTerminalWebView(
     private val mainHandler = Handler(Looper.getMainLooper())
     private var touchLastY: Float? = null
     private var touchLastX: Float? = null
+    private var touchStartTime: Long = 0
+    private var touchStartX: Float = 0f
+    private var touchStartY: Float = 0f
+    private var hasMoved: Boolean = false
 
     private fun runOnMainThread(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -149,6 +153,10 @@ class AndroidTerminalWebView(
                     MotionEvent.ACTION_DOWN -> {
                         touchLastY = event.y
                         touchLastX = event.x
+                        touchStartX = event.x
+                        touchStartY = event.y
+                        touchStartTime = System.currentTimeMillis()
+                        hasMoved = false
                     }
 
                     MotionEvent.ACTION_MOVE -> {
@@ -162,11 +170,25 @@ class AndroidTerminalWebView(
                                 handledVerticalMove = true
                             }
                         }
+                        val totalDeltaX = abs(event.x - touchStartX)
+                        val totalDeltaY = abs(event.y - touchStartY)
+                        if (totalDeltaX > 10f || totalDeltaY > 10f) {
+                            hasMoved = true
+                        }
                         touchLastY = event.y
                         touchLastX = event.x
                     }
 
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    MotionEvent.ACTION_UP -> {
+                        val touchDuration = System.currentTimeMillis() - touchStartTime
+                        if (!hasMoved && touchDuration < 200) {
+                            view.requestFocus()
+                        }
+                        touchLastY = null
+                        touchLastX = null
+                    }
+
+                    MotionEvent.ACTION_CANCEL -> {
                         touchLastY = null
                         touchLastX = null
                     }
