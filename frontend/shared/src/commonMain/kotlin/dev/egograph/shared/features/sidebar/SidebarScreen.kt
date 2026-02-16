@@ -113,9 +113,10 @@ class SidebarScreen : Screen {
             drawerContent = {
                 ModalDrawerSheet {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                     ) {
                         Text(
                             text = "History",
