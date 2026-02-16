@@ -61,7 +61,6 @@ class SidebarScreen : Screen {
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         var activeView by rememberSaveable { mutableStateOf(MainView.Chat) }
-        val chatScreen = remember { ChatScreen() }
         val keyboardController = LocalSoftwareKeyboardController.current
         val focusManager = LocalFocusManager.current
 
@@ -69,6 +68,23 @@ class SidebarScreen : Screen {
             keyboardController?.hide()
             focusManager.clearFocus(force = true)
         }
+
+        val chatScreen =
+            remember(drawerState, scope, screenModel) {
+                ChatScreen(
+                    onOpenSidebar = {
+                        dismissKeyboard()
+                        scope.launch { drawerState.open() }
+                    },
+                    onOpenTerminal = {
+                        activeView = MainView.Terminal
+                    },
+                    onNewChat = {
+                        activeView = MainView.Chat
+                        screenModel.clearThreadSelection()
+                    },
+                )
+            }
 
         LaunchedEffect(drawerState) {
             snapshotFlow { drawerState.targetValue }
