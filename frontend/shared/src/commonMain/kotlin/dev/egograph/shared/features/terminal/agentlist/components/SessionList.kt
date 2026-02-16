@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.egograph.shared.core.domain.model.terminal.Session
+import dev.egograph.shared.core.domain.model.terminal.SessionStatus
 
 /**
  * ターミナルセッション一覧コンポーネント
@@ -61,6 +62,8 @@ fun SessionList(
     onOpenGatewaySettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val activeSessionCount = sessions.count { it.status == SessionStatus.CONNECTED }
+
     Column(
         modifier =
             modifier
@@ -143,13 +146,13 @@ fun SessionList(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "${sessions.size} ACTIVE",
+                text = "$activeSessionCount ACTIVE",
                 style =
                     MaterialTheme.typography.labelLarge.copy(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Medium,
                     ),
-                color = if (sessions.isNotEmpty()) Color(0xFF4CAF50) else MaterialTheme.colorScheme.outline,
+                color = if (activeSessionCount > 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.outline,
                 modifier = Modifier.align(Alignment.End),
             )
         }

@@ -1,6 +1,6 @@
 package dev.egograph.shared.features.chat
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -88,30 +88,33 @@ class ChatScreen(
                 )
             },
         ) { paddingValues ->
-            Box(
+            Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
             ) {
-                MessageList(
-                    messages = state.messageList.messages,
-                    modifier = Modifier.fillMaxSize(),
-                    isLoading = state.messageList.isLoading,
-                    errorMessage = state.messageList.error,
-                    streamingMessageId = state.messageList.streamingMessageId,
-                    activeAssistantTask = state.messageList.activeAssistantTask,
-                )
-
                 ChatTopActions(
                     onOpenSidebar = onOpenSidebar,
                     onOpenTerminal = onOpenTerminal,
                     onNewChat = onNewChat,
                     modifier =
                         Modifier
-                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
                             .statusBarsPadding()
                             .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+
+                MessageList(
+                    messages = state.messageList.messages,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    isLoading = state.messageList.isLoading,
+                    errorMessage = state.messageList.error,
+                    streamingMessageId = state.messageList.streamingMessageId,
+                    activeAssistantTask = state.messageList.activeAssistantTask,
                 )
             }
         }

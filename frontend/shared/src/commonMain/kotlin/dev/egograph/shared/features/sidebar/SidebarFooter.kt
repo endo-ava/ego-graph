@@ -47,6 +47,7 @@ fun SidebarFooter(
         FooterIconButton(
             icon = Icons.Outlined.Settings,
             onClick = onSettingsClick,
+            contentDescription = "Settings",
             testTag = "settings_button",
             modifier = Modifier.weight(1f),
         )
@@ -54,6 +55,7 @@ fun SidebarFooter(
         FooterIconButton(
             icon = Icons.Outlined.Tune,
             onClick = onSystemPromptClick,
+            contentDescription = "System prompt",
             testTag = "system_prompt_button",
             modifier = Modifier.weight(1f),
         )
@@ -61,6 +63,7 @@ fun SidebarFooter(
         FooterIconButton(
             icon = Icons.Outlined.Computer,
             onClick = onTerminalClick,
+            contentDescription = "Terminal",
             testTag = "terminal_button",
             modifier = Modifier.weight(1f),
         )
@@ -79,6 +82,7 @@ fun SidebarFooter(
 private fun FooterIconButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
+    contentDescription: String,
     testTag: String,
     modifier: Modifier = Modifier,
 ) {
@@ -101,7 +105,7 @@ private fun FooterIconButton(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = contentDescription,
                 modifier = Modifier.size(18.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
