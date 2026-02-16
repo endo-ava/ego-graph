@@ -1,0 +1,25 @@
+# Pre-commit hooks for EgoGraph
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+default_language_version:
+  python: python3.12
+
+repos:
+  # Kotlin ktlint - Frontend (Kotlin Multiplatform)
+  - repo: local
+    hooks:
+      - id: ktlint-check
+        name: ktlint (Kotlin)
+        entry: bash -c 'cd frontend && ./gradlew ktlintCheck --quiet'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  # Python ruff - Backend/Ingest/Gateway
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
