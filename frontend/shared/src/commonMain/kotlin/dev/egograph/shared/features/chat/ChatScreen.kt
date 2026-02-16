@@ -1,9 +1,22 @@
 package dev.egograph.shared.features.chat
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -12,10 +25,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import co.touchlab.kermit.Logger
+import dev.egograph.shared.core.ui.common.CompactActionButton
+import dev.egograph.shared.core.ui.common.testTagResourceId
 import dev.egograph.shared.features.chat.components.ChatComposer
 import dev.egograph.shared.features.chat.components.MessageList
 
@@ -24,7 +41,11 @@ import dev.egograph.shared.features.chat.components.MessageList
  *
  * メッセージ一覧表示、入力、ストリーミング応答を処理するメイン画面。
  */
-class ChatScreen : Screen {
+class ChatScreen(
+    private val onOpenSidebar: () -> Unit = {},
+    private val onOpenTerminal: () -> Unit = {},
+    private val onNewChat: () -> Unit = {},
+) : Screen {
     @Composable
     override fun Content() {
         val screenModel = koinScreenModel<ChatScreenModel>()
@@ -47,6 +68,7 @@ class ChatScreen : Screen {
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 ChatComposer(
@@ -66,16 +88,73 @@ class ChatScreen : Screen {
                 )
             },
         ) { paddingValues ->
-            MessageList(
-                messages = state.messageList.messages,
+            Box(
                 modifier =
                     Modifier
+                        .fillMaxSize()
                         .padding(paddingValues),
-                isLoading = state.messageList.isLoading,
-                errorMessage = state.messageList.error,
-                streamingMessageId = state.messageList.streamingMessageId,
-                activeAssistantTask = state.messageList.activeAssistantTask,
+            ) {
+                MessageList(
+                    messages = state.messageList.messages,
+                    modifier = Modifier.fillMaxSize(),
+                    isLoading = state.messageList.isLoading,
+                    errorMessage = state.messageList.error,
+                    streamingMessageId = state.messageList.streamingMessageId,
+                    activeAssistantTask = state.messageList.activeAssistantTask,
+                )
+
+                ChatTopActions(
+                    onOpenSidebar = onOpenSidebar,
+                    onOpenTerminal = onOpenTerminal,
+                    onNewChat = onNewChat,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .statusBarsPadding()
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatTopActions(
+    onOpenSidebar: () -> Unit,
+    onOpenTerminal: () -> Unit,
+    onNewChat: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(
+            onClick = onOpenSidebar,
+            modifier = Modifier.testTagResourceId("chat_sidebar_button"),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Menu,
+                contentDescription = "Open sidebar",
             )
         }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        CompactActionButton(
+            onClick = onOpenTerminal,
+            icon = Icons.Outlined.Computer,
+            contentDescription = "Terminal",
+            testTag = "chat_terminal_button",
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        CompactActionButton(
+            onClick = onNewChat,
+            icon = Icons.Default.Add,
+            contentDescription = null,
+            text = "New",
+            testTag = "chat_new_chat_button",
+        )
+        Spacer(modifier = Modifier.width(8.dp))
     }
 }
