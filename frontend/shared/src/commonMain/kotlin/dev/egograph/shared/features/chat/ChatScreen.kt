@@ -1,6 +1,7 @@
 package dev.egograph.shared.features.chat
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -60,7 +61,8 @@ class ChatScreen : Screen {
                     isLoading = state.composer.isSending,
                     modifier =
                         Modifier
-                            .navigationBarsPadding(),
+                            .navigationBarsPadding()
+                            .imePadding(),
                 )
             },
         ) { paddingValues ->
