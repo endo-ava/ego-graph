@@ -1,5 +1,6 @@
 package dev.egograph.shared.features.terminal.agentlist.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -54,7 +55,11 @@ fun SessionList(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().statusBarsPadding(),
+        modifier =
+            modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding(),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -64,6 +69,7 @@ fun SessionList(
                 Text(
                     text = "Terminal Sessions",
                     style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
                 Button(
                     onClick = onRefresh,
