@@ -143,8 +143,16 @@ class ChatScreenModel(
                 .getModels()
                 .onSuccess { response ->
                     updateComposer {
-                        val selectedModelId =
-                            response.defaultModel.takeIf { model -> model.isNotBlank() } ?: response.models.firstOrNull()?.id
+                        // Preferencesから保存済みモデルIDを読み込む
+                        val savedModelId = preferences.getString(PlatformPrefsKeys.KEY_SELECTED_MODEL, "")
+
+                        // 選択するモデルIDを決定（優先順位: 保存済み > APIのデフォルト > 最初のモデル）
+                        val selectedModelId = when {
+                            savedModelId.isNotBlank() && response.models.any { it.id == savedModelId } -> savedModelId
+                            response.defaultModel.isNotBlank() -> response.defaultModel
+                            else -> response.models.firstOrNull()?.id
+                        }
+
                         it.copy(
                             models = response.models,
                             selectedModelId = selectedModelId,
