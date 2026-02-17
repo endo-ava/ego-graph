@@ -1,10 +1,14 @@
 package dev.egograph.shared.features.terminal.session.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Mic
@@ -17,8 +21,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /**
@@ -47,36 +55,61 @@ fun TerminalHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
-                Text(text = agentId)
-                Spacer(modifier = Modifier.size(8.dp))
+                val greenColor = Color(0xFF4CAF50)
+
                 when {
                     isLoading -> {
                         Text(
-                            "Connecting...",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "CONNECTING...",
+                            style =
+                                MaterialTheme.typography.bodyMedium.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Medium,
+                                ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     error == null -> {
                         Text(
-                            "●",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            text = agentId,
+                            style =
+                                MaterialTheme.typography.bodyMedium.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Medium,
+                                ),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
                             modifier =
-                                Modifier.semantics {
-                                    contentDescription = "Connected"
-                                },
+                                Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(greenColor)
+                                    .semantics {
+                                        contentDescription = "Connected"
+                                    },
                         )
                     }
                     else -> {
                         Text(
-                            "●",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
+                            text = agentId,
+                            style =
+                                MaterialTheme.typography.bodyMedium.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                ),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
                             modifier =
-                                Modifier.semantics {
-                                    contentDescription = "Disconnected"
-                                },
+                                Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.error)
+                                    .semantics {
+                                        contentDescription = "Disconnected"
+                                    },
                         )
                     }
                 }

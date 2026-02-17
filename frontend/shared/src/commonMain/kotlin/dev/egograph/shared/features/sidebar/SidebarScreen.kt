@@ -1,13 +1,15 @@
 package dev.egograph.shared.features.sidebar
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
@@ -23,9 +25,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
@@ -61,7 +60,6 @@ class SidebarScreen : Screen {
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         var activeView by rememberSaveable { mutableStateOf(MainView.Chat) }
-        val chatScreen = remember { ChatScreen() }
         val keyboardController = LocalSoftwareKeyboardController.current
         val focusManager = LocalFocusManager.current
 
@@ -69,6 +67,23 @@ class SidebarScreen : Screen {
             keyboardController?.hide()
             focusManager.clearFocus(force = true)
         }
+
+        val chatScreen =
+            remember(drawerState, scope, screenModel) {
+                ChatScreen(
+                    onOpenSidebar = {
+                        dismissKeyboard()
+                        scope.launch { drawerState.open() }
+                    },
+                    onOpenTerminal = {
+                        activeView = MainView.Terminal
+                    },
+                    onNewChat = {
+                        activeView = MainView.Chat
+                        screenModel.clearThreadSelection()
+                    },
+                )
+            }
 
         LaunchedEffect(drawerState) {
             snapshotFlow { drawerState.targetValue }
@@ -97,36 +112,20 @@ class SidebarScreen : Screen {
             drawerState = drawerState,
             drawerContent = {
                 ModalDrawerSheet {
-                    SidebarHeader(
-                        onNewChatClick = {
-                            activeView = MainView.Chat
-                            screenModel.clearThreadSelection()
-                            scope.launch { drawerState.close() }
-                        },
-                        onSettingsClick = {
-                            activeView = MainView.Settings
-                            scope.launch { drawerState.close() }
-                        },
-                        onTerminalClick = {
-                            activeView = MainView.Terminal
-                            scope.launch { drawerState.close() }
-                        },
-                    )
-
-                    NavigationDrawerItem(
-                        label = { Text("System Prompt") },
-                        selected = activeView == MainView.SystemPrompt,
-                        onClick = {
-                            activeView = MainView.SystemPrompt
-                            scope.launch { drawerState.close() }
-                        },
-                        icon = { Icon(Icons.Default.Build, contentDescription = null) },
+                    Column(
                         modifier =
                             Modifier
-                                .semantics { testTagsAsResourceId = true }
-                                .testTag("system_prompt_menu")
-                                .padding(horizontal = 12.dp),
-                    )
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Text(
+                            text = "History",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    HorizontalDivider()
 
                     ThreadList(
                         threads = state.threadList.threads,
@@ -148,6 +147,32 @@ class SidebarScreen : Screen {
                         },
                         modifier = Modifier.weight(1f),
                     )
+
+                    HorizontalDivider()
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    SidebarFooter(
+                        onNewChatClick = {
+                            activeView = MainView.Chat
+                            screenModel.clearThreadSelection()
+                            scope.launch { drawerState.close() }
+                        },
+                        onSettingsClick = {
+                            activeView = MainView.Settings
+                            scope.launch { drawerState.close() }
+                        },
+                        onTerminalClick = {
+                            activeView = MainView.Terminal
+                            scope.launch { drawerState.close() }
+                        },
+                        onSystemPromptClick = {
+                            activeView = MainView.SystemPrompt
+                            scope.launch { drawerState.close() }
+                        },
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
             },
             gesturesEnabled = activeView == MainView.Chat || activeView == MainView.TerminalSession,

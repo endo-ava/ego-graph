@@ -1,9 +1,5 @@
 package dev.egograph.shared.features.terminal.session
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -193,19 +189,7 @@ private fun TerminalContent(
                     }
                 }
 
-                AnimatedVisibility(
-                    visible = keyboardState.isVisible,
-                    enter =
-                        slideInVertically(
-                            initialOffsetY = { fullHeight -> fullHeight },
-                            animationSpec = tween(durationMillis = 300),
-                        ),
-                    exit =
-                        slideOutVertically(
-                            targetOffsetY = { fullHeight -> fullHeight },
-                            animationSpec = tween(durationMillis = 300),
-                        ),
-                ) {
+                if (keyboardState.isVisible) {
                     SpecialKeysBar(
                         onKeyPress = { keySequence -> webView.sendKey(keySequence) },
                         modifier =
