@@ -86,7 +86,7 @@ fun SessionList(
                         Modifier
                             .size(8.dp)
                             .background(
-                                color = if (sessions.isNotEmpty()) Color(0xFF4CAF50) else Color(0xFF757575),
+                                color = if (activeSessionCount > 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.outline,
                                 shape = CircleShape,
                             ),
                 )

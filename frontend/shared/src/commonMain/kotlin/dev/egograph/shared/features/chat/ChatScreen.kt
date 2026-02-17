@@ -35,6 +35,7 @@ import dev.egograph.shared.core.ui.common.CompactActionButton
 import dev.egograph.shared.core.ui.common.testTagResourceId
 import dev.egograph.shared.features.chat.components.ChatComposer
 import dev.egograph.shared.features.chat.components.MessageList
+import kotlinx.serialization.Transient
 
 /**
  * チャット画面
@@ -42,9 +43,9 @@ import dev.egograph.shared.features.chat.components.MessageList
  * メッセージ一覧表示、入力、ストリーミング応答を処理するメイン画面。
  */
 class ChatScreen(
-    private val onOpenSidebar: () -> Unit = {},
-    private val onOpenTerminal: () -> Unit = {},
-    private val onNewChat: () -> Unit = {},
+    @Transient private val onOpenSidebar: () -> Unit = {},
+    @Transient private val onOpenTerminal: () -> Unit = {},
+    @Transient private val onNewChat: () -> Unit = {},
 ) : Screen {
     @Composable
     override fun Content() {
