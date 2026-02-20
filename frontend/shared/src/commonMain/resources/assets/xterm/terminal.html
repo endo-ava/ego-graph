@@ -360,9 +360,6 @@
             xtermRender.addEventListener('click', function() {
                 focusTerminal();
             });
-            xtermRender.addEventListener('touchstart', function() {
-                focusTerminal();
-            }, { passive: true });
 
             window.TerminalAPI = {
                 connect: function(wsUrl, apiKey) {

@@ -5,11 +5,9 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
-import android.view.inputmethod.InputMethodManager
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -49,12 +47,10 @@ class AndroidTerminalWebView(
     private val mainHandler = Handler(Looper.getMainLooper())
     private var touchLastY: Float? = null
     private var touchLastX: Float? = null
-    private var touchStartTime: Long = 0
     private var touchStartX: Float = 0f
     private var touchStartY: Float = 0f
     private var hasMoved: Boolean = false
     private val touchSlopPx: Float = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
-    private val tapTimeoutMs: Long = ViewConfiguration.getTapTimeout().toLong()
 
     private fun runOnMainThread(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -81,12 +77,6 @@ class AndroidTerminalWebView(
             """.trimIndent(),
             null,
         )
-    }
-
-    private fun clearFocusAndHideKeyboard(view: View) {
-        view.clearFocus()
-        val inputMethodManager = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-        inputMethodManager?.hideSoftInputFromWindow(view.windowToken, 0)
     }
 
     private fun createWebView(): WebView {
@@ -166,7 +156,6 @@ class AndroidTerminalWebView(
                         touchLastX = event.x
                         touchStartX = event.x
                         touchStartY = event.y
-                        touchStartTime = SystemClock.uptimeMillis()
                         hasMoved = false
                     }
 
@@ -185,28 +174,21 @@ class AndroidTerminalWebView(
                         val totalDeltaY = abs(event.y - touchStartY)
                         if (!hasMoved && (totalDeltaX > touchSlopPx || totalDeltaY > touchSlopPx)) {
                             hasMoved = true
-                            clearFocusAndHideKeyboard(view)
                         }
                         touchLastY = event.y
                         touchLastX = event.x
                     }
 
                     MotionEvent.ACTION_UP -> {
-                        val touchDuration = SystemClock.uptimeMillis() - touchStartTime
-                        if (!hasMoved && touchDuration <= tapTimeoutMs) {
+                        if (!hasMoved) {
                             view.performClick()
                             view.requestFocus()
-                        } else if (hasMoved) {
-                            clearFocusAndHideKeyboard(view)
                         }
                         touchLastY = null
                         touchLastX = null
                     }
 
                     MotionEvent.ACTION_CANCEL -> {
-                        if (hasMoved) {
-                            clearFocusAndHideKeyboard(view)
-                        }
                         touchLastY = null
                         touchLastX = null
                     }
