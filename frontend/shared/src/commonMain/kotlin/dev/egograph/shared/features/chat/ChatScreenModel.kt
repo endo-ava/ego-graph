@@ -147,11 +147,12 @@ class ChatScreenModel(
                         val savedModelId = preferences.getString(PlatformPrefsKeys.KEY_SELECTED_MODEL, "")
 
                         // 選択するモデルIDを決定（優先順位: 保存済み > APIのデフォルト > 最初のモデル）
-                        val selectedModelId = when {
-                            savedModelId.isNotBlank() && response.models.any { it.id == savedModelId } -> savedModelId
-                            response.defaultModel.isNotBlank() -> response.defaultModel
-                            else -> response.models.firstOrNull()?.id
-                        }
+                        val selectedModelId =
+                            when {
+                                savedModelId.isNotBlank() && response.models.any { it.id == savedModelId } -> savedModelId
+                                response.defaultModel.isNotBlank() -> response.defaultModel
+                                else -> response.models.firstOrNull()?.id
+                            }
 
                         it.copy(
                             models = response.models,

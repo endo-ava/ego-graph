@@ -8,14 +8,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,11 +22,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.egograph.shared.core.domain.model.terminal.Session
 import dev.egograph.shared.core.domain.model.terminal.SessionStatus
 
@@ -46,30 +48,15 @@ fun SessionListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val backgroundColor =
-        if (isActive) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surface
-        }
+    val greenColor = Color(0xFF4CAF50)
 
-    val contentColor =
-        if (isActive) {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        }
-
-    val borderColor =
-        if (isActive) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.outlineVariant
-        }
+    val backgroundColor = MaterialTheme.colorScheme.surface
+    val contentColor = MaterialTheme.colorScheme.onSurface
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
 
     val statusColor =
         when (session.status) {
-            SessionStatus.CONNECTED -> MaterialTheme.colorScheme.primary
+            SessionStatus.CONNECTED -> greenColor
             SessionStatus.DISCONNECTED -> MaterialTheme.colorScheme.outline
             SessionStatus.FAILED -> MaterialTheme.colorScheme.error
         }
@@ -80,63 +67,74 @@ fun SessionListItem(
                 .semantics { testTagsAsResourceId = true }
                 .testTag("session_item")
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(6.dp))
                 .background(backgroundColor)
                 .border(
                     width = 1.dp,
                     color = borderColor,
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(6.dp),
                 ).clickable(onClick = onClick)
-                .padding(12.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(statusColor),
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
         Icon(
-            imageVector = Icons.Default.Computer,
+            imageVector = Icons.Default.Terminal,
             contentDescription = null,
-            tint = contentColor,
-            modifier = Modifier.size(24.dp),
+            tint = contentColor.copy(alpha = 0.6f),
+            modifier = Modifier.size(20.dp),
         )
 
         Column(
-            modifier = Modifier.weight(1f).padding(start = 12.dp),
+            modifier = Modifier.weight(1f).padding(start = 10.dp),
         ) {
             Text(
                 text = session.name,
-                style = MaterialTheme.typography.bodyMedium,
+                style =
+                    MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                    ),
                 color = contentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = getStatusText(session.status),
-                style = MaterialTheme.typography.bodySmall,
-                color = contentColor.copy(alpha = 0.7f),
-                modifier = Modifier.padding(top = 4.dp),
+                text = "[${getStatusText(session.status)}]",
+                style =
+                    MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 0.5.sp,
+                    ),
+                color = if (session.status == SessionStatus.CONNECTED) greenColor else contentColor.copy(alpha = 0.6f),
             )
         }
 
-        Column(
-            horizontalAlignment = Alignment.End,
-        ) {
-            Text(
-                text = formatSessionDate(session.lastActivity),
-                style = MaterialTheme.typography.bodySmall,
-                color = contentColor.copy(alpha = 0.7f),
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Box(
-                modifier = Modifier.size(8.dp).clip(CircleShape).background(statusColor),
-            )
-        }
+        Text(
+            text = formatSessionDate(session.lastActivity),
+            style =
+                MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                ),
+            color = contentColor.copy(alpha = 0.5f),
+        )
     }
 }
 
 @Composable
 private fun getStatusText(status: SessionStatus): String =
     when (status) {
-        SessionStatus.CONNECTED -> "Connected"
-        SessionStatus.DISCONNECTED -> "Ready"
-        SessionStatus.FAILED -> "Error"
+        SessionStatus.CONNECTED -> "ONLINE"
+        SessionStatus.DISCONNECTED -> "STANDBY"
+        SessionStatus.FAILED -> "ERROR"
     }
 
 private fun formatSessionDate(isoString: String): String {

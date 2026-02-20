@@ -34,6 +34,8 @@ class AgentListScreen(
         val state by screenModel.state.collectAsState()
 
         LaunchedEffect(Unit) {
+            screenModel.loadSessions()
+
             screenModel.effect.collect { effect ->
                 when (effect) {
                     is AgentListEffect.NavigateToSession -> {
