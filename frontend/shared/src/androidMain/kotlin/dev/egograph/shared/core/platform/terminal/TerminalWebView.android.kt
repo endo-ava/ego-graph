@@ -24,16 +24,29 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.io.ByteArrayInputStream
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
+import kotlin.math.max
+
+private const val TERMINAL_HTML_ASSET_PATH = "xterm/terminal.html"
+private const val TERMINAL_HTML_ASSET_URL = "file:///android_asset/$TERMINAL_HTML_ASSET_PATH"
+private const val TERMINAL_DARK_BACKGROUND = "#1e1e1e"
+private const val TERMINAL_LIGHT_BACKGROUND = "#FFFFFF"
+private const val MIN_TAP_TOLERANCE_PX = 2f
+private const val MIN_VERTICAL_SCROLL_DELTA_PX = 1f
 
 /**
- * Android implementation of TerminalWebView using Android WebView
+ * Android 向け TerminalWebView 実装。
+ *
+ * 役割:
+ * - xterm 画面 (terminal.html) の表示
+ * - JavaScript ブリッジによる接続/入出力連携
+ * - タップ時のみフォーカスするタッチ制御
  */
 class AndroidTerminalWebView(
     private val context: Context,
 ) : TerminalWebView {
-    private val _webView: WebView by lazy { createWebView() }
-    private val _connectionState = MutableStateFlow(false)
-    private val _errors = MutableSharedFlow<String>(replay = 0)
+    private val terminalWebView: WebView by lazy { createWebView() }
+    private val connectionStateMutable = MutableStateFlow(false)
+    private val errorsMutable = MutableSharedFlow<String>(replay = 0)
 
     @Volatile
     private var currentWsUrl: String? = null
@@ -45,13 +58,21 @@ class AndroidTerminalWebView(
     private val isTerminalReady = AtomicBoolean(false)
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val touchSlopPx: Float = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+    private val tapMoveTolerancePx: Float = max(MIN_TAP_TOLERANCE_PX, touchSlopPx * 0.25f)
+
     private var touchLastY: Float? = null
     private var touchLastX: Float? = null
     private var touchStartX: Float = 0f
     private var touchStartY: Float = 0f
     private var hasMoved: Boolean = false
-    private val touchSlopPx: Float = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
 
+    override val connectionState: Flow<Boolean> = connectionStateMutable.asStateFlow()
+    override val errors: Flow<String> = errorsMutable
+
+    /**
+     * UI スレッドでの実行を保証する。
+     */
     private fun runOnMainThread(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             block()
@@ -60,154 +81,269 @@ class AndroidTerminalWebView(
         }
     }
 
-    override val connectionState: Flow<Boolean> = _connectionState.asStateFlow()
-    override val errors: Flow<String> = _errors
+    /**
+     * JavaScript を WebView に評価させる。
+     */
+    private fun evaluateJavascript(script: String) {
+        terminalWebView.evaluateJavascript(script.trimIndent(), null)
+    }
 
+    /**
+     * TerminalAPI 呼び出しの共通テンプレート。
+     */
+    private fun executeTerminalApiScript(script: String) {
+        runOnMainThread {
+            evaluateJavascript(
+                """
+                if (window.TerminalAPI) {
+                    $script
+                }
+                """,
+            )
+        }
+    }
+
+    /**
+     * xterm の 1 行スクロールへ変換するため、ピクセル差分を JavaScript 側へ渡す。
+     */
     private fun sendScrollByPixels(pixelDelta: Float) {
         val delta = pixelDelta.toInt()
         if (delta == 0) {
             return
         }
-
-        _webView.evaluateJavascript(
+        evaluateJavascript(
             """
             if (window.TerminalAPI && typeof window.TerminalAPI.scrollByPixels === 'function') {
                 window.TerminalAPI.scrollByPixels($delta);
             }
-            """.trimIndent(),
-            null,
+            """,
         )
     }
 
-    private fun createWebView(): WebView {
-        return WebView(context).apply {
-            settings.apply {
-                javaScriptEnabled = true
-                domStorageEnabled = true
-                allowContentAccess = true
-                allowFileAccess = true
-                cacheMode = WebSettings.LOAD_NO_CACHE
-                loadWithOverviewMode = false
-                useWideViewPort = false
-                textZoom = 100
-                setSupportZoom(false)
-                builtInZoomControls = false
-                displayZoomControls = false
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    @Suppress("DEPRECATION")
-                    forceDark = WebSettings.FORCE_DARK_OFF
-                }
+    /**
+     * タッチ開始時の基準点を記録する。
+     */
+    private fun onTouchDown(event: MotionEvent) {
+        touchLastY = event.y
+        touchLastX = event.x
+        touchStartX = event.x
+        touchStartY = event.y
+        hasMoved = false
+    }
+
+    /**
+     * 移動量がタップ許容を超えているかを判定する。
+     */
+    private fun movedBeyondTapTolerance(
+        x: Float,
+        y: Float,
+    ): Boolean {
+        val totalDeltaX = abs(x - touchStartX)
+        val totalDeltaY = abs(y - touchStartY)
+        return totalDeltaX > tapMoveTolerancePx || totalDeltaY > tapMoveTolerancePx
+    }
+
+    /**
+     * UP 時点での最終タップ判定。
+     *
+     * MOVE が少ない端末でも取りこぼしを避けるため、終了座標でも再判定する。
+     */
+    private fun isTapOnActionUp(event: MotionEvent): Boolean {
+        if (hasMoved) {
+            return false
+        }
+        return !movedBeyondTapTolerance(event.x, event.y)
+    }
+
+    /**
+     * タッチ追跡状態を初期化する。
+     */
+    private fun clearTouchTracking() {
+        touchLastY = null
+        touchLastX = null
+    }
+
+    /**
+     * MOVE を処理して、縦スクロール送出の有無を返す。
+     *
+     * 縦方向優位の移動だけをスクロールとして扱い、同時に hasMoved を立てる。
+     * これにより ACTION_UP でタップ誤判定されるのを防ぐ。
+     */
+    private fun onTouchMove(event: MotionEvent): Boolean {
+        var handledVerticalMove = false
+        val previousY = touchLastY
+        val previousX = touchLastX
+
+        if (previousY != null && previousX != null) {
+            val deltaY = previousY - event.y
+            val deltaX = previousX - event.x
+            if (abs(deltaY) > abs(deltaX) && abs(deltaY) >= MIN_VERTICAL_SCROLL_DELTA_PX) {
+                sendScrollByPixels(deltaY)
+                handledVerticalMove = true
+                hasMoved = true
+            }
+        }
+
+        if (!hasMoved && movedBeyondTapTolerance(event.x, event.y)) {
+            hasMoved = true
+        }
+
+        touchLastY = event.y
+        touchLastX = event.x
+        return handledVerticalMove
+    }
+
+    /**
+     * 親コンテナの横スワイプ干渉を制御する。
+     */
+    private fun setParentIntercept(
+        view: View,
+        disallow: Boolean,
+    ) {
+        view.parent?.requestDisallowInterceptTouchEvent(disallow)
+    }
+
+    /**
+     * WebView 上のタッチを一箇所で正規化して扱う。
+     *
+     * - タップ時のみ入力フォーカス
+     * - スワイプ時はフォーカス変更なし
+     * - WebView/xterm のデフォルト処理へ不用意に流さない
+     */
+    private fun handleTerminalTouch(
+        view: View,
+        event: MotionEvent,
+    ): Boolean =
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                onTouchDown(event)
+                setParentIntercept(view, true)
+                true
             }
 
-            // Add JavaScript interface for bidirectional communication
-            addJavascriptInterface(TerminalJavaScriptBridge(), "TerminalBridge")
-
-            webViewClient =
-                object : WebViewClient() {
-                    override fun onPageFinished(
-                        view: WebView?,
-                        url: String?,
-                    ) {
-                        super.onPageFinished(view, url)
-                        isPageReady.set(true)
-                        connectIfReady()
-                    }
-
-                    override fun onReceivedError(
-                        view: WebView?,
-                        request: WebResourceRequest?,
-                        error: WebResourceError?,
-                    ) {
-                        super.onReceivedError(view, request, error)
-                        if (request?.isForMainFrame == true) {
-                            _errors.tryEmit("Terminal page load error: ${error?.description}")
-                        }
-                    }
-
-                    override fun shouldInterceptRequest(
-                        view: WebView?,
-                        request: WebResourceRequest?,
-                    ): WebResourceResponse? {
-                        val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
-
-                        // Load xterm assets from app resources
-                        return when {
-                            url.endsWith("terminal.html") -> {
-                                val html = loadAsset("xterm/terminal.html")
-                                createResponse(html, "text/html")
-                            }
-                            else -> super.shouldInterceptRequest(view, request)
-                        }
-                    }
-                }
-
-            webChromeClient =
-                object : WebChromeClient() {
-                    override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean = false
-                }
-
-            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
-            setBackgroundColor(Color.parseColor("#1e1e1e"))
-            setOnTouchListener { view, event ->
-                var handledVerticalMove = false
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        touchLastY = event.y
-                        touchLastX = event.x
-                        touchStartX = event.x
-                        touchStartY = event.y
-                        hasMoved = false
-                    }
-
-                    MotionEvent.ACTION_MOVE -> {
-                        val previousY = touchLastY
-                        val previousX = touchLastX
-                        if (previousY != null && previousX != null) {
-                            val deltaY = previousY - event.y
-                            val deltaX = previousX - event.x
-                            if (abs(deltaY) > abs(deltaX) && abs(deltaY) >= 1f) {
-                                sendScrollByPixels(deltaY)
-                                handledVerticalMove = true
-                            }
-                        }
-                        val totalDeltaX = abs(event.x - touchStartX)
-                        val totalDeltaY = abs(event.y - touchStartY)
-                        if (!hasMoved && (totalDeltaX > touchSlopPx || totalDeltaY > touchSlopPx)) {
-                            hasMoved = true
-                        }
-                        touchLastY = event.y
-                        touchLastX = event.x
-                    }
-
-                    MotionEvent.ACTION_UP -> {
-                        if (!hasMoved) {
-                            view.performClick()
-                            focusInputAtBottom()
-                        }
-                        touchLastY = null
-                        touchLastX = null
-                    }
-
-                    MotionEvent.ACTION_CANCEL -> {
-                        touchLastY = null
-                        touchLastX = null
-                    }
-                }
-
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                        view.parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        view.parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-                }
-                handledVerticalMove || hasMoved
+            MotionEvent.ACTION_MOVE -> {
+                onTouchMove(event)
+                setParentIntercept(view, true)
+                true
             }
+
+            MotionEvent.ACTION_UP -> {
+                if (isTapOnActionUp(event)) {
+                    view.performClick()
+                    focusInputAtBottom()
+                }
+                clearTouchTracking()
+                setParentIntercept(view, false)
+                true
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                clearTouchTracking()
+                setParentIntercept(view, false)
+                true
+            }
+
+            else -> false
+        }
+
+    /**
+     * WebView 基本設定を適用する。
+     */
+    private fun configureWebSettings(webSettings: WebSettings) {
+        webSettings.javaScriptEnabled = true
+        webSettings.domStorageEnabled = true
+        webSettings.allowContentAccess = true
+        webSettings.allowFileAccess = true
+        webSettings.cacheMode = WebSettings.LOAD_NO_CACHE
+        webSettings.loadWithOverviewMode = false
+        webSettings.useWideViewPort = false
+        webSettings.textZoom = 100
+        webSettings.setSupportZoom(false)
+        webSettings.builtInZoomControls = false
+        webSettings.displayZoomControls = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            @Suppress("DEPRECATION")
+            webSettings.forceDark = WebSettings.FORCE_DARK_OFF
         }
     }
 
+    /**
+     * terminal.html へのリクエストのみローカル asset から返す。
+     */
+    private fun interceptTerminalHtmlRequest(url: String): WebResourceResponse? {
+        if (!url.endsWith(TERMINAL_HTML_ASSET_PATH)) {
+            return null
+        }
+        val html = loadAssetText(TERMINAL_HTML_ASSET_PATH)
+        return createResponse(html, "text/html")
+    }
+
+    /**
+     * WebViewClient を構築する。
+     */
+    private fun createTerminalWebViewClient(): WebViewClient =
+        object : WebViewClient() {
+            override fun onPageFinished(
+                view: WebView?,
+                url: String?,
+            ) {
+                super.onPageFinished(view, url)
+                isPageReady.set(true)
+                connectIfReady()
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: WebResourceError?,
+            ) {
+                super.onReceivedError(view, request, error)
+                if (request?.isForMainFrame == true) {
+                    errorsMutable.tryEmit("Terminal page load error: ${error?.description}")
+                }
+            }
+
+            override fun shouldInterceptRequest(
+                view: WebView?,
+                request: WebResourceRequest?,
+            ): WebResourceResponse? {
+                val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
+                return interceptTerminalHtmlRequest(url) ?: super.shouldInterceptRequest(view, request)
+            }
+        }
+
+    /**
+     * WebChromeClient を構築する。
+     */
+    private fun createTerminalWebChromeClient(): WebChromeClient =
+        object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean = false
+        }
+
+    /**
+     * WebView の描画設定とタッチリスナーを適用する。
+     */
+    private fun initializeWebViewAppearance(target: WebView) {
+        target.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+        target.setBackgroundColor(Color.parseColor(TERMINAL_DARK_BACKGROUND))
+        target.setOnTouchListener { view, event -> handleTerminalTouch(view, event) }
+    }
+
+    /**
+     * Terminal 表示用 WebView を生成する。
+     */
+    private fun createWebView(): WebView =
+        WebView(context).apply {
+            configureWebSettings(settings)
+            addJavascriptInterface(TerminalJavaScriptBridge(), "TerminalBridge")
+            webViewClient = createTerminalWebViewClient()
+            webChromeClient = createTerminalWebChromeClient()
+            initializeWebViewAppearance(this)
+        }
+
+    /**
+     * HTML/JavaScript へ埋め込むための最小エスケープ。
+     */
     private fun escapeHtml(text: String): String =
         text
             .replace("&", "&amp;")
@@ -216,6 +352,9 @@ class AndroidTerminalWebView(
             .replace("\"", "&quot;")
             .replace("'", "&#39;")
 
+    /**
+     * JavaScript 文字列へ埋め込むためのエスケープ。
+     */
     private fun escapeJsString(text: String): String =
         text
             .replace("\\", "\\\\")
@@ -226,7 +365,10 @@ class AndroidTerminalWebView(
             .replace("\u2029", "\\u2029")
             .replace("\"", "\\\"")
 
-    private fun loadAsset(path: String): String =
+    /**
+     * asset テキストを読み込む。失敗時はエラー内容を返す。
+     */
+    private fun loadAssetText(path: String): String =
         try {
             context.assets
                 .open(path)
@@ -234,8 +376,8 @@ class AndroidTerminalWebView(
                 .use { it.readText() }
         } catch (e: Exception) {
             val message = "Failed to load asset: $path (${e.message})"
-            _errors.tryEmit(message)
-            if (path.endsWith("terminal.html")) {
+            errorsMutable.tryEmit(message)
+            if (path.endsWith(TERMINAL_HTML_ASSET_PATH)) {
                 """
                 <!DOCTYPE html><html><body style=\"font-family:monospace;padding:16px;\">
                 <h3>Terminal asset error</h3>
@@ -248,6 +390,9 @@ class AndroidTerminalWebView(
             }
         }
 
+    /**
+     * 文字列から WebResourceResponse を生成する。
+     */
     private fun createResponse(
         data: String,
         mimeType: String,
@@ -260,8 +405,8 @@ class AndroidTerminalWebView(
     override fun loadTerminal() {
         isPageReady.set(false)
         isTerminalReady.set(false)
-        _webView.clearCache(true)
-        _webView.loadUrl("file:///android_asset/xterm/terminal.html")
+        terminalWebView.clearCache(true)
+        terminalWebView.loadUrl(TERMINAL_HTML_ASSET_URL)
     }
 
     override fun connect(
@@ -270,95 +415,79 @@ class AndroidTerminalWebView(
     ) {
         currentWsUrl = wsUrl
         currentApiKey = apiKey
-        runOnMainThread { connectIfReady() }
+        connectIfReady()
     }
 
+    /**
+     * 接続に必要な状態が揃っているか判定する。
+     */
+    private fun canConnectNow(): Boolean = isPageReady.get() && isTerminalReady.get()
+
+    /**
+     * 現在保持している接続情報で connect を送る。
+     */
     private fun connectIfReady() {
         val wsUrl = currentWsUrl ?: return
         val apiKey = currentApiKey ?: return
-        if (!isPageReady.get() || !isTerminalReady.get()) {
+        if (!canConnectNow()) {
             return
         }
 
         val escapedWsUrl = escapeJsString(wsUrl)
         val escapedApiKey = escapeJsString(apiKey)
-        _webView.evaluateJavascript(
-            """
-            if (window.TerminalAPI) {
-                window.TerminalAPI.connect('$escapedWsUrl', '$escapedApiKey');
-            }
-            """.trimIndent(),
-            null,
+        executeTerminalApiScript(
+            "window.TerminalAPI.connect('$escapedWsUrl', '$escapedApiKey');",
         )
     }
 
     override fun disconnect() {
-        runOnMainThread {
-            _webView.evaluateJavascript(
-                """
-                if (window.TerminalAPI) {
-                    window.TerminalAPI.disconnect();
-                }
-                """.trimIndent(),
-                null,
-            )
-        }
+        executeTerminalApiScript("window.TerminalAPI.disconnect();")
     }
 
     override fun sendKey(key: String) {
         val escapedKey = escapeJsString(key)
-        runOnMainThread {
-            _webView.evaluateJavascript(
-                """
-                if (window.TerminalAPI) {
-                    window.TerminalAPI.sendKey('$escapedKey');
-                }
-                """.trimIndent(),
-                null,
-            )
-        }
+        executeTerminalApiScript("window.TerminalAPI.sendKey('$escapedKey');")
     }
 
     override fun focusInputAtBottom() {
         runOnMainThread {
-            _webView.requestFocus()
-            _webView.evaluateJavascript(
+            terminalWebView.requestFocus()
+            evaluateJavascript(
                 """
                 if (window.TerminalAPI && typeof window.TerminalAPI.focusInputAtBottom === 'function') {
                     window.TerminalAPI.focusInputAtBottom();
                 }
-                """.trimIndent(),
-                null,
+                """,
             )
         }
     }
 
     override fun setTheme(darkMode: Boolean) {
-        val backgroundColor = if (darkMode) "#1e1e1e" else "#FFFFFF"
+        val backgroundColor = if (darkMode) TERMINAL_DARK_BACKGROUND else TERMINAL_LIGHT_BACKGROUND
         runOnMainThread {
-            _webView.setBackgroundColor(Color.parseColor(backgroundColor))
+            terminalWebView.setBackgroundColor(Color.parseColor(backgroundColor))
         }
     }
 
-    fun getWebView(): WebView = _webView
+    fun getWebView(): WebView = terminalWebView
 
     /**
-     * JavaScript interface for communication between WebView and Kotlin
+     * JavaScript から Kotlin へ通知するブリッジ。
      *
-     * Note: All callbacks from JavaScript run on a background thread (JavaBridge thread),
-     * not the main UI thread. WebView operations must be dispatched to the main looper.
+     * すべての通知は JavaBridge スレッドから来るため、
+     * UI 状態変更が必要な処理は mainHandler 経由で実行する。
      */
     inner class TerminalJavaScriptBridge {
         @JavascriptInterface
         fun onConnectionChanged(connected: Boolean) {
             mainHandler.post {
-                _connectionState.tryEmit(connected)
+                connectionStateMutable.tryEmit(connected)
             }
         }
 
         @JavascriptInterface
         fun onError(error: String) {
-            _errors.tryEmit(error)
+            errorsMutable.tryEmit(error)
         }
 
         @JavascriptInterface
@@ -372,11 +501,11 @@ class AndroidTerminalWebView(
 }
 
 /**
- * Factory function for Android
+ * Android では Context が必要なため、この経路は利用しない。
  */
 actual fun createTerminalWebView(): TerminalWebView = throw NotImplementedError("Use createTerminalWebView(Context) instead")
 
 /**
- * Factory function for Android with Context
+ * Android 用の TerminalWebView を生成する。
  */
 fun createTerminalWebView(context: Context): TerminalWebView = AndroidTerminalWebView(context)

@@ -18,12 +18,9 @@
 
         #xtermRender {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             margin: 0;
-            padding: 0px;
+            padding: 0;
             box-sizing: border-box;
             background: #1e1e1e;
             touch-action: none;
@@ -40,6 +37,7 @@
             -webkit-overflow-scrolling: touch;
         }
 
+        /* モバイルでの不要な textarea 可視化を避ける */
         #xtermRender .xterm .xterm-helper-textarea {
             position: fixed !important;
             left: -10000px !important;
@@ -61,16 +59,41 @@
     <div id="xtermRender"></div>
     <script src="vendor/xterm.5.5.0.js"></script>
     <script>
-        (function() {
-            var xtermRender = document.getElementById('xtermRender');
+        (function () {
+            'use strict';
+
+            // ===== 定数 =====
+            var ROOT_ID = 'xtermRender';
+            var OPEN_SOCKET_READY_STATE = 1;
+            var DEFAULT_CELL_WIDTH = 8.4;
+            var DEFAULT_CELL_HEIGHT = 18.2;
+            var MIN_COLS = 20;
+            var MAX_COLS = 240;
+            var MIN_ROWS = 12;
+            var MAX_ROWS = 200;
+            var MAX_WHEEL_STEPS = 10;
+            var MIN_SCROLL_DELTA = 1;
+            var RESIZE_DEBOUNCE_MS = 200;
+
+            var TERMINAL_THEME = {
+                background: '#1e1e1e',
+                foreground: '#d4d4d4',
+                cursor: '#d4d4d4',
+                cursorAccent: '#1e1e1e',
+            };
+
+            // ===== 状態 =====
+            var xtermRender = document.getElementById(ROOT_ID);
+            var terminal = null;
             var websocket = null;
-            var renderTerminal = null;
             var touchScrollRemainder = 0;
             var pointerScrollLastY = null;
             var pointerDragActive = false;
             var viewportListenersBound = false;
+            var resizeTimeout = null;
 
-            function reportError(message) {
+            // ===== Bridge 連携 =====
+            function notifyError(message) {
                 if (
                     window.TerminalBridge &&
                     typeof window.TerminalBridge.onError === 'function'
@@ -79,56 +102,173 @@
                 }
             }
 
-            function focusTerminal() {
-                if (renderTerminal && typeof renderTerminal.focus === 'function') {
-                    renderTerminal.focus();
+            function notifyConnectionChanged(connected) {
+                if (
+                    window.TerminalBridge &&
+                    typeof window.TerminalBridge.onConnectionChanged === 'function'
+                ) {
+                    window.TerminalBridge.onConnectionChanged(connected);
                 }
             }
 
+            function notifyTerminalReady() {
+                if (
+                    window.TerminalBridge &&
+                    typeof window.TerminalBridge.onTerminalReady === 'function'
+                ) {
+                    window.TerminalBridge.onTerminalReady();
+                }
+            }
+
+            // ===== ユーティリティ =====
+            function isSocketOpen() {
+                return websocket && websocket.readyState === OPEN_SOCKET_READY_STATE;
+            }
+
+            function getTerminalRoot() {
+                if (!terminal || !terminal.element) {
+                    return null;
+                }
+                return terminal.element;
+            }
+
+            function focusTerminal() {
+                if (terminal && typeof terminal.focus === 'function') {
+                    terminal.focus();
+                }
+            }
+
+            // キーボード表示時に、入力対象を常に末尾へ寄せる
             function focusInputAtBottom() {
-                if (!renderTerminal) {
+                if (!terminal) {
                     return;
                 }
-
-                if (typeof renderTerminal.scrollToBottom === 'function') {
-                    renderTerminal.scrollToBottom();
+                if (typeof terminal.scrollToBottom === 'function') {
+                    terminal.scrollToBottom();
                 }
                 focusTerminal();
             }
 
-            function getXtermViewport() {
-                if (!renderTerminal || !renderTerminal.element) {
-                    return null;
-                }
-                return renderTerminal.element.querySelector('.xterm-viewport');
-            }
-
-            function getXtermRoot() {
-                if (!renderTerminal || !renderTerminal.element) {
-                    return null;
-                }
-                return renderTerminal.element;
-            }
-
-            // Note: xterm.js _core is a private API - may break on version upgrades
-            // Consider using xterm-addon-fit for official cell size access
+            // xterm private API から cell 高さを取得する。
+            // 将来的な xterm バージョン更新で壊れる可能性があるため、fallback を持つ。
             function getCellHeight() {
                 if (
-                    renderTerminal &&
-                    renderTerminal._core &&
-                    renderTerminal._core._renderService &&
-                    renderTerminal._core._renderService.dimensions &&
-                    renderTerminal._core._renderService.dimensions.css &&
-                    renderTerminal._core._renderService.dimensions.css.cell &&
-                    renderTerminal._core._renderService.dimensions.css.cell.height > 0
+                    terminal &&
+                    terminal._core &&
+                    terminal._core._renderService &&
+                    terminal._core._renderService.dimensions &&
+                    terminal._core._renderService.dimensions.css &&
+                    terminal._core._renderService.dimensions.css.cell &&
+                    terminal._core._renderService.dimensions.css.cell.height > 0
                 ) {
-                    return renderTerminal._core._renderService.dimensions.css.cell.height;
+                    return terminal._core._renderService.dimensions.css.cell.height;
                 }
-                return 18;
+                return DEFAULT_CELL_HEIGHT;
             }
 
+            function getCellSize() {
+                var width = DEFAULT_CELL_WIDTH;
+                var height = DEFAULT_CELL_HEIGHT;
+
+                if (
+                    terminal &&
+                    terminal._core &&
+                    terminal._core._renderService &&
+                    terminal._core._renderService.dimensions &&
+                    terminal._core._renderService.dimensions.css &&
+                    terminal._core._renderService.dimensions.css.cell
+                ) {
+                    var cell = terminal._core._renderService.dimensions.css.cell;
+                    if (cell.width > 0) {
+                        width = cell.width;
+                    }
+                    if (cell.height > 0) {
+                        height = cell.height;
+                    }
+                }
+
+                return { width: width, height: height };
+            }
+
+            function clamp(value, minValue, maxValue) {
+                return Math.min(Math.max(value, minValue), maxValue);
+            }
+
+            function estimateTerminalSize() {
+                var cellSize = getCellSize();
+                var cols = Math.floor(window.innerWidth / cellSize.width);
+                var rows = Math.floor(window.innerHeight / cellSize.height);
+                return {
+                    cols: clamp(cols, MIN_COLS, MAX_COLS),
+                    rows: clamp(rows, MIN_ROWS, MAX_ROWS),
+                };
+            }
+
+            function applyViewportSize() {
+                var size = estimateTerminalSize();
+                if (
+                    terminal &&
+                    typeof terminal.resize === 'function' &&
+                    (terminal.cols !== size.cols || terminal.rows !== size.rows)
+                ) {
+                    terminal.resize(size.cols, size.rows);
+                }
+                return size;
+            }
+
+            function sendResizeToServer() {
+                var size = applyViewportSize();
+                if (!isSocketOpen()) {
+                    return;
+                }
+                websocket.send(JSON.stringify({
+                    type: 'resize',
+                    cols: size.cols,
+                    rows: size.rows,
+                }));
+            }
+
+            // ===== 入力/出力 =====
+            function sendInput(data) {
+                if (!data || !isSocketOpen()) {
+                    return;
+                }
+
+                websocket.send(JSON.stringify({
+                    type: 'input',
+                    data_b64: btoa(unescape(encodeURIComponent(data))),
+                }));
+            }
+
+            function routeInput(data) {
+                sendInput(data);
+            }
+
+            function writeOutputChunk(text) {
+                if (!ensureTerminal() || typeof terminal.write !== 'function') {
+                    return false;
+                }
+                terminal.write(text);
+                return true;
+            }
+
+            function parseOutputMessage(message) {
+                if (message.type !== 'output' || !message.data_b64) {
+                    return;
+                }
+
+                var bin = atob(message.data_b64);
+                var bytes = new Uint8Array(bin.length);
+                for (var i = 0; i < bin.length; i++) {
+                    bytes[i] = bin.charCodeAt(i);
+                }
+                var text = new TextDecoder('utf-8').decode(bytes);
+                writeOutputChunk(text);
+            }
+
+            // ===== スクロール制御 =====
             function scrollTerminalByPixels(pixelDelta) {
-                if (!renderTerminal || !websocket || websocket.readyState !== 1) {
+                if (!terminal || !isSocketOpen()) {
                     return false;
                 }
 
@@ -141,11 +281,11 @@
                     return false;
                 }
 
-                var steps = Math.min(Math.abs(lineDelta), 10);
+                var steps = Math.min(Math.abs(lineDelta), MAX_WHEEL_STEPS);
                 var isWheelUp = lineDelta < 0;
                 var buttonCode = isWheelUp ? 64 : 65;
-                var col = Math.max(1, Math.floor(renderTerminal.cols / 2));
-                var row = Math.max(1, Math.floor(renderTerminal.rows / 2));
+                var col = Math.max(1, Math.floor(terminal.cols / 2));
+                var row = Math.max(1, Math.floor(terminal.rows / 2));
                 var sgrSequence = '\u001b[<' + buttonCode + ';' + col + ';' + row + 'M';
 
                 for (var i = 0; i < steps; i++) {
@@ -155,12 +295,11 @@
             }
 
             function handleMouseWheelScroll(event) {
-                if (!event || typeof event.deltaY !== 'number' || Math.abs(event.deltaY) < 1) {
+                if (!event || typeof event.deltaY !== 'number' || Math.abs(event.deltaY) < MIN_SCROLL_DELTA) {
                     return;
                 }
 
-                var didScroll = scrollTerminalByPixels(event.deltaY);
-                if (didScroll) {
+                if (scrollTerminalByPixels(event.deltaY)) {
                     event.preventDefault();
                 }
             }
@@ -169,7 +308,6 @@
                 if (!event) {
                     return;
                 }
-
                 pointerDragActive = true;
                 pointerScrollLastY = event.clientY;
             }
@@ -186,7 +324,7 @@
                 }
 
                 var deltaY = pointerScrollLastY - currentY;
-                if (Math.abs(deltaY) < 1) {
+                if (Math.abs(deltaY) < MIN_SCROLL_DELTA) {
                     return;
                 }
 
@@ -197,7 +335,7 @@
                 }
             }
 
-            function handlePointerScrollEnd() {
+            function resetPointerScrollState() {
                 pointerDragActive = false;
                 pointerScrollLastY = null;
                 touchScrollRemainder = 0;
@@ -208,7 +346,7 @@
                     return;
                 }
 
-                var root = getXtermRoot();
+                var root = getTerminalRoot();
                 if (!root) {
                     return;
                 }
@@ -216,249 +354,167 @@
                 root.addEventListener('wheel', handleMouseWheelScroll, { passive: false, capture: true });
                 root.addEventListener('pointerdown', handlePointerScrollStart, { passive: true, capture: true });
                 root.addEventListener('pointermove', handlePointerScrollMove, { passive: false, capture: true });
-                root.addEventListener('pointerup', handlePointerScrollEnd, { passive: true, capture: true });
-                root.addEventListener('pointercancel', handlePointerScrollEnd, { passive: true, capture: true });
-                root.addEventListener('pointerleave', handlePointerScrollEnd, { passive: true, capture: true });
+                root.addEventListener('pointerup', resetPointerScrollState, { passive: true, capture: true });
+                root.addEventListener('pointercancel', resetPointerScrollState, { passive: true, capture: true });
+                root.addEventListener('pointerleave', resetPointerScrollState, { passive: true, capture: true });
 
                 viewportListenersBound = true;
             }
 
+            // ===== Terminal 初期化 =====
+            function configureTextareaForMobile(targetTerminal) {
+                if (!targetTerminal.textarea) {
+                    return;
+                }
+
+                targetTerminal.textarea.setAttribute('autocapitalize', 'off');
+                targetTerminal.textarea.setAttribute('autocomplete', 'off');
+                targetTerminal.textarea.setAttribute('autocorrect', 'off');
+                targetTerminal.textarea.setAttribute('spellcheck', 'false');
+                targetTerminal.textarea.style.caretColor = 'transparent';
+                targetTerminal.textarea.style.color = 'transparent';
+                targetTerminal.textarea.style.background = 'transparent';
+            }
+
+            function createTerminalInstance() {
+                return new window.Terminal({
+                    cols: 80,
+                    rows: 24,
+                    scrollback: 5000,
+                    convertEol: false,
+                    cursorBlink: true,
+                    cursorStyle: 'block',
+                    cursorInactiveStyle: 'none',
+                    drawWhitespace: 'none',
+                    fontFamily: 'monospace',
+                    fontSize: 14,
+                    lineHeight: 1.2,
+                    theme: TERMINAL_THEME,
+                });
+            }
+
             function ensureTerminal() {
-                if (renderTerminal) {
+                if (terminal) {
                     return true;
                 }
                 if (typeof window.Terminal !== 'function') {
-                    reportError('xterm.js is not available');
+                    notifyError('xterm.js is not available');
                     return false;
                 }
 
                 try {
-                    renderTerminal = new window.Terminal({
-                        cols: 80,
-                        rows: 24,
-                        scrollback: 5000,
-                        convertEol: false,
-                        cursorBlink: true,
-                        cursorStyle: 'block',
-                        cursorInactiveStyle: 'none',
-                        drawWhitespace: 'none',
-                        fontFamily: 'monospace',
-                        fontSize: 14,
-                        lineHeight: 1.2,
-                        theme: {
-                            background: '#1e1e1e',
-                            foreground: '#d4d4d4',
-                            cursor: '#d4d4d4',
-                            cursorAccent: '#1e1e1e',
-                        },
-                    });
-                    renderTerminal.open(xtermRender);
+                    terminal = createTerminalInstance();
+                    terminal.open(xtermRender);
                     bindViewportScrollListeners();
-                    if (typeof renderTerminal.onData === 'function') {
-                        renderTerminal.onData(routeInput);
+                    if (typeof terminal.onData === 'function') {
+                        terminal.onData(routeInput);
                     }
-
-                    if (renderTerminal.textarea) {
-                        renderTerminal.textarea.setAttribute('autocapitalize', 'off');
-                        renderTerminal.textarea.setAttribute('autocomplete', 'off');
-                        renderTerminal.textarea.setAttribute('autocorrect', 'off');
-                        renderTerminal.textarea.setAttribute('spellcheck', 'false');
-                        renderTerminal.textarea.style.caretColor = 'transparent';
-                        renderTerminal.textarea.style.color = 'transparent';
-                        renderTerminal.textarea.style.background = 'transparent';
-                    }
+                    configureTextareaForMobile(terminal);
                 } catch (err) {
-                    renderTerminal = null;
-                    reportError('xterm initialization failed: ' + String(err));
+                    terminal = null;
+                    notifyError('xterm initialization failed: ' + String(err));
                     return false;
                 }
 
                 return true;
             }
 
-            function sendInput(data) {
-                if (!data || !websocket || websocket.readyState !== 1) {
-                    return;
+            // ===== WebSocket 接続 =====
+            function closeCurrentWebSocket() {
+                if (websocket) {
+                    websocket.close();
+                    websocket = null;
                 }
-
-                websocket.send(JSON.stringify({
-                    type: 'input',
-                    data_b64: btoa(unescape(encodeURIComponent(data))),
-                }));
             }
 
-            function routeInput(data) {
-                sendInput(data);
-            }
-
-            function estimateTerminalSize() {
-                var cellWidth = 8.4;
-                var cellHeight = 18.2;
-
-                if (
-                    renderTerminal &&
-                    renderTerminal._core &&
-                    renderTerminal._core._renderService &&
-                    renderTerminal._core._renderService.dimensions &&
-                    renderTerminal._core._renderService.dimensions.css &&
-                    renderTerminal._core._renderService.dimensions.css.cell
-                ) {
-                    var cell = renderTerminal._core._renderService.dimensions.css.cell;
-                    if (cell.width > 0) {
-                        cellWidth = cell.width;
-                    }
-                    if (cell.height > 0) {
-                        cellHeight = cell.height;
-                    }
-                }
-
-                var cols = Math.floor((window.innerWidth) / cellWidth);
-                var rows = Math.floor((window.innerHeight) / cellHeight);
-                cols = Math.min(Math.max(cols, 20), 240);
-                rows = Math.min(Math.max(rows, 12), 200);
-                return { cols: cols, rows: rows };
-            }
-
-            function applyViewportSize() {
-                var size = estimateTerminalSize();
-                if (
-                    renderTerminal &&
-                    typeof renderTerminal.resize === 'function' &&
-                    (renderTerminal.cols !== size.cols || renderTerminal.rows !== size.rows)
-                ) {
-                    renderTerminal.resize(size.cols, size.rows);
-                }
-
-                return size;
-            }
-
-            function sendResizeToServer() {
-                var size = applyViewportSize();
-                if (!websocket || websocket.readyState !== 1) {
-                    return;
-                }
-
-                websocket.send(JSON.stringify({
-                    type: 'resize',
-                    cols: size.cols,
-                    rows: size.rows,
-                }));
-            }
-
-            function writeStreamChunkWithXterm(text) {
-                if (!ensureTerminal() || typeof renderTerminal.write !== 'function') {
-                    return false;
-                }
-
-                renderTerminal.write(text);
-                return true;
-            }
-
-            function parseOutputMessage(message) {
-                if (message.type !== 'output' || !message.data_b64) {
-                    return;
-                }
-
-                var bin = atob(message.data_b64);
-                var bytes = new Uint8Array(bin.length);
-                for (var i = 0; i < bin.length; i++) {
-                    bytes[i] = bin.charCodeAt(i);
-                }
-                var text = new TextDecoder('utf-8').decode(bytes);
-                writeStreamChunkWithXterm(text);
-            }
-
-            window.TerminalAPI = {
-                connect: function(wsUrl, apiKey) {
-                    if (!ensureTerminal()) {
+            function attachWebSocketHandlers(ws, apiKey) {
+                ws.onopen = function () {
+                    if (websocket !== ws) {
                         return;
                     }
 
-                    if (websocket) {
-                        websocket.close();
+                    ws.send(JSON.stringify({
+                        type: 'auth',
+                        api_key: apiKey,
+                    }));
+                    notifyConnectionChanged(true);
+                    sendResizeToServer();
+                };
+
+                ws.onmessage = function (event) {
+                    if (websocket !== ws) {
+                        return;
                     }
 
-                    var ws = new WebSocket(wsUrl);
-                    websocket = ws;
-
-                    ws.onopen = function() {
-                        if (websocket !== ws) {
-                            return;
-                        }
-
-                        ws.send(JSON.stringify({
-                            type: 'auth',
-                            api_key: apiKey,
-                        }));
-                        if (window.TerminalBridge) {
-                            window.TerminalBridge.onConnectionChanged(true);
-                        }
-                        sendResizeToServer();
-                    };
-                    ws.onmessage = function(event) {
-                        if (websocket !== ws) {
-                            return;
-                        }
-
-                        try {
-                            var message = JSON.parse(event.data);
-                            parseOutputMessage(message);
-                        } catch (err) {
-                            reportError('Parse error: ' + String(err));
-                        }
-                    };
-                    ws.onerror = function() {
-                        if (websocket !== ws) {
-                            return;
-                        }
-
-                        reportError('WebSocket error');
-                    };
-                    ws.onclose = function() {
-                        if (websocket !== ws) {
-                            return;
-                        }
-
-                        if (window.TerminalBridge) {
-                            window.TerminalBridge.onConnectionChanged(false);
-                        }
-                        websocket = null;
-                    };
-                },
-                disconnect: function() {
-                    if (websocket) {
-                        websocket.close();
-                        websocket = null;
+                    try {
+                        var message = JSON.parse(event.data);
+                        parseOutputMessage(message);
+                    } catch (err) {
+                        notifyError('Parse error: ' + String(err));
                     }
+                };
+
+                ws.onerror = function () {
+                    if (websocket !== ws) {
+                        return;
+                    }
+                    notifyError('WebSocket error');
+                };
+
+                ws.onclose = function () {
+                    if (websocket !== ws) {
+                        return;
+                    }
+                    notifyConnectionChanged(false);
+                    websocket = null;
+                };
+            }
+
+            function connectWebSocket(wsUrl, apiKey) {
+                if (!ensureTerminal()) {
+                    return;
+                }
+
+                closeCurrentWebSocket();
+                var ws = new WebSocket(wsUrl);
+                websocket = ws;
+                attachWebSocketHandlers(ws, apiKey);
+            }
+
+            // ===== 外部公開 API =====
+            window.TerminalAPI = {
+                connect: function (wsUrl, apiKey) {
+                    connectWebSocket(wsUrl, apiKey);
                 },
-                sendKey: function(key) {
+                disconnect: function () {
+                    closeCurrentWebSocket();
+                },
+                sendKey: function (key) {
                     sendInput(key);
                 },
-                focusInputAtBottom: function() {
+                focusInputAtBottom: function () {
                     focusInputAtBottom();
                 },
-                scrollByPixels: function(pixelDelta) {
-                    if (typeof pixelDelta !== 'number' || Math.abs(pixelDelta) < 1) {
+                scrollByPixels: function (pixelDelta) {
+                    if (typeof pixelDelta !== 'number' || Math.abs(pixelDelta) < MIN_SCROLL_DELTA) {
                         return;
                     }
                     scrollTerminalByPixels(pixelDelta);
                 },
             };
 
-            if (window.TerminalBridge && window.TerminalBridge.onTerminalReady) {
-                window.TerminalBridge.onTerminalReady();
-            }
+            // ===== 初期化 =====
+            notifyTerminalReady();
 
             if (ensureTerminal()) {
                 applyViewportSize();
             }
 
-            var resizeTimeout;
-            window.addEventListener('resize', function() {
+            window.addEventListener('resize', function () {
                 clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(function() {
+                resizeTimeout = setTimeout(function () {
                     sendResizeToServer();
-                }, 200);
+                }, RESIZE_DEBOUNCE_MS);
             });
         })();
     </script>
