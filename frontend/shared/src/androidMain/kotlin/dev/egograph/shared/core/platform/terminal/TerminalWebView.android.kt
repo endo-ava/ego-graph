@@ -34,6 +34,12 @@ private const val TERMINAL_LIGHT_BACKGROUND = "#FFFFFF"
 private const val MIN_TAP_TOLERANCE_PX = 2f
 private const val MIN_VERTICAL_SCROLL_DELTA_PX = 1f
 
+private enum class TouchDragDirection {
+    UNDETERMINED,
+    HORIZONTAL,
+    VERTICAL,
+}
+
 /**
  * Android 向け TerminalWebView 実装。
  *
@@ -67,6 +73,7 @@ class AndroidTerminalWebView(
     private var touchStartX: Float = 0f
     private var touchStartY: Float = 0f
     private var hasMoved: Boolean = false
+    private var touchDragDirection: TouchDragDirection = TouchDragDirection.UNDETERMINED
 
     override val connectionState: Flow<Boolean> = connectionStateMutable.asStateFlow()
     override val errors: Flow<String> = errorsMutable
@@ -130,6 +137,7 @@ class AndroidTerminalWebView(
         touchStartX = event.x
         touchStartY = event.y
         hasMoved = false
+        touchDragDirection = TouchDragDirection.UNDETERMINED
     }
 
     /**
@@ -162,15 +170,49 @@ class AndroidTerminalWebView(
     private fun clearTouchTracking() {
         touchLastY = null
         touchLastX = null
+        touchDragDirection = TouchDragDirection.UNDETERMINED
     }
 
     /**
-     * MOVE を処理して、縦スクロール送出の有無を返す。
+     * 現在の移動方向を推定する。
+     *
+     * 一定距離を超えるまでは UNDETERMINED にして、誤判定を避ける。
+     */
+    private fun resolveTouchDragDirection(event: MotionEvent): TouchDragDirection {
+        if (touchDragDirection != TouchDragDirection.UNDETERMINED) {
+            return touchDragDirection
+        }
+        if (!movedBeyondTapTolerance(event.x, event.y)) {
+            return TouchDragDirection.UNDETERMINED
+        }
+
+        val totalDeltaX = abs(event.x - touchStartX)
+        val totalDeltaY = abs(event.y - touchStartY)
+        touchDragDirection =
+            if (totalDeltaX > totalDeltaY) {
+                TouchDragDirection.HORIZONTAL
+            } else {
+                TouchDragDirection.VERTICAL
+            }
+        hasMoved = true
+        return touchDragDirection
+    }
+
+    /**
+     * MOVE を処理して、イベントを WebView 側で消費するか返す。
      *
      * 縦方向優位の移動だけをスクロールとして扱い、同時に hasMoved を立てる。
      * これにより ACTION_UP でタップ誤判定されるのを防ぐ。
      */
     private fun onTouchMove(event: MotionEvent): Boolean {
+        val direction = resolveTouchDragDirection(event)
+
+        if (direction == TouchDragDirection.HORIZONTAL) {
+            touchLastY = event.y
+            touchLastX = event.x
+            return false
+        }
+
         var handledVerticalMove = false
         val previousY = touchLastY
         val previousX = touchLastX
@@ -182,6 +224,7 @@ class AndroidTerminalWebView(
                 sendScrollByPixels(deltaY)
                 handledVerticalMove = true
                 hasMoved = true
+                touchDragDirection = TouchDragDirection.VERTICAL
             }
         }
 
@@ -207,9 +250,9 @@ class AndroidTerminalWebView(
     /**
      * WebView 上のタッチを一箇所で正規化して扱う。
      *
-     * - タップ時のみ入力フォーカス
-     * - スワイプ時はフォーカス変更なし
-     * - WebView/xterm のデフォルト処理へ不用意に流さない
+     * - タップ: WebView 側で処理してキーボードを開く
+     * - 縦スワイプ: WebView 側でスクロール処理
+     * - 横スワイプ: 親コンテナへ委譲（チャット戻りジェスチャー用）
      */
     private fun handleTerminalTouch(
         view: View,
@@ -218,24 +261,39 @@ class AndroidTerminalWebView(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 onTouchDown(event)
-                setParentIntercept(view, true)
+                setParentIntercept(view, false)
                 true
             }
 
             MotionEvent.ACTION_MOVE -> {
                 onTouchMove(event)
-                setParentIntercept(view, true)
-                true
+                when (touchDragDirection) {
+                    TouchDragDirection.HORIZONTAL -> {
+                        setParentIntercept(view, false)
+                        false
+                    }
+
+                    TouchDragDirection.VERTICAL -> {
+                        setParentIntercept(view, true)
+                        true
+                    }
+
+                    TouchDragDirection.UNDETERMINED -> {
+                        setParentIntercept(view, false)
+                        true
+                    }
+                }
             }
 
             MotionEvent.ACTION_UP -> {
-                if (isTapOnActionUp(event)) {
+                val isHorizontalSwipe = touchDragDirection == TouchDragDirection.HORIZONTAL
+                if (!isHorizontalSwipe && isTapOnActionUp(event)) {
                     view.performClick()
                     focusInputAtBottomAndShowKeyboard()
                 }
                 clearTouchTracking()
                 setParentIntercept(view, false)
-                true
+                !isHorizontalSwipe
             }
 
             MotionEvent.ACTION_CANCEL -> {

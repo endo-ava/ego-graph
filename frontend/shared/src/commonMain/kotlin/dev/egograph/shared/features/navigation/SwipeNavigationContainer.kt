@@ -57,12 +57,14 @@ fun SwipeNavigationContainer(
                                     onSwipeToTerminal()
                                     change.consume()
                                 }
-                                activeView == MainView.Terminal && accumulatedDragX >= swipeThreshold -> {
+                                activeView == MainView.Terminal &&
+                                    (accumulatedDragX >= swipeThreshold || accumulatedDragX <= -swipeThreshold) -> {
                                     handled = true
                                     onSwipeToChat()
                                     change.consume()
                                 }
-                                activeView == MainView.TerminalSession && accumulatedDragX >= swipeThreshold -> {
+                                activeView == MainView.TerminalSession &&
+                                    (accumulatedDragX >= swipeThreshold || accumulatedDragX <= -swipeThreshold) -> {
                                     handled = true
                                     onSwipeToChat()
                                     change.consume()
