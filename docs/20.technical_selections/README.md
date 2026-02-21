@@ -28,4 +28,4 @@ EgoGraphの各コンポーネントにおける技術選定の詳細と比較検
 ## 関連ドキュメント
 
 - [技術スタック概要](../10.architecture/1004_tech_stack.md)
-- [システムアーキテクチャ](../01.architecture/)
+- [システムアーキテクチャ](../10.architecture/)
