@@ -131,7 +131,7 @@ curl http://localhost:8001/health
 - `FCM_CREDENTIALS_PATH`（Firebase サービスアカウントキーのパス）
 - `FCM_PROJECT_ID`（Firebase プロジェクト ID）
 
-詳細: [Gateway デプロイ](./docs/40.deploy/gateway.md)
+詳細: [Gateway README](./gateway/README.md)
 
 #### D. Frontend（Android アプリ）
 
@@ -205,7 +205,7 @@ GitHub Actions でコンポーネント別に自動テストが実行されま�
 ### デプロイ
 
 - **[Backend Deploy](./docs/40.deploy/backend.md)**: Agent API サーバーのデプロイ手順
-- **[Gateway Deploy](./docs/40.deploy/gateway.md)**: Terminal Gateway のデプロイ手順
+- **[Gateway README](./gateway/README.md)**: Terminal Gateway の概要
 - **[Frontend Deploy](./docs/40.deploy/frontend-android.md)**: Android アプリのデプロイ手順
 
 ### アーキテクチャ & 設計
@@ -215,7 +215,7 @@ GitHub Actions でコンポーネント別に自動テストが実行されま�
 - **[データモデル](./docs/10.architecture/1002_data_model.md)**: スキーマ定義
 - **[技術スタック](./docs/10.architecture/1004_tech_stack.md)**: 技術選定理由
 - **[技術選定記録 (ADR)](./docs/20.technical_selections/README.md)**: 設計判断の記録
-- **[開発ルール](./docs/30.dev_practices/README.md)**: コーディング規約、テスト戦略
+- **[AGENTS.md](./AGENTS.md)**: 開発ガイドライン、コーディング規約
 
 ### 開発者向けガイド
 

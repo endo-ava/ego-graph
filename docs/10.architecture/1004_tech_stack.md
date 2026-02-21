@@ -97,7 +97,7 @@
   - FCM によるタスク完了/入力要求通知
   - EgoGraph Backend からは独立したサービス
 
-詳細: [Terminal Gateway 要件定義](../00.project/requirements/mobile_terminal_gateway.md)
+詳細: [Terminal Gateway 要件定義](../00.project/features/mobile_terminal_gateway.md)
 
 ---
 
