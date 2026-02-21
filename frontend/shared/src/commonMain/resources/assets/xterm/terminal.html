@@ -85,6 +85,17 @@
                 }
             }
 
+            function focusInputAtBottom() {
+                if (!renderTerminal) {
+                    return;
+                }
+
+                if (typeof renderTerminal.scrollToBottom === 'function') {
+                    renderTerminal.scrollToBottom();
+                }
+                focusTerminal();
+            }
+
             function getXtermViewport() {
                 if (!renderTerminal || !renderTerminal.element) {
                     return null;
@@ -357,10 +368,6 @@
                 writeStreamChunkWithXterm(text);
             }
 
-            xtermRender.addEventListener('click', function() {
-                focusTerminal();
-            });
-
             window.TerminalAPI = {
                 connect: function(wsUrl, apiKey) {
                     if (!ensureTerminal()) {
@@ -387,7 +394,6 @@
                             window.TerminalBridge.onConnectionChanged(true);
                         }
                         sendResizeToServer();
-                        focusTerminal();
                     };
                     ws.onmessage = function(event) {
                         if (websocket !== ws) {
@@ -427,6 +433,9 @@
                 },
                 sendKey: function(key) {
                     sendInput(key);
+                },
+                focusInputAtBottom: function() {
+                    focusInputAtBottom();
                 },
                 scrollByPixels: function(pixelDelta) {
                     if (typeof pixelDelta !== 'number' || Math.abs(pixelDelta) < 1) {

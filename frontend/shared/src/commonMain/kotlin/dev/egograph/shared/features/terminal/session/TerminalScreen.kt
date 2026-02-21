@@ -109,6 +109,12 @@ private fun TerminalContent(
         webView.setTheme(darkMode)
     }
 
+    LaunchedEffect(webView, keyboardState.isVisible) {
+        if (keyboardState.isVisible) {
+            webView.focusInputAtBottom()
+        }
+    }
+
     LaunchedEffect(connectionState) {
         if (connectionState) {
             hasConnectedOnce = true

@@ -182,7 +182,7 @@ class AndroidTerminalWebView(
                     MotionEvent.ACTION_UP -> {
                         if (!hasMoved) {
                             view.performClick()
-                            view.requestFocus()
+                            focusInputAtBottom()
                         }
                         touchLastY = null
                         touchLastX = null
@@ -312,6 +312,20 @@ class AndroidTerminalWebView(
                 """
                 if (window.TerminalAPI) {
                     window.TerminalAPI.sendKey('$escapedKey');
+                }
+                """.trimIndent(),
+                null,
+            )
+        }
+    }
+
+    override fun focusInputAtBottom() {
+        runOnMainThread {
+            _webView.requestFocus()
+            _webView.evaluateJavascript(
+                """
+                if (window.TerminalAPI && typeof window.TerminalAPI.focusInputAtBottom === 'function') {
+                    window.TerminalAPI.focusInputAtBottom();
                 }
                 """.trimIndent(),
                 null,
