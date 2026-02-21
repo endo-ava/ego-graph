@@ -47,7 +47,7 @@ ego-graph/
 | **ingest/**    | データ収集・変換・保存      | Python 3.13, Spotipy, DuckDB, boto3                           | GitHub Actions (定期実行) |
 | **backend/**   | Agent API・データアクセス   | FastAPI, DuckDB, LLM (DeepSeek/OpenAI)                        | VPS/GCP (常駐サーバー)    |
 | **gateway/**   | Terminal Gateway・tmux 接続 | Starlette, Uvicorn, WebSocket, FCM                            | tmux (LXC)                |
-| **frontend/**  | チャット UI・Terminal UI    | Kotlin 2.3, Compose Multiplatform, MVVM (StateFlow + Channel) | Android (Gradle)          |
+| **frontend/**  | チャット UI・Terminal UI    | Kotlin 2.2.21, Compose Multiplatform, MVVM (StateFlow + Channel) | Android (Gradle)          |
 
 ---
 

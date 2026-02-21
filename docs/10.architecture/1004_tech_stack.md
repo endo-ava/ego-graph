@@ -11,7 +11,7 @@
 | **ingest/**    | Python 3.13 | uv                     | Spotipy, DuckDB, boto3, pyarrow       |
 | **backend/**   | Python 3.13 | uv                     | FastAPI, Uvicorn, DuckDB              |
 | **gateway/**   | Python 3.13 | uv                     | Starlette, Uvicorn, WebSocket, FCM    |
-| **frontend/**  | Kotlin 2.3  | Gradle                 | Compose Multiplatform, MVIKotlin, FCM |
+| **frontend/**  | Kotlin 2.2.21  | Gradle                 | Compose Multiplatform, MVIKotlin, FCM |
 
 - **Python Workspace**: uv で ingest, backend, gateway を一元管理
 - **Frontend**: Kotlin Multiplatform (Gradle)
@@ -104,7 +104,7 @@
 ## 5. Frontend（モバイル/Web アプリ）
 
 - **Framework**: Kotlin Multiplatform + Compose Multiplatform
-- **Language**: Kotlin 2.3
+- **Language**: Kotlin 2.2.21
 - **Mobile Runtime**: Native Android
 - **UI System**: Material3 (Compose)
 - **State Management**: MVIKotlin
