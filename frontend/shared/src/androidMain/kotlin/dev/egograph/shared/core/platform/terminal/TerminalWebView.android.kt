@@ -8,6 +8,7 @@ import android.os.Looper
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.inputmethod.InputMethodManager
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -230,7 +231,7 @@ class AndroidTerminalWebView(
             MotionEvent.ACTION_UP -> {
                 if (isTapOnActionUp(event)) {
                     view.performClick()
-                    focusInputAtBottom()
+                    focusInputAtBottomAndShowKeyboard()
                 }
                 clearTouchTracking()
                 setParentIntercept(view, false)
@@ -245,6 +246,43 @@ class AndroidTerminalWebView(
 
             else -> false
         }
+
+    /**
+     * WebView に対してソフトキーボード表示を要求する。
+     */
+    private fun showSoftKeyboard(view: View) {
+        val inputMethodManager = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        inputMethodManager?.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    /**
+     * xterm 末尾へフォーカスし、必要に応じてソフトキーボードを表示する。
+     */
+    private fun focusInputAtBottomInternal(showKeyboard: Boolean) {
+        runOnMainThread {
+            terminalWebView.requestFocus()
+            terminalWebView.evaluateJavascript(
+                """
+                if (window.TerminalAPI && typeof window.TerminalAPI.focusInputAtBottom === 'function') {
+                    window.TerminalAPI.focusInputAtBottom();
+                }
+                """.trimIndent(),
+            ) {
+                if (showKeyboard) {
+                    showSoftKeyboard(terminalWebView)
+                }
+            }
+        }
+    }
+
+    /**
+     * タップ時専用:
+     * - フォーカスを末尾へ寄せる
+     * - ソフトキーボードを明示的に開く
+     */
+    private fun focusInputAtBottomAndShowKeyboard() {
+        focusInputAtBottomInternal(showKeyboard = true)
+    }
 
     /**
      * WebView 基本設定を適用する。
@@ -450,16 +488,7 @@ class AndroidTerminalWebView(
     }
 
     override fun focusInputAtBottom() {
-        runOnMainThread {
-            terminalWebView.requestFocus()
-            evaluateJavascript(
-                """
-                if (window.TerminalAPI && typeof window.TerminalAPI.focusInputAtBottom === 'function') {
-                    window.TerminalAPI.focusInputAtBottom();
-                }
-                """,
-            )
-        }
+        focusInputAtBottomInternal(showKeyboard = false)
     }
 
     override fun setTheme(darkMode: Boolean) {
