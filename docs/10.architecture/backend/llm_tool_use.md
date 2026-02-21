@@ -478,7 +478,6 @@ EgoGraph の LLM Tool Use 実装は、以下の特徴を持ちます:
 
 - [OpenAI Function Calling](https://platform.openai.com/docs/guides/function-calling)
 - [Anthropic Tool Use](https://docs.anthropic.com/en/docs/tool-use)
-- [実装プラン](/root/.claude/plans/lucky-zooming-zephyr.md)
 
 ---
 

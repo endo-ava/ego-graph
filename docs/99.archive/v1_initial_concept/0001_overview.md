@@ -101,7 +101,7 @@ RAGの限界（分析ができない）を克服するため、**構造化デー
 
 ## 5. アーキテクチャの全体像
 
-詳細は[システムアーキテクチャ](../10.architecture/1001_system_architecture.md)を参照。
+詳細は[システムアーキテクチャ](./1001_system_architecture.md)を参照。
 
 ---
 
@@ -138,5 +138,5 @@ ego-graph/
 
 ## 参考
 
-- [システムアーキテクチャ](../10.architecture/1001_system_architecture.md)
-- [データモデル](../10.architecture/1002_data_model.md)
+- [システムアーキテクチャ](./1001_system_architecture.md)
+- [データモデル](./1002_data_model.md)

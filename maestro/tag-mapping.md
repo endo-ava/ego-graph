@@ -168,6 +168,6 @@ Modifier
 
 ## 関連ドキュメント
 
-- [Maestro Flows](./flows/) - E2Eテストフロー定義
-- [Frontend README](../../frontend/README.md) - アプリケーション概要
+- [Maestro Flows](./flows/) - E2Eテストフロー定義（READMEなし）
+- [Frontend README](../frontend/README.md) - アプリケーション概要
 - [Compose Testing](https://developer.android.com/jetpack/compose/testing) - Compose UIテスト公式ドキュメント
