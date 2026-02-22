@@ -37,6 +37,15 @@ class SpotifyConfig(BaseModel):
     )
 
 
+class GitHubWorklogConfig(BaseModel):
+    """GitHub作業ログ取り込み設定。"""
+
+    token: SecretStr
+    github_login: str  # 個人所有Repoフィルタ用
+    target_repos: list[str] | None = None  # Noneの場合は全Repo対象
+    backfill_days: int = 365
+
+
 class EmbeddingConfig(BaseModel):
     """埋め込みモデル設定(ローカル実行)。"""
 
@@ -88,6 +97,9 @@ class Config(BaseModel):
 
     spotify: SpotifyConfig | None = None
     lastfm: LastFmConfig | None = None
+    google_activity: GoogleActivityConfig | None = None
+    youtube: YouTubeConfig | None = None
+    github_worklog: GitHubWorklogConfig | None = None
     embedding: EmbeddingConfig | None = None
     qdrant: QdrantConfig | None = None
     duckdb: DuckDBConfig | None = None
@@ -106,6 +118,7 @@ __all__ = [
     "Config",
     "DuckDBConfig",
     "EmbeddingConfig",
+    "GitHubWorklogConfig",
     "GoogleActivityConfig",
     "LastFmConfig",
     "QdrantConfig",

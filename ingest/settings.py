@@ -11,6 +11,7 @@ from ingest.config import (
     Config,
     DuckDBConfig,
     EmbeddingConfig,
+    GitHubWorklogConfig,
     QdrantConfig,
     R2Config,
     SpotifyConfig,
@@ -68,6 +69,27 @@ class SpotifySettings(BaseSettings):
             refresh_token=self.refresh_token,
             redirect_uri=self.redirect_uri,
             scope=self.scope,
+        )
+
+
+class GitHubWorklogSettings(BaseSettings):
+    """GitHub作業ログ取り込み設定。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    token: SecretStr = Field(..., alias="GITHUB_TOKEN")
+    github_login: str = Field(..., alias="GITHUB_LOGIN")
+    target_repos: list[str] | None = Field(None, alias="GITHUB_TARGET_REPOS")
+    backfill_days: int = Field(365, alias="GITHUB_BACKFILL_DAYS")
+
+    def to_config(self) -> GitHubWorklogConfig:
+        return GitHubWorklogConfig(
+            token=self.token,
+            github_login=self.github_login,
+            target_repos=self.target_repos,
+            backfill_days=self.backfill_days,
         )
 
 
@@ -174,6 +196,15 @@ class IngestSettings(BaseSettings):
 
         config.spotify = _try_load_config(
             lambda: SpotifySettings().to_config(), "Spotify"
+        )
+        config.google_activity = _try_load_config(
+            lambda: GoogleActivitySettings().to_config(), "GoogleActivity"
+        )
+        config.youtube = _try_load_config(
+            lambda: YouTubeSettings().to_config(), "YouTube"
+        )
+        config.github_worklog = _try_load_config(
+            lambda: GitHubWorklogSettings().to_config(), "GitHubWorklog"
         )
         config.embedding = _try_load_config(
             lambda: EmbeddingSettings().to_config(), "Embedding"
