@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable
 from typing import TypeVar
 
-from pydantic import Field, SecretStr, ValidationError
+from pydantic import AliasChoices, Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ingest.config import (
@@ -83,12 +83,16 @@ class GitHubWorklogSettings(BaseSettings):
 
     token: SecretStr = Field(
         ...,
-        alias="GITHUB_TOKEN",
-        validation_alias="GITHUB_PAT",
+        validation_alias=AliasChoices("GITHUB_PAT", "GITHUB_TOKEN"),
     )
     github_login: str = Field(..., alias="GITHUB_LOGIN")
     target_repos: list[str] | None = Field(None, alias="GITHUB_TARGET_REPOS")
     backfill_days: int = Field(365, alias="GITHUB_BACKFILL_DAYS")
+    fetch_commit_details: bool = Field(True, alias="GITHUB_FETCH_COMMIT_DETAILS")
+    max_commit_detail_requests_per_repo: int = Field(
+        200,
+        alias="GITHUB_MAX_COMMIT_DETAIL_REQUESTS_PER_REPO",
+    )
 
     def to_config(self) -> GitHubWorklogConfig:
         return GitHubWorklogConfig(
@@ -96,6 +100,8 @@ class GitHubWorklogSettings(BaseSettings):
             github_login=self.github_login,
             target_repos=self.target_repos,
             backfill_days=self.backfill_days,
+            fetch_commit_details=self.fetch_commit_details,
+            max_commit_detail_requests_per_repo=self.max_commit_detail_requests_per_repo,
         )
 
 

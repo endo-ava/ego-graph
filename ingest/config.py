@@ -44,6 +44,8 @@ class GitHubWorklogConfig(BaseModel):
     github_login: str  # 個人所有Repoフィルタ用
     target_repos: list[str] | None = None  # Noneの場合は全Repo対象
     backfill_days: int = 365
+    fetch_commit_details: bool = True
+    max_commit_detail_requests_per_repo: int = 200
 
 
 class EmbeddingConfig(BaseModel):

@@ -77,12 +77,15 @@ jobs:
               );
           """)
 
-          parquet_url = f"s3://{bucket_name}/{events_path}github/commits/**/*.parquet"
+          bucket_clean = bucket_name.replace("'", "''")
+          events_clean = events_path.replace("'", "''")
+          parquet_url = f"s3://{bucket_clean}/{events_clean}github/commits/**/*.parquet"
+          parquet_url_escaped = parquet_url.replace("'", "''")
           print(f"🧐 Querying: {parquet_url}")
 
           try:
-              count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{parquet_url}')").fetchone()[0]
-              latest = conn.execute(f"SELECT MAX(committed_at_utc) FROM read_parquet('{parquet_url}')").fetchone()[0]
+              count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{parquet_url_escaped}')").fetchone()[0]
+              latest = conn.execute(f"SELECT MAX(committed_at_utc) FROM read_parquet('{parquet_url_escaped}')").fetchone()[0]
 
               print(f"✅ Total commits in R2: {count}")
               print(f"✅ Latest commit in R2: {latest}")

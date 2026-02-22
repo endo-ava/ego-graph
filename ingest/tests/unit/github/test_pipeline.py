@@ -15,6 +15,8 @@ def _build_config() -> Config:
             github_login="test-user",
             target_repos=["test-user/test-repo"],
             backfill_days=30,
+            fetch_commit_details=True,
+            max_commit_detail_requests_per_repo=200,
         ),
         duckdb=DuckDBConfig(
             db_path=":memory:",
@@ -100,7 +102,7 @@ def test_resolve_since_iso_uses_backfill_if_no_cursor():
     assert timedelta(days=6, hours=23) < delta < timedelta(days=7, hours=1)
 
 
-def test_run_pipeline_does_not_update_state_on_api_failure(monkeypatch):
+def test_run_pipeline_updates_state_on_enrichment_api_failure(monkeypatch):
     config = _build_config()
 
     storage = MagicMock()
@@ -122,6 +124,28 @@ def test_run_pipeline_does_not_update_state_on_api_failure(monkeypatch):
     collector.get_pr_reviews.side_effect = RuntimeError("api failed")
     collector.get_repository_commits.return_value = [_build_commit()]
     collector.get_commit_detail.return_value = _build_commit_detail()
+
+    monkeypatch.setattr(
+        "ingest.github.pipeline.GitHubWorklogStorage", lambda **_: storage
+    )
+    monkeypatch.setattr(
+        "ingest.github.pipeline.GitHubWorklogCollector",
+        lambda **_: collector,
+    )
+
+    run_pipeline(config)
+
+    storage.save_ingest_state.assert_called_once()
+
+
+def test_run_pipeline_does_not_update_state_on_fatal_repo_failure(monkeypatch):
+    config = _build_config()
+
+    storage = MagicMock()
+    storage.get_ingest_state.return_value = {"cursor_utc": "2026-01-01T00:00:00+00:00"}
+
+    collector = MagicMock()
+    collector.get_repository.side_effect = RuntimeError("fatal api failure")
 
     monkeypatch.setattr(
         "ingest.github.pipeline.GitHubWorklogStorage", lambda **_: storage
@@ -182,3 +206,39 @@ def test_run_pipeline_uses_cursor_and_updates_state_on_success(monkeypatch):
     storage.save_ingest_state.assert_called_once()
     state_arg = storage.save_ingest_state.call_args[0][0]
     assert state_arg["cursor_utc"] == "2026-01-03T00:00:00+00:00"
+
+
+def test_run_pipeline_skips_commit_detail_when_disabled(monkeypatch):
+    config = _build_config()
+    config.github_worklog.fetch_commit_details = False
+
+    storage = MagicMock()
+    storage.get_ingest_state.return_value = {"cursor_utc": "2026-01-01T00:00:00+00:00"}
+    storage.save_repo_master.return_value = "repo.parquet"
+    storage.save_pr_master.return_value = "pr.parquet"
+    storage.save_raw_prs.return_value = "pr.json"
+    storage.save_raw_commits.return_value = "commits.json"
+    storage.save_commits_parquet_with_stats.return_value = {
+        "fetched": 1,
+        "new": 1,
+        "duplicates": 0,
+        "failed": 0,
+    }
+
+    collector = MagicMock()
+    collector.get_repository.return_value = _build_personal_repo()
+    collector.get_pull_requests.return_value = [_build_pr()]
+    collector.get_pr_reviews.return_value = []
+    collector.get_repository_commits.return_value = [_build_commit()]
+
+    monkeypatch.setattr(
+        "ingest.github.pipeline.GitHubWorklogStorage", lambda **_: storage
+    )
+    monkeypatch.setattr(
+        "ingest.github.pipeline.GitHubWorklogCollector",
+        lambda **_: collector,
+    )
+
+    run_pipeline(config)
+
+    collector.get_commit_detail.assert_not_called()

@@ -68,8 +68,11 @@ def run_pipeline(config: Config) -> None:
 
     logger.info("=" * 60)
     logger.info("GitHub Worklog Ingestion Pipeline")
-    logger.info(f"GitHub User: {github_conf.github_login}")
-    logger.info(f"Target Repos: {github_conf.target_repos or 'All personal repos'}")
+    logger.info("GitHub User: [redacted]")
+    if github_conf.target_repos:
+        logger.info("Target Repos: %d specified", len(github_conf.target_repos))
+    else:
+        logger.info("Target Repos: all personal repositories")
     logger.info("=" * 60)
 
     # StorageとCollectorを初期化
@@ -113,7 +116,8 @@ def run_pipeline(config: Config) -> None:
     total_new_commits = 0
     total_duplicate_commits = 0
     total_failed_records = 0
-    total_failed_api_calls = 0
+    total_failed_fatal_api_calls = 0
+    total_failed_enrichment_api_calls = 0
     total_failed_repos = 0
 
     all_commits_data = []
@@ -165,7 +169,7 @@ def run_pipeline(config: Config) -> None:
                             e,
                         )
                         pr["reviews_count"] = 0
-                        total_failed_api_calls += 1
+                        total_failed_enrichment_api_calls += 1
 
             for pr in prs:
                 update_cursor_candidate(pr.get("updated_at"))
@@ -196,20 +200,46 @@ def run_pipeline(config: Config) -> None:
 
             # 各Commitの詳細を取得（変更量メタデータ用）
             enriched_commits = []
+            detail_failures = 0
+            details_requested = 0
+            details_enabled = github_conf.fetch_commit_details
+            max_detail_requests = github_conf.max_commit_detail_requests_per_repo
+            detail_budget_exceeded_logged = False
             for commit in commits:
                 sha = commit.get("sha")
-                if sha:
-                    try:
-                        detail = collector.get_commit_detail(owner, repo, sha)
-                        # 詳細情報をマージ
-                        commit_with_detail = {**commit, **detail}
-                        enriched_commits.append(commit_with_detail)
-                    except Exception as e:
-                        logger.warning(f"Failed to fetch detail for commit {sha}: {e}")
-                        total_failed_api_calls += 1
-                        enriched_commits.append(commit)
-                else:
+                if not sha or not details_enabled:
                     enriched_commits.append(commit)
+                    continue
+
+                if details_requested >= max_detail_requests:
+                    if not detail_budget_exceeded_logged:
+                        logger.warning(
+                            "Commit detail request budget exceeded for %s (max=%d); skipping remaining detail fetches",
+                            repo_full_name,
+                            max_detail_requests,
+                        )
+                        detail_budget_exceeded_logged = True
+                    enriched_commits.append(commit)
+                    continue
+
+                details_requested += 1
+                try:
+                    detail = collector.get_commit_detail(owner, repo, sha)
+                    commit_with_detail = {**commit, **detail}
+                    enriched_commits.append(commit_with_detail)
+                except Exception as e:
+                    logger.warning(f"Failed to fetch detail for commit {sha}: {e}")
+                    detail_failures += 1
+                    total_failed_enrichment_api_calls += 1
+                    enriched_commits.append(commit)
+
+            if details_enabled and detail_failures > 0:
+                logger.warning(
+                    "Commit detail fetch failures for %s: %d/%d",
+                    repo_full_name,
+                    detail_failures,
+                    details_requested,
+                )
 
             # Commitsを変換
             commits_transformed = transform_commits_to_events(
@@ -231,6 +261,7 @@ def run_pipeline(config: Config) -> None:
 
         except Exception:
             logger.exception("Failed to process repository %s", repo_full_name)
+            total_failed_fatal_api_calls += 1
             total_failed_repos += 1
             continue
 
@@ -265,12 +296,13 @@ def run_pipeline(config: Config) -> None:
         total_new_commits,
         total_duplicate_commits,
         total_failed_records,
-        total_failed_api_calls,
+        total_failed_fatal_api_calls,
         total_failed_repos,
     )
+    logger.info("Ingest enrichment API failures: %d", total_failed_enrichment_api_calls)
 
     # 状態を更新
-    if all_saved and total_failed_api_calls == 0 and total_failed_repos == 0:
+    if all_saved and total_failed_fatal_api_calls == 0 and total_failed_repos == 0:
         now_utc = datetime.now(timezone.utc).isoformat()
         cursor = (
             max_cursor_candidate.isoformat()
