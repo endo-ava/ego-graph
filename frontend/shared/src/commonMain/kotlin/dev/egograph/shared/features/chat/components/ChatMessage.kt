@@ -1,8 +1,6 @@
 package dev.egograph.shared.features.chat.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -14,11 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,10 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.annotator.annotatorSettings
 import com.mikepenz.markdown.compose.LocalMarkdownDimens
 import com.mikepenz.markdown.compose.components.markdownComponents
@@ -104,8 +98,6 @@ private fun UserMessage(
                 )
             }
         }
-        Spacer(modifier = Modifier.width(8.dp))
-        MessageAvatar(isUser = true)
     }
 }
 
@@ -118,6 +110,10 @@ private fun AssistantMessage(
 ) {
     val contentBlocks = remember(message.content) { splitAssistantContent(message.content) }
     val textColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val assistantBodyStyle =
+        MaterialTheme.typography.bodyMedium.copy(
+            lineHeight = 28.sp,
+        )
     val markdownTextStyles =
         markdownTypography(
             h1 = MaterialTheme.typography.titleLarge,
@@ -126,9 +122,12 @@ private fun AssistantMessage(
             h4 = MaterialTheme.typography.bodyLarge,
             h5 = MaterialTheme.typography.bodyMedium,
             h6 = MaterialTheme.typography.bodyMedium,
-            text = MaterialTheme.typography.bodyMedium,
-            paragraph = MaterialTheme.typography.bodyMedium,
-            table = MaterialTheme.typography.bodySmall,
+            text = assistantBodyStyle,
+            paragraph = assistantBodyStyle,
+            ordered = assistantBodyStyle,
+            bullet = assistantBodyStyle,
+            list = assistantBodyStyle,
+            table = MaterialTheme.typography.bodySmall.copy(lineHeight = 22.sp),
         )
     val markdownColors = markdownColor(text = textColor)
     val markdownDimens =
@@ -178,9 +177,6 @@ private fun AssistantMessage(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.Start,
     ) {
-        MessageAvatar(isUser = false)
-        Spacer(modifier = Modifier.width(8.dp))
-
         Column(
             horizontalAlignment = Alignment.Start,
             modifier = Modifier.weight(1f),
@@ -335,31 +331,5 @@ private fun MessageBubble(
                 .testTagResourceId(if (isUser) "user_message_bubble" else "assistant_message_bubble"),
     ) {
         content()
-    }
-}
-
-@Composable
-private fun MessageAvatar(isUser: Boolean) {
-    val backgroundColor =
-        if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-    val contentColor =
-        if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondary
-    val icon = if (isUser) Icons.Default.Face else Icons.Default.Person
-    val description = if (isUser) "User" else "AI"
-
-    Box(
-        modifier =
-            Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(backgroundColor),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = description,
-            tint = contentColor,
-            modifier = Modifier.size(20.dp),
-        )
     }
 }
