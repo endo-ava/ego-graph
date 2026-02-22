@@ -270,7 +270,32 @@ class TestTransformCommit:
         assert result["repo_full_name"] == "myusername/repo"
         assert result["additions"] == 10
         assert result["deletions"] == 5
-        assert result["changed_files_count"] == 15
+        assert result["changed_files_count"] is None
+
+    def test_transform_commit_with_files_array_sets_changed_files_count(self):
+        """files配列がある場合、changed_files_countをファイル数で保持する。"""
+        # Arrange
+        commit = {
+            "sha": "abc123",
+            "commit": {
+                "message": "Test commit",
+                "author": {"date": "2024-01-01T00:00:00Z"},
+            },
+            "stats": {
+                "additions": 10,
+                "deletions": 5,
+                "total": 15,
+            },
+            "files": [{"filename": "a.py"}, {"filename": "b.py"}],
+        }
+        repo_full_name = "myusername/repo"
+
+        # Act
+        result = transform_commit(commit, repo_full_name)
+
+        # Assert
+        assert result is not None
+        assert result["changed_files_count"] == 2
 
     def test_transform_commit_with_missing_fields(self):
         """必須フィールドが欠損している場合に該当フィールドをNoneにする。"""

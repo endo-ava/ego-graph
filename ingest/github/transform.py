@@ -125,6 +125,8 @@ def transform_commit(
 
     # stats情報の抽出
     stats = commit.get("stats", {})
+    files = commit.get("files")
+    changed_files_count = len(files) if isinstance(files, list) else None
 
     # owner/repoの抽出
     parts = repo_full_name.split("/", 1) if repo_full_name else ["", ""]
@@ -140,7 +142,7 @@ def transform_commit(
         "sha": sha,
         "message": commit_info.get("message"),
         "committed_at_utc": committed_date,
-        "changed_files_count": stats.get("total"),
+        "changed_files_count": changed_files_count,
         "additions": stats.get("additions"),
         "deletions": stats.get("deletions"),
         "ingested_at_utc": datetime.now(timezone.utc).isoformat(),

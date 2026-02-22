@@ -13,6 +13,8 @@ from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_STATE_KEY = "state/github_worklog_ingest_state.json"
+
 
 def _normalize_path(path: str) -> str:
     """パスを正規化して末尾に / を付ける。"""
@@ -261,6 +263,50 @@ class GitHubWorklogStorage:
 
         return self._upload_parquet(new_commits, key, "commits Parquet")
 
+    def save_commits_parquet_with_stats(
+        self,
+        data: list[dict[str, Any]],
+        year: int,
+        month: int,
+    ) -> dict[str, int]:
+        """Commitイベントを保存し、新規/重複/失敗件数を返す。"""
+        if not data:
+            return {"fetched": 0, "new": 0, "duplicates": 0, "failed": 0}
+
+        existing_ids = self._load_existing_commit_ids(year, month)
+        new_commits = [c for c in data if c.get("commit_event_id") not in existing_ids]
+        duplicate_count = len(data) - len(new_commits)
+
+        if not new_commits:
+            logger.info("No new commits to save (all duplicates).")
+            return {
+                "fetched": len(data),
+                "new": 0,
+                "duplicates": duplicate_count,
+                "failed": 0,
+            }
+
+        unique_id = str(uuid.uuid4())
+        key = (
+            f"{self.events_path}github/commits/"
+            f"year={year}/month={month:02d}/{unique_id}.parquet"
+        )
+        saved = self._upload_parquet(new_commits, key, "commits Parquet")
+        if saved is None:
+            return {
+                "fetched": len(data),
+                "new": 0,
+                "duplicates": duplicate_count,
+                "failed": len(new_commits),
+            }
+
+        return {
+            "fetched": len(data),
+            "new": len(new_commits),
+            "duplicates": duplicate_count,
+            "failed": 0,
+        }
+
     def save_pr_master(
         self,
         data: list[dict[str, Any]],
@@ -313,15 +359,14 @@ class GitHubWorklogStorage:
 
         return self._upload_parquet(data, key, "repository master Parquet")
 
-    def get_ingest_state(self) -> dict[str, Any] | None:
+    def get_ingest_state(self, key: str = DEFAULT_STATE_KEY) -> dict[str, Any] | None:
         """インジェスト状態を取得する。
 
-        Path: state/github_ingest_state.json
+        Path: state/github_worklog_ingest_state.json
 
         Returns:
             状態辞書 (存在しない場合はNone)
         """
-        key = "state/github_ingest_state.json"
         try:
             response = self.s3.get_object(Bucket=self.bucket_name, Key=key)
             return json.loads(response["Body"].read().decode("utf-8"))
@@ -335,15 +380,16 @@ class GitHubWorklogStorage:
             logger.exception("Failed to read ingest state")
             return None
 
-    def save_ingest_state(self, state: dict[str, Any]) -> None:
+    def save_ingest_state(
+        self, state: dict[str, Any], key: str = DEFAULT_STATE_KEY
+    ) -> None:
         """インジェスト状態を保存する。
 
-        Path: state/github_ingest_state.json
+        Path: state/github_worklog_ingest_state.json
 
         Args:
             state: 保存する状態辞書
         """
-        key = "state/github_ingest_state.json"
         try:
             self.s3.put_object(
                 Bucket=self.bucket_name,

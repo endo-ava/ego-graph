@@ -185,6 +185,51 @@ class TestGitHubWorklogStorage(unittest.TestCase):
             self.mock_s3.put_object.assert_not_called()
             self.assertIsNone(key)
 
+    def test_save_commits_parquet_with_stats(self):
+        """新規/重複件数の統計が返ることを検証する。"""
+        data = [
+            {"commit_event_id": "existing_id", "sha": "abc123"},
+            {"commit_event_id": "new_id", "sha": "def456"},
+        ]
+
+        with patch.object(
+            self.storage,
+            "_load_existing_commit_ids",
+            return_value={"existing_id"},
+        ):
+            with patch("ingest.github.storage.pd.DataFrame.to_parquet") as _:
+                stats = self.storage.save_commits_parquet_with_stats(
+                    data,
+                    year=2024,
+                    month=1,
+                )
+
+                self.assertEqual(stats["fetched"], 2)
+                self.assertEqual(stats["new"], 1)
+                self.assertEqual(stats["duplicates"], 1)
+                self.assertEqual(stats["failed"], 0)
+
+    def test_save_commits_parquet_with_stats_on_failure(self):
+        """保存失敗時にfailed件数が返ることを検証する。"""
+        data = [{"commit_event_id": "new_id", "sha": "def456"}]
+
+        with patch.object(
+            self.storage,
+            "_load_existing_commit_ids",
+            return_value=set(),
+        ):
+            with patch.object(self.storage, "_upload_parquet", return_value=None):
+                stats = self.storage.save_commits_parquet_with_stats(
+                    data,
+                    year=2024,
+                    month=1,
+                )
+
+                self.assertEqual(stats["fetched"], 1)
+                self.assertEqual(stats["new"], 0)
+                self.assertEqual(stats["duplicates"], 0)
+                self.assertEqual(stats["failed"], 1)
+
     def test_save_pr_master(self):
         """PR現在状態をParquet形式で上書き保存することを検証する。
 
@@ -304,7 +349,7 @@ class TestGitHubWorklogStorage(unittest.TestCase):
         self.assertEqual(state["cursor"], "2024-01-15T10:00:00Z")
         self.assertEqual(state["last_repo"], "testowner/testrepo")
         self.mock_s3.get_object.assert_called_with(
-            Bucket="test-bucket", Key="state/github_ingest_state.json"
+            Bucket="test-bucket", Key="state/github_worklog_ingest_state.json"
         )
 
     def test_get_ingest_state_not_exists(self):
@@ -336,7 +381,7 @@ class TestGitHubWorklogStorage(unittest.TestCase):
         # Assert: put_object が正しい引数で呼ばれたことを検証
         self.mock_s3.put_object.assert_called_once()
         call_args = self.mock_s3.put_object.call_args[1]
-        self.assertEqual(call_args["Key"], "state/github_ingest_state.json")
+        self.assertEqual(call_args["Key"], "state/github_worklog_ingest_state.json")
         self.assertEqual(json.loads(call_args["Body"]), state)
         self.assertEqual(call_args["ContentType"], "application/json")
 

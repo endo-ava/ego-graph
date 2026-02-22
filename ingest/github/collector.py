@@ -11,6 +11,7 @@ GitHub APIに接続し、以下を収集します:
 
 import logging
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 import requests
@@ -98,6 +99,16 @@ def _paginate(
     return items
 
 
+def _parse_github_datetime(value: str | None) -> datetime | None:
+    """GitHub日時文字列をdatetimeに変換する。"""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 class GitHubWorklogCollector:
     """GitHub APIデータコレクター。
 
@@ -161,6 +172,7 @@ class GitHubWorklogCollector:
         repo: str,
         state: str = "all",
         per_page: int = DEFAULT_PER_PAGE,
+        since: str | None = None,
     ) -> list[dict[str, Any]]:
         """指定RepoのPull Request一覧を取得します。
 
@@ -178,9 +190,15 @@ class GitHubWorklogCollector:
         """
         logger.debug("Fetching pull requests for %s/%s (state=%s)", owner, repo, state)
 
-        def fetch_page(page: int) -> dict[str, Any]:
+        def fetch_page(page: int) -> list[dict[str, Any]]:
             url = f"{self.base_url}/repos/{owner}/{repo}/pulls"
-            params = {"state": state, "per_page": per_page, "page": page}
+            params: dict[str, Any] = {
+                "state": state,
+                "per_page": per_page,
+                "page": page,
+                "sort": "updated",
+                "direction": "desc",
+            }
             response = self.session.get(url, params=params)
             response.raise_for_status()
             return response.json()
@@ -192,7 +210,26 @@ class GitHubWorklogCollector:
             page_data = fetch_page(page)
             if not page_data:
                 break
-            prs.extend(page_data)
+
+            if since:
+                since_dt = _parse_github_datetime(since)
+                filtered_page: list[dict[str, Any]] = []
+                for pr in page_data:
+                    updated_dt = _parse_github_datetime(pr.get("updated_at"))
+                    if since_dt is None or updated_dt is None or updated_dt >= since_dt:
+                        filtered_page.append(pr)
+                prs.extend(filtered_page)
+
+                oldest_updated = _parse_github_datetime(page_data[-1].get("updated_at"))
+                if (
+                    since_dt is not None
+                    and oldest_updated is not None
+                    and oldest_updated < since_dt
+                ):
+                    break
+            else:
+                prs.extend(page_data)
+
             if len(page_data) < per_page:
                 break
             page += 1
@@ -257,6 +294,7 @@ class GitHubWorklogCollector:
         owner: str,
         repo: str,
         per_page: int = DEFAULT_PER_PAGE,
+        since: str | None = None,
     ) -> list[dict[str, Any]]:
         """リポジトリの全Commitを取得します（PR外の直接push含む）。
 
@@ -278,7 +316,9 @@ class GitHubWorklogCollector:
 
         while True:
             url = f"{self.base_url}/repos/{owner}/{repo}/commits"
-            params = {"per_page": per_page, "page": page}
+            params: dict[str, Any] = {"per_page": per_page, "page": page}
+            if since:
+                params["since"] = since
             response = self.session.get(url, params=params)
             response.raise_for_status()
             page_data = response.json()
