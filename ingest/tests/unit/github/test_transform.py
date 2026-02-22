@@ -146,6 +146,7 @@ class TestTransformPullRequest:
         assert result["base_ref"] == "main"
         assert result["head_ref"] == "feature-branch"
         assert result["labels"] == ["bug"]
+        assert result["action"] == "updated"
 
     def test_transform_pr_merged(self):
         """マージ済みPRを変換する。"""
@@ -179,6 +180,60 @@ class TestTransformPullRequest:
         assert result["state"] == "closed"
         assert result["is_merged"] is True
         assert result["merged_at_utc"] == "2024-01-02T00:00:00Z"
+        assert result["action"] == "merged"
+
+    def test_transform_pr_opened_action_when_created_equals_updated(self):
+        """作成時刻と更新時刻が同一ならopenedになる。"""
+        pr = {
+            "id": 123456,
+            "number": 1,
+            "state": "open",
+            "user": {"login": "myusername"},
+            "head": {
+                "ref": "feature",
+                "repo": {
+                    "owner": {"login": "myusername"},
+                    "name": "repo",
+                    "full_name": "myusername/repo",
+                },
+            },
+            "base": {"ref": "main"},
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "labels": [],
+        }
+
+        result = transform_pull_request(pr, "myusername")
+
+        assert result is not None
+        assert result["action"] == "opened"
+
+    def test_transform_pr_reopened_action_when_closed_at_exists(self):
+        """open状態だがclosed_atがある場合はreopenedになる。"""
+        pr = {
+            "id": 123456,
+            "number": 1,
+            "state": "open",
+            "closed_at": "2024-01-02T00:00:00Z",
+            "user": {"login": "myusername"},
+            "head": {
+                "ref": "feature",
+                "repo": {
+                    "owner": {"login": "myusername"},
+                    "name": "repo",
+                    "full_name": "myusername/repo",
+                },
+            },
+            "base": {"ref": "main"},
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-03T00:00:00Z",
+            "labels": [],
+        }
+
+        result = transform_pull_request(pr, "myusername")
+
+        assert result is not None
+        assert result["action"] == "reopened"
 
     def test_transform_pr_non_personal_repo(self):
         """個人所有でないRepoの場合にNoneを返す。"""
@@ -687,5 +742,4 @@ class TestGenerateRepoSummary:
         # Assert
         assert summary is not None
         assert isinstance(summary, str)
-        # 空ではないことを確認
-        assert len(summary) > 0 or summary == ""
+        assert summary == ""

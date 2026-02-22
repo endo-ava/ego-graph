@@ -229,8 +229,8 @@ def run_pipeline(config: Config) -> None:
                     logger.error("Failed to save raw commits for %s", repo_full_name)
                     total_failed_records += len(commits)
 
-        except Exception as e:
-            logger.error(f"Failed to process repository {repo_full_name}: {e}")
+        except Exception:
+            logger.exception("Failed to process repository %s", repo_full_name)
             total_failed_repos += 1
             continue
 
@@ -271,15 +271,16 @@ def run_pipeline(config: Config) -> None:
 
     # 状態を更新
     if all_saved and total_failed_api_calls == 0 and total_failed_repos == 0:
+        now_utc = datetime.now(timezone.utc).isoformat()
         cursor = (
             max_cursor_candidate.isoformat()
             if max_cursor_candidate is not None
-            else datetime.now(timezone.utc).isoformat()
+            else now_utc
         )
         new_state = {
             "cursor_utc": cursor,
             "total_repos": len(target_repos),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": now_utc,
         }
         storage.save_ingest_state(new_state)
         logger.info("Pipeline completed successfully!")
@@ -310,8 +311,10 @@ def _group_commits_by_month(
             except (ValueError, AttributeError) as e:
                 logger.warning("Failed to parse date %s: %s", committed_date, e)
         else:
-            # 日付がない場合、現在の月に含める
-            now = datetime.now(timezone.utc)
-            grouped[(now.year, now.month)].append(commit)
+            commit_id = commit.get("commit_event_id", "unknown")
+            logger.warning(
+                "Commit %s has no committed_at_utc; skipping month grouping",
+                commit_id,
+            )
 
     return grouped

@@ -111,21 +111,22 @@ class GitHubWorklogStorage:
         existing_ids: set[str] = set()
 
         try:
-            response = self.s3.list_objects_v2(Bucket=self.bucket_name, Prefix=prefix)
-            if "Contents" not in response:
-                return existing_ids
-
-            for obj in response["Contents"]:
-                try:
-                    obj_response = self.s3.get_object(
-                        Bucket=self.bucket_name, Key=obj["Key"]
-                    )
-                    df = pd.read_parquet(BytesIO(obj_response["Body"].read()))
-                    if "commit_event_id" in df.columns:
-                        existing_ids.update(df["commit_event_id"].tolist())
-                except Exception:
-                    logger.warning("Failed to read Parquet file: %s", obj["Key"])
+            paginator = self.s3.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=self.bucket_name, Prefix=prefix):
+                if "Contents" not in page:
                     continue
+
+                for obj in page["Contents"]:
+                    try:
+                        obj_response = self.s3.get_object(
+                            Bucket=self.bucket_name, Key=obj["Key"]
+                        )
+                        df = pd.read_parquet(BytesIO(obj_response["Body"].read()))
+                        if "commit_event_id" in df.columns:
+                            existing_ids.update(df["commit_event_id"].tolist())
+                    except Exception:
+                        logger.warning("Failed to read Parquet file: %s", obj["Key"])
+                        continue
 
         except ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchKey":

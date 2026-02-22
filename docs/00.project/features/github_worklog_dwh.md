@@ -159,7 +159,7 @@ created_at_utc       TIMESTAMP
 updated_at_utc       TIMESTAMP
 pushed_at_utc        TIMESTAMP
 repo_summary_text    VARCHAR              -- 自然言語サマリー（短文、任意）
-summary_source       VARCHAR              -- manual, llm, empty
+summary_source       VARCHAR              -- template, manual, llm, empty
 summary_updated_at_utc TIMESTAMP
 ```
 

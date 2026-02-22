@@ -34,6 +34,27 @@ def _is_personal_repo(repo: dict[str, Any], github_login: str) -> bool:
     return owner_login == github_login
 
 
+def _resolve_pr_action(pr: dict[str, Any]) -> str:
+    merged_at = pr.get("merged_at")
+    if merged_at:
+        return "merged"
+
+    state = pr.get("state", "open")
+    if state == "closed":
+        return "closed"
+
+    closed_at = pr.get("closed_at")
+    if state == "open" and closed_at:
+        return "reopened"
+
+    created_at = pr.get("created_at")
+    updated_at = pr.get("updated_at")
+    if created_at and updated_at and created_at != updated_at:
+        return "updated"
+
+    return "opened"
+
+
 def transform_pull_request(
     pr: dict[str, Any], github_login: str
 ) -> dict[str, Any] | None:  # noqa: E501
@@ -76,7 +97,7 @@ def transform_pull_request(
         "repo_full_name": repo_full_name,
         "pr_number": pr["number"],
         "pr_id": pr.get("id"),
-        "action": "merged" if is_merged else pr.get("state", "open"),
+        "action": _resolve_pr_action(pr),
         "state": pr.get("state", "open"),
         "is_merged": is_merged,
         "title": pr.get("title"),

@@ -30,7 +30,7 @@ jobs:
 
       - name: Run GitHub Worklog ingestion pipeline
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
           GITHUB_LOGIN: ${{ secrets.GITHUB_LOGIN }}
           DUCKDB_PATH: data/analytics.duckdb
           R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
@@ -60,6 +60,10 @@ jobs:
           bucket_name = os.environ["R2_BUCKET_NAME"]
           events_path = os.environ.get("R2_EVENTS_PATH", "events/")
 
+          access_key_id = access_key_id.replace("'", "''")
+          secret_access_key = secret_access_key.replace("'", "''")
+          endpoint_clean = endpoint_url.replace("https://", "").replace("'", "''")
+
           conn = duckdb.connect(":memory:")
           conn.execute("INSTALL httpfs; LOAD httpfs;")
           conn.execute(f"""
@@ -68,7 +72,7 @@ jobs:
                   KEY_ID '{access_key_id}',
                   SECRET '{secret_access_key}',
                   REGION 'auto',
-                  ENDPOINT '{endpoint_url.replace("https://", "")}',
+                  ENDPOINT '{endpoint_clean}',
                   URL_STYLE 'path'
               );
           """)

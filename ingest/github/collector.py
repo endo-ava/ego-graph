@@ -39,6 +39,18 @@ github_retry = retry(
 )
 
 
+@github_retry
+def _get_json_with_retry(
+    session: requests.Session,
+    url: str,
+    params: dict[str, Any] | None = None,
+) -> Any:
+    """単一APIリクエストをリトライ付きで実行する。"""
+    response = session.get(url, params=params)
+    response.raise_for_status()
+    return response.json()
+
+
 def _paginate(
     fetch_fn: Callable[..., dict[str, Any]],
     *,
@@ -165,7 +177,6 @@ class GitHubWorklogCollector:
         response.raise_for_status()
         return response.json()
 
-    @github_retry
     def get_pull_requests(
         self,
         owner: str,
@@ -199,9 +210,7 @@ class GitHubWorklogCollector:
                 "sort": "updated",
                 "direction": "desc",
             }
-            response = self.session.get(url, params=params)
-            response.raise_for_status()
-            return response.json()
+            return _get_json_with_retry(self.session, url, params)
 
         prs: list[dict[str, Any]] = []
         page = 1
@@ -242,7 +251,6 @@ class GitHubWorklogCollector:
         )
         return prs
 
-    @github_retry
     def get_pr_commits(
         self,
         owner: str,
@@ -272,9 +280,7 @@ class GitHubWorklogCollector:
         while True:
             url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/commits"
             params = {"per_page": per_page, "page": page}
-            response = self.session.get(url, params=params)
-            response.raise_for_status()
-            page_data = response.json()
+            page_data = _get_json_with_retry(self.session, url, params)
 
             if not page_data:
                 break
@@ -288,7 +294,6 @@ class GitHubWorklogCollector:
         )
         return commits
 
-    @github_retry
     def get_repository_commits(
         self,
         owner: str,
@@ -319,9 +324,7 @@ class GitHubWorklogCollector:
             params: dict[str, Any] = {"per_page": per_page, "page": page}
             if since:
                 params["since"] = since
-            response = self.session.get(url, params=params)
-            response.raise_for_status()
-            page_data = response.json()
+            page_data = _get_json_with_retry(self.session, url, params)
 
             if not page_data:
                 break
@@ -335,7 +338,6 @@ class GitHubWorklogCollector:
         )
         return commits
 
-    @github_retry
     def get_pr_reviews(
         self,
         owner: str,
@@ -365,9 +367,7 @@ class GitHubWorklogCollector:
         while True:
             url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
             params = {"per_page": per_page, "page": page}
-            response = self.session.get(url, params=params)
-            response.raise_for_status()
-            page_data = response.json()
+            page_data = _get_json_with_retry(self.session, url, params)
 
             if not page_data:
                 break
@@ -407,7 +407,6 @@ class GitHubWorklogCollector:
         response.raise_for_status()
         return response.json()
 
-    @github_retry
     def get_user_repositories(
         self,
         per_page: int = DEFAULT_PER_PAGE,
@@ -431,9 +430,7 @@ class GitHubWorklogCollector:
         while True:
             url = f"{self.base_url}/user/repos"
             params = {"per_page": per_page, "page": page}
-            response = self.session.get(url, params=params)
-            response.raise_for_status()
-            page_data = response.json()
+            page_data = _get_json_with_retry(self.session, url, params)
 
             if not page_data:
                 break

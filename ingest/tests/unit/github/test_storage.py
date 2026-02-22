@@ -411,14 +411,16 @@ class TestGitHubWorklogStorage(unittest.TestCase):
 
     def test_load_existing_commit_ids(self):
         """既存Commit IDが正しく読み込まれることを検証する。"""
-        # Arrange: list_objects_v2とget_objectをモック
-        mock_response = {
+        # Arrange: paginator と get_object をモック
+        mock_page = {
             "Contents": [
                 {"Key": "events/github/commits/year=2024/month=01/file1.parquet"},
                 {"Key": "events/github/commits/year=2024/month=01/file2.parquet"},
             ]
         }
-        self.mock_s3.list_objects_v2.return_value = mock_response
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [mock_page]
+        self.mock_s3.get_paginator.return_value = mock_paginator
 
         # 各ファイルのDataFrameを作成
         df1 = pd.DataFrame([{"commit_event_id": "id1"}])
@@ -453,8 +455,8 @@ class TestGitHubWorklogStorage(unittest.TestCase):
         """ファイルが存在しない場合、空セットが返されることを検証する。"""
         # Arrange: ファイルが存在しない状態をモック
         error_response = {"Error": {"Code": "NoSuchKey", "Message": "Not found"}}
-        self.mock_s3.list_objects_v2.side_effect = ClientError(
-            error_response, "list_objects_v2"
+        self.mock_s3.get_paginator.side_effect = ClientError(
+            error_response, "get_paginator"
         )
 
         # Act: 既存Commit IDを読み込み

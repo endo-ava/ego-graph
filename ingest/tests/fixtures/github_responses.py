@@ -1,5 +1,6 @@
 """GitHub API レスポンス用のテストフィクスチャ。"""
 
+import copy
 from typing import Any
 
 # Repository モックレスポンス
@@ -234,25 +235,25 @@ def get_mock_repository(
     Returns:
         モックデータを含む辞書
     """
-    response = MOCK_REPOSITORY_RESPONSE.copy()
+    response = copy.deepcopy(MOCK_REPOSITORY_RESPONSE)
     response["name"] = repo
     response["full_name"] = f"{owner}/{repo}"
     response["owner"]["login"] = owner
     return response
 
 
-def get_mock_pull_requests(count: int = 1) -> dict[str, Any]:
+def get_mock_pull_requests(count: int = 1) -> dict[str, Any] | list[dict[str, Any]]:
     """モックのPull Request一覧レスポンスを取得する。
 
     Args:
         count: 返す項目数
 
     Returns:
-        モックデータを含む辞書
+        モックデータを含む辞書または辞書リスト
     """
     if count == 1:
-        return MOCK_PULL_REQUEST_RESPONSE
-    return [MOCK_PULL_REQUEST_RESPONSE] * count
+        return copy.deepcopy(MOCK_PULL_REQUEST_RESPONSE)
+    return [copy.deepcopy(MOCK_PULL_REQUEST_RESPONSE) for _ in range(count)]
 
 
 def get_mock_pr_commits(count: int = 2) -> list[dict[str, Any]]:

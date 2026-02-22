@@ -11,10 +11,12 @@ from ingest.config import (
     Config,
     DuckDBConfig,
     EmbeddingConfig,
+    GoogleActivityConfig,
     GitHubWorklogConfig,
     QdrantConfig,
     R2Config,
     SpotifyConfig,
+    YouTubeConfig,
 )
 
 ENV_FILES = ["ingest/.env", ".env"]
@@ -79,7 +81,11 @@ class GitHubWorklogSettings(BaseSettings):
         env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
     )
 
-    token: SecretStr = Field(..., alias="GITHUB_TOKEN")
+    token: SecretStr = Field(
+        ...,
+        alias="GITHUB_TOKEN",
+        validation_alias="GITHUB_PAT",
+    )
     github_login: str = Field(..., alias="GITHUB_LOGIN")
     target_repos: list[str] | None = Field(None, alias="GITHUB_TARGET_REPOS")
     backfill_days: int = Field(365, alias="GITHUB_BACKFILL_DAYS")
@@ -112,6 +118,32 @@ class EmbeddingSettings(BaseSettings):
             device=self.device,
             expected_dimension=self.expected_dimension,
         )
+
+
+class GoogleActivitySettings(BaseSettings):
+    """Google Activity API設定。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    accounts: list[str] = Field(default_factory=list, alias="GOOGLE_ACTIVITY_ACCOUNTS")
+
+    def to_config(self) -> GoogleActivityConfig:
+        return GoogleActivityConfig(accounts=self.accounts)
+
+
+class YouTubeSettings(BaseSettings):
+    """YouTube API設定。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    youtube_api_key: SecretStr = Field(..., alias="YOUTUBE_API_KEY")
+
+    def to_config(self) -> YouTubeConfig:
+        return YouTubeConfig(youtube_api_key=self.youtube_api_key)
 
 
 class QdrantSettings(BaseSettings):
