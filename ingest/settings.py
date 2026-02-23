@@ -136,6 +136,8 @@ class GoogleActivitySettings(BaseSettings):
     accounts: list[str] = Field(default_factory=list, alias="GOOGLE_ACTIVITY_ACCOUNTS")
 
     def to_config(self) -> GoogleActivityConfig:
+        if not self.accounts:
+            raise ValueError("GOOGLE_ACTIVITY_ACCOUNTS is required but not set")
         return GoogleActivityConfig(accounts=self.accounts)
 
 

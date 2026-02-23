@@ -65,7 +65,8 @@ jobs:
           endpoint_clean = endpoint_url.replace("https://", "").replace("'", "''")
 
           conn = duckdb.connect(":memory:")
-          conn.execute("INSTALL httpfs; LOAD httpfs;")
+          conn.execute("INSTALL httpfs;")
+          conn.execute("LOAD httpfs;")
           conn.execute(f"""
               CREATE SECRET (
                   TYPE S3,
