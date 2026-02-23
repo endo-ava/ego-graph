@@ -4,16 +4,19 @@ import logging
 from collections.abc import Callable
 from typing import TypeVar
 
-from pydantic import Field, SecretStr, ValidationError
+from pydantic import AliasChoices, Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ingest.config import (
     Config,
     DuckDBConfig,
     EmbeddingConfig,
+    GoogleActivityConfig,
+    GitHubWorklogConfig,
     QdrantConfig,
     R2Config,
     SpotifyConfig,
+    YouTubeConfig,
 )
 
 ENV_FILES = ["ingest/.env", ".env"]
@@ -71,6 +74,37 @@ class SpotifySettings(BaseSettings):
         )
 
 
+class GitHubWorklogSettings(BaseSettings):
+    """GitHub作業ログ取り込み設定。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    token: SecretStr = Field(
+        ...,
+        validation_alias=AliasChoices("GITHUB_PAT", "GITHUB_TOKEN"),
+    )
+    github_login: str = Field(..., alias="GITHUB_LOGIN")
+    target_repos: list[str] | None = Field(None, alias="GITHUB_TARGET_REPOS")
+    backfill_days: int = Field(365, alias="GITHUB_BACKFILL_DAYS")
+    fetch_commit_details: bool = Field(True, alias="GITHUB_FETCH_COMMIT_DETAILS")
+    max_commit_detail_requests_per_repo: int = Field(
+        200,
+        alias="GITHUB_MAX_COMMIT_DETAIL_REQUESTS_PER_REPO",
+    )
+
+    def to_config(self) -> GitHubWorklogConfig:
+        return GitHubWorklogConfig(
+            token=self.token,
+            github_login=self.github_login,
+            target_repos=self.target_repos,
+            backfill_days=self.backfill_days,
+            fetch_commit_details=self.fetch_commit_details,
+            max_commit_detail_requests_per_repo=self.max_commit_detail_requests_per_repo,
+        )
+
+
 class EmbeddingSettings(BaseSettings):
     """埋め込みモデル設定(ローカル実行)。"""
 
@@ -90,6 +124,34 @@ class EmbeddingSettings(BaseSettings):
             device=self.device,
             expected_dimension=self.expected_dimension,
         )
+
+
+class GoogleActivitySettings(BaseSettings):
+    """Google Activity API設定。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    accounts: list[str] = Field(default_factory=list, alias="GOOGLE_ACTIVITY_ACCOUNTS")
+
+    def to_config(self) -> GoogleActivityConfig:
+        if not self.accounts:
+            raise ValueError("GOOGLE_ACTIVITY_ACCOUNTS is required but not set")
+        return GoogleActivityConfig(accounts=self.accounts)
+
+
+class YouTubeSettings(BaseSettings):
+    """YouTube API設定。"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore"
+    )
+
+    youtube_api_key: SecretStr = Field(..., alias="YOUTUBE_API_KEY")
+
+    def to_config(self) -> YouTubeConfig:
+        return YouTubeConfig(youtube_api_key=self.youtube_api_key)
 
 
 class QdrantSettings(BaseSettings):
@@ -174,6 +236,15 @@ class IngestSettings(BaseSettings):
 
         config.spotify = _try_load_config(
             lambda: SpotifySettings().to_config(), "Spotify"
+        )
+        config.google_activity = _try_load_config(
+            lambda: GoogleActivitySettings().to_config(), "GoogleActivity"
+        )
+        config.youtube = _try_load_config(
+            lambda: YouTubeSettings().to_config(), "YouTube"
+        )
+        config.github_worklog = _try_load_config(
+            lambda: GitHubWorklogSettings().to_config(), "GitHubWorklog"
         )
         config.embedding = _try_load_config(
             lambda: EmbeddingSettings().to_config(), "Embedding"
