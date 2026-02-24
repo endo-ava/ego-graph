@@ -47,6 +47,7 @@
       "Bash(pkill:*)",
       "Skill(pr-review-extraction)",
       "WebSearch",
+      "mcp__context7__query-docs",
       "mcp__serena__list_dir",
       "mcp__serena__get_symbols_overview",
       "mcp__serena__activate_project",
@@ -63,7 +64,8 @@
       "Bash(./gradlew test:*)",
       "Bash(./gradlew :shared:test)",
       "Bash(./gradlew:*)",
-      "Bash(maestro test:*)"
+      "Bash(maestro test:*)",
+      "Bash(codex exec:*)"
     ],
     "deny": [
       "Read(.env)",
@@ -96,5 +98,6 @@
     "serena",
     "context7",
     "sequential-thinking"
-  ]
+  ],
+  "outputStyle": "Explanatory"
 }

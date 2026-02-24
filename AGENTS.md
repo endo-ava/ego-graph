@@ -161,6 +161,19 @@ Windows ─ netsh (0.0.0.0:5559→127.0.0.1:5555) ─ Android Emulator (:5555)
 5. ビルド & インストール
 6. adb コマンドでビルド内容の確認
 
+# initial plan review request
+
+## 必ず -m でモデルを指定すること (gpt-5.3-codex が最適)
+```bash
+codex exec -m gpt-5.3-codex "このプランをレビューして。致命的な点だけ指摘して: {plan_full_path} (ref: {CLAUDE.md full_path})"
+```
+
+# updated plan review request
+```bash 
+resume --last をつけないと最初のレビューの文脈が失われるから注意
+codex exec resume --last -m gpt-5.3-codex "プランを更新したからレビューして。致命的な点だけ指摘して: {plan_full_path} (ref: {CLAUDE.md full_path})"
+```
+
 ## その他
 
 - 質問は `AskUserQuestion` 等を積極的に活用
