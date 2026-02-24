@@ -29,8 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.egograph.shared.core.domain.model.terminal.Session
 import dev.egograph.shared.core.domain.model.terminal.SessionStatus
-import dev.egograph.shared.core.ui.common.compactIsoDateTime
 import dev.egograph.shared.core.ui.common.testTagResourceId
+import dev.egograph.shared.core.ui.common.toCompactIsoDateTime
 
 /**
  * セッションリストアイテムコンポーネント
@@ -117,7 +117,7 @@ fun SessionListItem(
         }
 
         Text(
-            text = compactIsoDateTime(session.lastActivity),
+            text = session.lastActivity.toCompactIsoDateTime(),
             style =
                 MaterialTheme.typography.labelSmall.copy(
                     fontFamily = FontFamily.Monospace,

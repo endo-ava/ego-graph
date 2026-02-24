@@ -1,11 +1,11 @@
 package dev.egograph.shared.core.ui.common
 
-internal fun compactIsoDateTime(isoString: String): String =
+internal fun String.toCompactIsoDateTime(): String =
     runCatching {
-        if (isoString.length < 16) {
-            return@runCatching isoString
+        if (length < 16) {
+            return@runCatching this
         }
-        val datePart = isoString.substring(5, 10).replace('-', '/')
-        val timePart = isoString.substring(11, 16)
+        val datePart = substring(5, 10).replace('-', '/')
+        val timePart = substring(11, 16)
         "$datePart $timePart"
-    }.getOrElse { isoString }
+    }.getOrElse { this }

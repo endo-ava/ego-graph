@@ -51,25 +51,44 @@ class SystemPromptEditorScreen(
         var draftContent by remember { mutableStateOf("") }
         var isLoading by remember { mutableStateOf(false) }
 
-        suspend fun fetchContent() {
+        suspend fun <T> handleRepositoryResult(
+            result: Result<T>,
+            onSuccess: suspend (T) -> Unit,
+        ) {
+            result
+                .onSuccess { onSuccess(it) }
+                .onFailure { snackbarHostState.showSnackbar("Error: ${it.message}") }
+        }
+
+        suspend fun loadSelectedPrompt() {
             isLoading = true
             try {
-                val result = repository.getSystemPrompt(selectedTab)
-                result
-                    .onSuccess {
-                        originalContent = it.content
-                        draftContent = it.content
-                    }.onFailure {
-                        snackbarHostState.showSnackbar("Error: ${it.message}")
-                    }
+                handleRepositoryResult(repository.getSystemPrompt(selectedTab)) {
+                    originalContent = it.content
+                    draftContent = it.content
+                }
             } finally {
                 isLoading = false
             }
         }
 
-        // Fetch content when tab changes
+        suspend fun saveSelectedPrompt() {
+            isLoading = true
+            try {
+                handleRepositoryResult(
+                    repository.updateSystemPrompt(selectedTab, draftContent),
+                ) {
+                    originalContent = it.content
+                    draftContent = it.content
+                    snackbarHostState.showSnackbar("Saved successfully")
+                }
+            } finally {
+                isLoading = false
+            }
+        }
+
         LaunchedEffect(selectedTab) {
-            fetchContent()
+            loadSelectedPrompt()
         }
 
         Scaffold(
@@ -98,20 +117,7 @@ class SystemPromptEditorScreen(
                         Button(
                             onClick = {
                                 scope.launch {
-                                    isLoading = true
-                                    try {
-                                        val result = repository.updateSystemPrompt(selectedTab, draftContent)
-                                        result
-                                            .onSuccess {
-                                                originalContent = it.content
-                                                draftContent = it.content
-                                                snackbarHostState.showSnackbar("Saved successfully")
-                                            }.onFailure {
-                                                snackbarHostState.showSnackbar("Error: ${it.message}")
-                                            }
-                                    } finally {
-                                        isLoading = false
-                                    }
+                                    saveSelectedPrompt()
                                 }
                             },
                             enabled = !isLoading && draftContent != originalContent,

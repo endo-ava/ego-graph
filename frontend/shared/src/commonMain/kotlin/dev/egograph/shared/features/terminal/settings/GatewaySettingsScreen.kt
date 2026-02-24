@@ -29,9 +29,9 @@ import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import dev.egograph.shared.core.platform.getDefaultGatewayBaseUrl
 import dev.egograph.shared.core.platform.isValidUrl
 import dev.egograph.shared.core.platform.normalizeBaseUrl
+import dev.egograph.shared.core.ui.common.showSavedMessageAndBack
 import dev.egograph.shared.core.ui.components.SecretTextField
 import dev.egograph.shared.core.ui.components.SettingsTopBar
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
@@ -70,19 +70,11 @@ class GatewaySettingsScreen(
         }
 
         fun saveSettings() {
-            val normalizedGatewayUrl = normalizeBaseUrl(inputGatewayUrl)
-            val trimmedApiKey = inputApiKey.trim()
-
-            preferences.putString(PlatformPrefsKeys.KEY_GATEWAY_API_URL, normalizedGatewayUrl)
-            preferences.putString(PlatformPrefsKeys.KEY_GATEWAY_API_KEY, trimmedApiKey)
-
-            inputGatewayUrl = normalizedGatewayUrl
-            inputApiKey = trimmedApiKey
-
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar("Gateway settings saved")
-            }
-            onBack()
+            val (savedGatewayUrl, savedApiKey) =
+                persistGatewaySettings(preferences, inputGatewayUrl, inputApiKey)
+            inputGatewayUrl = savedGatewayUrl
+            inputApiKey = savedApiKey
+            showSavedMessageAndBack(coroutineScope, snackbarHostState, "Gateway settings saved", onBack)
         }
 
         Scaffold(
@@ -107,6 +99,20 @@ class GatewaySettingsScreen(
             }
         }
     }
+}
+
+private fun persistGatewaySettings(
+    preferences: PlatformPreferences,
+    gatewayUrl: String,
+    apiKey: String,
+): Pair<String, String> {
+    val normalizedGatewayUrl = normalizeBaseUrl(gatewayUrl)
+    val trimmedApiKey = apiKey.trim()
+
+    preferences.putString(PlatformPrefsKeys.KEY_GATEWAY_API_URL, normalizedGatewayUrl)
+    preferences.putString(PlatformPrefsKeys.KEY_GATEWAY_API_KEY, trimmedApiKey)
+
+    return normalizedGatewayUrl to trimmedApiKey
 }
 
 @Composable

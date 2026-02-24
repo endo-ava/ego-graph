@@ -35,10 +35,10 @@ import dev.egograph.shared.core.platform.isValidUrl
 import dev.egograph.shared.core.platform.normalizeBaseUrl
 import dev.egograph.shared.core.settings.AppTheme
 import dev.egograph.shared.core.settings.ThemeRepository
+import dev.egograph.shared.core.ui.common.showSavedMessageAndBack
 import dev.egograph.shared.core.ui.common.testTagResourceId
 import dev.egograph.shared.core.ui.components.SecretTextField
 import dev.egograph.shared.core.ui.components.SettingsTopBar
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
@@ -78,26 +78,10 @@ fun SettingsScreen(
     }
 
     fun saveSettings() {
-        val urlToSave = inputUrl.trim()
-        if (isValidUrl(urlToSave)) {
-            val normalizedUrl = normalizeBaseUrl(urlToSave)
-            preferences.putString(
-                PlatformPrefsKeys.KEY_API_URL,
-                normalizedUrl,
-            )
-            inputUrl = normalizedUrl
-        }
-        val keyToSave = inputKey.trim()
-        preferences.putString(
-            PlatformPrefsKeys.KEY_API_KEY,
-            keyToSave,
-        )
-        inputKey = keyToSave
-
-        coroutineScope.launch {
-            snackbarHostState.showSnackbar("Settings saved")
-        }
-        onBack()
+        val (savedUrl, savedKey) = persistApiSettings(preferences, inputUrl, inputKey)
+        inputUrl = savedUrl
+        inputKey = savedKey
+        showSavedMessageAndBack(coroutineScope, snackbarHostState, "Settings saved", onBack)
     }
 
     Scaffold(
@@ -252,4 +236,21 @@ private fun ThemeOption(
         Spacer(modifier = Modifier.width(8.dp))
         Text(text)
     }
+}
+
+private fun persistApiSettings(
+    preferences: PlatformPreferences,
+    inputUrl: String,
+    inputKey: String,
+): Pair<String, String> {
+    val trimmedUrl = inputUrl.trim()
+    val normalizedUrl = if (isValidUrl(trimmedUrl)) normalizeBaseUrl(trimmedUrl) else null
+    val savedUrl = normalizedUrl ?: inputUrl
+    val savedKey = inputKey.trim()
+
+    if (normalizedUrl != null) {
+        preferences.putString(PlatformPrefsKeys.KEY_API_URL, normalizedUrl)
+    }
+    preferences.putString(PlatformPrefsKeys.KEY_API_KEY, savedKey)
+    return savedUrl to savedKey
 }

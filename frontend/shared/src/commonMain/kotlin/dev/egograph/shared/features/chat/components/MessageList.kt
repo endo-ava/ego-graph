@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.domain.model.ThreadMessage
+import dev.egograph.shared.core.ui.common.ListStateContent
 import dev.egograph.shared.core.ui.common.testTagResourceId
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
@@ -60,31 +61,37 @@ fun MessageList(
             }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        if (messages.isEmpty() && !isLoading && errorMessage == null) {
-            MessageListEmpty(modifier = Modifier.align(Alignment.Center))
-        } else if (messages.isEmpty() && isLoading) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.align(Alignment.Center),
-            )
-        } else if (errorMessage != null) {
-            Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                modifier =
-                    Modifier
-                        .testTagResourceId("error_message")
-                        .align(Alignment.Center),
-            )
-        } else {
+    ListStateContent(
+        items = messages,
+        isLoading = isLoading,
+        errorMessage = errorMessage,
+        modifier = modifier.fillMaxSize(),
+        loading = { containerModifier ->
+            Box(modifier = containerModifier, contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
+            }
+        },
+        empty = { containerModifier ->
+            Box(modifier = containerModifier, contentAlignment = Alignment.Center) {
+                MessageListEmpty()
+            }
+        },
+        error = { message, containerModifier ->
+            Box(modifier = containerModifier, contentAlignment = Alignment.Center) {
+                Text(
+                    text = message,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTagResourceId("error_message"),
+                )
+            }
+        },
+        content = { _, containerModifier ->
             LazyColumn(
                 state = listState,
                 reverseLayout = true,
                 modifier =
-                    Modifier
-                        .testTagResourceId("message_list")
-                        .fillMaxSize(),
+                    containerModifier
+                        .testTagResourceId("message_list"),
                 contentPadding = PaddingValues(vertical = 16.dp),
             ) {
                 if (isLoading) {
@@ -115,8 +122,8 @@ fun MessageList(
                     )
                 }
             }
-        }
-    }
+        },
+    )
 }
 
 /**

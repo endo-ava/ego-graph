@@ -15,8 +15,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.domain.model.Thread
-import dev.egograph.shared.core.ui.common.compactIsoDateTime
 import dev.egograph.shared.core.ui.common.testTagResourceId
+import dev.egograph.shared.core.ui.common.toCompactIsoDateTime
 
 /**
  * スレッドリストアイテムコンポーネント
@@ -76,7 +76,7 @@ fun ThreadItem(
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = compactIsoDateTime(thread.createdAt),
+            text = thread.createdAt.toCompactIsoDateTime(),
             style = MaterialTheme.typography.bodySmall,
             color = contentColor.copy(alpha = 0.7f),
             modifier = Modifier.padding(top = 4.dp),

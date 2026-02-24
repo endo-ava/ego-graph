@@ -5,6 +5,7 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import dev.egograph.shared.core.domain.model.ChatRequest
 import dev.egograph.shared.core.domain.model.Message
 import dev.egograph.shared.core.domain.model.MessageRole
+import dev.egograph.shared.core.domain.model.StreamChunk
 import dev.egograph.shared.core.domain.model.ThreadMessage
 import dev.egograph.shared.core.domain.repository.ChatRepository
 import dev.egograph.shared.core.domain.repository.MessageRepository
@@ -39,6 +40,13 @@ class ChatScreenModel(
     val effect: Flow<ChatEffect> = _effect.receiveAsFlow()
 
     private val pageLimit = 50
+
+    private data class LocalSendContext(
+        val selectedThreadId: String,
+        val streamingMessageId: String,
+        val userMessage: ThreadMessage,
+        val assistantMessage: ThreadMessage,
+    )
 
     init {
         loadThreads()
@@ -180,78 +188,23 @@ class ChatScreenModel(
         if (currentState.composer.isSending) return
 
         updateComposer { it.copy(isSending = true) }
-        val selectedThreadId = currentState.threadList.selectedThread?.threadId ?: "local-thread"
-        val userMessage =
-            createLocalMessage(
-                messageId = createLocalMessageId(prefix = "user"),
-                threadId = selectedThreadId,
-                role = MessageRole.USER,
-                content = content,
-                modelName = null,
-            )
-        val streamingMessageId = createLocalMessageId(prefix = "assistant")
-        val streamingAssistantMessage =
-            createLocalMessage(
-                messageId = streamingMessageId,
-                threadId = selectedThreadId,
-                role = MessageRole.ASSISTANT,
-                content = "",
-                modelName = currentState.composer.selectedModelId,
-            )
-
-        updateMessageList {
-            it.copy(
-                messages = it.messages + userMessage + streamingAssistantMessage,
-                streamingMessageId = streamingMessageId,
-                activeAssistantTask = null,
-            )
-        }
+        val sendContext = createLocalSendContext(currentState, content)
+        appendPendingMessages(sendContext)
 
         screenModelScope.launch {
-            val request =
-                ChatRequest(
-                    threadId = currentState.threadList.selectedThread?.threadId,
-                    messages =
-                        currentState.messageList.messages.map {
-                            Message(role = it.role, content = it.content)
-                        } + Message(role = MessageRole.USER, content = content),
-                    modelName = currentState.composer.selectedModelId,
-                )
+            val request = buildChatRequest(currentState, content)
 
             chatRepository
                 .sendMessage(request)
                 .collect { result ->
                     result
                         .onSuccess { chunk ->
-                            var uiMessage: String? = null
-                            var newThreadId: String? = null
-                            updateMessageList { currentState ->
-                                val reduced = reduceChatStreamChunk(currentState, chunk, streamingMessageId)
-                                uiMessage = reduced.uiMessage
-                                newThreadId = reduced.newThreadId
-                                reduced.state
-                            }
-                            uiMessage?.let { message ->
-                                emitMessage(message)
-                            }
-                            newThreadId?.let { threadId ->
-                                handleNewThreadCreated(threadId, selectedThreadId)
-                            }
+                            applyStreamChunk(chunk, sendContext)
                         }.onFailure { error ->
-                            val message = "メッセージ送信に失敗: ${error.message}"
-                            updateMessageList {
-                                it.copy(
-                                    streamingMessageId = null,
-                                    activeAssistantTask = null,
-                                )
-                            }
-                            emitMessage(message)
+                            handleSendFailure(error)
                         }
                 }
-            if (currentState.threadList.selectedThread?.threadId != null) {
-                messageRepository.invalidateCache(currentState.threadList.selectedThread.threadId)
-            }
-            updateComposer { it.copy(isSending = false) }
+            finalizeSending(currentState)
         }
     }
 
@@ -278,6 +231,98 @@ class ChatScreenModel(
     }
 
     private fun createLocalMessageId(prefix: String): String = "$prefix-${kotlin.random.Random.nextLong().toString().replace('-', '0')}"
+
+    private fun createLocalSendContext(
+        currentState: ChatState,
+        content: String,
+    ): LocalSendContext {
+        val selectedThreadId = currentState.threadList.selectedThread?.threadId ?: "local-thread"
+        val userMessage =
+            createLocalMessage(
+                messageId = createLocalMessageId(prefix = "user"),
+                threadId = selectedThreadId,
+                role = MessageRole.USER,
+                content = content,
+                modelName = null,
+            )
+        val streamingMessageId = createLocalMessageId(prefix = "assistant")
+        val assistantMessage =
+            createLocalMessage(
+                messageId = streamingMessageId,
+                threadId = selectedThreadId,
+                role = MessageRole.ASSISTANT,
+                content = "",
+                modelName = currentState.composer.selectedModelId,
+            )
+
+        return LocalSendContext(
+            selectedThreadId = selectedThreadId,
+            streamingMessageId = streamingMessageId,
+            userMessage = userMessage,
+            assistantMessage = assistantMessage,
+        )
+    }
+
+    private fun appendPendingMessages(sendContext: LocalSendContext) {
+        updateMessageList {
+            it.copy(
+                messages = it.messages + sendContext.userMessage + sendContext.assistantMessage,
+                streamingMessageId = sendContext.streamingMessageId,
+                activeAssistantTask = null,
+            )
+        }
+    }
+
+    private fun buildChatRequest(
+        currentState: ChatState,
+        content: String,
+    ): ChatRequest =
+        ChatRequest(
+            threadId = currentState.threadList.selectedThread?.threadId,
+            messages =
+                currentState.messageList.messages.map {
+                    Message(role = it.role, content = it.content)
+                } + Message(role = MessageRole.USER, content = content),
+            modelName = currentState.composer.selectedModelId,
+        )
+
+    private suspend fun applyStreamChunk(
+        chunk: StreamChunk,
+        sendContext: LocalSendContext,
+    ) {
+        var uiMessage: String? = null
+        var newThreadId: String? = null
+        updateMessageList { currentState ->
+            val reduced = reduceChatStreamChunk(currentState, chunk, sendContext.streamingMessageId)
+            uiMessage = reduced.uiMessage
+            newThreadId = reduced.newThreadId
+            reduced.state
+        }
+        uiMessage?.let { message ->
+            emitMessage(message)
+        }
+        newThreadId?.let { threadId ->
+            handleNewThreadCreated(threadId, sendContext.selectedThreadId)
+        }
+    }
+
+    private suspend fun handleSendFailure(error: Throwable) {
+        val message = "メッセージ送信に失敗: ${error.message}"
+        updateMessageList {
+            it.copy(
+                streamingMessageId = null,
+                activeAssistantTask = null,
+            )
+        }
+        emitMessage(message)
+    }
+
+    private suspend fun finalizeSending(currentState: ChatState) {
+        currentState.threadList.selectedThread?.threadId?.let { selectedThreadId ->
+            messageRepository.invalidateCache(selectedThreadId)
+        }
+        updateComposer { it.copy(isSending = false) }
+    }
 
     private fun handleNewThreadCreated(
         newThreadId: String,
