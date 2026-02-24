@@ -15,24 +15,17 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
-import dev.egograph.shared.core.platform.PlatformPreferences
-import dev.egograph.shared.core.platform.PlatformPrefsDefaults
-import dev.egograph.shared.core.platform.PlatformPrefsKeys
-import dev.egograph.shared.core.platform.getDefaultGatewayBaseUrl
+import cafe.adriel.voyager.koin.koinScreenModel
 import dev.egograph.shared.core.platform.isValidUrl
-import dev.egograph.shared.core.platform.normalizeBaseUrl
-import dev.egograph.shared.core.ui.common.showSavedMessageAndBack
 import dev.egograph.shared.core.ui.components.SecretTextField
 import dev.egograph.shared.core.ui.components.SettingsTopBar
-import org.koin.compose.koinInject
 
 /**
  * Gateway設定画面
@@ -46,35 +39,17 @@ class GatewaySettingsScreen(
 ) : Screen {
     @Composable
     override fun Content() {
-        val preferences = koinInject<PlatformPreferences>()
-        val coroutineScope = rememberCoroutineScope()
+        val screenModel = koinScreenModel<GatewaySettingsScreenModel>()
+        val state by screenModel.state.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }
 
-        var inputGatewayUrl by remember {
-            mutableStateOf(
-                preferences
-                    .getString(
-                        PlatformPrefsKeys.KEY_GATEWAY_API_URL,
-                        PlatformPrefsDefaults.DEFAULT_GATEWAY_API_URL,
-                    ).ifBlank { getDefaultGatewayBaseUrl() },
-            )
-        }
-
-        var inputApiKey by remember {
-            mutableStateOf(
-                preferences.getString(
-                    PlatformPrefsKeys.KEY_GATEWAY_API_KEY,
-                    PlatformPrefsDefaults.DEFAULT_GATEWAY_API_KEY,
-                ),
-            )
-        }
-
-        fun saveSettings() {
-            val (savedGatewayUrl, savedApiKey) =
-                persistGatewaySettings(preferences, inputGatewayUrl, inputApiKey)
-            inputGatewayUrl = savedGatewayUrl
-            inputApiKey = savedApiKey
-            showSavedMessageAndBack(coroutineScope, snackbarHostState, "Gateway settings saved", onBack)
+        LaunchedEffect(Unit) {
+            screenModel.effect.collect { effect ->
+                when (effect) {
+                    is GatewaySettingsEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
+                    GatewaySettingsEffect.NavigateBack -> onBack()
+                }
+            }
         }
 
         Scaffold(
@@ -90,29 +65,16 @@ class GatewaySettingsScreen(
                         .padding(paddingValues),
             ) {
                 GatewaySettingsContent(
-                    gatewayUrl = inputGatewayUrl,
-                    onGatewayUrlChange = { inputGatewayUrl = it },
-                    apiKey = inputApiKey,
-                    onApiKeyChange = { inputApiKey = it },
-                    onSave = ::saveSettings,
+                    gatewayUrl = state.inputGatewayUrl,
+                    onGatewayUrlChange = screenModel::onGatewayUrlChange,
+                    apiKey = state.inputApiKey,
+                    onApiKeyChange = screenModel::onApiKeyChange,
+                    onSave = screenModel::saveSettings,
+                    isSaving = state.isSaving,
                 )
             }
         }
     }
-}
-
-private fun persistGatewaySettings(
-    preferences: PlatformPreferences,
-    gatewayUrl: String,
-    apiKey: String,
-): Pair<String, String> {
-    val normalizedGatewayUrl = normalizeBaseUrl(gatewayUrl)
-    val trimmedApiKey = apiKey.trim()
-
-    preferences.putString(PlatformPrefsKeys.KEY_GATEWAY_API_URL, normalizedGatewayUrl)
-    preferences.putString(PlatformPrefsKeys.KEY_GATEWAY_API_KEY, trimmedApiKey)
-
-    return normalizedGatewayUrl to trimmedApiKey
 }
 
 @Composable
@@ -122,6 +84,7 @@ private fun GatewaySettingsContent(
     apiKey: String,
     onApiKeyChange: (String) -> Unit,
     onSave: () -> Unit,
+    isSaving: Boolean,
 ) {
     Column(
         modifier =
@@ -169,7 +132,7 @@ private fun GatewaySettingsContent(
         Button(
             onClick = onSave,
             modifier = Modifier.fillMaxWidth(),
-            enabled = isValidUrl(gatewayUrl) && apiKey.isNotBlank(),
+            enabled = !isSaving && isValidUrl(gatewayUrl) && apiKey.isNotBlank(),
         ) {
             Text("Save Gateway Settings")
         }

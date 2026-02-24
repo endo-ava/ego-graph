@@ -19,23 +19,15 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.egograph.shared.core.platform.PlatformPreferences
-import dev.egograph.shared.core.platform.PlatformPrefsDefaults
-import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import dev.egograph.shared.core.platform.isValidUrl
-import dev.egograph.shared.core.platform.normalizeBaseUrl
 import dev.egograph.shared.core.settings.AppTheme
-import dev.egograph.shared.core.settings.ThemeRepository
-import dev.egograph.shared.core.ui.common.showSavedMessageAndBack
 import dev.egograph.shared.core.ui.common.testTagResourceId
 import dev.egograph.shared.core.ui.components.SecretTextField
 import dev.egograph.shared.core.ui.components.SettingsTopBar
@@ -46,42 +38,21 @@ import org.koin.compose.koinInject
  *
  * テーマ選択、API URL、API Keyの設定を行う。
  *
- * @param preferences プラットフォーム設定
  * @param onBack 戻るボタンコールバック
  */
 @Composable
-fun SettingsScreen(
-    preferences: PlatformPreferences,
-    onBack: () -> Unit,
-) {
-    val themeRepository = koinInject<ThemeRepository>()
-    val coroutineScope = rememberCoroutineScope()
+fun SettingsScreen(onBack: () -> Unit) {
+    val screenModel = koinInject<SettingsScreenModel>()
+    val state by screenModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val selectedTheme by themeRepository.theme.collectAsState()
 
-    var inputUrl by remember {
-        mutableStateOf(
-            preferences.getString(
-                PlatformPrefsKeys.KEY_API_URL,
-                PlatformPrefsDefaults.DEFAULT_API_URL,
-            ),
-        )
-    }
-
-    var inputKey by remember {
-        mutableStateOf(
-            preferences.getString(
-                PlatformPrefsKeys.KEY_API_KEY,
-                PlatformPrefsDefaults.DEFAULT_API_KEY,
-            ),
-        )
-    }
-
-    fun saveSettings() {
-        val (savedUrl, savedKey) = persistApiSettings(preferences, inputUrl, inputKey)
-        inputUrl = savedUrl
-        inputKey = savedKey
-        showSavedMessageAndBack(coroutineScope, snackbarHostState, "Settings saved", onBack)
+    LaunchedEffect(Unit) {
+        screenModel.effect.collect { effect ->
+            when (effect) {
+                is SettingsEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
+                SettingsEffect.NavigateBack -> onBack()
+            }
+        }
     }
 
     Scaffold(
@@ -103,24 +74,25 @@ fun SettingsScreen(
                         .padding(16.dp),
             ) {
                 AppearanceSection(
-                    selectedTheme = selectedTheme,
-                    onThemeSelected = { themeRepository.setTheme(it) },
+                    selectedTheme = state.selectedTheme,
+                    onThemeSelected = screenModel::onThemeSelected,
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 ApiConfigurationSection(
-                    inputUrl = inputUrl,
-                    onUrlChange = { inputUrl = it },
-                    inputKey = inputKey,
-                    onKeyChange = { inputKey = it },
+                    inputUrl = state.inputUrl,
+                    onUrlChange = screenModel::onUrlChange,
+                    inputKey = state.inputKey,
+                    onKeyChange = screenModel::onKeyChange,
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 SettingsActions(
-                    inputUrl = inputUrl,
-                    onSave = ::saveSettings,
+                    inputUrl = state.inputUrl,
+                    isSaving = state.isSaving,
+                    onSave = screenModel::saveSettings,
                 )
             }
         }
@@ -201,6 +173,7 @@ private fun ApiConfigurationSection(
 @Composable
 private fun SettingsActions(
     inputUrl: String,
+    isSaving: Boolean,
     onSave: () -> Unit,
 ) {
     Button(
@@ -209,7 +182,7 @@ private fun SettingsActions(
             Modifier
                 .testTagResourceId("save_settings_button")
                 .fillMaxWidth(),
-        enabled = isValidUrl(inputUrl),
+        enabled = !isSaving && isValidUrl(inputUrl),
     ) {
         Text("Save Settings")
     }
@@ -236,21 +209,4 @@ private fun ThemeOption(
         Spacer(modifier = Modifier.width(8.dp))
         Text(text)
     }
-}
-
-private fun persistApiSettings(
-    preferences: PlatformPreferences,
-    inputUrl: String,
-    inputKey: String,
-): Pair<String, String> {
-    val trimmedUrl = inputUrl.trim()
-    val normalizedUrl = if (isValidUrl(trimmedUrl)) normalizeBaseUrl(trimmedUrl) else null
-    val savedUrl = normalizedUrl ?: inputUrl
-    val savedKey = inputKey.trim()
-
-    if (normalizedUrl != null) {
-        preferences.putString(PlatformPrefsKeys.KEY_API_URL, normalizedUrl)
-    }
-    preferences.putString(PlatformPrefsKeys.KEY_API_KEY, savedKey)
-    return savedUrl to savedKey
 }

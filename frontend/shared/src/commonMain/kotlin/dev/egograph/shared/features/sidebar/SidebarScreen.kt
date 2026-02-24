@@ -211,7 +211,6 @@ class SidebarScreen : Screen {
 
                     MainView.Settings -> {
                         SettingsScreen(
-                            preferences = preferences,
                             onBack = { activeView = MainView.Chat },
                         )
                     }
