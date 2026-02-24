@@ -26,6 +26,7 @@ import cafe.adriel.voyager.koin.koinScreenModel
 import dev.egograph.shared.core.platform.isValidUrl
 import dev.egograph.shared.core.ui.components.SecretTextField
 import dev.egograph.shared.core.ui.components.SettingsTopBar
+import kotlinx.coroutines.launch
 
 /**
  * Gateway設定画面
@@ -46,7 +47,7 @@ class GatewaySettingsScreen(
         LaunchedEffect(Unit) {
             screenModel.effect.collect { effect ->
                 when (effect) {
-                    is GatewaySettingsEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
+                    is GatewaySettingsEffect.ShowMessage -> launch { snackbarHostState.showSnackbar(effect.message) }
                     GatewaySettingsEffect.NavigateBack -> onBack()
                 }
             }

@@ -4,6 +4,7 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import dev.egograph.shared.core.domain.model.SystemPromptName
 import dev.egograph.shared.core.domain.repository.SystemPromptRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,7 @@ class SystemPromptEditorScreenModel(
 
     private val _effect = Channel<SystemPromptEditorEffect>()
     val effect: Flow<SystemPromptEditorEffect> = _effect.receiveAsFlow()
+    private var loadJob: Job? = null
 
     init {
         loadSelectedPrompt()
@@ -49,23 +51,28 @@ class SystemPromptEditorScreenModel(
 
     fun loadSelectedPrompt() {
         val selectedTab = _state.value.selectedTab
-        screenModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-            repository
-                .getSystemPrompt(selectedTab)
-                .onSuccess { prompt ->
-                    _state.update { state ->
-                        state.copy(
-                            originalContent = prompt.content,
-                            draftContent = prompt.content,
-                            isLoading = false,
-                        )
+        loadJob?.cancel()
+        loadJob =
+            screenModelScope.launch {
+                _state.update { it.copy(isLoading = true) }
+                repository
+                    .getSystemPrompt(selectedTab)
+                    .onSuccess { prompt ->
+                        if (_state.value.selectedTab != selectedTab) {
+                            return@onSuccess
+                        }
+                        _state.update { state ->
+                            state.copy(
+                                originalContent = prompt.content,
+                                draftContent = prompt.content,
+                                isLoading = false,
+                            )
+                        }
+                    }.onFailure {
+                        _state.update { current -> current.copy(isLoading = false) }
+                        _effect.send(SystemPromptEditorEffect.ShowMessage("Error: ${it.message}"))
                     }
-                }.onFailure {
-                    _state.update { current -> current.copy(isLoading = false) }
-                    _effect.send(SystemPromptEditorEffect.ShowMessage("Error: ${it.message}"))
-                }
-        }
+            }
     }
 
     fun saveSelectedPrompt() {

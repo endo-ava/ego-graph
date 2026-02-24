@@ -12,6 +12,6 @@ internal fun showSavedMessageAndBack(
 ) {
     scope.launch {
         snackbarHostState.showSnackbar(message)
+        onBack()
     }
-    onBack()
 }

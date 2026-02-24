@@ -78,10 +78,9 @@ class SettingsScreenModel(
         if (current.isSaving) {
             return
         }
+        _state.update { it.copy(isSaving = true) }
 
         screenModelScope.launch {
-            _state.update { it.copy(isSaving = true) }
-
             val trimmedUrl = current.inputUrl.trim()
             val normalizedUrl = if (isValidUrl(trimmedUrl)) normalizeBaseUrl(trimmedUrl) else null
             val savedUrl = normalizedUrl ?: current.inputUrl

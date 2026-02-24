@@ -210,9 +210,13 @@ class SidebarScreen : Screen {
                     }
 
                     MainView.Settings -> {
-                        SettingsScreen(
-                            onBack = { activeView = MainView.Chat },
-                        )
+                        val settingsScreen =
+                            remember {
+                                SettingsScreen(
+                                    onBack = { activeView = MainView.Chat },
+                                )
+                            }
+                        settingsScreen.Content()
                     }
 
                     MainView.Terminal -> agentListScreen.Content()

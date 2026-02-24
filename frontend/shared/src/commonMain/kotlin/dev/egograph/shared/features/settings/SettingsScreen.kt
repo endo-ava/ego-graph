@@ -26,12 +26,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.koinScreenModel
 import dev.egograph.shared.core.platform.isValidUrl
 import dev.egograph.shared.core.settings.AppTheme
 import dev.egograph.shared.core.ui.common.testTagResourceId
 import dev.egograph.shared.core.ui.components.SecretTextField
 import dev.egograph.shared.core.ui.components.SettingsTopBar
-import org.koin.compose.koinInject
+import kotlinx.coroutines.launch
 
 /**
  * 設定画面
@@ -40,60 +42,64 @@ import org.koin.compose.koinInject
  *
  * @param onBack 戻るボタンコールバック
  */
-@Composable
-fun SettingsScreen(onBack: () -> Unit) {
-    val screenModel = koinInject<SettingsScreenModel>()
-    val state by screenModel.state.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
+class SettingsScreen(
+    private val onBack: () -> Unit = {},
+) : Screen {
+    @Composable
+    override fun Content() {
+        val screenModel = koinScreenModel<SettingsScreenModel>()
+        val state by screenModel.state.collectAsState()
+        val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) {
-        screenModel.effect.collect { effect ->
-            when (effect) {
-                is SettingsEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
-                SettingsEffect.NavigateBack -> onBack()
+        LaunchedEffect(Unit) {
+            screenModel.effect.collect { effect ->
+                when (effect) {
+                    is SettingsEffect.ShowMessage -> launch { snackbarHostState.showSnackbar(effect.message) }
+                    SettingsEffect.NavigateBack -> onBack()
+                }
             }
         }
-    }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            SettingsTopBar(title = "Settings", onBack = onBack)
-        },
-    ) { paddingValues ->
-        Surface(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-        ) {
-            Column(
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                SettingsTopBar(title = "Settings", onBack = onBack)
+            },
+        ) { paddingValues ->
+            Surface(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(paddingValues),
             ) {
-                AppearanceSection(
-                    selectedTheme = state.selectedTheme,
-                    onThemeSelected = screenModel::onThemeSelected,
-                )
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                ) {
+                    AppearanceSection(
+                        selectedTheme = state.selectedTheme,
+                        onThemeSelected = screenModel::onThemeSelected,
+                    )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                ApiConfigurationSection(
-                    inputUrl = state.inputUrl,
-                    onUrlChange = screenModel::onUrlChange,
-                    inputKey = state.inputKey,
-                    onKeyChange = screenModel::onKeyChange,
-                )
+                    ApiConfigurationSection(
+                        inputUrl = state.inputUrl,
+                        onUrlChange = screenModel::onUrlChange,
+                        inputKey = state.inputKey,
+                        onKeyChange = screenModel::onKeyChange,
+                    )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                SettingsActions(
-                    inputUrl = state.inputUrl,
-                    isSaving = state.isSaving,
-                    onSave = screenModel::saveSettings,
-                )
+                    SettingsActions(
+                        inputUrl = state.inputUrl,
+                        isSaving = state.isSaving,
+                        onSave = screenModel::saveSettings,
+                    )
+                }
             }
         }
     }

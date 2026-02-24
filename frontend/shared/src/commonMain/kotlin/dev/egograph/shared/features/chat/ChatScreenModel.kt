@@ -193,18 +193,20 @@ class ChatScreenModel(
 
         screenModelScope.launch {
             val request = buildChatRequest(currentState, content)
-
-            chatRepository
-                .sendMessage(request)
-                .collect { result ->
-                    result
-                        .onSuccess { chunk ->
-                            applyStreamChunk(chunk, sendContext)
-                        }.onFailure { error ->
-                            handleSendFailure(error)
-                        }
-                }
-            finalizeSending(currentState)
+            try {
+                chatRepository
+                    .sendMessage(request)
+                    .collect { result ->
+                        result
+                            .onSuccess { chunk ->
+                                applyStreamChunk(chunk, sendContext)
+                            }.onFailure { error ->
+                                handleSendFailure(error)
+                            }
+                    }
+            } finally {
+                finalizeSending(currentState)
+            }
         }
     }
 
