@@ -76,12 +76,10 @@ fun ThreadItem(
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = formatThreadDate(thread.createdAt),
+            text = compactIsoDateTime(thread.createdAt),
             style = MaterialTheme.typography.bodySmall,
             color = contentColor.copy(alpha = 0.7f),
             modifier = Modifier.padding(top = 4.dp),
         )
     }
 }
-
-private fun formatThreadDate(isoString: String): String = compactIsoDateTime(isoString)

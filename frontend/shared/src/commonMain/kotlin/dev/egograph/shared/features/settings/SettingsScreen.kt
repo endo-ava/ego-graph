@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.core.platform.PlatformPrefsDefaults
 import dev.egograph.shared.core.platform.PlatformPrefsKeys
+import dev.egograph.shared.core.platform.isValidUrl
 import dev.egograph.shared.core.platform.normalizeBaseUrl
 import dev.egograph.shared.core.settings.AppTheme
 import dev.egograph.shared.core.settings.ThemeRepository
@@ -135,7 +136,7 @@ fun SettingsScreen(
 
                 SettingsActions(
                     inputUrl = inputUrl,
-                    onSave = { saveSettings() },
+                    onSave = ::saveSettings,
                 )
             }
         }
@@ -251,11 +252,4 @@ private fun ThemeOption(
         Spacer(modifier = Modifier.width(8.dp))
         Text(text)
     }
-}
-
-private fun isValidUrl(url: String): Boolean {
-    val trimmed = url.trim()
-    val hasValidScheme = trimmed.startsWith("http://") || trimmed.startsWith("https://")
-    val hostPortPart = trimmed.substringAfter("://", missingDelimiterValue = "")
-    return trimmed.isNotEmpty() && hasValidScheme && hostPortPart.isNotBlank()
 }

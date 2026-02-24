@@ -117,7 +117,7 @@ fun SessionListItem(
         }
 
         Text(
-            text = formatSessionDate(session.lastActivity),
+            text = compactIsoDateTime(session.lastActivity),
             style =
                 MaterialTheme.typography.labelSmall.copy(
                     fontFamily = FontFamily.Monospace,
@@ -134,5 +134,3 @@ private fun getStatusText(status: SessionStatus): String =
         SessionStatus.DISCONNECTED -> "STANDBY"
         SessionStatus.FAILED -> "ERROR"
     }
-
-private fun formatSessionDate(isoString: String): String = compactIsoDateTime(isoString)

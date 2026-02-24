@@ -102,7 +102,7 @@ class GatewaySettingsScreen(
                     onGatewayUrlChange = { inputGatewayUrl = it },
                     apiKey = inputApiKey,
                     onApiKeyChange = { inputApiKey = it },
-                    onSave = { saveSettings() },
+                    onSave = ::saveSettings,
                 )
             }
         }
