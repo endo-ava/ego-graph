@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,13 +31,12 @@ import androidx.compose.ui.unit.dp
 /**
  * ターミナル画面のヘッダー
  *
- * エージェントID、接続状態、戻るボタン、音声入力を含む。
+ * エージェントID、接続状態、戻るボタンを含む。
  *
  * @param agentId エージェントID
  * @param isLoading 接続中フラグ
  * @param error エラーメッセージ（nullの場合は正常）
  * @param onBack 戻るボタンコールバック
- * @param onVoiceInputToggle 音声入力切替コールバック
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +45,6 @@ fun TerminalHeader(
     isLoading: Boolean,
     error: String?,
     onBack: () -> Unit,
-    onVoiceInputToggle: () -> Unit = {},
 ) {
     CenterAlignedTopAppBar(
         title = {
@@ -119,14 +116,6 @@ fun TerminalHeader(
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to list")
-            }
-        },
-        actions = {
-            IconButton(onClick = onVoiceInputToggle) {
-                Icon(
-                    imageVector = Icons.Filled.Mic,
-                    contentDescription = "Voice Input",
-                )
             }
         },
     )
