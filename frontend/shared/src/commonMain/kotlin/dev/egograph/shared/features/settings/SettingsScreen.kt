@@ -2,7 +2,6 @@ package dev.egograph.shared.features.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,18 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.Button
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -38,11 +27,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.core.platform.PlatformPrefsDefaults
@@ -50,6 +34,9 @@ import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import dev.egograph.shared.core.platform.normalizeBaseUrl
 import dev.egograph.shared.core.settings.AppTheme
 import dev.egograph.shared.core.settings.ThemeRepository
+import dev.egograph.shared.core.ui.common.testTagResourceId
+import dev.egograph.shared.core.ui.components.SecretTextField
+import dev.egograph.shared.core.ui.components.SettingsTopBar
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -61,7 +48,6 @@ import org.koin.compose.koinInject
  * @param preferences プラットフォーム設定
  * @param onBack 戻るボタンコールバック
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     preferences: PlatformPreferences,
@@ -90,8 +76,6 @@ fun SettingsScreen(
         )
     }
 
-    var isKeyVisible by remember { mutableStateOf(false) }
-
     fun saveSettings() {
         val urlToSave = inputUrl.trim()
         if (isValidUrl(urlToSave)) {
@@ -118,22 +102,7 @@ fun SettingsScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    OutlinedButton(
-                        onClick = onBack,
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp),
-                        modifier =
-                            Modifier
-                                .height(32.dp)
-                                .widthIn(min = 72.dp),
-                    ) {
-                        Text("Back")
-                    }
-                },
-            )
+            SettingsTopBar(title = "Settings", onBack = onBack)
         },
     ) { paddingValues ->
         Surface(
@@ -160,8 +129,6 @@ fun SettingsScreen(
                     onUrlChange = { inputUrl = it },
                     inputKey = inputKey,
                     onKeyChange = { inputKey = it },
-                    isKeyVisible = isKeyVisible,
-                    onKeyVisibilityChange = { isKeyVisible = it },
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -203,8 +170,6 @@ private fun ApiConfigurationSection(
     onUrlChange: (String) -> Unit,
     inputKey: String,
     onKeyChange: (String) -> Unit,
-    isKeyVisible: Boolean,
-    onKeyVisibilityChange: (Boolean) -> Unit,
 ) {
     Text(
         text = "API Configuration",
@@ -219,8 +184,7 @@ private fun ApiConfigurationSection(
         placeholder = { Text("https://api.egograph.dev") },
         modifier =
             Modifier
-                .semantics { testTagsAsResourceId = true }
-                .testTag("api_url_input")
+                .testTagResourceId("api_url_input")
                 .fillMaxWidth(),
         singleLine = true,
         isError = inputUrl.isNotBlank() && !isValidUrl(inputUrl),
@@ -235,26 +199,17 @@ private fun ApiConfigurationSection(
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    OutlinedTextField(
+    SecretTextField(
         value = inputKey,
         onValueChange = onKeyChange,
-        label = { Text("API Key") },
-        placeholder = { Text("Optional: Enter your API key") },
-        visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        trailingIcon = {
-            val description = if (isKeyVisible) "Hide API Key" else "Show API Key"
-            val icon = if (isKeyVisible) Icons.Default.LockOpen else Icons.Default.Lock
-
-            IconButton(onClick = { onKeyVisibilityChange(!isKeyVisible) }) {
-                Icon(imageVector = icon, contentDescription = description)
-            }
-        },
+        label = "API Key",
+        placeholder = "Optional: Enter your API key",
         modifier =
             Modifier
-                .semantics { testTagsAsResourceId = true }
-                .testTag("api_key_input")
+                .testTagResourceId("api_key_input")
                 .fillMaxWidth(),
-        singleLine = true,
+        showContentDescription = "Show API Key",
+        hideContentDescription = "Hide API Key",
     )
 }
 
@@ -267,8 +222,7 @@ private fun SettingsActions(
         onClick = onSave,
         modifier =
             Modifier
-                .semantics { testTagsAsResourceId = true }
-                .testTag("save_settings_button")
+                .testTagResourceId("save_settings_button")
                 .fillMaxWidth(),
         enabled = isValidUrl(inputUrl),
     ) {

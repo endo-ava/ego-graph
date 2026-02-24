@@ -12,12 +12,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.domain.model.Thread
+import dev.egograph.shared.core.ui.common.compactIsoDateTime
+import dev.egograph.shared.core.ui.common.testTagResourceId
 
 /**
  * スレッドリストアイテムコンポーネント
@@ -58,8 +57,7 @@ fun ThreadItem(
     Column(
         modifier =
             modifier
-                .semantics { testTagsAsResourceId = true }
-                .testTag("thread_item")
+                .testTagResourceId("thread_item")
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .background(backgroundColor)
@@ -86,17 +84,4 @@ fun ThreadItem(
     }
 }
 
-// Simple date formatter for "2023-10-27T10:00:00Z" -> "MM/DD HH:MM"
-// This is a naive implementation since we don't have kotlinx-datetime yet.
-private fun formatThreadDate(isoString: String): String {
-    try {
-        if (isoString.length >= 16) {
-            val datePart = isoString.substring(5, 10).replace('-', '/')
-            val timePart = isoString.substring(11, 16)
-            return "$datePart $timePart"
-        }
-    } catch (e: Exception) {
-        // Fallback to original string if parsing fails
-    }
-    return isoString
-}
+private fun formatThreadDate(isoString: String): String = compactIsoDateTime(isoString)

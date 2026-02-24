@@ -23,15 +23,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.egograph.shared.core.domain.model.terminal.Session
 import dev.egograph.shared.core.domain.model.terminal.SessionStatus
+import dev.egograph.shared.core.ui.common.compactIsoDateTime
+import dev.egograph.shared.core.ui.common.testTagResourceId
 
 /**
  * セッションリストアイテムコンポーネント
@@ -64,8 +63,7 @@ fun SessionListItem(
     Row(
         modifier =
             modifier
-                .semantics { testTagsAsResourceId = true }
-                .testTag("session_item")
+                .testTagResourceId("session_item")
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(6.dp))
                 .background(backgroundColor)
@@ -137,15 +135,4 @@ private fun getStatusText(status: SessionStatus): String =
         SessionStatus.FAILED -> "ERROR"
     }
 
-private fun formatSessionDate(isoString: String): String {
-    try {
-        if (isoString.length >= 16) {
-            val datePart = isoString.substring(5, 10).replace('-', '/')
-            val timePart = isoString.substring(11, 16)
-            return "$datePart $timePart"
-        }
-    } catch (_: Exception) {
-        // パース失敗時は元の文字列を返す（フォールバック）
-    }
-    return isoString
-}
+private fun formatSessionDate(isoString: String): String = compactIsoDateTime(isoString)

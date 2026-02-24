@@ -19,11 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.domain.model.ThreadMessage
+import dev.egograph.shared.core.ui.common.testTagResourceId
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 
@@ -76,8 +74,7 @@ fun MessageList(
                 color = MaterialTheme.colorScheme.error,
                 modifier =
                     Modifier
-                        .semantics { testTagsAsResourceId = true }
-                        .testTag("error_message")
+                        .testTagResourceId("error_message")
                         .align(Alignment.Center),
             )
         } else {
@@ -86,8 +83,7 @@ fun MessageList(
                 reverseLayout = true,
                 modifier =
                     Modifier
-                        .semantics { testTagsAsResourceId = true }
-                        .testTag("message_list")
+                        .testTagResourceId("message_list")
                         .fillMaxSize(),
                 contentPadding = PaddingValues(vertical = 16.dp),
             ) {

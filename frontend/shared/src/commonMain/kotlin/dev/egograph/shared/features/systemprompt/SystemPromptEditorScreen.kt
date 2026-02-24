@@ -22,13 +22,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import dev.egograph.shared.core.domain.model.SystemPromptName
 import dev.egograph.shared.core.domain.repository.SystemPromptRepository
+import dev.egograph.shared.core.ui.common.testTagResourceId
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -92,8 +90,7 @@ class SystemPromptEditorScreen(
                             enabled = !isLoading,
                             modifier =
                                 Modifier
-                                    .semantics { testTagsAsResourceId = true }
-                                    .testTag("back_button"),
+                                    .testTagResourceId("back_button"),
                         ) {
                             Text("Cancel")
                         }
@@ -120,8 +117,7 @@ class SystemPromptEditorScreen(
                             enabled = !isLoading && draftContent != originalContent,
                             modifier =
                                 Modifier
-                                    .semantics { testTagsAsResourceId = true }
-                                    .testTag("save_prompt_button"),
+                                    .testTagResourceId("save_prompt_button"),
                         ) {
                             Text("Save")
                         }
