@@ -112,13 +112,17 @@ def list_sessions(pattern: re.Pattern[str] = DEFAULT_SESSION_PATTERN) -> list[Se
                 name,
                 e,
             )
-            # パースできない場合は作成日時をフォールバックとして使用
             try:
                 created_at = _parse_tmux_timestamp(created_str)
                 last_activity = created_at
             except ValueError:
-                logger.warning("Skipping session due to timestamp errors: %s", name)
-                continue
+                fallback_now = datetime.now(tz=timezone.utc)
+                logger.warning(
+                    "Falling back to current time for session %s due to timestamp errors",
+                    name,
+                )
+                created_at = fallback_now
+                last_activity = fallback_now
 
         sessions.append(
             Session(
@@ -175,8 +179,9 @@ def session_exists(session_name: str) -> bool:
         セッションが存在する場合は True、そうでない場合は False
     """
     try:
+        target = f"={session_name}"
         subprocess.run(
-            ["tmux", "has-session", "-t", session_name],
+            ["tmux", "has-session", "-t", target],
             capture_output=True,
             check=True,
             timeout=TMUX_COMMAND_TIMEOUT_SECONDS,
