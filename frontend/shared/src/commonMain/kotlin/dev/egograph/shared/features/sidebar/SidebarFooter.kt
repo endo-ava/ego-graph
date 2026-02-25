@@ -24,11 +24,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.egograph.shared.core.ui.common.testTagResourceId
 
 @Composable
 fun SidebarFooter(
@@ -96,8 +94,7 @@ private fun FooterIconButton(
         modifier =
             modifier
                 .height(36.dp)
-                .semantics { testTagsAsResourceId = true }
-                .testTag(testTag),
+                .testTagResourceId(testTag),
     ) {
         Box(
             modifier = Modifier.size(36.dp),
@@ -131,8 +128,7 @@ private fun FooterIconWithLabelButton(
         modifier =
             modifier
                 .height(36.dp)
-                .semantics { testTagsAsResourceId = true }
-                .testTag(testTag),
+                .testTagResourceId(testTag),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp),

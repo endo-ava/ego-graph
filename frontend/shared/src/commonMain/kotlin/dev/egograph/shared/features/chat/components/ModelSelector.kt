@@ -21,12 +21,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.egograph.shared.core.domain.model.LLMModel
+import dev.egograph.shared.core.ui.common.testTagResourceId
 
 /**
  * モデル選択コンポーネント
@@ -67,8 +65,7 @@ fun ModelSelector(
     Box(
         modifier =
             modifier
-                .semantics { testTagsAsResourceId = true }
-                .testTag("model_selector"),
+                .testTagResourceId("model_selector"),
     ) {
         Surface(
             color = MaterialTheme.colorScheme.secondaryContainer,
@@ -76,8 +73,7 @@ fun ModelSelector(
             shape = MaterialTheme.shapes.small,
             modifier =
                 Modifier
-                    .semantics { testTagsAsResourceId = true }
-                    .testTag("model_selector_surface")
+                    .testTagResourceId("model_selector_surface")
                     .widthIn(max = 160.dp)
                     .clickable(enabled = isEnabled) { expanded = !expanded },
         ) {
@@ -92,8 +88,7 @@ fun ModelSelector(
                     overflow = TextOverflow.Ellipsis,
                     modifier =
                         Modifier
-                            .semantics { testTagsAsResourceId = true }
-                            .testTag("model_selector_label"),
+                            .testTagResourceId("model_selector_label"),
                 )
                 Icon(
                     imageVector = Icons.Filled.ArrowDropDown,

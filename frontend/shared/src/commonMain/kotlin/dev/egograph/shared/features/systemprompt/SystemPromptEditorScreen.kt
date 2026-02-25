@@ -15,22 +15,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
-import dev.egograph.shared.core.domain.model.SystemPromptName
-import dev.egograph.shared.core.domain.repository.SystemPromptRepository
-import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
+import cafe.adriel.voyager.koin.koinScreenModel
+import dev.egograph.shared.core.ui.common.testTagResourceId
 
 /**
  * システムプロンプトエディタ画面
@@ -44,34 +37,16 @@ class SystemPromptEditorScreen(
 ) : Screen {
     @Composable
     override fun Content() {
-        val repository = koinInject<SystemPromptRepository>()
-        val scope = rememberCoroutineScope()
+        val screenModel = koinScreenModel<SystemPromptEditorScreenModel>()
+        val state by screenModel.state.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }
 
-        var selectedTab by remember { mutableStateOf(SystemPromptName.USER) }
-        var originalContent by remember { mutableStateOf("") }
-        var draftContent by remember { mutableStateOf("") }
-        var isLoading by remember { mutableStateOf(false) }
-
-        suspend fun fetchContent() {
-            isLoading = true
-            try {
-                val result = repository.getSystemPrompt(selectedTab)
-                result
-                    .onSuccess {
-                        originalContent = it.content
-                        draftContent = it.content
-                    }.onFailure {
-                        snackbarHostState.showSnackbar("Error: ${it.message}")
-                    }
-            } finally {
-                isLoading = false
+        LaunchedEffect(Unit) {
+            screenModel.effect.collect { effect ->
+                when (effect) {
+                    is SystemPromptEditorEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
+                }
             }
-        }
-
-        // Fetch content when tab changes
-        LaunchedEffect(selectedTab) {
-            fetchContent()
         }
 
         Scaffold(
@@ -79,8 +54,8 @@ class SystemPromptEditorScreen(
             bottomBar = {
                 Column {
                     SystemPromptTabs(
-                        selectedTab = selectedTab,
-                        onTabSelected = { selectedTab = it },
+                        selectedTab = state.selectedTab,
+                        onTabSelected = screenModel::onTabSelected,
                     )
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -89,39 +64,20 @@ class SystemPromptEditorScreen(
                         Spacer(Modifier.weight(1f))
                         TextButton(
                             onClick = onBack,
-                            enabled = !isLoading,
+                            enabled = !state.isLoading,
                             modifier =
                                 Modifier
-                                    .semantics { testTagsAsResourceId = true }
-                                    .testTag("back_button"),
+                                    .testTagResourceId("back_button"),
                         ) {
                             Text("Cancel")
                         }
                         Spacer(Modifier.width(8.dp))
                         Button(
-                            onClick = {
-                                scope.launch {
-                                    isLoading = true
-                                    try {
-                                        val result = repository.updateSystemPrompt(selectedTab, draftContent)
-                                        result
-                                            .onSuccess {
-                                                originalContent = it.content
-                                                draftContent = it.content
-                                                snackbarHostState.showSnackbar("Saved successfully")
-                                            }.onFailure {
-                                                snackbarHostState.showSnackbar("Error: ${it.message}")
-                                            }
-                                    } finally {
-                                        isLoading = false
-                                    }
-                                }
-                            },
-                            enabled = !isLoading && draftContent != originalContent,
+                            onClick = screenModel::saveSelectedPrompt,
+                            enabled = state.canSave,
                             modifier =
                                 Modifier
-                                    .semantics { testTagsAsResourceId = true }
-                                    .testTag("save_prompt_button"),
+                                    .testTagResourceId("save_prompt_button"),
                         ) {
                             Text("Save")
                         }
@@ -130,7 +86,7 @@ class SystemPromptEditorScreen(
             },
         ) { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-                if (isLoading) {
+                if (state.isLoading) {
                     CircularProgressIndicator(
                         modifier =
                             Modifier
@@ -140,9 +96,9 @@ class SystemPromptEditorScreen(
                 }
 
                 SystemPromptEditor(
-                    content = draftContent,
-                    onContentChange = { draftContent = it },
-                    enabled = !isLoading,
+                    content = state.draftContent,
+                    onContentChange = screenModel::onDraftChanged,
+                    enabled = !state.isLoading,
                     modifier =
                         Modifier
                             .weight(1f)

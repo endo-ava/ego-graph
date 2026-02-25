@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.egograph.shared.core.domain.model.terminal.Session
 import dev.egograph.shared.core.domain.model.terminal.SessionStatus
+import dev.egograph.shared.core.ui.common.ListStateContent
 
 /**
  * ターミナルセッション一覧コンポーネント
@@ -157,29 +158,33 @@ fun SessionList(
             )
         }
 
-        when {
-            isLoading && sessions.isEmpty() -> {
-                SessionListLoading(modifier = Modifier.fillMaxSize())
-            }
-            error != null -> {
+        ListStateContent(
+            items = sessions,
+            isLoading = isLoading,
+            errorMessage = error,
+            modifier = Modifier.fillMaxSize(),
+            loading = { containerModifier ->
+                SessionListLoading(modifier = containerModifier)
+            },
+            empty = { containerModifier ->
+                SessionListEmpty(modifier = containerModifier)
+            },
+            error = { message, containerModifier ->
                 SessionListError(
-                    error = error,
+                    error = message,
                     onRefresh = onRefresh,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = containerModifier,
                 )
-            }
-            sessions.isEmpty() -> {
-                SessionListEmpty(modifier = Modifier.fillMaxSize())
-            }
-            else -> {
+            },
+            content = { items, containerModifier ->
                 SessionListContent(
-                    sessions = sessions,
+                    sessions = items,
                     selectedSessionId = selectedSessionId,
                     onSessionClick = onSessionClick,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = containerModifier,
                 )
-            }
-        }
+            },
+        )
     }
 }
 
