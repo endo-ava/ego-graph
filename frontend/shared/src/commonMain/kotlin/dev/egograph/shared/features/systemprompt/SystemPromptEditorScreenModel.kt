@@ -29,7 +29,7 @@ class SystemPromptEditorScreenModel(
     private val _state = MutableStateFlow(SystemPromptEditorState())
     val state: StateFlow<SystemPromptEditorState> = _state.asStateFlow()
 
-    private val _effect = Channel<SystemPromptEditorEffect>()
+    private val _effect = Channel<SystemPromptEditorEffect>(Channel.BUFFERED)
     val effect: Flow<SystemPromptEditorEffect> = _effect.receiveAsFlow()
     private var loadJob: Job? = null
 
