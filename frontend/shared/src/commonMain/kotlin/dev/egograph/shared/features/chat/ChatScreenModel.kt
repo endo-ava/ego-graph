@@ -312,11 +312,12 @@ class ChatScreenModel(
         val message = "メッセージ送信に失敗: ${error.message}"
         updateMessageList { currentState ->
             val streamingId = currentState.streamingMessageId
-            val filteredMessages = if (streamingId != null) {
-                currentState.messages.filter { it.messageId != streamingId }
-            } else {
-                currentState.messages
-            }
+            val filteredMessages =
+                if (streamingId != null) {
+                    currentState.messages.filter { it.messageId != streamingId }
+                } else {
+                    currentState.messages
+                }
             currentState.copy(
                 messages = filteredMessages,
                 streamingMessageId = null,

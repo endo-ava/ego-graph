@@ -68,11 +68,12 @@ class GatewaySettingsScreenModel(
         }
 
         // バリデーション: URLとAPI Keyの両方をチェック
-        val validationError = when {
-            !isValidUrl(current.inputGatewayUrl) -> "有効なGateway URLを入力してください"
-            current.inputApiKey.isBlank() -> "API Keyを入力してください"
-            else -> null
-        }
+        val validationError =
+            when {
+                !isValidUrl(current.inputGatewayUrl) -> "有効なGateway URLを入力してください"
+                current.inputApiKey.isBlank() -> "API Keyを入力してください"
+                else -> null
+            }
 
         if (validationError != null) {
             screenModelScope.launch {
@@ -103,7 +104,6 @@ class GatewaySettingsScreenModel(
             } finally {
                 _state.update { it.copy(isSaving = false) }
             }
+        }
     }
-}
-
 }

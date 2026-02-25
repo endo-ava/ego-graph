@@ -105,7 +105,6 @@ class SettingsScreenModel(
             } finally {
                 _state.update { it.copy(isSaving = false) }
             }
+        }
     }
-}
-
 }
