@@ -310,8 +310,15 @@ class ChatScreenModel(
 
     private suspend fun handleSendFailure(error: Throwable) {
         val message = "メッセージ送信に失敗: ${error.message}"
-        updateMessageList {
-            it.copy(
+        updateMessageList { currentState ->
+            val streamingId = currentState.streamingMessageId
+            val filteredMessages = if (streamingId != null) {
+                currentState.messages.filter { it.messageId != streamingId }
+            } else {
+                currentState.messages
+            }
+            currentState.copy(
+                messages = filteredMessages,
                 streamingMessageId = null,
                 activeAssistantTask = null,
             )

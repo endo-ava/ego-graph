@@ -50,7 +50,7 @@ class SettingsScreenModel(
         )
     val state: StateFlow<SettingsState> = _state.asStateFlow()
 
-    private val _effect = Channel<SettingsEffect>()
+    private val _effect = Channel<SettingsEffect>(Channel.BUFFERED)
     val effect: Flow<SettingsEffect> = _effect.receiveAsFlow()
 
     init {
@@ -81,25 +81,31 @@ class SettingsScreenModel(
         _state.update { it.copy(isSaving = true) }
 
         screenModelScope.launch {
-            val trimmedUrl = current.inputUrl.trim()
-            val normalizedUrl = if (isValidUrl(trimmedUrl)) normalizeBaseUrl(trimmedUrl) else null
-            val savedUrl = normalizedUrl ?: current.inputUrl
-            val savedKey = current.inputKey.trim()
+            try {
+                val trimmedUrl = current.inputUrl.trim()
+                val normalizedUrl = if (isValidUrl(trimmedUrl)) normalizeBaseUrl(trimmedUrl) else null
+                val savedUrl = normalizedUrl ?: current.inputUrl
+                val savedKey = current.inputKey.trim()
 
-            if (normalizedUrl != null) {
-                preferences.putString(PlatformPrefsKeys.KEY_API_URL, normalizedUrl)
-            }
-            preferences.putString(PlatformPrefsKeys.KEY_API_KEY, savedKey)
+                if (normalizedUrl != null) {
+                    preferences.putString(PlatformPrefsKeys.KEY_API_URL, normalizedUrl)
+                }
+                preferences.putString(PlatformPrefsKeys.KEY_API_KEY, savedKey)
 
-            _state.update {
-                it.copy(
-                    inputUrl = savedUrl,
-                    inputKey = savedKey,
-                    isSaving = false,
-                )
+                _state.update {
+                    it.copy(
+                        inputUrl = savedUrl,
+                        inputKey = savedKey,
+                    )
+                }
+                _effect.send(SettingsEffect.ShowMessage("Settings saved"))
+                _effect.send(SettingsEffect.NavigateBack)
+            } catch (e: Exception) {
+                _effect.send(SettingsEffect.ShowMessage("Failed to save settings: ${e.message}"))
+            } finally {
+                _state.update { it.copy(isSaving = false) }
             }
-            _effect.send(SettingsEffect.ShowMessage("Settings saved"))
-            _effect.send(SettingsEffect.NavigateBack)
-        }
     }
+}
+
 }

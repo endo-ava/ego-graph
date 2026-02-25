@@ -32,7 +32,7 @@ class GatewaySettingsScreenModel(
     private val _state = MutableStateFlow(GatewaySettingsState())
     val state: StateFlow<GatewaySettingsState> = _state.asStateFlow()
 
-    private val _effect = Channel<GatewaySettingsEffect>()
+    private val _effect = Channel<GatewaySettingsEffect>(Channel.BUFFERED)
     val effect: Flow<GatewaySettingsEffect> = _effect.receiveAsFlow()
 
     init {
@@ -63,27 +63,47 @@ class GatewaySettingsScreenModel(
 
     fun saveSettings() {
         val current = _state.value
-        if (current.isSaving || !isValidUrl(current.inputGatewayUrl) || current.inputApiKey.isBlank()) {
+        if (current.isSaving) {
+            return
+        }
+
+        // バリデーション: URLとAPI Keyの両方をチェック
+        val validationError = when {
+            !isValidUrl(current.inputGatewayUrl) -> "有効なGateway URLを入力してください"
+            current.inputApiKey.isBlank() -> "API Keyを入力してください"
+            else -> null
+        }
+
+        if (validationError != null) {
+            screenModelScope.launch {
+                _effect.send(GatewaySettingsEffect.ShowMessage(validationError))
+            }
             return
         }
 
         screenModelScope.launch {
             _state.update { it.copy(isSaving = true) }
-            val normalizedGatewayUrl = normalizeBaseUrl(current.inputGatewayUrl)
-            val trimmedApiKey = current.inputApiKey.trim()
+            try {
+                val normalizedGatewayUrl = normalizeBaseUrl(current.inputGatewayUrl)
+                val trimmedApiKey = current.inputApiKey.trim()
 
-            preferences.putString(PlatformPrefsKeys.KEY_GATEWAY_API_URL, normalizedGatewayUrl)
-            preferences.putString(PlatformPrefsKeys.KEY_GATEWAY_API_KEY, trimmedApiKey)
+                preferences.putString(PlatformPrefsKeys.KEY_GATEWAY_API_URL, normalizedGatewayUrl)
+                preferences.putString(PlatformPrefsKeys.KEY_GATEWAY_API_KEY, trimmedApiKey)
 
-            _state.update {
-                it.copy(
-                    inputGatewayUrl = normalizedGatewayUrl,
-                    inputApiKey = trimmedApiKey,
-                    isSaving = false,
-                )
+                _state.update {
+                    it.copy(
+                        inputGatewayUrl = normalizedGatewayUrl,
+                        inputApiKey = trimmedApiKey,
+                    )
+                }
+                _effect.send(GatewaySettingsEffect.ShowMessage("Gateway settings saved"))
+                _effect.send(GatewaySettingsEffect.NavigateBack)
+            } catch (e: Exception) {
+                _effect.send(GatewaySettingsEffect.ShowMessage("Failed to save settings: ${e.message}"))
+            } finally {
+                _state.update { it.copy(isSaving = false) }
             }
-            _effect.send(GatewaySettingsEffect.ShowMessage("Gateway settings saved"))
-            _effect.send(GatewaySettingsEffect.NavigateBack)
-        }
     }
+}
+
 }
