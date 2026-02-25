@@ -36,7 +36,7 @@ class ChatScreenModel(
     private val _state = MutableStateFlow(ChatState())
     val state: StateFlow<ChatState> = _state.asStateFlow()
 
-    private val _effect = Channel<ChatEffect>()
+    private val _effect = Channel<ChatEffect>(Channel.BUFFERED)
     val effect: Flow<ChatEffect> = _effect.receiveAsFlow()
 
     private val pageLimit = 50
@@ -201,7 +201,7 @@ class ChatScreenModel(
                             .onSuccess { chunk ->
                                 applyStreamChunk(chunk, sendContext)
                             }.onFailure { error ->
-                                handleSendFailure(error)
+                                handleSendFailure(error, sendContext)
                             }
                     }
             } finally {
@@ -308,15 +308,16 @@ class ChatScreenModel(
         }
     }
 
-    private suspend fun handleSendFailure(error: Throwable) {
+    private suspend fun handleSendFailure(
+        error: Throwable,
+        sendContext: LocalSendContext,
+    ) {
         val message = "メッセージ送信に失敗: ${error.message}"
         updateMessageList { currentState ->
-            val streamingId = currentState.streamingMessageId
             val filteredMessages =
-                if (streamingId != null) {
-                    currentState.messages.filter { it.messageId != streamingId }
-                } else {
-                    currentState.messages
+                currentState.messages.filter { messageItem ->
+                    messageItem.messageId != sendContext.userMessage.messageId &&
+                        messageItem.messageId != sendContext.streamingMessageId
                 }
             currentState.copy(
                 messages = filteredMessages,
@@ -328,10 +329,10 @@ class ChatScreenModel(
     }
 
     private suspend fun finalizeSending(currentState: ChatState) {
+        updateComposer { it.copy(isSending = false) }
         currentState.threadList.selectedThread?.threadId?.let { selectedThreadId ->
             messageRepository.invalidateCache(selectedThreadId)
         }
-        updateComposer { it.copy(isSending = false) }
     }
 
     private fun handleNewThreadCreated(

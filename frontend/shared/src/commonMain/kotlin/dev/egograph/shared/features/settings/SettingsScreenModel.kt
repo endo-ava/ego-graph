@@ -9,6 +9,7 @@ import dev.egograph.shared.core.platform.isValidUrl
 import dev.egograph.shared.core.platform.normalizeBaseUrl
 import dev.egograph.shared.core.settings.AppTheme
 import dev.egograph.shared.core.settings.ThemeRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,6 +85,10 @@ class SettingsScreenModel(
             try {
                 val trimmedUrl = current.inputUrl.trim()
                 val normalizedUrl = if (isValidUrl(trimmedUrl)) normalizeBaseUrl(trimmedUrl) else null
+                if (trimmedUrl.isNotBlank() && normalizedUrl == null) {
+                    _effect.send(SettingsEffect.ShowMessage("Invalid URL format"))
+                    return@launch
+                }
                 val savedUrl = normalizedUrl ?: current.inputUrl
                 val savedKey = current.inputKey.trim()
 
@@ -100,6 +105,8 @@ class SettingsScreenModel(
                 }
                 _effect.send(SettingsEffect.ShowMessage("Settings saved"))
                 _effect.send(SettingsEffect.NavigateBack)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _effect.send(SettingsEffect.ShowMessage("Failed to save settings: ${e.message}"))
             } finally {

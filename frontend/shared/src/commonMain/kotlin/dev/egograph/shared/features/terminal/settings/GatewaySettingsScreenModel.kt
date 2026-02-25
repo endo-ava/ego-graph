@@ -8,6 +8,7 @@ import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import dev.egograph.shared.core.platform.getDefaultGatewayBaseUrl
 import dev.egograph.shared.core.platform.isValidUrl
 import dev.egograph.shared.core.platform.normalizeBaseUrl
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 
 /**
  * Gateway設定画面のScreenModel
@@ -29,6 +31,8 @@ import kotlinx.coroutines.launch
 class GatewaySettingsScreenModel(
     private val preferences: PlatformPreferences,
 ) : ScreenModel {
+    private val saveMutex = Mutex()
+
     private val _state = MutableStateFlow(GatewaySettingsState())
     val state: StateFlow<GatewaySettingsState> = _state.asStateFlow()
 
@@ -83,6 +87,9 @@ class GatewaySettingsScreenModel(
         }
 
         screenModelScope.launch {
+            if (!saveMutex.tryLock()) {
+                return@launch
+            }
             _state.update { it.copy(isSaving = true) }
             try {
                 val normalizedGatewayUrl = normalizeBaseUrl(current.inputGatewayUrl)
@@ -99,10 +106,13 @@ class GatewaySettingsScreenModel(
                 }
                 _effect.send(GatewaySettingsEffect.ShowMessage("Gateway settings saved"))
                 _effect.send(GatewaySettingsEffect.NavigateBack)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _effect.send(GatewaySettingsEffect.ShowMessage("Failed to save settings: ${e.message}"))
             } finally {
                 _state.update { it.copy(isSaving = false) }
+                saveMutex.unlock()
             }
         }
     }
