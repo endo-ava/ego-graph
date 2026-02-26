@@ -79,11 +79,10 @@ fun ChatScreen(messages: List<Message>) {
    └─ setContent { MaterialTheme { SidebarScreen().Content() } }
 
 ③ SidebarScreen.Content()
-   └─ val store = koinInject<ChatStore>()
-   └─ val state by store.states.collectAsState()
+   └─ 各画面へのナビゲーション（Voyager）
 
 ④ 各画面のContent()
-   ├─ ChatScreen.Content()
+   ├─ ChatScreen.Content() → ChatScreenModel（ViewModel）
    └─ ThreadList
 ```
 
@@ -94,51 +93,56 @@ fun ChatScreen(messages: List<Message>) {
     │
     ▼
 UI Layer (Compose)
-  Button onClick → store.accept(ChatIntent.SendMessage)
+  Button onClick → screenModel.sendMessage(text)
     │
-    ▼ Intent
-Store (MVIKotlin)
-  ChatStore.accept(intent)
-    → Executor.executeIntent()
-    → Repository呼び出し
+    ▼ 関数呼び出し
+ViewModel (ChatScreenModel)
+  fun sendMessage(content: String)
+    → Repository呼び出し（非同期処理）
+    → State更新
     │
     ▼
 Repository (Data Layer)
   ChatRepository.sendMessage()
     → Ktor HttpClientでAPIリクエスト
+    → Flow<Result<StreamChunk>>でストリーミング
     │
     ▼ Result
-Reducer (State更新)
-  ChatView.MessageSent → copy(messages = ...)
+ViewModel (State更新)
+  _state.update { it.copy(messages = newMessages) }
     → Stateが更新され、UIが再Composeされる
 ```
 
-### MVIアーキテクチャ
+### MVVMアーキテクチャ
 
-**MVI** は **Model-View-Intent** の略で、UIの状態管理を単方向データフローで行うアーキテクチャパターンです。
+**MVVM** は **Model-View-ViewModel** の略で、UIの状態管理とビジネスロジックを分離するアーキテクチャパターンです。
 
-**注意**: MVIはKotlinの標準ではありません。人気ライブラリ（MVIKotlin, Orbit MVI）として存在します。
+#### 3つの要素
 
-#### 4つの要素
+| 要素        | 役割                                           | 実装                   |
+| :---------- | :--------------------------------------------- | :--------------------- |
+| **Model**   | データアクセス、ビジネスロジック               | Repository、DTO        |
+| **View**    | UI描画、ユーザー操作の受付                     | `@Composable`関数     |
+| **ViewModel** | 状態管理、ViewとModelの仲介                   | `ChatScreenModel`      |
 
-| 要素         | 役割                                           |
-| :----------- | :--------------------------------------------- |
-| **State**    | 不変の状態データ（`ChatState`）                |
-| **Intent**   | ユーザー操作の意図（`ChatIntent.SendMessage`） |
-| **Executor** | 非同期処理（Repository呼び出し）               |
-| **Reducer**  | 純粋関数でStateを生成                          |
+#### 追加要素
+
+| 要素    | 役割                           | 実装             |
+| :------ | :----------------------------- | :--------------- |
+| **State** | 不変の状態データ               | `ChatState`      |
+| **Effect** | One-shotイベント（通知）       | `ChatEffect`     |
 
 #### データフロー
 
 ```
-Intent (ユーザー操作)
+ユーザー操作
     │
     ▼
-UI  (Compose) ──→ Executor ──→ Repository/API
-    ◀─── Reducer ◀── Action     │
+UI  (Compose) ──→ ViewModel ──→ Repository/API
+    ◀──────────────◀── Result     │
          ▲                      │
          └──────────────────────┘
-              State
+              State / Effect
 ```
 
 ### Repositoryパターン
@@ -155,16 +159,16 @@ UI  (Compose) ──→ Executor ──→ Repository/API
 
 ## 4. 技術スタック
 
-| カテゴリ           | ライブラリ            | 役割                   |
-| :----------------- | :-------------------- | :--------------------- |
-| **UI**             | Compose Multiplatform | 宣言的UIフレームワーク |
-| **ナビゲーション** | Voyager               | 画面遷移               |
-| **状態管理**       | MVIKotlin             | MVIアーキテクチャ      |
-| **DI**             | Koin                  | 依存性注入コンテナ     |
-| **HTTP**           | Ktor Client           | HTTPクライアント       |
-| **非同期**         | Kotlinx Coroutines    | 非同期処理             |
-| **シリアライズ**   | Kotlinx Serialization | JSONシリアライズ       |
-| **ロギング**       | Kermit                | ロギング               |
+| カテゴリ           | ライブラリ              | 役割                   |
+| :----------------- | :--------------------- | :--------------------- |
+| **UI**             | Compose Multiplatform   | 宣言的UIフレームワーク |
+| **ナビゲーション** | Voyager                 | 画面遷移、ScreenModel   |
+| **状態管理**       | StateFlow + Channel     | MVVMアーキテクチャ     |
+| **DI**             | Koin                    | 依存性注入コンテナ     |
+| **HTTP**           | Ktor Client             | HTTPクライアント       |
+| **非同期**         | Kotlinx Coroutines      | 非同期処理             |
+| **シリアライズ**   | Kotlinx Serialization   | JSONシリアライズ       |
+| **ロギング**       | Kermit                  | ロギング               |
 
 ---
 
@@ -221,12 +225,18 @@ frontend/
 │   ├── src/
 │   │   ├── commonMain/  # 共通コード
 │   │   │   ├── kotlin/dev/egograph/shared/
-│   │   │   │   ├── ui/           # Compose UI
-│   │   │   │   ├── store/        # MVIKotlin Store
-│   │   │   │   ├── repository/   # Repository
-│   │   │   │   ├── dto/          # データモデル
-│   │   │   │   ├── di/           # Koin DI
-│   │   │   │   └── platform/     # プラットフォーム固有処理
+│   │   │   │   ├── features/     # 機能モジュール（MVVM）
+│   │   │   │   │   └── chat/     # チャット機能
+│   │   │   │   │       ├── ChatScreen.kt       # View
+│   │   │   │   │       ├── ChatScreenModel.kt  # ViewModel
+│   │   │   │   │       ├── ChatState.kt        # State
+│   │   │   │   │       └── ChatEffect.kt       # Effect
+│   │   │   │   ├── core/         # コア機能
+│   │   │   │   │   ├── domain/     # ドメインモデル
+│   │   │   │   │   ├── data/       # Repository実装
+│   │   │   │   │   ├── network/    # Ktor HTTPクライアント
+│   │   │   │   │   └── platform/   # プラットフォーム固有処理
+│   │   │   │   └── di/           # Koin DI
 │   │   │   └── ...
 │   │   ├── androidMain/  # Android固有処理
 │   │   └── commonTest/   # 共通テスト
@@ -243,10 +253,14 @@ frontend/
 
 - [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html)
 - [Compose Multiplatform](https://compose-multiplatform-org.github.io/compose-multiplatform/)
-- [MVIKotlin](https://arkivanov.github.io/MVIKotlin/)
-- [Voyager](https://voyager.adriel.cafe/)
-- [Koin](https://insert-koin.io/)
-- [Ktor](https://ktor.io/)
-- [Detekt](https://detekt.dev/)
-- [Ktlint](https://pinterest.github.io/ktlint/)
-- [Kotest](https://kotest.io/)
+- [Voyager](https://voyager.adriel.cafe/) - ナビゲーション & ScreenModel
+- [Koin](https://insert-koin.io/) - DIコンテナ
+- [Ktor](https://ktor.io/) - HTTPクライアント
+- [Detekt](https://detekt.dev/) - 静的解析
+- [Ktlint](https://pinterest.github.io/ktlint/) - フォーマット
+- [Kotest](https://kotest.io/) - テストDSL
+
+### MVVM関連
+
+詳しいMVVMアーキテクチャについては、以下のドキュメントを参照してください：
+- [MVVMアーキテクチャガイド（React開発者向け）](./mvvm-architecture-guide.md)
