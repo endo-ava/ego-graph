@@ -63,12 +63,20 @@ class FcmService:
         """Firebase認証情報を構築します。"""
         if fcm_credentials_path:
             credentials_file = Path(fcm_credentials_path)
-            if credentials_file.exists() and credentials_file.is_file():
-                logger.info(
-                    "Using Firebase service account credentials: %s",
-                    credentials_file,
+            if not credentials_file.exists():
+                raise FileNotFoundError(
+                    f"FCM credentials file not found: {fcm_credentials_path}. "
+                    "Please check FCM_CREDENTIALS_PATH environment variable."
                 )
-                return credentials.Certificate(str(credentials_file))
+            if not credentials_file.is_file():
+                raise ValueError(
+                    f"FCM credentials path is not a file: {fcm_credentials_path}"
+                )
+            logger.info(
+                "Using Firebase service account credentials: %s",
+                credentials_file,
+            )
+            return credentials.Certificate(str(credentials_file))
 
         return credentials.ApplicationDefault()
 

@@ -5,15 +5,15 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.CurrentScreen
+import cafe.adriel.voyager.navigator.Navigator
 import com.google.firebase.messaging.FirebaseMessaging
 import dev.egograph.android.fcm.FcmTokenManager
 import dev.egograph.shared.core.platform.PlatformPrefsKeys
@@ -34,15 +34,16 @@ import org.koin.compose.koinInject
 class MainActivity : ComponentActivity() {
     private var fcmTokenManager: FcmTokenManager? = null
 
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { _: Boolean ->
-        // Permission result handled by system
-    }
+    private val requestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { _: Boolean ->
+            // Permission result handled by system
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         Log.d("MainActivity", "onCreate called")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -54,17 +55,18 @@ class MainActivity : ComponentActivity() {
         runCatching {
             FirebaseMessaging.getInstance().token
         }.onSuccess { task ->
-            task.addOnSuccessListener { token ->
-                Log.d("MainActivity", "FCM token received: ${token.take(20)}...")
-                val manager = getTokenManager()
-                if (manager == null) {
-                    Log.w("MainActivity", "Skip FCM token registration: gateway settings are empty")
-                } else {
-                    manager.registerToken(token = token, deviceName = Build.MODEL)
+            task
+                .addOnSuccessListener { token ->
+                    Log.d("MainActivity", "FCM token received")
+                    val manager = getTokenManager()
+                    if (manager == null) {
+                        Log.w("MainActivity", "Skip FCM token registration: gateway settings are empty")
+                    } else {
+                        manager.registerToken(token = token, deviceName = Build.MODEL)
+                    }
+                }.addOnFailureListener { e ->
+                    Log.w("MainActivity", "Failed to get FCM token: ${e.message}")
                 }
-            }.addOnFailureListener { e ->
-                Log.w("MainActivity", "Failed to get FCM token: ${e.message}")
-            }
         }.onFailure { e ->
             Log.w("MainActivity", "Skipping FCM token request: ${e.message}")
         }
@@ -101,6 +103,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @Suppress("ReturnCount")
     private fun getTokenManager(): FcmTokenManager? {
         fcmTokenManager?.let { return it }
 
@@ -112,9 +115,8 @@ class MainActivity : ComponentActivity() {
             return null
         }
 
-        val manager = FcmTokenManager(gatewayUrl = gatewayUrl, apiKey = apiKey)
-        fcmTokenManager = manager
-        return manager
+        fcmTokenManager = FcmTokenManager(gatewayUrl = gatewayUrl, apiKey = apiKey)
+        return fcmTokenManager
     }
 
     override fun onDestroy() {

@@ -92,6 +92,6 @@ Firebase は Google が提供する BaaS 群です。
 
 ## 運用メモ
 
-- 起動は `cd /root/workspace/ego-graph/wt1 && uv run python -m gateway.main` を使用（実行ディレクトリを固定）
+- 起動は `uv run python -m gateway.main` を使用（実行ディレクトリを固定）
 - キー更新時は `GATEWAY_API_KEY` / `GATEWAY_WEBHOOK_SECRET` を同時ローテーション
 - サービスアカウント JSON はリポジトリ外管理を推奨

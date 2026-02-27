@@ -570,12 +570,12 @@ curl -X POST http://localhost:8001/v1/push/webhook \
    ```
 
    正常に初期化されている場合：
-   ```
+   ```text
    Firebase Admin SDK initialized with project: your-project-id
    ```
 
    未設定の場合：
-   ```
+   ```text
    FCM project ID not configured. Push notifications disabled
    ```
 
