@@ -131,6 +131,18 @@ class TestListSessions:
             assert sessions[0].name == "agent-0001"
             assert sessions[1].name == "agent-0002"
 
+    def test_rejects_suffixed_agent_session_name(self) -> None:
+        """接尾辞付きセッション名が除外されることを検証します。"""
+        with patch("subprocess.run") as mock_run:
+            result = Mock()
+            result.returncode = 0
+            result.stdout = "agent-0001-8\t2025-02-08T12:00:00\t2025-02-08T10:00:00"
+            mock_run.return_value = result
+
+            sessions = list_sessions()
+
+            assert sessions == []
+
     def test_parses_session_output_correctly(self) -> None:
         """tmux 出力のパースを検証します。"""
         # Arrange: 正常な tmux 出力
@@ -231,7 +243,7 @@ class TestSessionExists:
             assert exists is True
             # Assert: 正しいコマンドが呼ばれたこと
             mock_run.assert_called_once_with(
-                ["tmux", "has-session", "-t", "agent-0001"],
+                ["tmux", "has-session", "-t", "=agent-0001"],
                 capture_output=True,
                 check=True,
                 timeout=5,
@@ -268,7 +280,7 @@ class TestSessionExists:
         # Arrange: subprocess.run が TimeoutExpired を発生させる
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired(
-                cmd=["tmux", "has-session", "-t", "agent-0001"], timeout=5
+                cmd=["tmux", "has-session", "-t", "=agent-0001"], timeout=5
             )
 
             # Act: セッションの存在確認
@@ -450,8 +462,8 @@ class TestListSessionsTimestampFallback:
             assert sessions[0].last_activity.hour == 10
             assert sessions[0].created_at.hour == 10
 
-    def test_skips_session_when_both_timestamps_fail(self) -> None:
-        """両方のタイムスタンプのパースに失敗した場合にセッションがスキップされることを検証します。"""
+    def test_uses_current_time_when_both_timestamps_fail(self) -> None:
+        """両方のタイムスタンプのパースに失敗した場合に現在時刻へフォールバックすることを検証します。"""
         # Arrange: 両方のタイムスタンプが無効な形式
         with patch("subprocess.run") as mock_run:
             result = Mock()
@@ -465,9 +477,12 @@ class TestListSessionsTimestampFallback:
             # Act: セッション一覧を取得
             sessions = list_sessions()
 
-            # Assert: パース可能なセッションのみが返されること
-            assert len(sessions) == 1
+            # Assert: パース不能なセッションも現在時刻フォールバックで返されること
+            assert len(sessions) == 2
             assert sessions[0].name == "agent-0001"
+            assert sessions[1].name == "agent-0002"
+            assert sessions[1].last_activity.tzinfo is not None
+            assert sessions[1].created_at.tzinfo is not None
 
     def test_handles_mixed_timestamp_formats(self) -> None:
         """異なるタイムスタンプ形式が混在する場合の処理を検証します。"""

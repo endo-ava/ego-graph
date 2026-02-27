@@ -28,7 +28,11 @@ cp gateway/.env.example gateway/.env
 
 必須環境変数:
 - `GATEWAY_API_KEY`: Gateway API Key（32バイト以上推奨）
-- `GATEWAY_WEBHOOK_SECRET`: Webhook シークレット（32バース以上推奨）
+- `GATEWAY_WEBHOOK_SECRET`: Webhook シークレット（32バイト以上推奨）
+
+プッシュ通知利用時に必要な環境変数:
+- `FCM_PROJECT_ID`: Firebase プロジェクト ID
+- `FCM_CREDENTIALS_PATH`: Firebase サービスアカウント JSON パス（省略時 `gateway/firebase-service-account.json`）
 
 ### サーバー起動
 
@@ -37,7 +41,11 @@ cd gateway
 uv run python -m gateway.main
 ```
 
-または uvicorn を直接使用:
+`uvicorn gateway.main:app` を直接使うと `GATEWAY_HOST` / `GATEWAY_PORT` が反映されないため、
+設定値で起動したい場合は `python -m gateway.main` を使用してください。
+`GATEWAY_RELOAD` はデフォルトで `false` です。開発時のみ `true` にしてください。
+
+uvicorn を直接使用する場合:
 
 ```bash
 uvicorn gateway.main:app --host 127.0.0.1 --port 8001 --reload

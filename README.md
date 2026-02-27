@@ -109,7 +109,7 @@ open http://localhost:8000/docs
 
 ```bash
 # tmux セッションで起動
-tmux new-session -d -s egograph-gateway 'uv run uvicorn gateway.main:app --host 0.0.0.0 --port 8001'
+tmux new-session -d -s egograph-gateway 'uv run python -m gateway.main'
 
 # tmux セッション停止
 tmux kill-session -t egograph-gateway
@@ -126,10 +126,16 @@ curl http://localhost:8001/health
 
 **必要な環境変数**:
 
-- `GATEWAY_BEARER_TOKEN`（認証トークン、32bytes以上）
+- `GATEWAY_API_KEY`（認証トークン、32bytes以上）
 - `GATEWAY_WEBHOOK_SECRET`（Webhook シークレット、32bytes以上）
 - `FCM_CREDENTIALS_PATH`（Firebase サービスアカウントキーのパス）
 - `FCM_PROJECT_ID`（Firebase プロジェクト ID）
+
+**キー/シークレットのローテーション**:
+
+```bash
+openssl rand -base64 48
+```
 
 詳細: [Gateway README](./gateway/README.md)
 

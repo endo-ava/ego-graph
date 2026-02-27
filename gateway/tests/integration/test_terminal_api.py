@@ -161,6 +161,20 @@ class TestSessionIdValidation:
                 code=1008, reason="Invalid session_id format"
             )
 
+    @pytest.mark.asyncio
+    async def test_websocket_rejects_suffixed_session_id(self):
+        """接尾辞付きのセッションIDでWebSocket接続が拒否されることを確認する。"""
+        mock_websocket = MagicMock()
+        mock_websocket.query_params = {"session_id": "agent-0001-8"}
+        mock_websocket.close = AsyncMock()
+
+        await terminal_websocket(mock_websocket)
+
+        mock_websocket.accept.assert_not_called()
+        mock_websocket.close.assert_called_once_with(
+            code=1008, reason="Invalid session_id format"
+        )
+
 
 # ============================================================================
 # WebSocketメッセージ handling テスト

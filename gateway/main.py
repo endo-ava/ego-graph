@@ -92,7 +92,8 @@ def main() -> None:
         "gateway.main:app",
         host=config.host,
         port=config.port,
-        reload=True,
+        reload=config.reload,
+        reload_dirs=["gateway"] if config.reload else None,
         log_level=config.log_level.lower(),
     )
 

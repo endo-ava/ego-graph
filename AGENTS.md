@@ -81,7 +81,7 @@ uv run pytest backend/tests --cov=backend
 uv run python -m backend.dev_tools.chat_cli   # デバッグ用CLIツール
 
 # === Gateway ===
-tmux new-session -d -s egograph-gateway 'uv run uvicorn gateway.main:app --host 0.0.0.0 --port 8001' # tmux起動を推奨
+tmux new-session -d -s egograph-gateway 'uv run python -m gateway.main'
 uv run pytest gateway/tests --cov=gateway
 
 # === Frontend (cd frontend) ===
@@ -183,5 +183,6 @@ codex exec resume --last -m gpt-5.3-codex "プランを更新したからレビ�
 - 目の前の目標を達成するためだけの場当たり的な対応は禁止
   - バグを潰すための場当たり的なフォールバック処理
   - テストやビルドを通すためだけの本質的ではない修正
+- 「後方互換」は負債にしかならないため禁止 
 - ui/uxの調整タスクは言葉での認識合わせが難しいことを考慮し、必要に応じてASCII等を使いながらユーザーに確認する
 - `.env`系を読むことは禁止

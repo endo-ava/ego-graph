@@ -96,7 +96,7 @@ class PushTokenRepository:
 
                 logger.info("Updated existing push token: user_id=%s", user_id)
             else:
-                # 新規登録
+                # 新規登録（idはDBの自動採番に任せる）
                 conn.execute(
                     """
                     INSERT INTO push_devices
@@ -104,6 +104,18 @@ class PushTokenRepository:
                     VALUES (?, ?, ?, ?)
                 """,
                     [user_id, device_token, platform, device_name],
+                )
+                # 新規登録
+                next_id = conn.execute(
+                    "SELECT COALESCE(MAX(id), 0) + 1 FROM push_devices"
+                ).fetchone()[0]
+                conn.execute(
+                    """
+                    INSERT INTO push_devices
+                    (id, user_id, device_token, platform, device_name)
+                    VALUES (?, ?, ?, ?, ?)
+                """,
+                    [next_id, user_id, device_token, platform, device_name],
                 )
 
                 row = conn.execute(

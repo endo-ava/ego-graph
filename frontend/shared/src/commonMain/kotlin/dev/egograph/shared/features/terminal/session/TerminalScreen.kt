@@ -76,8 +76,15 @@ private fun TerminalContent(
 
     var isConnecting by remember { mutableStateOf(false) }
     var settingsError by remember { mutableStateOf<String?>(null) }
+    var voiceInputError by remember { mutableStateOf<String?>(null) }
     var terminalError by remember { mutableStateOf<String?>(null) }
     var hasConnectedOnce by remember { mutableStateOf(false) }
+
+    val voiceInputController =
+        rememberTerminalVoiceInputController(
+            onRecognizedText = { recognizedText -> webView.sendKey(recognizedText) },
+            onError = { message -> voiceInputError = message.ifBlank { null } },
+        )
 
     val darkMode =
         when (selectedTheme) {
@@ -146,7 +153,7 @@ private fun TerminalContent(
         }
     }
 
-    val displayError = settingsError ?: terminalError
+    val displayError = settingsError ?: terminalError ?: voiceInputError
 
     Scaffold(
         topBar = {
@@ -198,6 +205,8 @@ private fun TerminalContent(
                 if (keyboardState.isVisible) {
                     SpecialKeysBar(
                         onKeyPress = { keySequence -> webView.sendKey(keySequence) },
+                        onVoiceInputClick = voiceInputController.onToggle,
+                        isVoiceInputActive = voiceInputController.isActive,
                         modifier =
                             Modifier
                                 .imePadding()

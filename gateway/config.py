@@ -42,8 +42,17 @@ class GatewayConfig(BaseSettings):
     # ロギング
     log_level: str = Field("INFO", alias="LOG_LEVEL")
 
+    # 開発用リロード（本番では false 推奨）
+    reload: bool = Field(False, alias="GATEWAY_RELOAD")
+
     # FCM プロジェクト ID（オプション）
-    fcm_project_id: str | None = Field(None, alias="GCM_PROJECT_ID")
+    fcm_project_id: str | None = Field(None, alias="FCM_PROJECT_ID")
+
+    # FCM サービスアカウント JSON パス（省略時は固定パスを使用）
+    fcm_credentials_path: str = Field(
+        "gateway/firebase-service-account.json",
+        alias="FCM_CREDENTIALS_PATH",
+    )
 
     # デフォルトユーザー ID（MVP では固定）
     default_user_id: str = Field("default_user", alias="DEFAULT_USER_ID")

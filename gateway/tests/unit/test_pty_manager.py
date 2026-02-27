@@ -110,7 +110,7 @@ class TestAttachSession:
             assert mock_exec.call_count >= 1
             args = mock_exec.call_args_list[0].args
             kwargs = mock_exec.call_args_list[0].kwargs
-            assert args[:4] == ("tmux", "attach", "-t", "agent-0001")
+            assert args[:4] == ("tmux", "attach", "-t", "=agent-0001")
             assert kwargs["stdin"] == 11
             assert kwargs["stdout"] == 11
             assert kwargs["stderr"] == 11
@@ -199,7 +199,9 @@ class TestWriteInput:
                 "asyncio.create_subprocess_exec",
                 new=AsyncMock(return_value=mock_process),
             ),
-            patch("gateway.services.pty_manager.os.write", return_value=10) as mock_write,
+            patch(
+                "gateway.services.pty_manager.os.write", return_value=10
+            ) as mock_write,
         ):
             await pty_manager.attach_session()
 
@@ -243,7 +245,9 @@ class TestReadOutput:
                 "asyncio.create_subprocess_exec",
                 new=AsyncMock(return_value=mock_process),
             ),
-            patch("gateway.services.pty_manager.os.read", return_value=test_data) as mock_read,
+            patch(
+                "gateway.services.pty_manager.os.read", return_value=test_data
+            ) as mock_read,
         ):
             await pty_manager.attach_session()
 
@@ -268,7 +272,9 @@ class TestReadOutput:
                 "asyncio.create_subprocess_exec",
                 new=AsyncMock(return_value=mock_process),
             ),
-            patch("gateway.services.pty_manager.os.read", return_value=test_data) as mock_read,
+            patch(
+                "gateway.services.pty_manager.os.read", return_value=test_data
+            ) as mock_read,
         ):
             await pty_manager.attach_session()
 
@@ -313,7 +319,7 @@ class TestResizeWindow:
                 "tmux",
                 "resize-window",
                 "-t",
-                "agent-0001",
+                "=agent-0001",
                 "-x",
                 "120",
                 "-y",

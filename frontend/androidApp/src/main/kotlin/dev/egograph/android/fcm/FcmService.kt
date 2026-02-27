@@ -38,9 +38,13 @@ class FcmService : FirebaseMessagingService() {
 
     override fun onCreate() {
         super.onCreate()
+        Log.d(TAG, "FcmService.onCreate() called")
 
         // 通知チャンネルを作成（Android 8.0+）
         NotificationChannelManager.createNotificationChannel(this)
+        Log.d(TAG, "Notification channel created")
+
+        // 起動時に既存トークンの登録も試行
 
         // 起動時に既存トークンの登録も試行
         FirebaseMessaging

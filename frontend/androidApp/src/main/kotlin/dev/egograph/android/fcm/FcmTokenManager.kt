@@ -1,20 +1,18 @@
 package dev.egograph.android.fcm
 
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -90,6 +88,9 @@ class FcmTokenManager(
                     delay(currentDelay)
                     currentDelay = (currentDelay * 2).coerceAtMost(RETRY_DELAY_MS)
                 }
+            } catch (e: CancellationException) {
+                Log.w(TAG, "Token registration cancelled")
+                throw e
             }
         }
 
@@ -101,14 +102,14 @@ class FcmTokenManager(
         token: String,
         deviceName: String?,
     ) {
-        val request =
-            TokenRegistrationRequest(
-                deviceToken = token,
-                platform = "android",
-                deviceName = deviceName,
-            )
+        val jsonObject = JSONObject()
+        jsonObject.put("device_token", token)
+        jsonObject.put("platform", "android")
+        if (!deviceName.isNullOrBlank()) {
+            jsonObject.put("device_name", deviceName)
+        }
 
-        val json = Json.encodeToString(request)
+        val json = jsonObject.toString()
         val body = json.toRequestBody("application/json".toMediaType())
 
         val req =
@@ -134,14 +135,3 @@ class FcmTokenManager(
         client.connectionPool.evictAll()
     }
 }
-
-/** トークン登録リクエストモデル。 */
-@Serializable
-data class TokenRegistrationRequest(
-    @SerialName("device_token")
-    val deviceToken: String,
-    @SerialName("platform")
-    val platform: String,
-    @SerialName("device_name")
-    val deviceName: String? = null,
-)
