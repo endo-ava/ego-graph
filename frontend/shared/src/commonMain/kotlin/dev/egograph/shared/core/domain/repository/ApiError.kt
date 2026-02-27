@@ -35,23 +35,24 @@ sealed class ApiError protected constructor(
         val code: Int,
         val errorMessage: String,
         val detail: String? = null,
-        val isRetryable: Boolean =
-            when (code) {
+    ) : ApiError() {
+        val isRetryable: Boolean
+            get() = when (code) {
                 408, 429, 500, 502, 503, 504 -> true
                 else -> false
-            },
-        val suggestedAction: ErrorAction =
-            when (code) {
+            }
+        val suggestedAction: ErrorAction
+            get() = when (code) {
                 401, 403 -> ErrorAction.REAUTHENTICATE
                 408, 429, 500, 502, 503, 504 -> ErrorAction.RETRY
                 else -> ErrorAction.DISMISS
-            },
-        val severity: ErrorSeverity =
-            when (code) {
+            }
+        val severity: ErrorSeverity
+            get() = when (code) {
                 in 500..599 -> ErrorSeverity.CRITICAL
                 else -> ErrorSeverity.ERROR
-            },
-    ) : ApiError() {
+            }
+
         override val message: String
             get() = "HTTP $code: $errorMessage" + (detail?.let { " - $it" } ?: "")
     }
@@ -114,10 +115,11 @@ sealed class ApiError protected constructor(
      * タイムアウトエラー
      *
      * @property timeoutType タイムアウトの種類
-     * @property timeoutMillis タイムアウト設定値（ミリ秒）
+     * @property timeoutMillis タイムアウト設定値（ミリ秒、1以上）
      * @property isRetryable 再試行可能かどうか
      * @property suggestedAction ユーザーに提案するアクション
      * @property severity エラーの重要度
+     * @throws IllegalArgumentException timeoutMillisが1未満の場合
      */
     data class TimeoutError(
         val timeoutType: TimeoutType,
@@ -126,6 +128,10 @@ sealed class ApiError protected constructor(
         val suggestedAction: ErrorAction = ErrorAction.RETRY,
         val severity: ErrorSeverity = ErrorSeverity.WARNING,
     ) : ApiError() {
+        init {
+            require(timeoutMillis >= 1) { "timeoutMillis must be at least 1, got: $timeoutMillis" }
+        }
+
         override val message: String
             get() =
                 "Request timed out (${

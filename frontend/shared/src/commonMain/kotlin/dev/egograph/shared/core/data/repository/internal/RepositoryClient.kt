@@ -177,12 +177,6 @@ class RepositoryClient(
                     code = 403,
                     errorMessage = "アクセス権限がありません",
                 )
-            in 500..599 ->
-                throw ApiError.HttpError(
-                    code = status.value,
-                    errorMessage = status.description,
-                    isRetryable = true,
-                )
             in 400..499 ->
                 throw ApiError.HttpError(
                     code = status.value,

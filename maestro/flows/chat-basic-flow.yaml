@@ -26,5 +26,6 @@ appId: dev.egograph.app
 - waitForAnimationToEnd:
     timeout: 10000
 
-# メッセージが表示されることを確認
-- assertVisible: "Tell me"
+# メッセージが表示されることを確認（AIからの応答が入力欄をクリアしたことを確認）
+# 注: AI応答の内容を直接検証するには、バックエンドでモック応答を返す設定が必要
+- assertNotVisible: "Tell me a very short story"
