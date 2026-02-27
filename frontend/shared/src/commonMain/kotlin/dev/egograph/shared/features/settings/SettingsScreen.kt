@@ -2,7 +2,6 @@ package dev.egograph.shared.features.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,18 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.Button
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -30,146 +19,87 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import dev.egograph.shared.core.platform.PlatformPreferences
-import dev.egograph.shared.core.platform.PlatformPrefsDefaults
-import dev.egograph.shared.core.platform.PlatformPrefsKeys
-import dev.egograph.shared.core.platform.normalizeBaseUrl
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.koinScreenModel
+import dev.egograph.shared.core.platform.isValidUrl
 import dev.egograph.shared.core.settings.AppTheme
-import dev.egograph.shared.core.settings.ThemeRepository
+import dev.egograph.shared.core.ui.common.testTagResourceId
+import dev.egograph.shared.core.ui.components.SecretTextField
+import dev.egograph.shared.core.ui.components.SettingsTopBar
 import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
 
 /**
  * 設定画面
  *
  * テーマ選択、API URL、API Keyの設定を行う。
  *
- * @param preferences プラットフォーム設定
  * @param onBack 戻るボタンコールバック
  */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SettingsScreen(
-    preferences: PlatformPreferences,
-    onBack: () -> Unit,
-) {
-    val themeRepository = koinInject<ThemeRepository>()
-    val coroutineScope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val selectedTheme by themeRepository.theme.collectAsState()
+class SettingsScreen(
+    private val onBack: () -> Unit = {},
+) : Screen {
+    @Composable
+    override fun Content() {
+        val screenModel = koinScreenModel<SettingsScreenModel>()
+        val state by screenModel.state.collectAsState()
+        val snackbarHostState = remember { SnackbarHostState() }
 
-    var inputUrl by remember {
-        mutableStateOf(
-            preferences.getString(
-                PlatformPrefsKeys.KEY_API_URL,
-                PlatformPrefsDefaults.DEFAULT_API_URL,
-            ),
-        )
-    }
-
-    var inputKey by remember {
-        mutableStateOf(
-            preferences.getString(
-                PlatformPrefsKeys.KEY_API_KEY,
-                PlatformPrefsDefaults.DEFAULT_API_KEY,
-            ),
-        )
-    }
-
-    var isKeyVisible by remember { mutableStateOf(false) }
-
-    fun saveSettings() {
-        val urlToSave = inputUrl.trim()
-        if (isValidUrl(urlToSave)) {
-            val normalizedUrl = normalizeBaseUrl(urlToSave)
-            preferences.putString(
-                PlatformPrefsKeys.KEY_API_URL,
-                normalizedUrl,
-            )
-            inputUrl = normalizedUrl
+        LaunchedEffect(Unit) {
+            screenModel.effect.collect { effect ->
+                when (effect) {
+                    is SettingsEffect.ShowMessage -> launch { snackbarHostState.showSnackbar(effect.message) }
+                    SettingsEffect.NavigateBack -> onBack()
+                }
+            }
         }
-        val keyToSave = inputKey.trim()
-        preferences.putString(
-            PlatformPrefsKeys.KEY_API_KEY,
-            keyToSave,
-        )
-        inputKey = keyToSave
 
-        coroutineScope.launch {
-            snackbarHostState.showSnackbar("Settings saved")
-        }
-        onBack()
-    }
-
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    OutlinedButton(
-                        onClick = onBack,
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp),
-                        modifier =
-                            Modifier
-                                .height(32.dp)
-                                .widthIn(min = 72.dp),
-                    ) {
-                        Text("Back")
-                    }
-                },
-            )
-        },
-    ) { paddingValues ->
-        Surface(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-        ) {
-            Column(
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                SettingsTopBar(title = "Settings", onBack = onBack)
+            },
+        ) { paddingValues ->
+            Surface(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(paddingValues),
             ) {
-                AppearanceSection(
-                    selectedTheme = selectedTheme,
-                    onThemeSelected = { themeRepository.setTheme(it) },
-                )
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                ) {
+                    AppearanceSection(
+                        selectedTheme = state.selectedTheme,
+                        onThemeSelected = screenModel::onThemeSelected,
+                    )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                ApiConfigurationSection(
-                    inputUrl = inputUrl,
-                    onUrlChange = { inputUrl = it },
-                    inputKey = inputKey,
-                    onKeyChange = { inputKey = it },
-                    isKeyVisible = isKeyVisible,
-                    onKeyVisibilityChange = { isKeyVisible = it },
-                )
+                    ApiConfigurationSection(
+                        inputUrl = state.inputUrl,
+                        onUrlChange = screenModel::onUrlChange,
+                        inputKey = state.inputKey,
+                        onKeyChange = screenModel::onKeyChange,
+                    )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                SettingsActions(
-                    inputUrl = inputUrl,
-                    onSave = { saveSettings() },
-                )
+                    SettingsActions(
+                        inputUrl = state.inputUrl,
+                        isSaving = state.isSaving,
+                        onSave = screenModel::saveSettings,
+                    )
+                }
             }
         }
     }
@@ -203,8 +133,6 @@ private fun ApiConfigurationSection(
     onUrlChange: (String) -> Unit,
     inputKey: String,
     onKeyChange: (String) -> Unit,
-    isKeyVisible: Boolean,
-    onKeyVisibilityChange: (Boolean) -> Unit,
 ) {
     Text(
         text = "API Configuration",
@@ -219,8 +147,7 @@ private fun ApiConfigurationSection(
         placeholder = { Text("https://api.egograph.dev") },
         modifier =
             Modifier
-                .semantics { testTagsAsResourceId = true }
-                .testTag("api_url_input")
+                .testTagResourceId("api_url_input")
                 .fillMaxWidth(),
         singleLine = true,
         isError = inputUrl.isNotBlank() && !isValidUrl(inputUrl),
@@ -235,42 +162,33 @@ private fun ApiConfigurationSection(
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    OutlinedTextField(
+    SecretTextField(
         value = inputKey,
         onValueChange = onKeyChange,
-        label = { Text("API Key") },
-        placeholder = { Text("Optional: Enter your API key") },
-        visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        trailingIcon = {
-            val description = if (isKeyVisible) "Hide API Key" else "Show API Key"
-            val icon = if (isKeyVisible) Icons.Default.LockOpen else Icons.Default.Lock
-
-            IconButton(onClick = { onKeyVisibilityChange(!isKeyVisible) }) {
-                Icon(imageVector = icon, contentDescription = description)
-            }
-        },
+        label = "API Key",
+        placeholder = "Optional: Enter your API key",
         modifier =
             Modifier
-                .semantics { testTagsAsResourceId = true }
-                .testTag("api_key_input")
+                .testTagResourceId("api_key_input")
                 .fillMaxWidth(),
-        singleLine = true,
+        showContentDescription = "Show API Key",
+        hideContentDescription = "Hide API Key",
     )
 }
 
 @Composable
 private fun SettingsActions(
     inputUrl: String,
+    isSaving: Boolean,
     onSave: () -> Unit,
 ) {
     Button(
         onClick = onSave,
         modifier =
             Modifier
-                .semantics { testTagsAsResourceId = true }
-                .testTag("save_settings_button")
+                .testTagResourceId("save_settings_button")
                 .fillMaxWidth(),
-        enabled = isValidUrl(inputUrl),
+        enabled = !isSaving && isValidUrl(inputUrl),
     ) {
         Text("Save Settings")
     }
@@ -297,11 +215,4 @@ private fun ThemeOption(
         Spacer(modifier = Modifier.width(8.dp))
         Text(text)
     }
-}
-
-private fun isValidUrl(url: String): Boolean {
-    val trimmed = url.trim()
-    val hasValidScheme = trimmed.startsWith("http://") || trimmed.startsWith("https://")
-    val hostPortPart = trimmed.substringAfter("://", missingDelimiterValue = "")
-    return trimmed.isNotEmpty() && hasValidScheme && hostPortPart.isNotBlank()
 }
