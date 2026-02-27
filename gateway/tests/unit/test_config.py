@@ -19,13 +19,14 @@ class TestGatewayConfig:
         """デフォルト値が正しくロードされることを確認する。"""
         # Arrange
         env_vars = {
+            "USE_ENV_FILE": "false",
             "GATEWAY_API_KEY": "test_api_key_32_bytes_or_more",
             "GATEWAY_WEBHOOK_SECRET": "test_webhook_secret_32_bytes_or_more",
         }
 
         # Act
         with patch.dict("os.environ", env_vars, clear=True):
-            config = GatewayConfig()
+            config = GatewayConfig(_env_file=None)
 
         # Assert
         assert config.host == "0.0.0.0"
@@ -37,7 +38,9 @@ class TestGatewayConfig:
         )
         assert config.cors_origins == "*"
         assert config.log_level == "INFO"
+        assert config.reload is False
         assert config.fcm_project_id is None
+        assert config.fcm_credentials_path == "gateway/firebase-service-account.json"
         assert config.default_user_id == "default_user"
         assert config.session_pattern == r"^agent-[0-9]{4}$"
 
@@ -45,20 +48,23 @@ class TestGatewayConfig:
         """環境変数から設定が正しくロードされることを確認する。"""
         # Arrange
         env_vars = {
+            "USE_ENV_FILE": "false",
             "GATEWAY_HOST": "127.0.0.1",
             "GATEWAY_PORT": "9001",
             "GATEWAY_API_KEY": "env_api_key_32_bytes_or_more",
             "GATEWAY_WEBHOOK_SECRET": "env_webhook_secret_32_bytes_or_more",
             "CORS_ORIGINS": "https://example.com",
             "LOG_LEVEL": "DEBUG",
-            "GCM_PROJECT_ID": "test-project",
+            "GATEWAY_RELOAD": "true",
+            "FCM_PROJECT_ID": "test-project",
+            "FCM_CREDENTIALS_PATH": "gateway/custom-firebase.json",
             "DEFAULT_USER_ID": "test_user",
             "SESSION_PATTERN": r"^test-[0-9]+$",
         }
 
         # Act
         with patch.dict("os.environ", env_vars, clear=True):
-            config = GatewayConfig()
+            config = GatewayConfig(_env_file=None)
 
         # Assert
         assert config.host == "127.0.0.1"
@@ -70,7 +76,9 @@ class TestGatewayConfig:
         )
         assert config.cors_origins == "https://example.com"
         assert config.log_level == "DEBUG"
+        assert config.reload is True
         assert config.fcm_project_id == "test-project"
+        assert config.fcm_credentials_path == "gateway/custom-firebase.json"
         assert config.default_user_id == "test_user"
         assert config.session_pattern == r"^test-[0-9]+$"
 
@@ -118,13 +126,14 @@ class TestGatewayConfig:
         """SecretStrが値を隠蔽することを確認する。"""
         # Arrange
         env_vars = {
+            "USE_ENV_FILE": "false",
             "GATEWAY_API_KEY": "secret_key_32_bytes_or_more",
             "GATEWAY_WEBHOOK_SECRET": "secret_webhook_32_bytes_or_more",
         }
 
         # Act
         with patch.dict("os.environ", env_vars, clear=True):
-            config = GatewayConfig()
+            config = GatewayConfig(_env_file=None)
 
         # Assert
         # 文字列表現では値が隠蔽される
@@ -141,6 +150,7 @@ class TestGatewayConfig:
         """from_envで設定をロードしロギングが設定されることを確認する。"""
         # Arrange
         env_vars = {
+            "USE_ENV_FILE": "false",
             "GATEWAY_API_KEY": "test_api_key_32_bytes_or_more",
             "GATEWAY_WEBHOOK_SECRET": "test_webhook_secret_32_bytes_or_more",
             "LOG_LEVEL": "DEBUG",

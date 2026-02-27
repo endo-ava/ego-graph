@@ -5,6 +5,7 @@
 
 import asyncio
 import logging
+from pathlib import Path
 from typing import Any
 
 import firebase_admin
@@ -26,6 +27,7 @@ class FcmService:
         self,
         token_repository: PushTokenRepository,
         fcm_project_id: str | None = None,
+        fcm_credentials_path: str | None = None,
     ) -> None:
         """FCMサービスを初期化します。
 
@@ -38,14 +40,13 @@ class FcmService:
         """
         self._token_repository = token_repository
         self._initialized = False
+        self._fcm_credentials_path = fcm_credentials_path
 
         if fcm_project_id:
             try:
                 # Firebase Admin SDKの初期化
                 if not firebase_admin._apps:
-                    # プロダクション環境ではサービスアカウント認証を使用
-                    # 開発環境ではGoogle Application Default Credentialsを使用
-                    cred = credentials.ApplicationDefault()
+                    cred = self._build_credentials(fcm_credentials_path)
                     firebase_admin.initialize_app(cred, {"projectId": fcm_project_id})
                     logger.info(
                         "Firebase Admin SDK initialized with project: %s",
@@ -57,6 +58,19 @@ class FcmService:
                 logger.warning("Push notifications will be disabled")
         else:
             logger.info("FCM project ID not configured. Push notifications disabled")
+
+    def _build_credentials(self, fcm_credentials_path: str | None):
+        """Firebase認証情報を構築します。"""
+        if fcm_credentials_path:
+            credentials_file = Path(fcm_credentials_path)
+            if credentials_file.exists() and credentials_file.is_file():
+                logger.info(
+                    "Using Firebase service account credentials: %s",
+                    credentials_file,
+                )
+                return credentials.Certificate(str(credentials_file))
+
+        return credentials.ApplicationDefault()
 
     async def send_notification(
         self,
@@ -109,7 +123,8 @@ class FcmService:
         try:
             # FCMに送信（ブロッキング呼び出しを別スレッドで実行）
             response: messaging.BatchResponse = await asyncio.to_thread(
-                messaging.send_each_for_multicast, message
+                messaging.send_each_for_multicast,
+                message,
             )
 
             success_count = response.success_count
@@ -122,16 +137,27 @@ class FcmService:
                     if resp.exception:
                         token = device_tokens[idx]
                         # 無効なトークンを無効化
-                        if isinstance(
-                            resp.exception,
-                            (
-                                messaging.UnregisteredError,
-                                messaging.SenderIdMismatchError,
-                            ),
-                        ) or (
-                            isinstance(resp.exception, ValueError)
-                            and "InvalidRegistration" in str(resp.exception)
-                        ):
+                        invalid_error_types = tuple(
+                            err
+                            for err in (
+                                getattr(messaging, "UnregisteredError", None),
+                                getattr(messaging, "SenderIdMismatchError", None),
+                            )
+                            if isinstance(err, type)
+                        )
+                        is_known_invalid = bool(
+                            invalid_error_types
+                            and isinstance(resp.exception, invalid_error_types)
+                        )
+                        is_invalid_value_error = isinstance(
+                            resp.exception, ValueError
+                        ) and (
+                            "InvalidRegistration" in str(resp.exception)
+                            or "not a valid FCM registration token"
+                            in str(resp.exception)
+                        )
+
+                        if is_known_invalid or is_invalid_value_error:
                             await asyncio.to_thread(
                                 self._token_repository.disable_token,
                                 token,

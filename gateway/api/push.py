@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 _fcm_service: FcmService | None = None
 _token_repository: PushTokenRepository | None = None
 _fcm_init_lock = threading.Lock()
-
+_repo_init_lock = threading.Lock()
 
 def get_token_repository() -> PushTokenRepository:
     """PushTokenRepositoryの singleton インスタンスを取得します。
@@ -39,12 +39,11 @@ def get_token_repository() -> PushTokenRepository:
     global _token_repository
 
     if _token_repository is None:
-        with _fcm_init_lock:
+        with _repo_init_lock:
             if _token_repository is None:
                 _token_repository = PushTokenRepository()
 
     return _token_repository
-
 
 def get_fcm_service() -> FcmService:
     """FCMサービスの singleton インスタンスを取得します。
@@ -62,6 +61,7 @@ def get_fcm_service() -> FcmService:
                 _fcm_service = FcmService(
                     token_repository=repository,
                     fcm_project_id=config.fcm_project_id,
+                    fcm_credentials_path=config.fcm_credentials_path,
                 )
 
     return _fcm_service

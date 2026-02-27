@@ -65,6 +65,35 @@ class TestFcmService:
         assert service._initialized is True
         mock_firebase_admin.initialize_app.assert_called_once()
 
+    @patch("gateway.services.fcm_service.firebase_admin")
+    @patch("gateway.services.fcm_service.credentials")
+    @patch("gateway.services.fcm_service.Path.exists", return_value=True)
+    @patch("gateway.services.fcm_service.Path.is_file", return_value=True)
+    def test_init_with_credentials_path(
+        self,
+        _mock_is_file: MagicMock,
+        _mock_exists: MagicMock,
+        mock_credentials: MagicMock,
+        mock_firebase_admin: MagicMock,
+    ) -> None:
+        """FCM認証ファイルパス指定時にCertificate認証を使う。"""
+        mock_repo = MagicMock(spec=PushTokenRepository)
+        mock_firebase_admin._apps = []
+        mock_cred = MagicMock()
+        mock_credentials.Certificate.return_value = mock_cred
+
+        service = FcmService(
+            token_repository=mock_repo,
+            fcm_project_id="test-project",
+            fcm_credentials_path="gateway/firebase-service-account.json",
+        )
+
+        assert service._initialized is True
+        mock_credentials.Certificate.assert_called_once_with(
+            "gateway/firebase-service-account.json"
+        )
+        mock_credentials.ApplicationDefault.assert_not_called()
+
     @pytest.mark.asyncio
     async def test_send_notification_not_initialized(self) -> None:
         """FCM未初期化時の通知送信テスト。
@@ -130,6 +159,15 @@ class TestFcmService:
         mock_repo = MagicMock(spec=PushTokenRepository)
         service = FcmService(token_repository=mock_repo, fcm_project_id="test")
         service._initialized = True
+
+        class MockUnregisteredError(Exception):
+            pass
+
+        class MockSenderIdMismatchError(Exception):
+            pass
+
+        mock_messaging.UnregisteredError = MockUnregisteredError
+        mock_messaging.SenderIdMismatchError = MockSenderIdMismatchError
 
         # モックの設定
         mock_response = MagicMock()
@@ -204,6 +242,36 @@ class TestFcmService:
         )
 
         # Assert
+        assert result["success_count"] == 0
+        assert result["failure_count"] == 1
+        assert "invalid_token" in result["invalid_tokens"]
+        mock_repo.disable_token.assert_called_once_with("invalid_token")
+
+    @pytest.mark.asyncio
+    @patch("gateway.services.fcm_service.messaging")
+    async def test_send_notification_disables_value_error_invalid_token(
+        self, mock_messaging: MagicMock
+    ) -> None:
+        """ValueErrorの無効トークンメッセージを無効化対象として扱う。"""
+        mock_repo = MagicMock(spec=PushTokenRepository)
+        service = FcmService(token_repository=mock_repo, fcm_project_id="test")
+        service._initialized = True
+
+        mock_response = MagicMock()
+        mock_response.success_count = 0
+        mock_response.failure_count = 1
+
+        mock_send_response = MagicMock()
+        mock_send_response.exception = ValueError(
+            "The registration token is not a valid FCM registration token"
+        )
+        mock_response.responses = [mock_send_response]
+        mock_messaging.send_each_for_multicast.return_value = mock_response
+
+        result = await service.send_notification(
+            device_tokens=["invalid_token"], title="Test", body="Test Body"
+        )
+
         assert result["success_count"] == 0
         assert result["failure_count"] == 1
         assert "invalid_token" in result["invalid_tokens"]

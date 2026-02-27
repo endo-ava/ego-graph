@@ -3,6 +3,7 @@
 kotlin = "2.2.21"
 compose = "1.9.0"
 agp = "8.10.0"
+gms = "4.4.2"
 
 # Libraries
 ktor = "3.3.3"
@@ -40,6 +41,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-plugin" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+google-services = { id = "com.google.gms.google-services", version.ref = "gms" }
 
 [libraries]
 # Ktor Client

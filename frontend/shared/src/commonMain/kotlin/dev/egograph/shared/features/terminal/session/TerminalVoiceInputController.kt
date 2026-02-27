@@ -12,6 +12,8 @@ import dev.egograph.shared.core.platform.terminal.createSpeechRecognizer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal data class TerminalVoiceInputController(
     val isActive: Boolean,
@@ -29,6 +31,7 @@ internal fun rememberTerminalVoiceInputController(
 
     var voiceInputJob by remember { mutableStateOf<Job?>(null) }
     var isVoiceInputActive by remember { mutableStateOf(false) }
+    val voiceInputMutex = remember { Mutex() }
 
     val stopVoiceInput: () -> Unit = {
         speechRecognizer.stopRecognition()
@@ -42,32 +45,40 @@ internal fun rememberTerminalVoiceInputController(
             stopVoiceInput()
         } else {
             coroutineScope.launch {
-                val hasPermission =
-                    permissionUtil.hasRecordAudioPermission() ||
-                        permissionUtil.requestRecordAudioPermission().granted
-                if (!hasPermission) {
-                    onError("Microphone permission is required")
-                    return@launch
-                }
-
-                onError("")
-                isVoiceInputActive = true
-                voiceInputJob?.cancel()
-                voiceInputJob =
-                    launch {
-                        try {
-                            speechRecognizer.startRecognition().collectLatest { recognizedText ->
-                                if (recognizedText.isNotBlank()) {
-                                    onRecognizedText(recognizedText)
-                                }
-                            }
-                        } catch (e: Exception) {
-                            onError(e.message ?: "Voice input failed")
-                        } finally {
-                            isVoiceInputActive = false
-                            voiceInputJob = null
-                        }
+                // Acquire lock to prevent concurrent startups
+                voiceInputMutex.withLock {
+                    // Double-check after acquiring lock
+                    if (isVoiceInputActive) {
+                        return@withLock
                     }
+
+                    val hasPermission =
+                        permissionUtil.hasRecordAudioPermission() ||
+                            permissionUtil.requestRecordAudioPermission().granted
+                    if (!hasPermission) {
+                        onError("Microphone permission is required")
+                        return@withLock
+                    }
+
+                    onError("")
+                    isVoiceInputActive = true
+                    voiceInputJob?.cancel()
+                    voiceInputJob =
+                        launch {
+                            try {
+                                speechRecognizer.startRecognition().collectLatest { recognizedText ->
+                                    if (recognizedText.isNotBlank()) {
+                                        onRecognizedText(recognizedText)
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                onError(e.message ?: "Voice input failed")
+                            } finally {
+                                isVoiceInputActive = false
+                                voiceInputJob = null
+                            }
+                        }
+                }
             }
         }
     }

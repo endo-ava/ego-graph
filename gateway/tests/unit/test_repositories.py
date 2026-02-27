@@ -67,7 +67,9 @@ class TestPushTokenRepositorySaveAndRetrieve:
         mock_cursor = MagicMock()
 
         # データベースに既存トークンがない状態をモック
-        # 最初のfetchoneは既存トークンチェック（None）、2回目は挿入後のデータ取得
+        # 1回目: 既存トークンチェック（None）
+        # 2回目: next_id取得
+        # 3回目: 挿入後データ取得
         mock_new_row = [
             1,  # id
             sample_device_data["user_id"],
@@ -79,7 +81,7 @@ class TestPushTokenRepositorySaveAndRetrieve:
             datetime.now(),  # created_at
         ]
 
-        mock_cursor.fetchone.side_effect = [None, mock_new_row]
+        mock_cursor.fetchone.side_effect = [None, (1,), mock_new_row]
         mock_conn.execute.return_value = mock_cursor
         mock_conn.__enter__ = MagicMock(return_value=mock_conn)
         mock_conn.__exit__ = MagicMock(return_value=False)
