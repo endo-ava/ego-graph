@@ -12,6 +12,8 @@ import dev.egograph.shared.core.domain.repository.ChatRepository
 import dev.egograph.shared.core.domain.repository.MessageRepository
 import dev.egograph.shared.core.domain.repository.SystemPromptRepository
 import dev.egograph.shared.core.domain.repository.ThreadRepository
+import dev.egograph.shared.core.network.HttpClientConfig
+import dev.egograph.shared.core.network.HttpClientConfigProvider
 import dev.egograph.shared.core.network.provideHttpClient
 import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.core.platform.PlatformPrefsDefaults
@@ -53,8 +55,17 @@ val appModule =
             preferences?.getString(PlatformPrefsKeys.KEY_API_KEY, PlatformPrefsDefaults.DEFAULT_API_KEY) ?: ""
         }
 
+        // === HTTP Client Configuration ===
+        single<HttpClientConfigProvider> { HttpClientConfigProvider() }
+
+        single<HttpClientConfig> {
+            get<HttpClientConfigProvider>().getConfig()
+        }
+
         // === Core ===
-        single<HttpClient> { provideHttpClient() }
+        single<HttpClient> {
+            provideHttpClient(get<HttpClientConfig>())
+        }
 
         single<DiskCache?> {
             val context = getOrNull<DiskCacheContext>()
@@ -98,6 +109,7 @@ val appModule =
         single<ChatRepository> {
             ChatRepositoryImpl(
                 repositoryClient = get(qualifier = named("BackendClient")),
+                httpClientConfig = get<HttpClientConfig>(),
             )
         }
 

@@ -12,23 +12,29 @@ import kotlin.test.assertTrue
  * - HttpClient is properly configured with required plugins
  */
 class KtorConfigTest {
+    private val testConfig = HttpClientConfig.release()
+
     @Test
     fun `HttpClient initializes successfully`() {
         // Arrange
         // (nothing to arrange)
 
         // Act
-        val client = provideHttpClient()
+        val client = provideHttpClient(testConfig)
 
-        // Assert
-        assertNotNull(client, "HttpClient should be initialized")
-        assertTrue(client.engine != null, "HttpClient should have an engine configured")
+        try {
+            // Assert
+            assertNotNull(client, "HttpClient should be initialized")
+            assertTrue(client.engine != null, "HttpClient should have an engine configured")
+        } finally {
+            client.close()
+        }
     }
 
     @Test
     fun `HttpClient can be closed without errors`() {
         // Arrange
-        val client = provideHttpClient()
+        val client = provideHttpClient(testConfig)
 
         // Act & Assert
         // This should not throw an exception
@@ -41,8 +47,8 @@ class KtorConfigTest {
         // (nothing to arrange)
 
         // Act
-        val client1 = provideHttpClient()
-        val client2 = provideHttpClient()
+        val client1 = provideHttpClient(testConfig)
+        val client2 = provideHttpClient(testConfig)
 
         // Assert
         assertNotNull(client1)

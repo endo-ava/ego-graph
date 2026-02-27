@@ -9,16 +9,20 @@ import dev.egograph.shared.core.domain.model.StreamChunkType
 import dev.egograph.shared.core.domain.repository.ApiError
 import dev.egograph.shared.core.domain.repository.ChatRepository
 import dev.egograph.shared.core.domain.repository.RepositoryResult
+import dev.egograph.shared.core.domain.repository.TimeoutType
+import dev.egograph.shared.core.network.HttpClientConfig
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.utils.io.readUTF8Line
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
@@ -27,9 +31,14 @@ import kotlinx.serialization.json.Json
  *
  * RepositoryClientを使用してバックエンドAPIと通信します。
  * ストリーミングレスポンスにはServer-Sent Events (SSE)を使用します。
+ *
+ * @property repositoryClient HTTPクライアントラッパー
+ * @property httpClientConfig HTTPクライアント設定（タイムアウト値を含む）
+ * @property json JSONデシリアライザ
  */
 class ChatRepositoryImpl(
     private val repositoryClient: RepositoryClient,
+    private val httpClientConfig: HttpClientConfig,
     private val json: Json =
         Json {
             ignoreUnknownKeys = true
@@ -37,6 +46,10 @@ class ChatRepositoryImpl(
         },
 ) : ChatRepository,
     BaseRepository {
+    /** ストリーミングタイムアウト（ミリ秒） */
+    private val streamingTimeoutMillis: Long
+        get() = httpClientConfig.streamingTimeoutMillis
+
     override fun sendMessage(request: ChatRequest): Flow<RepositoryResult<StreamChunk>> =
         flow {
             try {
@@ -45,27 +58,42 @@ class ChatRepositoryImpl(
                         contentType(ContentType.Application.Json)
                     }
 
-                val channel = response.bodyAsChannel()
-                val eventBuffer = StringBuilder()
+                // ストリーミングタイムアウトを適用
+                val result =
+                    withTimeoutOrNull(streamingTimeoutMillis) {
+                        val channel = response.bodyAsChannel()
+                        val eventBuffer = StringBuilder()
 
-                while (!channel.isClosedForRead) {
-                    currentCoroutineContext().ensureActive()
-                    val line = channel.readUTF8Line() ?: break
+                        while (!channel.isClosedForRead) {
+                            currentCoroutineContext().ensureActive()
+                            val line = channel.readUTF8Line() ?: break
 
-                    if (line.isBlank()) {
-                        if (eventBuffer.isNotEmpty()) {
-                            emitSseEvent(eventBuffer.toString())
-                            eventBuffer.clear()
+                            if (line.isBlank()) {
+                                if (eventBuffer.isNotEmpty()) {
+                                    emitSseEvent(eventBuffer.toString())
+                                    eventBuffer.clear()
+                                }
+                                continue
+                            }
+                            eventBuffer.appendLine(line)
                         }
-                        continue
-                    }
-                    eventBuffer.appendLine(line)
-                }
 
-                if (eventBuffer.isNotBlank()) {
-                    emitSseEvent(eventBuffer.toString())
+                        if (eventBuffer.isNotBlank()) {
+                            emitSseEvent(eventBuffer.toString())
+                        }
+                    }
+
+                if (result == null) {
+                    emit(
+                        Result.failure(
+                            ApiError.TimeoutError(
+                                timeoutType = TimeoutType.STREAMING,
+                                timeoutMillis = streamingTimeoutMillis,
+                            ),
+                        ),
+                    )
                 }
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e
             } catch (e: ApiError) {
                 emit(Result.failure(e))

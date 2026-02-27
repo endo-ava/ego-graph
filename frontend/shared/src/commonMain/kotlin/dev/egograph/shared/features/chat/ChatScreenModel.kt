@@ -7,6 +7,7 @@ import dev.egograph.shared.core.domain.model.Message
 import dev.egograph.shared.core.domain.model.MessageRole
 import dev.egograph.shared.core.domain.model.StreamChunk
 import dev.egograph.shared.core.domain.model.ThreadMessage
+import dev.egograph.shared.core.domain.repository.ApiError
 import dev.egograph.shared.core.domain.repository.ChatRepository
 import dev.egograph.shared.core.domain.repository.MessageRepository
 import dev.egograph.shared.core.domain.repository.ThreadRepository
@@ -21,6 +22,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * チャット画面のViewModel
@@ -40,6 +44,24 @@ class ChatScreenModel(
     val effect: Flow<ChatEffect> = _effect.receiveAsFlow()
 
     private val pageLimit = 50
+
+    /** メッセージID生成用カウンター */
+    private val messageIdCounter = AtomicLong(0)
+
+    /** 現在進行中の送信ジョブ（キャンセル用） */
+    private var currentSendingJob: kotlinx.coroutines.Job? = null
+
+    /** リトライ用コンテキスト（スレッドセーフ） */
+    private data class RetryContext(
+        val originalRequest: ChatRequest,
+        val userMessage: ThreadMessage,
+        val assistantMessage: ThreadMessage,
+        val selectedThreadId: String,
+        val streamingMessageId: String,
+    )
+
+    /** 保留中のリトライコンテキスト（スレッドセーフ） */
+    private val pendingRetryContext = AtomicReference<RetryContext?>(null)
 
     private data class LocalSendContext(
         val selectedThreadId: String,
@@ -62,9 +84,16 @@ class ChatScreenModel(
                 .collect { result ->
                     result
                         .onSuccess { response ->
-                            updateThreadList {
-                                it.copy(
+                            updateThreadList { current ->
+                                // selectedThreadを維持: 新しいthreadsリストから同じIDのスレッドを探す
+                                // ページ外スレッドを選択中の場合は現在のselectedThreadを維持
+                                val newSelectedThread =
+                                    current.selectedThread?.let { selected ->
+                                        response.threads.find { it.threadId == selected.threadId }
+                                    } ?: current.selectedThread
+                                current.copy(
                                     threads = response.threads,
+                                    selectedThread = newSelectedThread,
                                     isLoading = false,
                                     hasMore = response.threads.size < response.total,
                                 )
@@ -90,10 +119,16 @@ class ChatScreenModel(
                 .collect { result ->
                     result
                         .onSuccess { response ->
-                            updateThreadList {
-                                val mergedThreads = it.threads + response.threads
-                                it.copy(
+                            updateThreadList { current ->
+                                val mergedThreads = current.threads + response.threads
+                                // selectedThreadを維持: マージ後のthreadsリストから同じIDのスレッドを探す
+                                val newSelectedThread =
+                                    current.selectedThread?.let { selected ->
+                                        mergedThreads.find { it.threadId == selected.threadId }
+                                    } ?: current.selectedThread
+                                current.copy(
                                     threads = mergedThreads,
+                                    selectedThread = newSelectedThread,
                                     isLoadingMore = false,
                                     hasMore = mergedThreads.size < response.total,
                                 )
@@ -191,29 +226,120 @@ class ChatScreenModel(
         val sendContext = createLocalSendContext(currentState, content)
         appendPendingMessages(sendContext)
 
-        screenModelScope.launch {
-            val request = buildChatRequest(currentState, content)
-            try {
-                chatRepository
-                    .sendMessage(request)
-                    .collect { result ->
-                        result
-                            .onSuccess { chunk ->
-                                applyStreamChunk(chunk, sendContext)
-                            }.onFailure { error ->
-                                handleSendFailure(error, sendContext)
-                            }
+        // 進行中のジョブがあればキャンセル
+        currentSendingJob?.cancel()
+
+        val launchingJob = currentSendingJob
+        currentSendingJob =
+            screenModelScope.launch {
+                val request = buildChatRequest(currentState, content)
+
+                // リトライ用にコンテキストを保存（スレッドセーフ）
+                val retryContext =
+                    RetryContext(
+                        originalRequest = request,
+                        userMessage = sendContext.userMessage,
+                        assistantMessage = sendContext.assistantMessage,
+                        selectedThreadId = sendContext.selectedThreadId,
+                        streamingMessageId = sendContext.streamingMessageId,
+                    )
+                pendingRetryContext.set(retryContext)
+
+                var errorCanRetry: Boolean? = null
+                try {
+                    chatRepository
+                        .sendMessage(request)
+                        .collect { result ->
+                            result
+                                .onSuccess { chunk ->
+                                    applyStreamChunk(chunk, sendContext)
+                                }.onFailure { error ->
+                                    errorCanRetry = handleSendFailure(error, sendContext)
+                                }
+                        }
+                } finally {
+                    finalizeSending(currentState)
+                    // ローカルな実行結果に基づいてコンテキストを制御
+                    when {
+                        // エラーがない場合：成功したのでコンテキストをクリア
+                        errorCanRetry == null -> pendingRetryContext.set(null)
+                        // リトライ可能なエラー：コンテキストを保持
+                        errorCanRetry == true -> Unit // 何もしない（コンテキストは既にセットされている）
+                        // リトライ不可なエラー：コンテキストをクリア
+                        else -> pendingRetryContext.set(null)
                     }
-            } finally {
-                finalizeSending(currentState)
+                    if (currentSendingJob === launchingJob) currentSendingJob = null
+                }
             }
-        }
     }
 
     fun clearErrors() {
         updateThreadList { it.copy(error = null) }
         updateMessageList { it.copy(error = null) }
         updateComposer { it.copy(modelsError = null) }
+    }
+
+    /** チャットエラーをクリアする */
+    fun clearChatError() {
+        _state.update { it.copy(chatError = null) }
+    }
+
+    /** 最後のメッセージ送信をリトライする */
+    fun retryLastMessage() {
+        // コンテキストを取得してクリア（スレッドセーフ）
+        val retryContext = pendingRetryContext.getAndSet(null) ?: return
+
+        // 進行中のジョブがあればキャンセル
+        currentSendingJob?.cancel()
+
+        clearChatError()
+
+        updateComposer { it.copy(isSending = true) }
+        appendPendingMessages(
+            LocalSendContext(
+                selectedThreadId = retryContext.selectedThreadId,
+                streamingMessageId = retryContext.streamingMessageId,
+                userMessage = retryContext.userMessage,
+                assistantMessage = retryContext.assistantMessage,
+            ),
+        )
+
+        val launchingJob = currentSendingJob
+        currentSendingJob =
+            screenModelScope.launch {
+                var errorCanRetry: Boolean? = null
+                try {
+                    val sendContext =
+                        LocalSendContext(
+                            selectedThreadId = retryContext.selectedThreadId,
+                            streamingMessageId = retryContext.streamingMessageId,
+                            userMessage = retryContext.userMessage,
+                            assistantMessage = retryContext.assistantMessage,
+                        )
+                    chatRepository
+                        .sendMessage(retryContext.originalRequest)
+                        .collect { result ->
+                            result
+                                .onSuccess { chunk ->
+                                    applyStreamChunk(chunk, sendContext)
+                                }.onFailure { error ->
+                                    errorCanRetry =
+                                        handleSendFailure(error, sendContext)
+                                }
+                        }
+                } finally {
+                    finalizeSending(_state.value)
+                    when {
+                        // エラーがない場合：成功したのでコンテキストをクリア
+                        errorCanRetry == null -> pendingRetryContext.set(null)
+                        // リトライ可能なエラー：コンテキストを再セット（再リトライ可能）
+                        errorCanRetry == true -> pendingRetryContext.set(retryContext)
+                        // リトライ不可なエラー：コンテキストをクリア
+                        else -> pendingRetryContext.set(null)
+                    }
+                    if (currentSendingJob === launchingJob) currentSendingJob = null
+                }
+            }
     }
 
     private fun updateThreadList(transform: (ThreadListState) -> ThreadListState) {
@@ -232,7 +358,8 @@ class ChatScreenModel(
         _effect.send(ChatEffect.ShowMessage(message))
     }
 
-    private fun createLocalMessageId(prefix: String): String = "$prefix-${kotlin.random.Random.nextLong().toString().replace('-', '0')}"
+    private fun createLocalMessageId(prefix: String): String =
+        "$prefix-${messageIdCounter.incrementAndGet()}-${UUID.randomUUID().toString().take(8)}"
 
     private fun createLocalSendContext(
         currentState: ChatState,
@@ -311,8 +438,26 @@ class ChatScreenModel(
     private suspend fun handleSendFailure(
         error: Throwable,
         sendContext: LocalSendContext,
-    ) {
-        val message = "メッセージ送信に失敗: ${error.message}"
+    ): Boolean {
+        // エラー状態を変換
+        val errorState =
+            when (error) {
+                is ApiError -> error.toChatErrorState()
+                else ->
+                    ChatErrorState(
+                        type = dev.egograph.shared.features.chat.ErrorType.UNKNOWN,
+                        message = "メッセージ送信に失敗: ${error.message}",
+                        action = dev.egograph.shared.core.domain.repository.ErrorAction.DISMISS,
+                    )
+            }
+
+        // エラー状態をStateに設定（ErrorBannerが表示される）
+        _state.update { it.copy(chatError = errorState) }
+
+        // エラー発生をEffectで通知（ログ等の用途）
+        _effect.send(ChatEffect.ShowError(errorState = errorState))
+
+        // メッセージリストから一時メッセージを削除
         updateMessageList { currentState ->
             val filteredMessages =
                 currentState.messages.filter { messageItem ->
@@ -325,7 +470,9 @@ class ChatScreenModel(
                 activeAssistantTask = null,
             )
         }
-        emitMessage(message)
+
+        // リトライ可否を返す
+        return errorState.canRetry
     }
 
     private suspend fun finalizeSending(currentState: ChatState) {

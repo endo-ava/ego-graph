@@ -20,12 +20,15 @@ import co.touchlab.kermit.Logger as KermitLogger
  *
  * Creates a Ktor HttpClient configured with:
  * - OkHttp engine
- * - Timeout settings (30s request, 10s connect)
- * - Retry logic with exponential backoff (3 retries)
+ * - Timeout settings from HttpClientConfig
+ * - Retry logic with exponential backoff
  * - JSON content negotiation with kotlinx.serialization
  * - Request/response logging with Kermit
+ *
+ * @param config HTTPクライアント設定
+ * @return 設定適用済みのHttpClient
  */
-actual fun provideHttpClient(): HttpClient =
+actual fun provideHttpClient(config: HttpClientConfig): HttpClient =
     HttpClient(OkHttp) {
         engine {
             config {
@@ -33,21 +36,27 @@ actual fun provideHttpClient(): HttpClient =
             }
         }
         install(HttpTimeout) {
-            requestTimeoutMillis = 30_000
-            connectTimeoutMillis = 10_000
-            socketTimeoutMillis = 30_000
+            requestTimeoutMillis = config.requestTimeoutMillis
+            connectTimeoutMillis = config.connectTimeoutMillis
+            socketTimeoutMillis = config.socketTimeoutMillis
         }
 
         install(HttpRequestRetry) {
-            maxRetries = 3
-            exponentialDelay(baseDelayMs = 1000, maxDelayMs = 4000)
-            retryOnServerErrors(maxRetries = 3)
+            maxRetries = config.maxRetries
+            exponentialDelay(baseDelayMs = config.retryBaseDelayMs, maxDelayMs = config.retryMaxDelayMs)
+            retryIf { request, response ->
+                response.status.value >= 500
+            }
             retryOnExceptionIf { _, cause ->
                 cause is IOException || cause is HttpRequestTimeoutException
             }
+            // 401/403は再認証が必要なためリトライしない
+            retryIf { request, response ->
+                response.status.value >= 500
+            }
             modifyRequest {
                 KermitLogger.withTag("HttpClient").w {
-                    "Request failed (attempt $retryCount/3), retrying..."
+                    "Request failed (attempt $retryCount/${config.maxRetries}), retrying..."
                 }
             }
         }
