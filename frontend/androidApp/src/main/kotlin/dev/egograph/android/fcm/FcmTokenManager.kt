@@ -1,6 +1,7 @@
 package dev.egograph.android.fcm
 
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -11,9 +12,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-import org.json.JSONObject
 
 /** FCMトークン管理マネージャー。
 
@@ -87,9 +88,9 @@ class FcmTokenManager(
                     delay(currentDelay)
                     currentDelay = (currentDelay * 2).coerceAtMost(RETRY_DELAY_MS)
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to register FCM token due to unexpected error: ${e.message}")
-                return
+            } catch (e: CancellationException) {
+                Log.w(TAG, "Token registration cancelled")
+                throw e
             }
         }
 
