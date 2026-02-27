@@ -1,6 +1,8 @@
 package dev.egograph.shared.core.domain.repository
 
-sealed class ApiError protected constructor(cause: Throwable? = null) : Exception(cause) {
+sealed class ApiError protected constructor(
+    cause: Throwable? = null,
+) : Exception(cause) {
     /**
      * ネットワークエラー
      *
