@@ -37,21 +37,24 @@ sealed class ApiError protected constructor(
         val detail: String? = null,
     ) : ApiError() {
         val isRetryable: Boolean
-            get() = when (code) {
-                408, 429, 500, 502, 503, 504 -> true
-                else -> false
-            }
+            get() =
+                when (code) {
+                    408, 429, 500, 502, 503, 504 -> true
+                    else -> false
+                }
         val suggestedAction: ErrorAction
-            get() = when (code) {
-                401, 403 -> ErrorAction.REAUTHENTICATE
-                408, 429, 500, 502, 503, 504 -> ErrorAction.RETRY
-                else -> ErrorAction.DISMISS
-            }
+            get() =
+                when (code) {
+                    401, 403 -> ErrorAction.REAUTHENTICATE
+                    408, 429, 500, 502, 503, 504 -> ErrorAction.RETRY
+                    else -> ErrorAction.DISMISS
+                }
         val severity: ErrorSeverity
-            get() = when (code) {
-                in 500..599 -> ErrorSeverity.CRITICAL
-                else -> ErrorSeverity.ERROR
-            }
+            get() =
+                when (code) {
+                    in 500..599 -> ErrorSeverity.CRITICAL
+                    else -> ErrorSeverity.ERROR
+                }
 
         override val message: String
             get() = "HTTP $code: $errorMessage" + (detail?.let { " - $it" } ?: "")
