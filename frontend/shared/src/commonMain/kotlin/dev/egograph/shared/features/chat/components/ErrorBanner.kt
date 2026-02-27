@@ -47,7 +47,7 @@ fun ErrorBanner(
 
     val contentColor =
         when (errorState.severity) {
-            dev.egograph.shared.core.domain.repository.ErrorSeverity.CRITICAL -> MaterialTheme.colorScheme.onErrorContainer
+            dev.egograph.shared.core.domain.repository.ErrorSeverity.CRITICAL -> MaterialTheme.colorScheme.onError
             dev.egograph.shared.core.domain.repository.ErrorSeverity.ERROR -> MaterialTheme.colorScheme.onErrorContainer
             dev.egograph.shared.core.domain.repository.ErrorSeverity.WARNING -> MaterialTheme.colorScheme.onTertiaryContainer
             dev.egograph.shared.core.domain.repository.ErrorSeverity.INFO -> MaterialTheme.colorScheme.onPrimaryContainer

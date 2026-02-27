@@ -44,7 +44,9 @@ actual fun provideHttpClient(config: HttpClientConfig): HttpClient =
         install(HttpRequestRetry) {
             maxRetries = config.maxRetries
             exponentialDelay(baseDelayMs = config.retryBaseDelayMs, maxDelayMs = config.retryMaxDelayMs)
-            retryOnServerErrors(maxRetries = config.maxRetries)
+            retryIf { request, response ->
+                response.status.value >= 500
+            }
             retryOnExceptionIf { _, cause ->
                 cause is IOException || cause is HttpRequestTimeoutException
             }

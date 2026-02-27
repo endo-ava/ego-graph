@@ -229,6 +229,7 @@ class ChatScreenModel(
         // 進行中のジョブがあればキャンセル
         currentSendingJob?.cancel()
 
+        val launchingJob = currentSendingJob
         currentSendingJob =
             screenModelScope.launch {
                 val request = buildChatRequest(currentState, content)
@@ -267,7 +268,7 @@ class ChatScreenModel(
                         // リトライ不可なエラー：コンテキストをクリア
                         else -> pendingRetryContext.set(null)
                     }
-                    currentSendingJob = null
+                    if (currentSendingJob === launchingJob) currentSendingJob = null
                 }
             }
     }
@@ -290,7 +291,6 @@ class ChatScreenModel(
 
         // 進行中のジョブがあればキャンセル
         currentSendingJob?.cancel()
-        currentSendingJob = null
 
         clearChatError()
 
@@ -304,6 +304,7 @@ class ChatScreenModel(
             ),
         )
 
+        val launchingJob = currentSendingJob
         currentSendingJob =
             screenModelScope.launch {
                 var errorCanRetry: Boolean? = null
@@ -336,7 +337,7 @@ class ChatScreenModel(
                         // リトライ不可なエラー：コンテキストをクリア
                         else -> pendingRetryContext.set(null)
                     }
-                    currentSendingJob = null
+                    if (currentSendingJob === launchingJob) currentSendingJob = null
                 }
             }
     }

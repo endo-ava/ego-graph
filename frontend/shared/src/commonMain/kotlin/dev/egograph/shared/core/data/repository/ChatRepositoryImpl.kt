@@ -17,13 +17,12 @@ import io.ktor.http.contentType
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
@@ -60,37 +59,40 @@ class ChatRepositoryImpl(
                     }
 
                 // ストリーミングタイムアウトを適用
-                withTimeout(streamingTimeoutMillis) {
-                    val channel = response.bodyAsChannel()
-                    val eventBuffer = StringBuilder()
+                val result =
+                    withTimeoutOrNull(streamingTimeoutMillis) {
+                        val channel = response.bodyAsChannel()
+                        val eventBuffer = StringBuilder()
 
-                    while (!channel.isClosedForRead) {
-                        currentCoroutineContext().ensureActive()
-                        val line = channel.readUTF8Line() ?: break
+                        while (!channel.isClosedForRead) {
+                            currentCoroutineContext().ensureActive()
+                            val line = channel.readUTF8Line() ?: break
 
-                        if (line.isBlank()) {
-                            if (eventBuffer.isNotEmpty()) {
-                                emitSseEvent(eventBuffer.toString())
-                                eventBuffer.clear()
+                            if (line.isBlank()) {
+                                if (eventBuffer.isNotEmpty()) {
+                                    emitSseEvent(eventBuffer.toString())
+                                    eventBuffer.clear()
+                                }
+                                continue
                             }
-                            continue
+                            eventBuffer.appendLine(line)
                         }
-                        eventBuffer.appendLine(line)
+
+                        if (eventBuffer.isNotBlank()) {
+                            emitSseEvent(eventBuffer.toString())
+                        }
                     }
 
-                    if (eventBuffer.isNotBlank()) {
-                        emitSseEvent(eventBuffer.toString())
-                    }
-                }
-            } catch (e: TimeoutCancellationException) {
-                emit(
-                    Result.failure(
-                        ApiError.TimeoutError(
-                            timeoutType = TimeoutType.STREAMING,
-                            timeoutMillis = streamingTimeoutMillis,
+                if (result == null) {
+                    emit(
+                        Result.failure(
+                            ApiError.TimeoutError(
+                                timeoutType = TimeoutType.STREAMING,
+                                timeoutMillis = streamingTimeoutMillis,
+                            ),
                         ),
-                    ),
-                )
+                    )
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: ApiError) {

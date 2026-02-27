@@ -22,9 +22,13 @@ class KtorConfigTest {
         // Act
         val client = provideHttpClient(testConfig)
 
-        // Assert
-        assertNotNull(client, "HttpClient should be initialized")
-        assertTrue(client.engine != null, "HttpClient should have an engine configured")
+        try {
+            // Assert
+            assertNotNull(client, "HttpClient should be initialized")
+            assertTrue(client.engine != null, "HttpClient should have an engine configured")
+        } finally {
+            client.close()
+        }
     }
 
     @Test
