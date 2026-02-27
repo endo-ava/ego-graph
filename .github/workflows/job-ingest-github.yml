@@ -10,6 +10,8 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -30,8 +32,8 @@ jobs:
 
       - name: Run GitHub Worklog ingestion pipeline
         env:
-          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
-          GITHUB_LOGIN: ${{ secrets.GITHUB_LOGIN }}
+          GITHUB_PAT: ${{ secrets.EGOGRAPH_GITHUB_PAT }}
+          GITHUB_LOGIN: ${{ secrets.EGOGRAPH_GITHUB_LOGIN }}
           DUCKDB_PATH: data/analytics.duckdb
           R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -39,6 +41,9 @@ jobs:
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           LOG_LEVEL: INFO
         run: |
+          [ -n "$GITHUB_PAT" ] || { echo "EGOGRAPH_GITHUB_PAT secret is required"; exit 1; }
+          [ -n "$GITHUB_LOGIN" ] || { echo "EGOGRAPH_GITHUB_LOGIN secret is required"; exit 1; }
+
           uv run python -m ingest.github.main
 
       - name: Verify Parquet Data Integrity (R2)

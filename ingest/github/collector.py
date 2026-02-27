@@ -141,6 +141,11 @@ class GitHubWorklogCollector:
             github_login: フィルタ対象のGitHubユーザー名（個人所有Repo判定用）
             base_url: GitHub APIベースURL
         """
+        if not token.strip():
+            raise ValueError("GitHub token is required")
+        if not github_login.strip():
+            raise ValueError("GitHub login is required")
+
         self.token = token
         self.github_login = github_login
         self.base_url = base_url.rstrip("/")
