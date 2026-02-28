@@ -19,6 +19,16 @@ def _generate_pr_key(repo_full_name: str, pr_number: int) -> str:
     return hashlib.sha256(key_string.encode()).hexdigest()
 
 
+def _generate_pr_event_id(
+    repo_full_name: str,
+    pr_number: int,
+    updated_at_utc: str | None,
+    state: str,
+) -> str:
+    key_string = f"{repo_full_name}:{pr_number}:{updated_at_utc or ''}:{state}"
+    return hashlib.sha256(key_string.encode()).hexdigest()
+
+
 def _is_personal_repo(repo: dict[str, Any], github_login: str) -> bool:
     """個人所有Repo判定。
 
@@ -90,6 +100,12 @@ def transform_pull_request(
     is_merged = merged_at is not None
 
     return {
+        "pr_event_id": _generate_pr_event_id(
+            repo_full_name,
+            pr["number"],
+            pr.get("updated_at"),
+            pr.get("state", "open"),
+        ),
         "pr_key": _generate_pr_key(repo_full_name, pr["number"]),
         "source": "github",
         "owner": owner,

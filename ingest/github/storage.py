@@ -142,6 +142,45 @@ class GitHubWorklogStorage:
 
         return existing_ids
 
+    def _load_existing_pr_event_ids(self, year: int, month: int) -> set[str]:
+        prefix = (
+            f"{self.events_path}github/pull_requests/year={year}/month={month:02d}/"
+        )
+        existing_ids: set[str] = set()
+
+        try:
+            paginator = self.s3.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=self.bucket_name, Prefix=prefix):
+                if "Contents" not in page:
+                    continue
+
+                for obj in page["Contents"]:
+                    try:
+                        obj_response = self.s3.get_object(
+                            Bucket=self.bucket_name,
+                            Key=obj["Key"],
+                        )
+                        df = pd.read_parquet(BytesIO(obj_response["Body"].read()))
+                        if "pr_event_id" in df.columns:
+                            existing_ids.update(df["pr_event_id"].tolist())
+                    except Exception:
+                        logger.warning("Failed to read Parquet file: %s", obj["Key"])
+                        continue
+
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                logger.info(
+                    "No existing pull request events found for year=%s month=%s",
+                    year,
+                    month,
+                )
+            else:
+                logger.exception("Failed to list existing pull request events")
+        except Exception:
+            logger.exception("Unexpected error loading existing pull request event IDs")
+
+        return existing_ids
+
     def save_raw_prs(
         self, data: list[dict[str, Any]], owner: str, repo: str
     ) -> str | None:
@@ -308,31 +347,48 @@ class GitHubWorklogStorage:
             "failed": 0,
         }
 
-    def save_pr_master(
+    def save_pr_events_parquet_with_stats(
         self,
         data: list[dict[str, Any]],
-        owner: str,
-        repo: str,
-    ) -> str | None:
-        """PR現在状態をParquet形式で保存する（上書き）。
-
-        Path: master/github/pull_requests_current/{owner}/{repo}.parquet
-
-        Args:
-            data: 保存するPR現在状態データ(辞書のリスト)
-            owner: リポジトリオーナー
-            repo: リポジトリ名
-
-        Returns:
-            保存されたオブジェクトのキー (失敗時はNone)
-        """
+        year: int,
+        month: int,
+    ) -> dict[str, int]:
         if not data:
-            logger.warning("No PR master data provided to save.")
-            return None
+            return {"fetched": 0, "new": 0, "duplicates": 0, "failed": 0}
 
-        key = f"{self.master_path}github/pull_requests_current/{owner}/{repo}.parquet"
+        existing_ids = self._load_existing_pr_event_ids(year, month)
+        new_events = [e for e in data if e.get("pr_event_id") not in existing_ids]
+        duplicate_count = len(data) - len(new_events)
 
-        return self._upload_parquet(data, key, "PR master Parquet")
+        if not new_events:
+            logger.info("No new pull request events to save (all duplicates).")
+            return {
+                "fetched": len(data),
+                "new": 0,
+                "duplicates": duplicate_count,
+                "failed": 0,
+            }
+
+        unique_id = str(uuid.uuid4())
+        key = (
+            f"{self.events_path}github/pull_requests/"
+            f"year={year}/month={month:02d}/{unique_id}.parquet"
+        )
+        saved = self._upload_parquet(new_events, key, "pull request events Parquet")
+        if saved is None:
+            return {
+                "fetched": len(data),
+                "new": 0,
+                "duplicates": duplicate_count,
+                "failed": len(new_events),
+            }
+
+        return {
+            "fetched": len(data),
+            "new": len(new_events),
+            "duplicates": duplicate_count,
+            "failed": 0,
+        }
 
     def save_repo_master(
         self,

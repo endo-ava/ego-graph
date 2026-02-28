@@ -108,7 +108,12 @@ def test_run_pipeline_updates_state_on_enrichment_api_failure(monkeypatch):
     storage = MagicMock()
     storage.get_ingest_state.return_value = {"cursor_utc": "2026-01-01T00:00:00+00:00"}
     storage.save_repo_master.return_value = "repo.parquet"
-    storage.save_pr_master.return_value = "pr.parquet"
+    storage.save_pr_events_parquet_with_stats.return_value = {
+        "fetched": 1,
+        "new": 1,
+        "duplicates": 0,
+        "failed": 0,
+    }
     storage.save_raw_prs.return_value = "pr.json"
     storage.save_raw_commits.return_value = "commits.json"
     storage.save_commits_parquet_with_stats.return_value = {
@@ -166,7 +171,12 @@ def test_run_pipeline_uses_cursor_and_updates_state_on_success(monkeypatch):
     storage = MagicMock()
     storage.get_ingest_state.return_value = {"cursor_utc": "2026-01-01T00:00:00+00:00"}
     storage.save_repo_master.return_value = "repo.parquet"
-    storage.save_pr_master.return_value = "pr.parquet"
+    storage.save_pr_events_parquet_with_stats.return_value = {
+        "fetched": 1,
+        "new": 1,
+        "duplicates": 0,
+        "failed": 0,
+    }
     storage.save_raw_prs.return_value = "pr.json"
     storage.save_raw_commits.return_value = "commits.json"
     storage.save_commits_parquet_with_stats.return_value = {
@@ -215,7 +225,12 @@ def test_run_pipeline_skips_commit_detail_when_disabled(monkeypatch):
     storage = MagicMock()
     storage.get_ingest_state.return_value = {"cursor_utc": "2026-01-01T00:00:00+00:00"}
     storage.save_repo_master.return_value = "repo.parquet"
-    storage.save_pr_master.return_value = "pr.parquet"
+    storage.save_pr_events_parquet_with_stats.return_value = {
+        "fetched": 1,
+        "new": 1,
+        "duplicates": 0,
+        "failed": 0,
+    }
     storage.save_raw_prs.return_value = "pr.json"
     storage.save_raw_commits.return_value = "commits.json"
     storage.save_commits_parquet_with_stats.return_value = {

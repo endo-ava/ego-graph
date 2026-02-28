@@ -230,68 +230,73 @@ class TestGitHubWorklogStorage(unittest.TestCase):
                 self.assertEqual(stats["duplicates"], 0)
                 self.assertEqual(stats["failed"], 1)
 
-    def test_save_pr_master(self):
-        """PR現在状態をParquet形式で上書き保存することを検証する。
-
-        Path: master/github/pull_requests_current/{owner}/{repo}.parquet
-        """
-        # Arrange: 保存するPR現在状態データの準備
+    def test_save_pr_events_parquet_with_stats(self):
         data = [
             {
-                "pr_key": "testowner/testrepo/100",
-                "source": "github",
-                "owner": "testowner",
-                "repo": "testrepo",
-                "repo_full_name": "testowner/testrepo",
+                "pr_event_id": "existing_event",
+                "pr_key": "key1",
                 "pr_number": 100,
-                "pr_id": 12345,
-                "action": "opened",
                 "state": "open",
-                "is_merged": False,
-                "title": "Test PR",
+                "updated_at_utc": "2026-01-01T00:00:00Z",
+            },
+            {
+                "pr_event_id": "new_event",
+                "pr_key": "key1",
+                "pr_number": 100,
+                "state": "closed",
+                "updated_at_utc": "2026-01-02T00:00:00Z",
+            },
+        ]
+
+        with patch.object(
+            self.storage,
+            "_load_existing_pr_event_ids",
+            return_value={"existing_event"},
+        ):
+            with patch("ingest.github.storage.pd.DataFrame.to_parquet") as _:
+                stats = self.storage.save_pr_events_parquet_with_stats(
+                    data,
+                    year=2026,
+                    month=1,
+                )
+
+        self.assertEqual(stats["fetched"], 2)
+        self.assertEqual(stats["new"], 1)
+        self.assertEqual(stats["duplicates"], 1)
+        self.assertEqual(stats["failed"], 0)
+        self.mock_s3.put_object.assert_called_once()
+        call_args = self.mock_s3.put_object.call_args[1]
+        self.assertTrue(
+            call_args["Key"].startswith(
+                "events/github/pull_requests/year=2026/month=01/"
+            )
+        )
+
+    def test_save_pr_events_parquet_with_stats_when_all_duplicates(self):
+        data = [
+            {
+                "pr_event_id": "existing_event",
+                "pr_key": "key1",
+                "updated_at_utc": "2026-01-01T00:00:00Z",
             }
         ]
 
-        # Act: Masterとして保存を実行
-        with patch("ingest.github.storage.pd.DataFrame.to_parquet") as _:
-            key = self.storage.save_pr_master(data, owner="testowner", repo="testrepo")
-
-            # Assert: 保存結果を検証
-            self.mock_s3.put_object.assert_called_once()
-            call_args = self.mock_s3.put_object.call_args[1]
-            self.assertEqual(call_args["Bucket"], "test-bucket")
-            self.assertTrue(
-                call_args["Key"].startswith(
-                    "master/github/pull_requests_current/testowner/testrepo"
-                )
-            )
-            self.assertTrue(call_args["Key"].endswith(".parquet"))
-            self.assertEqual(call_args["ContentType"], "application/octet-stream")
-            self.assertIsNotNone(key)
-
-    def test_save_pr_master_overwrites(self):
-        """PR Masterが上書き保存されることを検証する。"""
-        # Arrange: 2回分の保存データ準備
-        data_v1 = [{"pr_key": "key1", "pr_number": 100, "state": "open"}]
-        data_v2 = [{"pr_key": "key1", "pr_number": 100, "state": "closed"}]
-
-        # Act: 同じキーで2回保存
-        with patch("ingest.github.storage.pd.DataFrame.to_parquet") as _:
-            key1 = self.storage.save_pr_master(
-                data_v1, owner="testowner", repo="testrepo"
-            )
-            key2 = self.storage.save_pr_master(
-                data_v2, owner="testowner", repo="testrepo"
+        with patch.object(
+            self.storage,
+            "_load_existing_pr_event_ids",
+            return_value={"existing_event"},
+        ):
+            stats = self.storage.save_pr_events_parquet_with_stats(
+                data,
+                year=2026,
+                month=1,
             )
 
-            # Assert: 同じパスで2回呼ばれている（上書き）
-            self.assertEqual(self.mock_s3.put_object.call_count, 2)
-            call1_args = self.mock_s3.put_object.call_args_list[0][1]
-            call2_args = self.mock_s3.put_object.call_args_list[1][1]
-            # 同じキーであること
-            self.assertEqual(call1_args["Key"], call2_args["Key"])
-            self.assertIsNotNone(key1)
-            self.assertIsNotNone(key2)
+        self.assertEqual(stats["fetched"], 1)
+        self.assertEqual(stats["new"], 0)
+        self.assertEqual(stats["duplicates"], 1)
+        self.assertEqual(stats["failed"], 0)
+        self.mock_s3.put_object.assert_not_called()
 
     def test_save_repo_master(self):
         """Repository MasterをParquet形式で保存することを検証する。

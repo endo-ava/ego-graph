@@ -112,6 +112,8 @@ def run_pipeline(config: Config) -> None:
 
     # 各リポジトリを処理
     total_prs = 0
+    total_new_pr_events = 0
+    total_duplicate_pr_events = 0
     total_commits = 0
     total_new_commits = 0
     total_duplicate_commits = 0
@@ -176,17 +178,39 @@ def run_pipeline(config: Config) -> None:
 
             total_prs += len(prs)
 
-            # PR Masterを保存
+            # PRイベントを保存
             if prs:
                 prs_transformed = transform_prs_to_master(prs, github_conf.github_login)
                 total_failed_records += len(prs) - len(prs_transformed)
                 if prs_transformed:
-                    pr_master_saved = storage.save_pr_master(
-                        prs_transformed, owner, repo
-                    )
-                    if pr_master_saved is None:
-                        logger.error("Failed to save PR master for %s", repo_full_name)
-                        total_failed_records += len(prs_transformed)
+                    pr_events_by_month = _group_pr_events_by_month(prs_transformed)
+                    for (year, month), pr_events in pr_events_by_month.items():
+                        stats = storage.save_pr_events_parquet_with_stats(
+                            pr_events,
+                            year,
+                            month,
+                        )
+                        if stats["failed"] > 0:
+                            logger.error(
+                                "Failed to save pull request events for %d-%02d",
+                                year,
+                                month,
+                            )
+                            total_failed_records += stats["failed"]
+                        else:
+                            logger.info(
+                                (
+                                    "Saved pull request events for %d-%02d "
+                                    "(fetched=%d new=%d duplicates=%d)"
+                                ),
+                                year,
+                                month,
+                                stats["fetched"],
+                                stats["new"],
+                                stats["duplicates"],
+                            )
+                        total_new_pr_events += stats["new"]
+                        total_duplicate_pr_events += stats["duplicates"]
 
                 # PR生データを保存
                 raw_pr_saved = storage.save_raw_prs(prs, owner, repo)
@@ -214,7 +238,10 @@ def run_pipeline(config: Config) -> None:
                 if details_requested >= max_detail_requests:
                     if not detail_budget_exceeded_logged:
                         logger.warning(
-                            "Commit detail request budget exceeded for %s (max=%d); skipping remaining detail fetches",
+                            (
+                                "Commit detail request budget exceeded for %s "
+                                "(max=%d); skipping remaining detail fetches"
+                            ),
                             repo_full_name,
                             max_detail_requests,
                         )
@@ -290,8 +317,14 @@ def run_pipeline(config: Config) -> None:
         total_failed_records += stats["failed"]
 
     logger.info(
-        "Ingest stats: prs=%d commits_fetched=%d commits_new=%d duplicates=%d failed_records=%d failed_api=%d failed_repos=%d",
+        (
+            "Ingest stats: prs_fetched=%d prs_new=%d prs_duplicates=%d "
+            "commits_fetched=%d commits_new=%d commits_duplicates=%d "
+            "failed_records=%d failed_api=%d failed_repos=%d"
+        ),
         total_prs,
+        total_new_pr_events,
+        total_duplicate_pr_events,
         total_commits,
         total_new_commits,
         total_duplicate_commits,
@@ -347,6 +380,34 @@ def _group_commits_by_month(
             logger.warning(
                 "Commit %s has no committed_at_utc; skipping month grouping",
                 commit_id,
+            )
+
+    return grouped
+
+
+def _group_pr_events_by_month(
+    pr_events: list[dict[str, Any]],
+) -> dict[tuple[int, int], list[dict[str, Any]]]:
+    grouped: dict[tuple[int, int], list[dict[str, Any]]] = defaultdict(list)
+
+    for pr_event in pr_events:
+        updated_date = pr_event.get("updated_at_utc")
+        if updated_date:
+            try:
+                dt = datetime.fromisoformat(updated_date.replace("Z", "+00:00"))
+                grouped[(dt.year, dt.month)].append(pr_event)
+            except (ValueError, AttributeError) as e:
+                pr_key = pr_event.get("pr_key", "unknown")
+                logger.warning(
+                    "Failed to parse PR updated_at_utc %s for %s: %s",
+                    updated_date,
+                    pr_key,
+                    e,
+                )
+        else:
+            pr_key = pr_event.get("pr_key", "unknown")
+            logger.warning(
+                "Pull request event %s has no updated_at_utc; skipping", pr_key
             )
 
     return grouped
