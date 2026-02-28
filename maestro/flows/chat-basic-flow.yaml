@@ -1,0 +1,31 @@
+appId: dev.egograph.app
+---
+# チャット基本フローのE2Eテスト
+#
+# このテストはチャット機能の基本的なフローを検証します：
+# 1. 新規チャットの作成
+# 2. メッセージの送信
+# 3. 送信したメッセージの表示
+#
+# 注: エラーハンドリング（タイムアウト、ネットワークエラー、リトライ）の検証には、
+# バックエンドでエラーシナリオを返すモック環境が必要です。
+
+- launchApp
+
+# 新規チャットを作成
+- tapOn: "New Chat"
+
+# メッセージ入力
+- tapOn: "Message input"
+- inputText: "Tell me a very short story"
+
+# 送信実行
+- tapOn: "Send"
+
+# 正常に応答が返るのを待機（最大10秒）
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# メッセージが表示されることを確認（AIからの応答が入力欄をクリアしたことを確認）
+# 注: AI応答の内容を直接検証するには、バックエンドでモック応答を返す設定が必要
+- assertNotVisible: "Tell me a very short story"

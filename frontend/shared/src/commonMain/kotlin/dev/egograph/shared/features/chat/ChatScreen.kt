@@ -34,6 +34,7 @@ import co.touchlab.kermit.Logger
 import dev.egograph.shared.core.ui.common.CompactActionButton
 import dev.egograph.shared.core.ui.common.testTagResourceId
 import dev.egograph.shared.features.chat.components.ChatComposer
+import dev.egograph.shared.features.chat.components.ErrorBanner
 import dev.egograph.shared.features.chat.components.MessageList
 import kotlinx.serialization.Transient
 
@@ -59,6 +60,11 @@ class ChatScreen(
                 when (effect) {
                     is ChatEffect.ShowMessage -> {
                         snackbarHostState.showSnackbar(effect.message)
+                    }
+                    is ChatEffect.ShowError -> {
+                        // エラー状態は既にStateに設定されているので、
+                        // ここではログ記録のみ（EffectはOne-shotイベントの通知）
+                        Logger.w { "Error occurred: ${effect.errorState.message}" }
                     }
                     is ChatEffect.NavigateToThread -> {
                         Logger.w { "NavigateToThread effect received but navigation not implemented yet" }
@@ -105,6 +111,15 @@ class ChatScreen(
                             .statusBarsPadding()
                             .padding(horizontal = 8.dp, vertical = 2.dp),
                 )
+
+                // エラーバナー（エラーがある場合のみ表示）
+                state.chatError?.let { errorState ->
+                    ErrorBanner(
+                        errorState = errorState,
+                        onRetry = { screenModel.retryLastMessage() },
+                        onDismiss = { screenModel.clearChatError() },
+                    )
+                }
 
                 MessageList(
                     messages = state.messageList.messages,

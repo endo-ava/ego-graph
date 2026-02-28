@@ -11,6 +11,27 @@ sealed class ChatEffect {
     ) : ChatEffect()
 
     /**
+     * エラーを表示する
+     *
+     * @property errorState エラー状態
+     *
+     * Note: リトライはState（chatError）を通じて処理されるため、
+     * Effectにはlambdaを含めない
+     */
+    class ShowError(
+        val errorState: ChatErrorState,
+    ) : ChatEffect() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+            other as ShowError
+            return errorState == other.errorState
+        }
+
+        override fun hashCode(): Int = errorState.hashCode()
+    }
+
+    /**
      * 特定のスレッドに遷移する
      *
      * @property threadId 遷移先のスレッドID

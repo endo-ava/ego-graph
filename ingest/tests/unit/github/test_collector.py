@@ -64,6 +64,16 @@ class TestGitHubWorklogCollectorInit:
             assert headers["Authorization"] == "Bearer test_token"
             assert headers["Accept"] == "application/vnd.github+json"
 
+    def test_init_raises_when_token_is_empty(self):
+        """token が空文字の場合に ValueError になることをテストする。"""
+        with pytest.raises(ValueError, match="GitHub token is required"):
+            GitHubWorklogCollector(token="", github_login="test-user")
+
+    def test_init_raises_when_github_login_is_empty(self):
+        """github_login が空文字の場合に ValueError になることをテストする。"""
+        with pytest.raises(ValueError, match="GitHub login is required"):
+            GitHubWorklogCollector(token="test_token", github_login="")
+
 
 class TestGetRepository:
     """get_repository メソッドのテスト。"""

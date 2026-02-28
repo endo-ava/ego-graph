@@ -11,6 +11,7 @@ import dev.egograph.shared.core.domain.model.ModelsResponse
 import dev.egograph.shared.core.domain.model.StreamChunk
 import dev.egograph.shared.core.domain.model.StreamChunkType
 import dev.egograph.shared.core.domain.repository.ApiError
+import dev.egograph.shared.core.network.HttpClientConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -45,6 +46,18 @@ class ChatRepositoryImplTest {
     private val baseUrl = "http://test.example.com"
     private val apiKey = "test-api-key"
 
+    /** テスト用HttpClientConfig */
+    private val testHttpClientConfig =
+        HttpClientConfig(
+            connectTimeoutMillis = 10_000,
+            socketTimeoutMillis = 30_000,
+            requestTimeoutMillis = 30_000,
+            streamingTimeoutMillis = 300_000,
+            maxRetries = 3,
+            retryBaseDelayMs = 1_000,
+            retryMaxDelayMs = 4_000,
+        )
+
     /**
      * テスト用HttpClientを作成する
      */
@@ -62,6 +75,16 @@ class ChatRepositoryImplTest {
         val httpClient = createMockHttpClient(engine)
         return RepositoryClient(httpClient, baseUrl, apiKey)
     }
+
+    /**
+     * テスト用ChatRepositoryImplを作成する
+     */
+    private fun createChatRepository(repositoryClient: RepositoryClient): ChatRepositoryImpl =
+        ChatRepositoryImpl(
+            repositoryClient = repositoryClient,
+            httpClientConfig = testHttpClientConfig,
+            json = json,
+        )
 
     // ==================== sendMessageSync() テスト ====================
 
@@ -97,7 +120,7 @@ class ChatRepositoryImplTest {
                 }
 
             val repositoryClient = createMockRepositoryClient(mockEngine)
-            val repository = ChatRepositoryImpl(repositoryClient, json)
+            val repository = createChatRepository(repositoryClient)
 
             val request =
                 ChatRequest(
@@ -132,7 +155,7 @@ class ChatRepositoryImplTest {
                 }
 
             val repositoryClient = createMockRepositoryClient(mockEngine)
-            val repository = ChatRepositoryImpl(repositoryClient, json)
+            val repository = createChatRepository(repositoryClient)
 
             val request =
                 ChatRequest(
@@ -165,7 +188,7 @@ class ChatRepositoryImplTest {
                 }
 
             val repositoryClient = createMockRepositoryClient(mockEngine)
-            val repository = ChatRepositoryImpl(repositoryClient, json)
+            val repository = createChatRepository(repositoryClient)
 
             val request =
                 ChatRequest(
@@ -197,7 +220,7 @@ class ChatRepositoryImplTest {
                 }
 
             val repositoryClient = createMockRepositoryClient(mockEngine)
-            val repository = ChatRepositoryImpl(repositoryClient, json)
+            val repository = createChatRepository(repositoryClient)
 
             val request =
                 ChatRequest(
@@ -224,7 +247,7 @@ class ChatRepositoryImplTest {
                 }
 
             val repositoryClient = createMockRepositoryClient(mockEngine)
-            val repository = ChatRepositoryImpl(repositoryClient, json)
+            val repository = createChatRepository(repositoryClient)
 
             val request =
                 ChatRequest(
@@ -275,7 +298,7 @@ class ChatRepositoryImplTest {
                 }
 
             val repositoryClient = createMockRepositoryClient(mockEngine)
-            val repository = ChatRepositoryImpl(repositoryClient, json)
+            val repository = createChatRepository(repositoryClient)
 
             val request =
                 ChatRequest(
@@ -324,7 +347,7 @@ class ChatRepositoryImplTest {
                 }
 
             val repositoryClient = createMockRepositoryClient(mockEngine)
-            val repository = ChatRepositoryImpl(repositoryClient, json)
+            val repository = createChatRepository(repositoryClient)
 
             val request =
                 ChatRequest(
@@ -375,7 +398,7 @@ class ChatRepositoryImplTest {
                 }
 
             val repositoryClient = createMockRepositoryClient(mockEngine)
-            val repository = ChatRepositoryImpl(repositoryClient, json)
+            val repository = createChatRepository(repositoryClient)
 
             val request =
                 ChatRequest(
@@ -435,7 +458,7 @@ class ChatRepositoryImplTest {
                 }
 
             val repositoryClient = createMockRepositoryClient(mockEngine)
-            val repository = ChatRepositoryImpl(repositoryClient, json)
+            val repository = createChatRepository(repositoryClient)
 
             // Act
             val result = repository.getModels()
@@ -465,7 +488,7 @@ class ChatRepositoryImplTest {
                 }
 
             val repositoryClient = createMockRepositoryClient(mockEngine)
-            val repository = ChatRepositoryImpl(repositoryClient, json)
+            val repository = createChatRepository(repositoryClient)
 
             // Act
             val result = repository.getModels()
@@ -488,7 +511,7 @@ class ChatRepositoryImplTest {
                 }
 
             val repositoryClient = createMockRepositoryClient(mockEngine)
-            val repository = ChatRepositoryImpl(repositoryClient, json)
+            val repository = createChatRepository(repositoryClient)
 
             // Act
             val result = repository.getModels()

@@ -11,7 +11,6 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.serialization.SerializationException
 
@@ -76,24 +75,31 @@ class RepositoryClient(
     /**
      * POST リクエストを送信し、生のレスポンスを返す（ストリーミング用）。
      *
+     * HTTPステータスを検証し、エラーの場合は適切なApiErrorをスローする。
+     *
      * @param path API パス（baseUrl からの相対パス）
      * @param body リクエストボディ
      * @param configure リクエストの追加設定
-     * @return 生のHttpResponse
+     * @return 生のHttpResponse（ステータスが2xxの場合のみ）
+     * @throws ApiError HTTP エラー
      */
     internal suspend fun postWithResponse(
         path: String,
         body: Any? = null,
         configure: HttpRequestBuilder.() -> Unit = {},
-    ): HttpResponse =
-        httpClient.post("$baseUrl$path") {
-            contentType(ContentType.Application.Json)
-            configureAuth(apiKey)
-            configure()
-            if (body != null) {
-                setBody(body)
+    ): HttpResponse {
+        val response =
+            httpClient.post("$baseUrl$path") {
+                contentType(ContentType.Application.Json)
+                configureAuth(apiKey)
+                configure()
+                if (body != null) {
+                    setBody(body)
+                }
             }
-        }
+        response.validateResponseStatus()
+        return response
+    }
 
     /**
      * PUT リクエストを送信する。
@@ -128,7 +134,7 @@ class RepositoryClient(
      * シリアライズエラーも [ApiError.SerializationError] としてラップする。
      */
     private suspend inline fun <reified T> HttpResponse.bodyOrThrow(): T {
-        if (status == HttpStatusCode.OK) {
+        if (status.value in 200..299) {
             return body()
         } else {
             throw ApiError.HttpError(
@@ -151,6 +157,31 @@ class RepositoryClient(
             headers {
                 append("X-API-Key", apiKey)
             }
+        }
+    }
+
+    /**
+     * HttpResponseのステータスを検証し、エラーの場合は適切なApiErrorをスローする
+     *
+     * ストリーミングレスポンスの読み取り開始前にエラーを検出するために使用する。
+     */
+    private fun HttpResponse.validateResponseStatus() {
+        when (status.value) {
+            401 ->
+                throw ApiError.AuthenticationError(
+                    errorMessage = "認証に失敗しました",
+                    detail = "APIキーが無効または期限切れです",
+                )
+            403 ->
+                throw ApiError.HttpError(
+                    code = 403,
+                    errorMessage = "アクセス権限がありません",
+                )
+            in 400..499 ->
+                throw ApiError.HttpError(
+                    code = status.value,
+                    errorMessage = status.description,
+                )
         }
     }
 }

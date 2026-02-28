@@ -20,11 +20,13 @@ import dev.egograph.shared.core.domain.model.ThreadMessage
  * @property threadsError スレッド関連のエラーメッセージ
  * @property messagesError メッセージ関連のエラーメッセージ
  * @property modelsError モデル関連のエラーメッセージ
+ * @property chatError チャット機能全体のエラー状態
  */
 data class ChatState(
     val threadList: ThreadListState = ThreadListState(),
     val messageList: MessageListState = MessageListState(),
     val composer: ComposerState = ComposerState(),
+    val chatError: ChatErrorState? = null,
 ) {
     /**
      * スレッドが選択されているかどうか
@@ -47,7 +49,7 @@ data class ChatState(
      * いずれかのエラーが存在するかどうか
      */
     val hasError: Boolean
-        get() = threadList.error != null || messageList.error != null || composer.modelsError != null
+        get() = threadList.error != null || messageList.error != null || composer.modelsError != null || chatError != null
 }
 
 data class ThreadListState(
