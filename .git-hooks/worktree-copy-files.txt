@@ -1,0 +1,11 @@
+# worktree 作成時にメインリポジトリからコピーするファイル一覧
+# - 空行と # から始まる行は無視されます
+# - パスはリポジトリルートからの相対パスで指定します
+
+.env
+backend/.env
+gateway/.env
+frontend/.env
+frontend-capacitor/.env
+frontend/androidApp/google-services.json
+gateway/firebase-service-account.json

@@ -111,3 +111,5 @@ maestro/reports/
 frontend/androidApp/google-services.json
 
 gateway/firebase-service-account.json
+# Worktree setup log
+.worktree-setup.log

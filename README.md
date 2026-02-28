@@ -158,6 +158,42 @@ cd frontend
 
 ---
 
+## Git Worktree 自動セットアップ
+
+`git worktree add` や `claude -w` で作成された worktree に対して、以下を自動実行できます。
+
+- 設定/認証ファイルのコピー
+- `uv sync`
+- `npm install`（対象ディレクトリのみ）
+
+### 導入
+
+```bash
+bash scripts/install-git-hooks.sh
+```
+
+このスクリプトは `core.hooksPath` を `.git/hooks` に設定します（`claude -w` 互換）。
+
+### コピー対象・npm対象のカスタマイズ
+
+- コピー対象: `.git-hooks/worktree-copy-files.txt`
+- `npm install` 対象: `.git-hooks/worktree-npm-dirs.txt`
+
+どちらも「1行1パス（リポジトリルートからの相対パス）」で指定します。  
+空行と `#` コメントは無視されます。
+
+### 他リポジトリへの流用
+
+以下をコピーして `scripts/install-git-hooks.sh` を実行すれば流用できます。
+
+- `.git-hooks/post-checkout`
+- `.git-hooks/setup-worktree.sh`
+- `.git-hooks/worktree-copy-files.txt`
+- `.git-hooks/worktree-npm-dirs.txt`
+- `scripts/install-git-hooks.sh`
+
+---
+
 ## Development
 
 ### テスト実行
