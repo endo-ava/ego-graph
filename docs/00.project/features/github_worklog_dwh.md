@@ -38,7 +38,7 @@
 - 収集対象は**個人所有Repoのみ**とし、会社/組織Repoは対象外にする
 
 #### 3.2 MVP対象データ
-- Pull Requests（最新状態のみ。作成/更新/マージ/クローズ、作成者、base/head、ラベル）
+- Pull Requests（時系列イベント。作成/更新/マージ/クローズ、作成者、base/head、ラベル）
 - Commits（sha、author、message、changed_files_count、additions、deletions などのメタ）
 - Repository Master（repo属性 + 自然言語サマリー）
 
@@ -46,7 +46,7 @@
 - **MVPではPR/Commitの生diff本文は保持しない**
 - 代わりに変更量メタデータ（files changed, additions, deletions）を保持する
 - Commit messageはそのまま保持する
-- PRレビュー本文は保持しない（PR現在状態上のレビュー件数メタのみ保持）
+- PRレビュー本文は保持しない（PRイベント上のレビュー件数メタのみ保持）
 - 必要時に再取得できるよう、再フェッチに必要な識別子（repo, number, sha）を保持する
 
 #### 3.4 データ保存レイヤー
@@ -68,10 +68,10 @@ s3://{bucket}/
 │   └── commits/{YYYY}/{MM}/{DD}/{timestamp}_{uuid}.json
 │
 ├── events/github/
+│   ├── pull_requests/year={YYYY}/month={MM}/{uuid}.parquet
 │   └── commits/year={YYYY}/month={MM}/{uuid}.parquet
 │
 ├── master/github/
-│   ├── pull_requests_current/{owner}/{repo}.parquet
 │   └── repositories/{owner}/{repo}.parquet
 │
 └── state/
@@ -80,15 +80,16 @@ s3://{bucket}/
 
 ### 保存形式（MVPで固定）
 - Raw: JSON（APIレスポンスの監査/再処理用、UTF-8）
-- Curated: Parquet（分析用。CommitはHiveパーティション `year=YYYY/month=MM`）
-- Master: Parquet（`master/github/pull_requests_current/{owner}/{repo}.parquet` と `master/github/repositories/{owner}/{repo}.parquet`、非時系列）
+- Curated: Parquet（分析用。PR/CommitはHiveパーティション `year=YYYY/month=MM`）
+- Master: Parquet（`master/github/repositories/{owner}/{repo}.parquet` のみ、非時系列）
 - State: JSON（増分カーソル）
 
 ### データカラム定義（Curated）
 
-#### 1) PR現在状態（master/github/pull_requests_current/{owner}/{repo}.parquet）
+#### 1) PRイベント（events/github/pull_requests/）
 ```sql
-pr_key               VARCHAR PRIMARY KEY  -- repo_full_name + pr_number のハッシュ
+pr_event_id          VARCHAR PRIMARY KEY  -- repo + pr_number + updated_at + state のハッシュ
+pr_key               VARCHAR NOT NULL     -- repo_full_name + pr_number のハッシュ
 source               VARCHAR NOT NULL     -- 固定値: 'github'
 owner                VARCHAR NOT NULL
 repo                 VARCHAR NOT NULL
@@ -116,10 +117,10 @@ changed_files_count  INTEGER
 ingested_at_utc      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ```
 
-`PR現在状態` の運用方針（MVP）:
-- 1 PR = 1レコード（最新状態のみ）
-- 日次実行ごとに `{owner}/{repo}.parquet` を再生成して上書き
-- 履歴（更新ごとの差分）はMVPでは保持しない
+`PRイベント` の運用方針（MVP）:
+- 日次実行で取得したPRスナップショットを時系列イベントとして追記保存する
+- 保存先は `events/github/pull_requests/year=YYYY/month=MM/` の月次パーティション
+- `pr_event_id` で重複排除し、再実行時も同一イベントは重複保存しない
 #### 2) Commitイベント（events/github/commits/）
 ```sql
 commit_event_id      VARCHAR PRIMARY KEY  -- repo + sha
@@ -176,7 +177,7 @@ URLの扱い（MVP）:
 
 1. **通常日次実行**
     - 前回カーソル以降のイベントを取得
-    - Commitはeventsへ追記、PR現在状態とRepository Masterはmasterを再生成
+    - PR/Commitはeventsへ追記、Repository Masterはmasterを更新
     - 処理成功後にカーソル更新
 
 2. **再実行（同日）**
@@ -190,7 +191,7 @@ URLの扱い（MVP）:
 ### 画面/入出力
 - 本要件でUIは対象外
 - 入力: GitHub API認証情報、対象owner/repo（個人repo限定）、取得期間
-- 出力: `raw/github/*` JSON、`events/github/commits/*` Parquet、`master/github/pull_requests_current/*/*.parquet`、`master/github/repositories/*/*.parquet`、`state/github_worklog_ingest_state.json`
+- 出力: `raw/github/*` JSON、`events/github/pull_requests/*` Parquet、`events/github/commits/*` Parquet、`master/github/repositories/*/*.parquet`、`state/github_worklog_ingest_state.json`
 
 ---
 
@@ -200,11 +201,11 @@ URLの扱い（MVP）:
 - 保存仕様の確定（データ粒度、保持方針、更新頻度、冪等性）
 - 個人所有Repoのみを収集対象にするためのフィルタ条件定義
 - PR/Commitメタデータの取得と保存（コメント本文は除外）
-- PRは最新状態のみ保存（履歴は持たない）
+- PRは時系列イベントとして保存（更新履歴を保持）
 - Repository Masterの取得と更新（1 repo = 1 masterファイル）
 - owner判定は「GitHub login == repo owner」の一致で制御
 - 日次バッチ + 増分カーソル + 再実行安全性
-- Raw/Curated/master/stateの4系統保存
+- Raw/Events/Master/Stateの4系統保存
 
 ### 今回やらない（Won't）
 - Wrapped風サマリ生成、ランキング表示、APIレスポンス整形
@@ -226,7 +227,7 @@ URLの扱い（MVP）:
 | 対象を決める | owner/repo（個人所有のみ）と期間を設定できる | ユーザーごとのプロファイル切替 |
 | 取得する | 日次でPR/Commitを取得 | webhook併用で準リアルタイム化 |
 | 正規化する | 共通イベントスキーマに変換 | 活動タイプの自動クラスタリング |
-| 保存する | Raw + Curated(Commit) + Master(PR current, Repository) + cursorを保存 | 品質異常の自動通知 |
+| 保存する | Raw + Events(PR/Commit) + Master(Repository) + cursorを保存 | 品質異常の自動通知 |
 | 再処理する | 期間指定で再取り込み可能 | ワンクリック再集計ジョブ |
 
 ---
@@ -237,10 +238,10 @@ URLの扱い（MVP）:
 - Given 同じ期間でジョブを再実行する, When 既存イベントが再取得される, Then Curatedに重複レコードが発生しない
 - Given PR/Commitを取得する, When 保存処理を行う, Then diff本文は保存されず変更量メタデータのみ保存される
 - Given Commitを取得する, When 保存処理を行う, Then commit messageと変更量メタ（files/additions/deletions）が保存される
-- Given PRを取得する, When 保存処理を行う, Then PR現在状態にレビュー件数（reviews_count）が保存される
-- Given 同一PRが後日更新される, When 保存処理を行う, Then `pull_requests_current` の同一PRレコードが更新され重複しない
+- Given PRを取得する, When 保存処理を行う, Then PRイベントにレビュー件数（reviews_count）が保存される
+- Given 同一PRが後日更新される, When 保存処理を行う, Then 新しいPRイベントが追記され、既存イベントと重複しない
 - Given PRレビュー本文を取得できる, When 保存処理を行う, Then 本文は保存対象外となる
-- Given 取り込み処理が成功する, When R2を確認する, Then Rawは`raw/github/*/*.json`、Commitは`events/github/commits/*.parquet`、PR現在状態は`master/github/pull_requests_current/*/*.parquet`に保存される
+- Given 取り込み処理が成功する, When R2を確認する, Then Rawは`raw/github/*/*.json`、PR/Commitは`events/github/*/*.parquet`に保存される
 - Given Repository情報を取得する, When 保存処理を行う, Then `master/github/repositories/{owner}/{repo}.parquet`に保存/更新される
 - Given Repositoryサマリーを生成する, When 保存処理を行う, Then `repo_summary_text`に1〜3文で保存される
 - Given Curated保存が行われる, When Parquetを読み込む, Then `year=YYYY/month=MM`のHiveパーティションで参照できる
@@ -297,8 +298,8 @@ URLの扱い（MVP）:
 - 対象フェーズ: 保存仕様のみ（出力/可視化は別要件）
 - diff保持: MVPは本文非保持、メタデータ保持
 - commit保持: messageはそのまま保持、ファイル数/追加行数/削除行数まで保持
-- review保持: PR現在状態上の件数メタのみ（本文不要）
-- PR保持: 最新状態のみ（主キーは repo_full_name + pr_number）
+- review保持: PRイベント上の件数メタのみ（本文不要）
+- PR保持: 時系列イベント（主キーは pr_event_id、PR識別は pr_key）
 - issue: MVP対象外（Issue運用なし）
 - repository master: `master/github/repositories/{owner}/{repo}.parquet`（非時系列）
 - repository summary: 自然言語の短文（1〜3文）を保持
