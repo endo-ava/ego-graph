@@ -43,6 +43,7 @@ class TestGatewayConfig:
         assert config.fcm_credentials_path == "gateway/firebase-service-account.json"
         assert config.default_user_id == "default_user"
         assert config.session_pattern == r"^agent-[0-9]{4}$"
+        assert config.terminal_ws_token_ttl_seconds == 60
 
     def test_config_loads_from_environment_variables(self):
         """環境変数から設定が正しくロードされることを確認する。"""
@@ -60,6 +61,7 @@ class TestGatewayConfig:
             "FCM_CREDENTIALS_PATH": "gateway/custom-firebase.json",
             "DEFAULT_USER_ID": "test_user",
             "SESSION_PATTERN": r"^test-[0-9]+$",
+            "TERMINAL_WS_TOKEN_TTL_SECONDS": "45",
         }
 
         # Act
@@ -81,6 +83,37 @@ class TestGatewayConfig:
         assert config.fcm_credentials_path == "gateway/custom-firebase.json"
         assert config.default_user_id == "test_user"
         assert config.session_pattern == r"^test-[0-9]+$"
+        assert config.terminal_ws_token_ttl_seconds == 45
+
+    def test_config_rejects_too_small_ws_token_ttl(self):
+        """TERMINAL_WS_TOKEN_TTL_SECONDS が下限未満の場合はエラーになることを確認する。"""
+        env_vars = {
+            "USE_ENV_FILE": "false",
+            "GATEWAY_API_KEY": "env_api_key_32_bytes_or_more",
+            "GATEWAY_WEBHOOK_SECRET": "env_webhook_secret_32_bytes_or_more",
+            "TERMINAL_WS_TOKEN_TTL_SECONDS": "29",
+        }
+
+        with patch.dict("os.environ", env_vars, clear=True):
+            with pytest.raises(ValidationError) as exc_info:
+                GatewayConfig(_env_file=None)
+
+        assert "TERMINAL_WS_TOKEN_TTL_SECONDS" in str(exc_info.value)
+
+    def test_config_rejects_too_large_ws_token_ttl(self):
+        """TERMINAL_WS_TOKEN_TTL_SECONDS が上限超過の場合はエラーになることを確認する。"""
+        env_vars = {
+            "USE_ENV_FILE": "false",
+            "GATEWAY_API_KEY": "env_api_key_32_bytes_or_more",
+            "GATEWAY_WEBHOOK_SECRET": "env_webhook_secret_32_bytes_or_more",
+            "TERMINAL_WS_TOKEN_TTL_SECONDS": "121",
+        }
+
+        with patch.dict("os.environ", env_vars, clear=True):
+            with pytest.raises(ValidationError) as exc_info:
+                GatewayConfig(_env_file=None)
+
+        assert "TERMINAL_WS_TOKEN_TTL_SECONDS" in str(exc_info.value)
 
     def test_config_rejects_non_tailscale_cors_origins(self):
         """CORS_ORIGINS が Tailscale 以外の場合はエラーになることを確認する。"""

@@ -69,7 +69,12 @@ class GatewayConfig(BaseSettings):
     session_pattern: str = Field(r"^agent-[0-9]{4}$", alias="SESSION_PATTERN")
 
     # WebSocket トークン TTL（秒）
-    terminal_ws_token_ttl_seconds: int = Field(60, alias="TERMINAL_WS_TOKEN_TTL_SECONDS")
+    terminal_ws_token_ttl_seconds: int = Field(
+        60,
+        alias="TERMINAL_WS_TOKEN_TTL_SECONDS",
+        ge=30,
+        le=120,
+    )
 
     @field_validator("cors_origins")
     @classmethod
