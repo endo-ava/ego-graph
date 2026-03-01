@@ -68,6 +68,9 @@ class GatewayConfig(BaseSettings):
     # tmux セッション名の正規表現パターン
     session_pattern: str = Field(r"^agent-[0-9]{4}$", alias="SESSION_PATTERN")
 
+    # WebSocket トークン TTL（秒）
+    terminal_ws_token_ttl_seconds: int = Field(60, alias="TERMINAL_WS_TOKEN_TTL_SECONDS")
+
     @field_validator("cors_origins")
     @classmethod
     def validate_cors_origins(cls, value: str) -> str:

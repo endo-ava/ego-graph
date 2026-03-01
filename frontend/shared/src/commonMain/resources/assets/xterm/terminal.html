@@ -427,7 +427,7 @@
                 }
             }
 
-            function attachWebSocketHandlers(ws, apiKey) {
+            function attachWebSocketHandlers(ws, wsToken) {
                 ws.onopen = function () {
                     if (websocket !== ws) {
                         return;
@@ -435,7 +435,7 @@
 
                     ws.send(JSON.stringify({
                         type: 'auth',
-                        api_key: apiKey,
+                        ws_token: wsToken,
                     }));
                     notifyConnectionChanged(true);
                     sendResizeToServer();
@@ -470,7 +470,7 @@
                 };
             }
 
-            function connectWebSocket(wsUrl, apiKey) {
+            function connectWebSocket(wsUrl, wsToken) {
                 if (!ensureTerminal()) {
                     return;
                 }
@@ -478,13 +478,13 @@
                 closeCurrentWebSocket();
                 var ws = new WebSocket(wsUrl);
                 websocket = ws;
-                attachWebSocketHandlers(ws, apiKey);
+                attachWebSocketHandlers(ws, wsToken);
             }
 
             // ===== 外部公開 API =====
             window.TerminalAPI = {
-                connect: function (wsUrl, apiKey) {
-                    connectWebSocket(wsUrl, apiKey);
+                connect: function (wsUrl, wsToken) {
+                    connectWebSocket(wsUrl, wsToken);
                 },
                 disconnect: function () {
                     closeCurrentWebSocket();

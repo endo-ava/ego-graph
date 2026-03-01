@@ -36,6 +36,12 @@ import dev.egograph.shared.features.terminal.session.components.SpecialKeysBar
 import dev.egograph.shared.features.terminal.session.components.TerminalHeader
 import dev.egograph.shared.features.terminal.session.components.TerminalView
 import dev.egograph.shared.features.terminal.session.components.rememberTerminalWebView
+import dev.egograph.shared.core.domain.repository.TerminalRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import org.koin.compose.koinInject
 
 /**
@@ -69,6 +75,7 @@ private fun TerminalContent(
     val webView = rememberTerminalWebView()
     val preferences = koinInject<PlatformPreferences>()
     val themeRepository = koinInject<ThemeRepository>()
+    val terminalRepository = koinInject<TerminalRepository>()
     val selectedTheme by themeRepository.theme.collectAsState()
     val systemDarkTheme = isSystemInDarkTheme()
     val connectionState by webView.connectionState.collectAsState(initial = false)
@@ -79,6 +86,10 @@ private fun TerminalContent(
     var voiceInputError by remember { mutableStateOf<String?>(null) }
     var terminalError by remember { mutableStateOf<String?>(null) }
     var hasConnectedOnce by remember { mutableStateOf(false) }
+    var reconnectAttempts by remember { mutableStateOf(0) }
+    var reconnectJob by remember { mutableStateOf<Job?>(null) }
+    val backoff = remember { createTerminalReconnectBackoff() }
+    val coroutineScope = rememberCoroutineScope()
 
     val voiceInputController =
         rememberTerminalVoiceInputController(
@@ -103,12 +114,18 @@ private fun TerminalContent(
         settingsError = terminalSettings.error
     }
 
-    LaunchedEffect(webView, terminalSettings.wsUrl, terminalSettings.apiKey) {
+    LaunchedEffect(webView, terminalSettings.wsUrl, agentId) {
         webView.loadTerminal()
         webView.setTheme(darkMode)
-        if (!terminalSettings.wsUrl.isNullOrBlank() && !terminalSettings.apiKey.isNullOrBlank()) {
-            webView.connect(terminalSettings.wsUrl, terminalSettings.apiKey)
+        if (!terminalSettings.wsUrl.isNullOrBlank()) {
             isConnecting = true
+            val result = terminalRepository.issueWsToken(agentId)
+            result.onSuccess { wsToken ->
+                webView.connect(terminalSettings.wsUrl, wsToken.wsToken)
+            }.onFailure { error ->
+                terminalError = "Connection failed"
+                isConnecting = false
+            }
         }
     }
 
@@ -126,16 +143,25 @@ private fun TerminalContent(
         if (connectionState) {
             hasConnectedOnce = true
             isConnecting = false
-            if (terminalError == "Connection lost. Reconnecting...") {
-                terminalError = null
-            }
+            terminalError = null
+            reconnectAttempts = 0
         } else {
-            isConnecting = true
-            if (hasConnectedOnce) {
-                terminalError = "Connection lost. Reconnecting..."
-            }
-            if (!terminalSettings.wsUrl.isNullOrBlank() && !terminalSettings.apiKey.isNullOrBlank()) {
-                webView.connect(terminalSettings.wsUrl, terminalSettings.apiKey)
+            if (hasConnectedOnce && !terminalSettings.wsUrl.isNullOrBlank()) {
+                reconnectJob?.cancel()
+                reconnectJob = coroutineScope.launch {
+                    val delayMs = backoff.calculateDelay(reconnectAttempts)
+                    delay(delayMs)
+                    if (!connectionState) {
+                        reconnectAttempts++
+                        isConnecting = true
+                        val result = terminalRepository.issueWsToken(agentId)
+                        result.onSuccess { wsToken ->
+                            webView.connect(terminalSettings.wsUrl, wsToken.wsToken)
+                        }.onFailure {
+                            isConnecting = false
+                        }
+                    }
+                }
             }
         }
     }
@@ -154,7 +180,6 @@ private fun TerminalContent(
     }
 
     val displayError = settingsError ?: terminalError ?: voiceInputError
-
     Scaffold(
         topBar = {
             TerminalHeader(

@@ -18,11 +18,11 @@ interface TerminalWebView {
      * Connect to WebSocket endpoint
      *
      * @param wsUrl WebSocket URL to connect to
-     * @param apiKey Gateway API key used for post-connect authentication
+     * @param wsToken WebSocket authentication token for post-connect authentication
      */
     fun connect(
         wsUrl: String,
-        apiKey: String,
+        wsToken: String,
     )
 
     /**

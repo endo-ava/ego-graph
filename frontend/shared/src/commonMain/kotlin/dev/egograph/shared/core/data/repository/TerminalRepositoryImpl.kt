@@ -3,6 +3,7 @@ package dev.egograph.shared.core.data.repository
 import dev.egograph.shared.core.data.repository.internal.InMemoryCache
 import dev.egograph.shared.core.data.repository.internal.RepositoryClient
 import dev.egograph.shared.core.domain.model.terminal.Session
+import dev.egograph.shared.core.domain.model.terminal.TerminalWsToken
 import dev.egograph.shared.core.domain.repository.RepositoryResult
 import dev.egograph.shared.core.domain.repository.TerminalRepository
 import io.ktor.http.encodeURLPathPart
@@ -69,6 +70,12 @@ class TerminalRepositoryImpl(
             result.onSuccess { sessionCache.put(cacheKey, it) }
             emit(result)
         }.flowOn(Dispatchers.IO)
+
+    override suspend fun issueWsToken(sessionId: String): RepositoryResult<TerminalWsToken> =
+        wrapRepositoryOperation {
+            val encodedSessionId = sessionId.encodeURLPathPart()
+            repositoryClient.post<TerminalWsToken>("/api/v1/terminal/sessions/$encodedSessionId/ws-token")
+        }
 
     @Serializable
     private data class SessionListResponse(

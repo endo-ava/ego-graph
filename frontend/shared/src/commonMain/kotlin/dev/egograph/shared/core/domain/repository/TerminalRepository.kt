@@ -1,6 +1,7 @@
 package dev.egograph.shared.core.domain.repository
 
 import dev.egograph.shared.core.domain.model.terminal.Session
+import dev.egograph.shared.core.domain.model.terminal.TerminalWsToken
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -28,4 +29,12 @@ interface TerminalRepository {
         sessionId: String,
         forceRefresh: Boolean = false,
     ): Flow<RepositoryResult<Session>>
+
+    /**
+     * WebSocket トークンを発行する
+     *
+     * @param sessionId セッションID
+     * @return WebSocket トークン
+     */
+    suspend fun issueWsToken(sessionId: String): RepositoryResult<TerminalWsToken>
 }

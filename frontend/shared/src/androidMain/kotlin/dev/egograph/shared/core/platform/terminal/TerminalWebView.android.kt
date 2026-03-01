@@ -59,7 +59,7 @@ class AndroidTerminalWebView(
     private var currentWsUrl: String? = null
 
     @Volatile
-    private var currentApiKey: String? = null
+    private var currentWsToken: String? = null
 
     private val isPageReady = AtomicBoolean(false)
     private val isTerminalReady = AtomicBoolean(false)
@@ -507,10 +507,10 @@ class AndroidTerminalWebView(
 
     override fun connect(
         wsUrl: String,
-        apiKey: String,
+        wsToken: String,
     ) {
         currentWsUrl = wsUrl
-        currentApiKey = apiKey
+        currentWsToken = wsToken
         connectIfReady()
     }
 
@@ -524,15 +524,15 @@ class AndroidTerminalWebView(
      */
     private fun connectIfReady() {
         val wsUrl = currentWsUrl ?: return
-        val apiKey = currentApiKey ?: return
+        val wsToken = currentWsToken ?: return
         if (!canConnectNow()) {
             return
         }
 
         val escapedWsUrl = escapeJsString(wsUrl)
-        val escapedApiKey = escapeJsString(apiKey)
+        val escapedWsToken = escapeJsString(wsToken)
         executeTerminalApiScript(
-            "window.TerminalAPI.connect('$escapedWsUrl', '$escapedApiKey');",
+            "window.TerminalAPI.connect('$escapedWsUrl', '$escapedWsToken');",
         )
     }
 

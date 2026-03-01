@@ -78,12 +78,14 @@ class TestWebSocketAuthentication:
         mock_websocket.headers = valid_ws_headers
         mock_websocket.accept = AsyncMock()
         mock_websocket.receive_text = AsyncMock(
-            return_value=f'{{"type":"auth","api_key":"{valid_token}"}}'
+            return_value=f'{{"type":"auth","ws_token":"{valid_token}"}}'
         )
         mock_websocket.close = AsyncMock()
 
         with (
-            patch("gateway.api.terminal._is_valid_api_key", return_value=True),
+            patch(
+                "gateway.api.terminal.terminal_ws_token_store",
+            ) as mock_store,
             patch(
                 "gateway.api.terminal.anyio.to_thread.run_sync",
                 return_value=True,
@@ -94,6 +96,7 @@ class TestWebSocketAuthentication:
             patch("gateway.api.terminal.mark_session_connected"),
             patch("gateway.api.terminal.mark_session_disconnected"),
         ):
+            mock_store.consume = AsyncMock(return_value=(True, valid_session_id))
             mock_handler = MagicMock()
             mock_handler.handle = AsyncMock()
             mock_handler_class.return_value = mock_handler
@@ -103,8 +106,8 @@ class TestWebSocketAuthentication:
 
             # Assert
             mock_websocket.accept.assert_called_once()
+            mock_store.consume.assert_called_once_with(valid_token)
             mock_handler.handle.assert_called_once()
-
     @pytest.mark.asyncio
     async def test_websocket_rejects_invalid_token(
         self,
@@ -118,21 +121,24 @@ class TestWebSocketAuthentication:
         mock_websocket.query_params = {"session_id": valid_session_id}
         mock_websocket.headers = valid_ws_headers
         mock_websocket.receive_text = AsyncMock(
-            return_value=f'{{"type":"auth","api_key":"{invalid_token}"}}'
+            return_value=f'{{"type":"auth","ws_token":"{invalid_token}"}}'
         )
         mock_websocket.accept = AsyncMock()
         mock_websocket.close = AsyncMock()
 
-        with patch("gateway.api.terminal._is_valid_api_key", return_value=False):
+        with patch(
+            "gateway.api.terminal.terminal_ws_token_store"
+        ) as mock_store:
+            mock_store.consume = AsyncMock(return_value=(False, None))
+
             # Act
             await terminal_websocket(mock_websocket)
 
             # Assert
             mock_websocket.accept.assert_called_once()
             mock_websocket.close.assert_called_once_with(
-                code=1008, reason="Authentication failed"
+                code=1008, reason="Unauthorized"
             )
-
     @pytest.mark.asyncio
     async def test_websocket_rejects_missing_token(
         self,
@@ -148,17 +154,113 @@ class TestWebSocketAuthentication:
         mock_websocket.accept = AsyncMock()
         mock_websocket.close = AsyncMock()
 
-        with patch("gateway.api.terminal._is_valid_api_key", return_value=False):
+        # Act
+        await terminal_websocket(mock_websocket)
+
+        # Assert
+        mock_websocket.accept.assert_called_once()
+        mock_websocket.close.assert_called_once_with(
+            code=1008, reason="Unauthorized"
+        )
+
+    @pytest.mark.asyncio
+    async def test_websocket_rejects_token_replay(
+        self,
+        valid_token,
+        valid_session_id,
+        valid_ws_headers,
+    ):
+        """トークンの再利用（リプレイ）が拒否されることを確認する。"""
+        # Arrange
+        mock_websocket = MagicMock()
+        mock_websocket.query_params = {"session_id": valid_session_id}
+        mock_websocket.headers = valid_ws_headers
+        mock_websocket.accept = AsyncMock()
+        mock_websocket.receive_text = AsyncMock(
+            return_value=f'{{"type":"auth","ws_token":"{valid_token}"}}'
+        )
+        mock_websocket.close = AsyncMock()
+
+        with patch(
+            "gateway.api.terminal.terminal_ws_token_store"
+        ) as mock_store:
+            # Second consume fails (token already used)
+            mock_store.consume = AsyncMock(return_value=(False, None))
+
             # Act
             await terminal_websocket(mock_websocket)
 
             # Assert
             mock_websocket.accept.assert_called_once()
             mock_websocket.close.assert_called_once_with(
-                code=1008, reason="Missing api_key"
+                code=1008, reason="Unauthorized"
             )
 
+    @pytest.mark.asyncio
+    async def test_websocket_rejects_expired_token(
+        self,
+        valid_token,
+        valid_session_id,
+        valid_ws_headers,
+    ):
+        """期限切れトークンが拒否されることを確認する。"""
+        # Arrange
+        mock_websocket = MagicMock()
+        mock_websocket.query_params = {"session_id": valid_session_id}
+        mock_websocket.headers = valid_ws_headers
+        mock_websocket.accept = AsyncMock()
+        mock_websocket.receive_text = AsyncMock(
+            return_value=f'{{"type":"auth","ws_token":"{valid_token}"}}'
+        )
+        mock_websocket.close = AsyncMock()
 
+        with patch(
+            "gateway.api.terminal.terminal_ws_token_store"
+        ) as mock_store:
+            # Expired token returns False
+            mock_store.consume = AsyncMock(return_value=(False, None))
+
+            # Act
+            await terminal_websocket(mock_websocket)
+
+            # Assert
+            mock_websocket.accept.assert_called_once()
+            mock_websocket.close.assert_called_once_with(
+                code=1008, reason="Unauthorized"
+            )
+
+    @pytest.mark.asyncio
+    async def test_websocket_rejects_token_session_mismatch(
+        self,
+        valid_token,
+        valid_session_id,
+        valid_ws_headers,
+    ):
+        """トークンのセッションIDが一致しない場合、拒否されることを確認する。"""
+        # Arrange
+        mock_websocket = MagicMock()
+        mock_websocket.query_params = {"session_id": valid_session_id}
+        mock_websocket.headers = valid_ws_headers
+        mock_websocket.accept = AsyncMock()
+        mock_websocket.receive_text = AsyncMock(
+            return_value=f'{{"type":"auth","ws_token":"{valid_token}"}}'
+        )
+        mock_websocket.close = AsyncMock()
+
+        with patch(
+            "gateway.api.terminal.terminal_ws_token_store"
+        ) as mock_store:
+            # Token is valid but for different session
+            mock_store.consume = AsyncMock(return_value=(True, "agent-9999"))
+
+            # Act
+            await terminal_websocket(mock_websocket)
+
+            # Assert
+            mock_websocket.accept.assert_called_once()
+            mock_websocket.close.assert_called_once_with(
+                code=1008, reason="Unauthorized"
+            )
 # ============================================================================
 # セッションIDバリデーションテスト
 # ============================================================================
@@ -180,15 +282,14 @@ class TestSessionIdValidation:
         mock_websocket.headers = valid_ws_headers
         mock_websocket.close = AsyncMock()
 
-        with patch("gateway.api.terminal._is_valid_api_key", return_value=True):
-            # Act
-            await terminal_websocket(mock_websocket)
+        # Act (no patch needed - validation happens before auth)
+        await terminal_websocket(mock_websocket)
 
-            # Assert
-            mock_websocket.accept.assert_not_called()
-            mock_websocket.close.assert_called_once_with(
-                code=1008, reason="Invalid session_id format"
-            )
+        # Assert
+        mock_websocket.accept.assert_not_called()
+        mock_websocket.close.assert_called_once_with(
+            code=1008, reason="Invalid session_id format"
+        )
 
     @pytest.mark.asyncio
     async def test_websocket_rejects_suffixed_session_id(self, valid_ws_headers):
@@ -216,7 +317,7 @@ class TestSessionIdValidation:
         }
         mock_websocket.accept = AsyncMock()
         mock_websocket.receive_text = AsyncMock(
-            return_value=f'{{"type":"auth","api_key":"{valid_token}"}}'
+            return_value=f'{{"type":"auth","ws_token":"{valid_token}"}}'
         )
         mock_websocket.close = AsyncMock()
 
@@ -240,7 +341,7 @@ class TestSessionIdValidation:
         }
         mock_websocket.accept = AsyncMock()
         mock_websocket.receive_text = AsyncMock(
-            return_value=f'{{"type":"auth","api_key":"{valid_token}"}}'
+            return_value=f'{{"type":"auth","ws_token":"{valid_token}"}}'
         )
         mock_websocket.close = AsyncMock()
 
