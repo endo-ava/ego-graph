@@ -8,6 +8,7 @@ import json
 import logging
 import re
 import secrets
+from urllib.parse import urlparse
 
 import anyio
 from starlette.exceptions import HTTPException
@@ -16,6 +17,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocket
 
+from gateway.config import is_tailscale_hostname
 from gateway.dependencies import get_config, verify_gateway_token
 from gateway.domain.models import SessionStatus
 from gateway.infrastructure.tmux import list_sessions, session_exists
@@ -24,6 +26,8 @@ from gateway.services.websocket_handler import TerminalWebSocketHandler
 logger = logging.getLogger(__name__)
 
 AUTH_TIMEOUT_SECONDS = 10
+LOCAL_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "::1"}
+WEBVIEW_ALLOWED_ORIGINS = {"null", "file://", "file:///"}
 
 
 # 接続状態のキャッシュ（簡易実装、プロセス内メモリのみ）
@@ -155,6 +159,14 @@ async def terminal_websocket(websocket: WebSocket) -> None:
     # クエリパラメータを取得
     session_id = websocket.query_params.get("session_id")
 
+    if not _validate_websocket_host_header(websocket):
+        await websocket.close(code=1008, reason="Invalid host")
+        return
+
+    if not _validate_websocket_origin_header(websocket):
+        await websocket.close(code=1008, reason="Invalid origin")
+        return
+
     # パラメータ検証
     if not session_id:
         logger.warning("Missing required parameter: session_id")
@@ -211,6 +223,60 @@ def _validate_session_id(session_id: str) -> bool:
     # 形式: agent-XXXX (XXXXは4桁の数字)
     pattern = r"^agent-[0-9]{4}$"
     return bool(re.match(pattern, session_id))
+
+
+def _extract_host_without_port(host_header: str) -> str:
+    """Host ヘッダーからホスト名部分のみを抽出する。"""
+    host = host_header.strip().lower()
+    if host.startswith("["):
+        closing = host.find("]")
+        if closing != -1:
+            return host[1:closing]
+        return host.strip("[]")
+    return host.split(":", maxsplit=1)[0]
+
+
+def _is_allowed_request_host(host: str) -> bool:
+    """HTTP/WS リクエストの Host が許可対象か判定する。"""
+    normalized = host.strip().lower().rstrip(".")
+    return normalized in LOCAL_ALLOWED_HOSTS or is_tailscale_hostname(normalized)
+
+
+def _validate_websocket_host_header(websocket: WebSocket) -> bool:
+    """WebSocket の Host ヘッダーを検証する。"""
+    host_header = websocket.headers.get("host")
+    if not host_header:
+        logger.warning("WebSocket rejected: missing Host header")
+        return False
+    host = _extract_host_without_port(host_header)
+    if not _is_allowed_request_host(host):
+        logger.warning("WebSocket rejected: invalid Host header (%s)", host)
+        return False
+    return True
+
+
+def _validate_websocket_origin_header(websocket: WebSocket) -> bool:
+    """WebSocket の Origin ヘッダーを検証する。"""
+    origin = websocket.headers.get("origin")
+    if origin is None:
+        # 非ブラウザクライアントとの互換のため未設定は許可する
+        return True
+
+    normalized_origin = origin.strip().lower()
+    if normalized_origin in WEBVIEW_ALLOWED_ORIGINS:
+        # Android WebView (file://) 互換
+        return True
+
+    parsed = urlparse(normalized_origin)
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if parsed.scheme != "https" or not host:
+        logger.warning("WebSocket rejected: invalid Origin format (%s)", origin)
+        return False
+
+    if not is_tailscale_hostname(host):
+        logger.warning("WebSocket rejected: non-tailscale Origin (%s)", origin)
+        return False
+    return True
 
 
 def _build_session_response(session_id: str, session) -> dict[str, str]:

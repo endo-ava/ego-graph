@@ -47,6 +47,15 @@ def invalid_session_id():
     return "invalid-session"
 
 
+@pytest.fixture
+def valid_ws_headers():
+    """有効な WebSocket ヘッダー。"""
+    return {
+        "host": "dev-server.tail905a15.ts.net",
+        "origin": "https://dev-server.tail905a15.ts.net",
+    }
+
+
 # ============================================================================
 # WebSocket認証テスト
 # ============================================================================
@@ -56,11 +65,17 @@ class TestWebSocketAuthentication:
     """WebSocket認証のテスト。"""
 
     @pytest.mark.asyncio
-    async def test_websocket_accepts_valid_token(self, valid_token, valid_session_id):
+    async def test_websocket_accepts_valid_token(
+        self,
+        valid_token,
+        valid_session_id,
+        valid_ws_headers,
+    ):
         """有効なトークンでWebSocket接続が確立されることを確認する。"""
         # Arrange
         mock_websocket = MagicMock()
         mock_websocket.query_params = {"session_id": valid_session_id}
+        mock_websocket.headers = valid_ws_headers
         mock_websocket.accept = AsyncMock()
         mock_websocket.receive_text = AsyncMock(
             return_value=f'{{"type":"auth","api_key":"{valid_token}"}}'
@@ -92,12 +107,16 @@ class TestWebSocketAuthentication:
 
     @pytest.mark.asyncio
     async def test_websocket_rejects_invalid_token(
-        self, invalid_token, valid_session_id
+        self,
+        invalid_token,
+        valid_session_id,
+        valid_ws_headers,
     ):
         """無効なトークンでWebSocket接続が拒否されることを確認する。"""
         # Arrange
         mock_websocket = MagicMock()
         mock_websocket.query_params = {"session_id": valid_session_id}
+        mock_websocket.headers = valid_ws_headers
         mock_websocket.receive_text = AsyncMock(
             return_value=f'{{"type":"auth","api_key":"{invalid_token}"}}'
         )
@@ -115,11 +134,16 @@ class TestWebSocketAuthentication:
             )
 
     @pytest.mark.asyncio
-    async def test_websocket_rejects_missing_token(self, valid_session_id):
+    async def test_websocket_rejects_missing_token(
+        self,
+        valid_session_id,
+        valid_ws_headers,
+    ):
         """トークンが欠落している場合、WebSocket接続が拒否されることを確認する。"""
         # Arrange
         mock_websocket = MagicMock()
         mock_websocket.query_params = {"session_id": valid_session_id}
+        mock_websocket.headers = valid_ws_headers
         mock_websocket.receive_text = AsyncMock(return_value='{"type":"auth"}')
         mock_websocket.accept = AsyncMock()
         mock_websocket.close = AsyncMock()
@@ -144,11 +168,16 @@ class TestSessionIdValidation:
     """セッションIDバリデーションのテスト。"""
 
     @pytest.mark.asyncio
-    async def test_websocket_rejects_invalid_session_id(self, invalid_session_id):
+    async def test_websocket_rejects_invalid_session_id(
+        self,
+        invalid_session_id,
+        valid_ws_headers,
+    ):
         """無効なセッションIDでWebSocket接続が拒否されることを確認する。"""
         # Arrange
         mock_websocket = MagicMock()
         mock_websocket.query_params = {"session_id": invalid_session_id}
+        mock_websocket.headers = valid_ws_headers
         mock_websocket.close = AsyncMock()
 
         with patch("gateway.api.terminal._is_valid_api_key", return_value=True):
@@ -162,10 +191,11 @@ class TestSessionIdValidation:
             )
 
     @pytest.mark.asyncio
-    async def test_websocket_rejects_suffixed_session_id(self):
+    async def test_websocket_rejects_suffixed_session_id(self, valid_ws_headers):
         """接尾辞付きのセッションIDでWebSocket接続が拒否されることを確認する。"""
         mock_websocket = MagicMock()
         mock_websocket.query_params = {"session_id": "agent-0001-8"}
+        mock_websocket.headers = valid_ws_headers
         mock_websocket.close = AsyncMock()
 
         await terminal_websocket(mock_websocket)
@@ -173,6 +203,53 @@ class TestSessionIdValidation:
         mock_websocket.accept.assert_not_called()
         mock_websocket.close.assert_called_once_with(
             code=1008, reason="Invalid session_id format"
+        )
+
+    @pytest.mark.asyncio
+    async def test_websocket_rejects_invalid_host(self, valid_session_id, valid_token):
+        """不正なHostヘッダーでWebSocket接続が拒否されることを確認する。"""
+        mock_websocket = MagicMock()
+        mock_websocket.query_params = {"session_id": valid_session_id}
+        mock_websocket.headers = {
+            "host": "example.com",
+            "origin": "https://dev-server.tail905a15.ts.net",
+        }
+        mock_websocket.accept = AsyncMock()
+        mock_websocket.receive_text = AsyncMock(
+            return_value=f'{{"type":"auth","api_key":"{valid_token}"}}'
+        )
+        mock_websocket.close = AsyncMock()
+
+        await terminal_websocket(mock_websocket)
+
+        mock_websocket.accept.assert_not_called()
+        mock_websocket.close.assert_called_once_with(code=1008, reason="Invalid host")
+
+    @pytest.mark.asyncio
+    async def test_websocket_rejects_invalid_origin(
+        self,
+        valid_session_id,
+        valid_token,
+    ):
+        """不正なOriginヘッダーでWebSocket接続が拒否されることを確認する。"""
+        mock_websocket = MagicMock()
+        mock_websocket.query_params = {"session_id": valid_session_id}
+        mock_websocket.headers = {
+            "host": "dev-server.tail905a15.ts.net",
+            "origin": "https://example.com",
+        }
+        mock_websocket.accept = AsyncMock()
+        mock_websocket.receive_text = AsyncMock(
+            return_value=f'{{"type":"auth","api_key":"{valid_token}"}}'
+        )
+        mock_websocket.close = AsyncMock()
+
+        await terminal_websocket(mock_websocket)
+
+        mock_websocket.accept.assert_not_called()
+        mock_websocket.close.assert_called_once_with(
+            code=1008,
+            reason="Invalid origin",
         )
 
 

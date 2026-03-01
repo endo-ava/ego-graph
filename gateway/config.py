@@ -5,13 +5,21 @@
 
 import logging
 import os
+from urllib.parse import urlparse
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 環境変数で .env ファイルの使用を制御（デフォルトは使用）
 USE_ENV_FILE = os.getenv("USE_ENV_FILE", "true").lower() in ("true", "1", "yes")
 GATEWAY_ENV_FILES = ["gateway/.env"] if USE_ENV_FILE else []
+LOCAL_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def is_tailscale_hostname(hostname: str) -> bool:
+    """Tailscale のマジックドメインかどうかを判定する。"""
+    host = hostname.strip().lower().rstrip(".")
+    return host.endswith(".ts.net")
 
 
 class GatewayConfig(BaseSettings):
@@ -36,8 +44,8 @@ class GatewayConfig(BaseSettings):
     # Webhook シークレット（必須、32バイト以上推奨）
     webhook_secret: SecretStr = Field(..., alias="GATEWAY_WEBHOOK_SECRET")
 
-    # CORS設定
-    cors_origins: str = Field("*", alias="CORS_ORIGINS")
+    # CORS設定（空の場合はCORS無効、設定する場合は https://*.ts.net のみ）
+    cors_origins: str = Field("", alias="CORS_ORIGINS")
 
     # ロギング
     log_level: str = Field("INFO", alias="LOG_LEVEL")
@@ -59,6 +67,38 @@ class GatewayConfig(BaseSettings):
 
     # tmux セッション名の正規表現パターン
     session_pattern: str = Field(r"^agent-[0-9]{4}$", alias="SESSION_PATTERN")
+
+    @field_validator("cors_origins")
+    @classmethod
+    def validate_cors_origins(cls, value: str) -> str:
+        """CORS_ORIGINS を検証し、正規化した文字列を返す。"""
+        if not value or not value.strip():
+            return ""
+
+        origins = [origin.strip() for origin in value.split(",") if origin.strip()]
+        normalized: list[str] = []
+        for origin in origins:
+            parsed = urlparse(origin)
+            host = (parsed.hostname or "").lower().rstrip(".")
+            if parsed.scheme != "https" or not parsed.netloc:
+                raise ValueError(
+                    "CORS_ORIGINS must use https:// and include a valid host"
+                )
+            has_extra_path = parsed.path not in ("", "/")
+            has_extra_parts = parsed.query or parsed.params or parsed.fragment
+            if has_extra_path or has_extra_parts:
+                raise ValueError(
+                    "CORS_ORIGINS entries must not include path/query/fragment"
+                )
+            if host in LOCAL_ALLOWED_HOSTS:
+                raise ValueError("CORS_ORIGINS must not include localhost addresses")
+            if not is_tailscale_hostname(host):
+                raise ValueError("CORS_ORIGINS must use Tailscale (*.ts.net) origins")
+            normalized.append(f"https://{host}")
+
+        # 順序を維持して重複を除去
+        deduplicated = list(dict.fromkeys(normalized))
+        return ",".join(deduplicated)
 
     @classmethod
     def from_env(cls) -> "GatewayConfig":

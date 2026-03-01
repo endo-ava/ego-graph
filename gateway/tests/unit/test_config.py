@@ -36,7 +36,7 @@ class TestGatewayConfig:
             config.webhook_secret.get_secret_value()
             == "test_webhook_secret_32_bytes_or_more"
         )
-        assert config.cors_origins == "*"
+        assert config.cors_origins == ""
         assert config.log_level == "INFO"
         assert config.reload is False
         assert config.fcm_project_id is None
@@ -53,7 +53,7 @@ class TestGatewayConfig:
             "GATEWAY_PORT": "9001",
             "GATEWAY_API_KEY": "env_api_key_32_bytes_or_more",
             "GATEWAY_WEBHOOK_SECRET": "env_webhook_secret_32_bytes_or_more",
-            "CORS_ORIGINS": "https://example.com",
+            "CORS_ORIGINS": "https://dev-server.tail905a15.ts.net",
             "LOG_LEVEL": "DEBUG",
             "GATEWAY_RELOAD": "true",
             "FCM_PROJECT_ID": "test-project",
@@ -74,13 +74,28 @@ class TestGatewayConfig:
             config.webhook_secret.get_secret_value()
             == "env_webhook_secret_32_bytes_or_more"
         )
-        assert config.cors_origins == "https://example.com"
+        assert config.cors_origins == "https://dev-server.tail905a15.ts.net"
         assert config.log_level == "DEBUG"
         assert config.reload is True
         assert config.fcm_project_id == "test-project"
         assert config.fcm_credentials_path == "gateway/custom-firebase.json"
         assert config.default_user_id == "test_user"
         assert config.session_pattern == r"^test-[0-9]+$"
+
+    def test_config_rejects_non_tailscale_cors_origins(self):
+        """CORS_ORIGINS が Tailscale 以外の場合はエラーになることを確認する。"""
+        env_vars = {
+            "USE_ENV_FILE": "false",
+            "GATEWAY_API_KEY": "env_api_key_32_bytes_or_more",
+            "GATEWAY_WEBHOOK_SECRET": "env_webhook_secret_32_bytes_or_more",
+            "CORS_ORIGINS": "https://example.com",
+        }
+
+        with patch.dict("os.environ", env_vars, clear=True):
+            with pytest.raises(ValidationError) as exc_info:
+                GatewayConfig(_env_file=None)
+
+        assert "CORS_ORIGINS" in str(exc_info.value)
 
     def test_config_requires_api_key(self):
         """必須のAPIキーが未設定の場合はバリデーションエラーになることを確認する。"""
@@ -153,6 +168,7 @@ class TestGatewayConfig:
             "USE_ENV_FILE": "false",
             "GATEWAY_API_KEY": "test_api_key_32_bytes_or_more",
             "GATEWAY_WEBHOOK_SECRET": "test_webhook_secret_32_bytes_or_more",
+            "CORS_ORIGINS": "https://dev-server.tail905a15.ts.net",
             "LOG_LEVEL": "DEBUG",
         }
 
