@@ -25,14 +25,14 @@ internal fun rememberTerminalVoiceInputCoordinator(
     onRecognizedText: (String) -> Unit,
     onError: (String) -> Unit,
 ): TerminalVoiceInputCoordinator {
-    val controller =
+    val coordinator =
         rememberVoiceInputCoordinator(
             onRecognizedText = onRecognizedText,
             onError = onError,
         )
 
     return TerminalVoiceInputCoordinator(
-        isActive = controller.isActive,
-        onToggle = controller.onToggle,
+        isActive = coordinator.isActive,
+        onToggle = coordinator.onToggle,
     )
 }

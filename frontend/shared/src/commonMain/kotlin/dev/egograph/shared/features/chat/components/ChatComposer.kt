@@ -35,6 +35,7 @@ fun ChatComposer(
     modifier: Modifier = Modifier,
 ) {
     var text by remember { mutableStateOf("") }
+    var voiceInputError by remember { mutableStateOf<String?>(null) }
     val voiceInputCoordinator =
         rememberVoiceInputCoordinator(
             onRecognizedText = { recognizedText ->
@@ -49,7 +50,11 @@ fun ChatComposer(
                         }
                 }
             },
-            onError = { _ -> },
+            onError = { error ->
+                if (error.isNotEmpty()) {
+                    voiceInputError = error
+                }
+            },
         )
 
     ChatComposerField(
@@ -62,7 +67,9 @@ fun ChatComposer(
         modelsError = modelsError,
         onModelSelected = onModelSelected,
         onSendMessage = {
-            onSendMessage(text)
+            val message = text.trim()
+            if (message.isEmpty()) return@ChatComposerField
+            onSendMessage(message)
             text = ""
         },
         onVoiceInputClick = voiceInputCoordinator.onToggle,

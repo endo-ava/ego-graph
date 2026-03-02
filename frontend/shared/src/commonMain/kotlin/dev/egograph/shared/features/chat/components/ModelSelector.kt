@@ -1,7 +1,6 @@
 package dev.egograph.shared.features.chat.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -48,7 +47,6 @@ fun ModelSelector(
     onModelSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isDark = isSystemInDarkTheme()
     val dimens = EgoGraphThemeTokens.dimens
     val shapes = EgoGraphThemeTokens.shapes
     var expanded by remember { mutableStateOf(false) }
@@ -66,7 +64,7 @@ fun ModelSelector(
 
     val isEnabled = !isLoading && error == null && models.isNotEmpty()
 
-    val selectorBg = if (isDark) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primaryContainer
+    val selectorBg = MaterialTheme.colorScheme.surfaceVariant
     val selectorFg = MaterialTheme.colorScheme.onSurfaceVariant
 
     Box(

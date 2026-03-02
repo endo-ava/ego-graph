@@ -57,7 +57,6 @@ class AndroidSpeechRecognizer : ISpeechRecognizer {
                     putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE, localeTag)
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, localeTag)
-                    putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, localeTag)
                 }
 
             fun restartListening() {
@@ -90,6 +89,9 @@ class AndroidSpeechRecognizer : ISpeechRecognizer {
                     }
 
                     override fun onError(error: Int) {
+                        if (!keepListening && error == ERROR_CLIENT) {
+                            return
+                        }
                         if (error == ERROR_NO_MATCH || error == ERROR_SPEECH_TIMEOUT) {
                             restartListening()
                             return

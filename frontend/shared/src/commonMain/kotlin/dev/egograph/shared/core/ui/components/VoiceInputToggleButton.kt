@@ -18,6 +18,8 @@ import dev.egograph.shared.core.ui.common.testTagResourceId
  * @param onClick ボタンタップ時の処理
  * @param modifier 追加のModifier
  * @param testTag UIテスト用タグ
+ * @param startContentDescription 音声入力開始時のコンテンツ説明
+ * @param stopContentDescription 音声入力停止時のコンテンツ説明
  */
 @Composable
 fun VoiceInputToggleButton(
@@ -25,6 +27,8 @@ fun VoiceInputToggleButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     testTag: String = "voice_input_button",
+    startContentDescription: String = "Start voice input",
+    stopContentDescription: String = "Stop voice input",
 ) {
     val containerColor =
         if (isActive) {
@@ -50,7 +54,7 @@ fun VoiceInputToggleButton(
     ) {
         Icon(
             imageVector = if (isActive) Icons.Filled.Stop else Icons.Filled.Mic,
-            contentDescription = if (isActive) "Stop voice input" else "Start voice input",
+            contentDescription = if (isActive) stopContentDescription else startContentDescription,
         )
     }
 }

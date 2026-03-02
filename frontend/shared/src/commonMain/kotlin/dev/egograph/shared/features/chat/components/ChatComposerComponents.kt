@@ -60,8 +60,6 @@ internal object ChatComposerMetrics {
     val contentBottomPadding
         @Composable get() = EgoGraphThemeTokens.dimens.space8
 
-    val textLaneMinHeight = 30.dp
-
     val modelSelectorSpacing
         @Composable get() = EgoGraphThemeTokens.dimens.space8
 }
@@ -139,7 +137,7 @@ internal fun ChatComposerField(
                             ),
                 ) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().heightIn(min = ChatComposerMetrics.textLaneMinHeight),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = dimens.chatComposerTextLaneMinHeight),
                     ) {
                         if (text.isEmpty()) {
                             Text(
@@ -163,6 +161,12 @@ internal fun ChatComposerField(
                             modifier = Modifier.weight(1f),
                         )
 
+                        Spacer(modifier = Modifier.width(ChatComposerMetrics.actionButtonsSpacing))
+                        SendButton(
+                            enabled = text.isNotBlank() && !isLoading,
+                            onClick = onSendMessage,
+                        )
+
                         onVoiceInputClick?.let { voiceInputClick ->
                             Spacer(modifier = Modifier.width(ChatComposerMetrics.actionButtonsSpacing))
                             VoiceInputToggleButton(
@@ -171,12 +175,6 @@ internal fun ChatComposerField(
                                 testTag = "mic_button",
                             )
                         }
-
-                        Spacer(modifier = Modifier.width(ChatComposerMetrics.actionButtonsSpacing))
-                        SendButton(
-                            enabled = text.isNotBlank() && !isLoading,
-                            onClick = onSendMessage,
-                        )
                     }
                 }
             }
