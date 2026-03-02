@@ -1,9 +1,9 @@
 package dev.egograph.shared.features.terminal.session
 
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlin.random.Random
 
 class TerminalReconnectBackoffTest {
     @Test
@@ -15,13 +15,14 @@ class TerminalReconnectBackoffTest {
 
     @Test
     fun `calculateDelay applies exponential backoff`() {
-        val backoff = TerminalReconnectBackoff(
-            baseDelayMs = 1000L,
-            maxDelayMs = 30000L,
-            multiplier = 2.0,
-            jitterPercentage = 0.0,
-            random = Random(0),
-        )
+        val backoff =
+            TerminalReconnectBackoff(
+                baseDelayMs = 1000L,
+                maxDelayMs = 30000L,
+                multiplier = 2.0,
+                jitterPercentage = 0.0,
+                random = Random(0),
+            )
 
         // Without jitter, delays should be deterministic
         assertEquals(1000L, backoff.calculateDelay(0))
@@ -35,13 +36,14 @@ class TerminalReconnectBackoffTest {
 
     @Test
     fun `calculateDelay respects max delay`() {
-        val backoff = TerminalReconnectBackoff(
-            baseDelayMs = 1000L,
-            maxDelayMs = 5000L,
-            multiplier = 3.0,
-            jitterPercentage = 0.0,
-            random = Random(0),
-        )
+        val backoff =
+            TerminalReconnectBackoff(
+                baseDelayMs = 1000L,
+                maxDelayMs = 5000L,
+                multiplier = 3.0,
+                jitterPercentage = 0.0,
+                random = Random(0),
+            )
 
         assertEquals(1000L, backoff.calculateDelay(0))
         assertEquals(3000L, backoff.calculateDelay(1))
@@ -52,13 +54,14 @@ class TerminalReconnectBackoffTest {
 
     @Test
     fun `calculateDelay applies jitter with Random(0)`() {
-        val backoff = TerminalReconnectBackoff(
-            baseDelayMs = 1000L,
-            maxDelayMs = 30000L,
-            multiplier = 2.0,
-            jitterPercentage = 0.2,
-            random = Random(0),
-        )
+        val backoff =
+            TerminalReconnectBackoff(
+                baseDelayMs = 1000L,
+                maxDelayMs = 30000L,
+                multiplier = 2.0,
+                jitterPercentage = 0.2,
+                random = Random(0),
+            )
 
         // With Random(0), the jitter values should be deterministic
         val delay0 = backoff.calculateDelay(0)
@@ -78,13 +81,14 @@ class TerminalReconnectBackoffTest {
 
     @Test
     fun `calculateDelay with zero jitter returns deterministic values`() {
-        val backoff = TerminalReconnectBackoff(
-            baseDelayMs = 1000L,
-            maxDelayMs = 30000L,
-            multiplier = 2.0,
-            jitterPercentage = 0.0,
-            random = Random(0),
-        )
+        val backoff =
+            TerminalReconnectBackoff(
+                baseDelayMs = 1000L,
+                maxDelayMs = 30000L,
+                multiplier = 2.0,
+                jitterPercentage = 0.0,
+                random = Random(0),
+            )
 
         // Multiple calls should return the same value
         assertEquals(1000L, backoff.calculateDelay(0))
@@ -95,13 +99,14 @@ class TerminalReconnectBackoffTest {
 
     @Test
     fun `calculateDelay never goes below base delay even with jitter`() {
-        val backoff = TerminalReconnectBackoff(
-            baseDelayMs = 1000L,
-            maxDelayMs = 30000L,
-            multiplier = 1.5,
-            jitterPercentage = 0.5, // High jitter
-            random = Random(0),
-        )
+        val backoff =
+            TerminalReconnectBackoff(
+                baseDelayMs = 1000L,
+                maxDelayMs = 30000L,
+                multiplier = 1.5,
+                jitterPercentage = 0.5, // High jitter
+                random = Random(0),
+            )
 
         repeat(100) { attempt ->
             val delay = backoff.calculateDelay(attempt)

@@ -21,12 +21,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
+import dev.egograph.shared.core.domain.repository.TerminalRepository
 import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import dev.egograph.shared.core.platform.rememberKeyboardState
@@ -36,12 +38,9 @@ import dev.egograph.shared.features.terminal.session.components.SpecialKeysBar
 import dev.egograph.shared.features.terminal.session.components.TerminalHeader
 import dev.egograph.shared.features.terminal.session.components.TerminalView
 import dev.egograph.shared.features.terminal.session.components.rememberTerminalWebView
-import dev.egograph.shared.core.domain.repository.TerminalRepository
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
 import org.koin.compose.koinInject
 
 /**
@@ -120,12 +119,13 @@ private fun TerminalContent(
         if (!terminalSettings.wsUrl.isNullOrBlank()) {
             isConnecting = true
             val result = terminalRepository.issueWsToken(agentId)
-            result.onSuccess { wsToken ->
-                webView.connect(terminalSettings.wsUrl, wsToken.wsToken)
-            }.onFailure { error ->
-                terminalError = "Connection failed"
-                isConnecting = false
-            }
+            result
+                .onSuccess { wsToken ->
+                    webView.connect(terminalSettings.wsUrl, wsToken.wsToken)
+                }.onFailure { error ->
+                    terminalError = "Connection failed"
+                    isConnecting = false
+                }
         }
     }
 
@@ -148,20 +148,22 @@ private fun TerminalContent(
         } else {
             if (hasConnectedOnce && !terminalSettings.wsUrl.isNullOrBlank()) {
                 reconnectJob?.cancel()
-                reconnectJob = coroutineScope.launch {
-                    val delayMs = backoff.calculateDelay(reconnectAttempts)
-                    delay(delayMs)
-                    if (!connectionState) {
-                        reconnectAttempts++
-                        isConnecting = true
-                        val result = terminalRepository.issueWsToken(agentId)
-                        result.onSuccess { wsToken ->
-                            webView.connect(terminalSettings.wsUrl, wsToken.wsToken)
-                        }.onFailure {
-                            isConnecting = false
+                reconnectJob =
+                    coroutineScope.launch {
+                        val delayMs = backoff.calculateDelay(reconnectAttempts)
+                        delay(delayMs)
+                        if (!connectionState) {
+                            reconnectAttempts++
+                            isConnecting = true
+                            val result = terminalRepository.issueWsToken(agentId)
+                            result
+                                .onSuccess { wsToken ->
+                                    webView.connect(terminalSettings.wsUrl, wsToken.wsToken)
+                                }.onFailure {
+                                    isConnecting = false
+                                }
                         }
                     }
-                }
             }
         }
     }

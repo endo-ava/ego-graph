@@ -1,7 +1,5 @@
 package dev.egograph.shared.features.terminal.session
 
-import kotlin.math.max
-import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /**
