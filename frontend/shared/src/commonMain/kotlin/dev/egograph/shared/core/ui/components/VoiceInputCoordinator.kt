@@ -9,6 +9,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import dev.egograph.shared.core.platform.terminal.createPermissionUtil
 import dev.egograph.shared.core.platform.terminal.createSpeechRecognizer
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -81,6 +82,7 @@ fun rememberVoiceInputCoordinator(
                                         onRecognizedText(recognizedText)
                                     }
                                 }
+                            } catch (_: CancellationException) {
                             } catch (e: Exception) {
                                 onError(e.message ?: "Voice input failed")
                             } finally {
