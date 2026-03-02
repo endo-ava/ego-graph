@@ -147,6 +147,9 @@ class AndroidSpeechRecognizer : ISpeechRecognizer {
     override fun stopRecognition() {
         keepListening = false
         speechRecognizer?.stopListening()
+        speechRecognizer?.cancel()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
     }
 }
 

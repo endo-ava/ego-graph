@@ -62,6 +62,8 @@ fun ChatComposer(
         onTextChange = { text = it },
         isLoading = isLoading,
         models = models,
+        voiceInputError = voiceInputError,
+        onClearVoiceInputError = { voiceInputError = null },
         selectedModelId = selectedModelId,
         isLoadingModels = isLoadingModels,
         modelsError = modelsError,
