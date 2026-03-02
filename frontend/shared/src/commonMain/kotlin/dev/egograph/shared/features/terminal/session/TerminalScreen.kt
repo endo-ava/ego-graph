@@ -21,12 +21,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
+import dev.egograph.shared.core.domain.repository.TerminalRepository
 import dev.egograph.shared.core.platform.PlatformPreferences
 import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import dev.egograph.shared.core.platform.rememberKeyboardState
@@ -36,6 +38,10 @@ import dev.egograph.shared.features.terminal.session.components.SpecialKeysBar
 import dev.egograph.shared.features.terminal.session.components.TerminalHeader
 import dev.egograph.shared.features.terminal.session.components.TerminalView
 import dev.egograph.shared.features.terminal.session.components.rememberTerminalWebView
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
@@ -69,6 +75,7 @@ private fun TerminalContent(
     val webView = rememberTerminalWebView()
     val preferences = koinInject<PlatformPreferences>()
     val themeRepository = koinInject<ThemeRepository>()
+    val terminalRepository = koinInject<TerminalRepository>()
     val selectedTheme by themeRepository.theme.collectAsState()
     val systemDarkTheme = isSystemInDarkTheme()
     val connectionState by webView.connectionState.collectAsState(initial = false)
@@ -79,6 +86,10 @@ private fun TerminalContent(
     var voiceInputError by remember { mutableStateOf<String?>(null) }
     var terminalError by remember { mutableStateOf<String?>(null) }
     var hasConnectedOnce by remember { mutableStateOf(false) }
+    var reconnectAttempts by remember { mutableStateOf(0) }
+    var reconnectJob by remember { mutableStateOf<Job?>(null) }
+    val backoff = remember { createTerminalReconnectBackoff() }
+    val coroutineScope = rememberCoroutineScope()
 
     val voiceInputController =
         rememberTerminalVoiceInputController(
@@ -103,12 +114,19 @@ private fun TerminalContent(
         settingsError = terminalSettings.error
     }
 
-    LaunchedEffect(webView, terminalSettings.wsUrl, terminalSettings.apiKey) {
+    LaunchedEffect(webView, terminalSettings.wsUrl, agentId) {
         webView.loadTerminal()
         webView.setTheme(darkMode)
-        if (!terminalSettings.wsUrl.isNullOrBlank() && !terminalSettings.apiKey.isNullOrBlank()) {
-            webView.connect(terminalSettings.wsUrl, terminalSettings.apiKey)
+        if (!terminalSettings.wsUrl.isNullOrBlank()) {
             isConnecting = true
+            val result = terminalRepository.issueWsToken(agentId)
+            result
+                .onSuccess { wsToken ->
+                    webView.connect(terminalSettings.wsUrl, wsToken.wsToken)
+                }.onFailure { error ->
+                    terminalError = "Connection failed"
+                    isConnecting = false
+                }
         }
     }
 
@@ -122,21 +140,40 @@ private fun TerminalContent(
         }
     }
 
-    LaunchedEffect(connectionState) {
+    LaunchedEffect(connectionState, terminalSettings.wsUrl, agentId) {
         if (connectionState) {
+            reconnectJob?.cancel()
+            reconnectJob = null
             hasConnectedOnce = true
             isConnecting = false
-            if (terminalError == "Connection lost. Reconnecting...") {
-                terminalError = null
-            }
-        } else {
-            isConnecting = true
-            if (hasConnectedOnce) {
-                terminalError = "Connection lost. Reconnecting..."
-            }
-            if (!terminalSettings.wsUrl.isNullOrBlank() && !terminalSettings.apiKey.isNullOrBlank()) {
-                webView.connect(terminalSettings.wsUrl, terminalSettings.apiKey)
-            }
+            terminalError = null
+            reconnectAttempts = 0
+        } else if (
+            hasConnectedOnce &&
+            !terminalSettings.wsUrl.isNullOrBlank() &&
+            reconnectJob?.isActive != true
+        ) {
+            reconnectJob =
+                coroutineScope.launch {
+                    while (isActive && !connectionState) {
+                        val delayMs = backoff.calculateDelay(reconnectAttempts)
+                        delay(delayMs)
+
+                        if (!isActive || connectionState) {
+                            break
+                        }
+
+                        reconnectAttempts++
+                        isConnecting = true
+                        val result = terminalRepository.issueWsToken(agentId)
+                        result
+                            .onSuccess { wsToken ->
+                                webView.connect(terminalSettings.wsUrl, wsToken.wsToken)
+                            }.onFailure {
+                                isConnecting = false
+                            }
+                    }
+                }
         }
     }
 
@@ -149,12 +186,12 @@ private fun TerminalContent(
 
     DisposableEffect(Unit) {
         onDispose {
+            reconnectJob?.cancel()
             webView.disconnect()
         }
     }
 
     val displayError = settingsError ?: terminalError ?: voiceInputError
-
     Scaffold(
         topBar = {
             TerminalHeader(
