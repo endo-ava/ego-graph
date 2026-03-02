@@ -139,27 +139,34 @@ private fun TerminalContent(
         }
     }
 
-    LaunchedEffect(connectionState) {
+    LaunchedEffect(connectionState, reconnectAttempts, terminalSettings.wsUrl, agentId) {
         if (connectionState) {
+            reconnectJob?.cancel()
             hasConnectedOnce = true
             isConnecting = false
             terminalError = null
             reconnectAttempts = 0
         } else {
-            if (hasConnectedOnce && !terminalSettings.wsUrl.isNullOrBlank()) {
+            if (
+                hasConnectedOnce &&
+                !terminalSettings.wsUrl.isNullOrBlank() &&
+                reconnectJob?.isActive != true
+            ) {
                 reconnectJob?.cancel()
                 reconnectJob =
                     coroutineScope.launch {
-                        val delayMs = backoff.calculateDelay(reconnectAttempts)
+                        val attempt = reconnectAttempts
+                        val delayMs = backoff.calculateDelay(attempt)
                         delay(delayMs)
                         if (!connectionState) {
-                            reconnectAttempts++
+                            reconnectAttempts = attempt + 1
                             isConnecting = true
                             val result = terminalRepository.issueWsToken(agentId)
                             result
                                 .onSuccess { wsToken ->
                                     webView.connect(terminalSettings.wsUrl, wsToken.wsToken)
                                 }.onFailure {
+                                    terminalError = "Reconnection failed"
                                     isConnecting = false
                                 }
                         }
@@ -177,6 +184,7 @@ private fun TerminalContent(
 
     DisposableEffect(Unit) {
         onDispose {
+            reconnectJob?.cancel()
             webView.disconnect()
         }
     }

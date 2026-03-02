@@ -36,6 +36,7 @@ data class TerminalReconnectBackoff(
      * @return Delay in milliseconds
      */
     fun calculateDelay(attempt: Int): Long {
+        require(attempt >= 0) { "attempt must be >= 0, was $attempt" }
         val exponentialDelay = (baseDelayMs * multiplier.pow(attempt)).toLong()
         val cappedDelay = minOf(exponentialDelay, maxDelayMs)
 

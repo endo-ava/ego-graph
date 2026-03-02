@@ -115,6 +115,34 @@ class TestGatewayConfig:
 
         assert "TERMINAL_WS_TOKEN_TTL_SECONDS" in str(exc_info.value)
 
+    def test_config_accepts_min_ws_token_ttl(self):
+        """TERMINAL_WS_TOKEN_TTL_SECONDS が下限（30秒）を受け入れることを確認する。"""
+        env_vars = {
+            "USE_ENV_FILE": "false",
+            "GATEWAY_API_KEY": "env_api_key_32_bytes_or_more",
+            "GATEWAY_WEBHOOK_SECRET": "env_webhook_secret_32_bytes_or_more",
+            "TERMINAL_WS_TOKEN_TTL_SECONDS": "30",
+        }
+
+        with patch.dict("os.environ", env_vars, clear=True):
+            config = GatewayConfig(_env_file=None)
+
+        assert config.terminal_ws_token_ttl_seconds == 30
+
+    def test_config_accepts_max_ws_token_ttl(self):
+        """TERMINAL_WS_TOKEN_TTL_SECONDS が上限（120秒）を受け入れることを確認する。"""
+        env_vars = {
+            "USE_ENV_FILE": "false",
+            "GATEWAY_API_KEY": "env_api_key_32_bytes_or_more",
+            "GATEWAY_WEBHOOK_SECRET": "env_webhook_secret_32_bytes_or_more",
+            "TERMINAL_WS_TOKEN_TTL_SECONDS": "120",
+        }
+
+        with patch.dict("os.environ", env_vars, clear=True):
+            config = GatewayConfig(_env_file=None)
+
+        assert config.terminal_ws_token_ttl_seconds == 120
+
     def test_config_rejects_non_tailscale_cors_origins(self):
         """CORS_ORIGINS が Tailscale 以外の場合はエラーになることを確認する。"""
         env_vars = {

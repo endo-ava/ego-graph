@@ -16,13 +16,11 @@ from starlette.routing import Mount, Route
 
 from gateway.api.push import routes as push_routes
 from gateway.api.terminal import get_terminal_routes
-from gateway.config import is_tailscale_hostname
+from gateway.config import LOCAL_ALLOWED_HOSTS, is_tailscale_hostname
 from gateway.dependencies import get_config
 from gateway.infrastructure.database import init_database
 
 logger = logging.getLogger(__name__)
-
-LOCAL_ALLOWED_HOSTS = ["localhost", "127.0.0.1", "::1"]
 
 
 def _parse_cors_origins(cors_origins: str) -> list[str]:
