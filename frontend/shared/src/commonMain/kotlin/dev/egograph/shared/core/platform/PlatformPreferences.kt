@@ -30,6 +30,7 @@ object PlatformPrefsKeys {
     const val KEY_API_URL = "api_url"
     const val KEY_API_KEY = "api_key"
     const val KEY_GATEWAY_API_URL = "gateway_api_url"
+    const val KEY_GATEWAY_API_KEY = "gateway_api_key"
     const val KEY_SELECTED_MODEL = "selected_model"
     const val KEY_LAST_TERMINAL_SESSION = "last_terminal_session"
 }
@@ -44,6 +45,7 @@ object PlatformPrefsDefaults {
     const val DEFAULT_API_URL = ""
     const val DEFAULT_API_KEY = ""
     const val DEFAULT_GATEWAY_API_URL = ""
+    const val DEFAULT_GATEWAY_API_KEY = ""
     const val DEFAULT_SELECTED_MODEL = ""
     const val DEFAULT_LAST_TERMINAL_SESSION = ""
 }

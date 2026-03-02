@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import dev.egograph.shared.core.platform.isValidUrl
+import dev.egograph.shared.core.ui.components.SecretTextField
 import dev.egograph.shared.core.ui.components.SettingsTopBar
 import dev.egograph.shared.core.ui.theme.EgoGraphThemeTokens
 import kotlinx.coroutines.launch
@@ -30,7 +31,7 @@ import kotlinx.coroutines.launch
 /**
  * Gateway設定画面
  *
- * Gateway APIのURLを設定する画面。
+ * Gateway APIのURLとAPIキーを設定する画面。
  *
  * @param onBack 戻るボタンコールバック
  */
@@ -67,6 +68,8 @@ class GatewaySettingsScreen(
                 GatewaySettingsContent(
                     gatewayUrl = state.inputGatewayUrl,
                     onGatewayUrlChange = screenModel::onGatewayUrlChange,
+                    apiKey = state.inputApiKey,
+                    onApiKeyChange = screenModel::onApiKeyChange,
                     onSave = screenModel::saveSettings,
                     isSaving = state.isSaving,
                 )
@@ -79,6 +82,8 @@ class GatewaySettingsScreen(
 private fun GatewaySettingsContent(
     gatewayUrl: String,
     onGatewayUrlChange: (String) -> Unit,
+    apiKey: String,
+    onApiKeyChange: (String) -> Unit,
     onSave: () -> Unit,
     isSaving: Boolean,
 ) {
@@ -115,10 +120,22 @@ private fun GatewaySettingsContent(
 
         Spacer(modifier = Modifier.height(dimens.space16))
 
+        SecretTextField(
+            value = apiKey,
+            onValueChange = onApiKeyChange,
+            label = "Gateway API Key",
+            placeholder = "Required",
+            modifier = Modifier.fillMaxWidth(),
+            showContentDescription = "Show token",
+            hideContentDescription = "Hide token",
+        )
+
+        Spacer(modifier = Modifier.height(dimens.space16))
+
         Button(
             onClick = onSave,
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isSaving && isValidUrl(gatewayUrl),
+            enabled = !isSaving && isValidUrl(gatewayUrl) && apiKey.isNotBlank(),
         ) {
             Text("Save Gateway Settings")
         }

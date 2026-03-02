@@ -16,6 +16,7 @@ class GatewaySettingsStateTest {
         val state = GatewaySettingsState()
 
         assertEquals("", state.inputGatewayUrl)
+        assertEquals("", state.inputApiKey)
     }
 
     @Test
@@ -33,22 +34,59 @@ class GatewaySettingsStateTest {
     }
 
     @Test
-    fun `GatewaySettingsState canSave is true with only URL`() {
+    fun `GatewaySettingsState canSave is false with only URL`() {
         val state = GatewaySettingsState(inputGatewayUrl = "https://gateway.example.com")
+
+        assertFalse(state.canSave)
+    }
+
+    @Test
+    fun `GatewaySettingsState canSave is false with only API key`() {
+        val state = GatewaySettingsState(inputApiKey = "test-key")
+
+        assertFalse(state.canSave)
+    }
+
+    @Test
+    fun `GatewaySettingsState canSave is true with both URL and API key`() {
+        val state =
+            GatewaySettingsState(
+                inputGatewayUrl = "https://gateway.example.com",
+                inputApiKey = "test-key",
+            )
 
         assertTrue(state.canSave)
     }
 
     @Test
     fun `GatewaySettingsState canSave is false with blank URL`() {
-        val state = GatewaySettingsState(inputGatewayUrl = "   ")
+        val state =
+            GatewaySettingsState(
+                inputGatewayUrl = "   ",
+                inputApiKey = "test-key",
+            )
 
         assertFalse(state.canSave)
     }
 
     @Test
-    fun `GatewaySettingsState canSave is true with non-blank URL`() {
-        val state = GatewaySettingsState(inputGatewayUrl = " https://gateway.example.com ")
+    fun `GatewaySettingsState canSave is false with blank API key`() {
+        val state =
+            GatewaySettingsState(
+                inputGatewayUrl = "https://gateway.example.com",
+                inputApiKey = "   ",
+            )
+
+        assertFalse(state.canSave)
+    }
+
+    @Test
+    fun `GatewaySettingsState canSave is true with non-blank URL and API key`() {
+        val state =
+            GatewaySettingsState(
+                inputGatewayUrl = " https://gateway.example.com ",
+                inputApiKey = " test-key ",
+            )
 
         assertTrue(state.canSave)
     }
@@ -58,10 +96,12 @@ class GatewaySettingsStateTest {
         val state =
             GatewaySettingsState(
                 inputGatewayUrl = "https://gateway.example.com",
+                inputApiKey = "secret-key",
                 isSaving = true,
             )
 
         assertEquals("https://gateway.example.com", state.inputGatewayUrl)
+        assertEquals("secret-key", state.inputApiKey)
         assertEquals(true, state.isSaving)
     }
 }
