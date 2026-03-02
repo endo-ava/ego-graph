@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route, WebSocketRoute
-from starlette.websockets import WebSocket
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from gateway.config import LOCAL_ALLOWED_HOSTS, is_tailscale_hostname
 from gateway.dependencies import get_config, verify_gateway_token
@@ -134,7 +134,11 @@ async def issue_ws_token(request: Request) -> JSONResponse:
         {
             "ws_token": ws_token,
             "expires_in_seconds": ttl_seconds,
-        }
+        },
+        headers={
+            "Cache-Control": "no-store",
+            "Pragma": "no-cache",
+        },
     )
 
 
@@ -325,7 +329,7 @@ def _validate_websocket_origin_header(websocket: WebSocket) -> bool:
         logger.warning("WebSocket rejected: missing Host header")
         return False
 
-    request_host = _extract_host_without_port(host_header)
+    request_host = _extract_host_without_port(host_header).rstrip(".")
     if host != request_host:
         logger.warning(
             "WebSocket rejected: Origin host does not match Host (%s vs %s)",
@@ -368,9 +372,13 @@ async def _authenticate_websocket(websocket: WebSocket, session_id: str) -> bool
         logger.warning("Authentication timeout for session: %s", session_id)
         await websocket.close(code=1008, reason="Unauthorized")
         return False
-    except Exception:
+    except (json.JSONDecodeError, WebSocketDisconnect):
         logger.warning("Authentication message is invalid for session: %s", session_id)
         await websocket.close(code=1008, reason="Unauthorized")
+        return False
+    except Exception:
+        logger.exception("Unexpected authentication error for session: %s", session_id)
+        await websocket.close(code=1011, reason="Internal error")
         return False
 
     if not isinstance(payload, dict):
