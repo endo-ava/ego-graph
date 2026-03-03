@@ -64,8 +64,8 @@ fun ModelSelector(
 
     val isEnabled = !isLoading && error == null && models.isNotEmpty()
 
-    val selectorBg = MaterialTheme.colorScheme.surfaceVariant
-    val selectorFg = MaterialTheme.colorScheme.onSurfaceVariant
+    val selectorBg = MaterialTheme.colorScheme.tertiaryContainer
+    val selectorFg = MaterialTheme.colorScheme.onTertiaryContainer
 
     Box(
         modifier =
@@ -119,11 +119,12 @@ fun ModelSelector(
                                 Text(
                                     text = model.name,
                                     style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.secondary,
                                 )
                                 Text(
                                     text = formatCost(model),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
                                 )
                             }
                         },

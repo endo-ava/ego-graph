@@ -99,7 +99,6 @@ internal fun ChatComposerField(
 
     val colors = OutlinedTextFieldDefaults.colors()
     val shape: Shape = shapes.radiusXl
-    val accentBlue = EgoGraphThemeTokens.accentBlue
     val inputContainerColor = MaterialTheme.colorScheme.surface
     val inputBorderColor = MaterialTheme.colorScheme.outline
 
@@ -118,7 +117,7 @@ internal fun ChatComposerField(
             minLines = ChatComposerMetrics.INPUT_MIN_LINES,
             maxLines = ChatComposerMetrics.INPUT_MAX_LINES,
             interactionSource = interactionSource,
-            cursorBrush = SolidColor(accentBlue),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
             decorationBox = { innerTextField ->
                 Surface(
                     modifier =
@@ -245,8 +244,6 @@ internal fun SendButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val accentBlue = EgoGraphThemeTokens.accentBlue
-
     IconButton(
         onClick = onClick,
         enabled = enabled,
@@ -255,7 +252,7 @@ internal fun SendButton(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.Send,
             contentDescription = "Send",
-            tint = if (enabled) accentBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (enabled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

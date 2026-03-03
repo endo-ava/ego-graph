@@ -37,21 +37,21 @@ fun ThreadItem(
 
     val backgroundColor =
         if (isActive) {
-            MaterialTheme.colorScheme.primaryContainer
+            MaterialTheme.colorScheme.secondaryContainer
         } else {
             MaterialTheme.colorScheme.surface
         }
 
     val contentColor =
         if (isActive) {
-            MaterialTheme.colorScheme.onPrimaryContainer
+            MaterialTheme.colorScheme.onSecondaryContainer
         } else {
             MaterialTheme.colorScheme.onSurface
         }
 
     val borderColor =
         if (isActive) {
-            MaterialTheme.colorScheme.primary
+            MaterialTheme.colorScheme.secondary
         } else {
             MaterialTheme.colorScheme.outlineVariant
         }

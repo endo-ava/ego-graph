@@ -55,7 +55,7 @@ fun SessionListItem(
 
     val statusColor =
         when (session.status) {
-            SessionStatus.CONNECTED -> extendedColors.statusConnected
+            SessionStatus.CONNECTED -> extendedColors.success
             SessionStatus.DISCONNECTED -> MaterialTheme.colorScheme.outline
             SessionStatus.FAILED -> MaterialTheme.colorScheme.error
         }
@@ -105,7 +105,7 @@ fun SessionListItem(
             Text(
                 text = "[${getStatusText(session.status)}]",
                 style = MaterialTheme.typography.monospaceLabelSmall,
-                color = if (session.status == SessionStatus.CONNECTED) extendedColors.statusConnected else contentColor.copy(alpha = 0.6f),
+                color = if (session.status == SessionStatus.CONNECTED) extendedColors.success else contentColor.copy(alpha = 0.6f),
             )
         }
 

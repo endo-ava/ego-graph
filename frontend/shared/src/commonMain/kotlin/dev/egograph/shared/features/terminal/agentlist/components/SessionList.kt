@@ -87,7 +87,7 @@ fun SessionList(
                         Modifier
                             .size(dimens.indicatorSizeSmall)
                             .background(
-                                color = if (activeSessionCount > 0) extendedColors.statusConnected else MaterialTheme.colorScheme.outline,
+                                color = if (activeSessionCount > 0) extendedColors.success else MaterialTheme.colorScheme.outline,
                                 shape = shapes.statusCircle,
                             ),
                 )
@@ -148,7 +148,7 @@ fun SessionList(
                 text = "$activeSessionCount ACTIVE",
                 style =
                     MaterialTheme.typography.monospaceLabelSmall.copy(fontWeight = FontWeight.Medium),
-                color = if (activeSessionCount > 0) extendedColors.statusConnected else MaterialTheme.colorScheme.outline,
+                color = if (activeSessionCount > 0) extendedColors.success else MaterialTheme.colorScheme.outline,
                 modifier = Modifier.align(Alignment.End),
             )
         }

@@ -2,7 +2,6 @@ package dev.egograph.shared.core.ui.theme
 
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -60,10 +59,7 @@ data class EgoGraphShapes(
 
 @Immutable
 data class EgoGraphExtendedColors(
-    val statusConnected: Color = Color(0xFF4CAF50),
-    // 青系アクセントカラー
-    val accentBlueLight: Color = Color(0xFF87CEEB),
-    val accentBlueDark: Color = Color(0xFFADD8E6),
+    val success: Color = Color(0xFF4CAF50), // 接続成功、正常状態（緑）
 )
 
 internal val LocalEgoGraphDimens = staticCompositionLocalOf { EgoGraphDimens() }
@@ -85,9 +81,4 @@ object EgoGraphThemeTokens {
         @Composable
         @ReadOnlyComposable
         get() = LocalEgoGraphExtendedColors.current
-
-    val accentBlue: Color
-        @Composable
-        @ReadOnlyComposable
-        get() = if (MaterialTheme.colorScheme.primary.luminance() > 0.5f) extendedColors.accentBlueLight else extendedColors.accentBlueDark
 }

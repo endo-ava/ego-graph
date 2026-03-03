@@ -74,7 +74,7 @@ fun TerminalHeader(
                                 Modifier
                                     .size(dimens.indicatorSizeSmall)
                                     .clip(shapes.statusCircle)
-                                    .background(extendedColors.statusConnected)
+                                    .background(extendedColors.success)
                                     .semantics {
                                         contentDescription = "Connected"
                                     },
