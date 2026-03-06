@@ -69,16 +69,23 @@ def get_repos_parquet_path(bucket: str, master_path: str) -> str:
     return GITHUB_REPOS_PATH.format(bucket=bucket, master_path=master_path)
 
 
-def _generate_pr_partition_paths(
-    bucket: str, events_path: str, start_date: date, end_date: date
+def _generate_partition_paths(
+    path_template: str,
+    bucket: str,
+    events_path: str,
+    start_date: date,
+    end_date: date,
+    log_label: str,
 ) -> list[str]:
-    """指定期間の月パーティションに対応するPRイベントParquetパスリストを生成します。
+    """指定期間の月パーティションパスリストを生成します。
 
     Args:
+        path_template: パスパターンテンプレート
         bucket: R2バケット名
         events_path: イベントデータのパスプレフィックス
         start_date: 開始日
         end_date: 終了日
+        log_label: ログ用ラベル
 
     Returns:
         月パーティションごとのS3パスリスト
@@ -88,7 +95,7 @@ def _generate_pr_partition_paths(
     end_month = end_date.replace(day=1)
 
     while current <= end_month:
-        path = GITHUB_PRS_PARTITION_PATH.format(
+        path = path_template.format(
             bucket=bucket,
             events_path=events_path,
             year=current.year,
@@ -102,53 +109,31 @@ def _generate_pr_partition_paths(
             current = current.replace(month=current.month + 1)
 
     logger.debug(
-        "Generated %d PR partition paths for period %s to %s",
+        "Generated %d %s partition paths for period %s to %s",
         len(paths),
+        log_label,
         start_date,
         end_date,
     )
     return paths
+
+
+def _generate_pr_partition_paths(
+    bucket: str, events_path: str, start_date: date, end_date: date
+) -> list[str]:
+    """指定期間の月パーティションに対応するPRイベントParquetパスリストを生成します。"""
+    return _generate_partition_paths(
+        GITHUB_PRS_PARTITION_PATH, bucket, events_path, start_date, end_date, "PR"
+    )
 
 
 def _generate_commit_partition_paths(
     bucket: str, events_path: str, start_date: date, end_date: date
 ) -> list[str]:
-    """指定期間の月パーティションに対応するCommitイベントParquetパスリストを生成します。
-
-    Args:
-        bucket: R2バケット名
-        events_path: イベントデータのパスプレフィックス
-        start_date: 開始日
-        end_date: 終了日
-
-    Returns:
-        月パーティションごとのS3パスリスト
-    """
-    paths: list[str] = []
-    current = start_date.replace(day=1)
-    end_month = end_date.replace(day=1)
-
-    while current <= end_month:
-        path = GITHUB_COMMITS_PARTITION_PATH.format(
-            bucket=bucket,
-            events_path=events_path,
-            year=current.year,
-            month=f"{current.month:02d}",
-        )
-        paths.append(path)
-
-        if current.month == 12:
-            current = current.replace(year=current.year + 1, month=1)
-        else:
-            current = current.replace(month=current.month + 1)
-
-    logger.debug(
-        "Generated %d commit partition paths for period %s to %s",
-        len(paths),
-        start_date,
-        end_date,
+    """指定期間の月パーティションに対応するCommitイベントParquetパスリストを生成します。"""
+    return _generate_partition_paths(
+        GITHUB_COMMITS_PARTITION_PATH, bucket, events_path, start_date, end_date, "commit"
     )
-    return paths
 
 
 def execute_query(
@@ -290,7 +275,8 @@ def get_pull_requests(
     query += " ORDER BY updated_at_utc DESC"
 
     if limit is not None:
-        query += f"\n        LIMIT {limit}"
+        query += "\n        LIMIT ?"
+        query_params.append(limit)
 
     logger.debug(
         "Executing get_pull_requests: %s to %s, owner=%s, repo=%s, state=%s, limit=%s",
@@ -370,7 +356,8 @@ def get_commits(
     query += " ORDER BY committed_at_utc DESC"
 
     if limit is not None:
-        query += f"\n        LIMIT {limit}"
+        query += "\n        LIMIT ?"
+        query_params.append(limit)
 
     logger.debug(
         "Executing get_commits: %s to %s, owner=%s, repo=%s, limit=%s",
