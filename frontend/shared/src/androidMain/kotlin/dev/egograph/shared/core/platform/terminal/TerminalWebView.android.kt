@@ -33,6 +33,7 @@ private const val TERMINAL_DARK_BACKGROUND = "#1e1e1e"
 private const val TERMINAL_LIGHT_BACKGROUND = "#FFFFFF"
 private const val MIN_TAP_TOLERANCE_PX = 2f
 private const val MIN_VERTICAL_SCROLL_DELTA_PX = 1f
+private const val TOUCH_SCROLL_DAMPING_FACTOR = 0.65f
 
 private enum class TouchDragDirection {
     UNDETERMINED,
@@ -115,7 +116,7 @@ class AndroidTerminalWebView(
      * xterm の 1 行スクロールへ変換するため、ピクセル差分を JavaScript 側へ渡す。
      */
     private fun sendScrollByPixels(pixelDelta: Float) {
-        val delta = pixelDelta.toInt()
+        val delta = (pixelDelta * TOUCH_SCROLL_DAMPING_FACTOR).toInt()
         if (delta == 0) {
             return
         }
