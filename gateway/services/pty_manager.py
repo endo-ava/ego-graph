@@ -47,7 +47,8 @@ class TmuxAttachManager:
                 "Only alphanumeric characters and hyphens are allowed."
             )
         self._session_id = session_id
-        self._tmux_target = f"={session_id}"
+        self._tmux_attach_target = f"={session_id}"
+        self._tmux_session_target = session_id
         self._process: asyncio.subprocess.Process | None = None
         self._stdin: asyncio.StreamWriter | None = None
         self._stdout: asyncio.StreamReader | None = None
@@ -125,7 +126,7 @@ class TmuxAttachManager:
                 "tmux",
                 "attach",
                 "-t",
-                self._tmux_target,
+                self._tmux_attach_target,
                 stdin=slave_fd,
                 stdout=slave_fd,
                 stderr=slave_fd,
@@ -171,13 +172,21 @@ class TmuxAttachManager:
     async def _configure_session_for_web_client(self) -> None:
         """Web表示向けにtmuxの装飾行を無効化する。"""
         commands = [
-            ["tmux", "set-option", "-q", "-t", self._tmux_target, "status", "off"],
+            [
+                "tmux",
+                "set-option",
+                "-q",
+                "-t",
+                self._tmux_session_target,
+                "status",
+                "off",
+            ],
             [
                 "tmux",
                 "set-window-option",
                 "-q",
                 "-t",
-                self._tmux_target,
+                self._tmux_session_target,
                 "pane-border-status",
                 "off",
             ],
@@ -304,7 +313,7 @@ class TmuxAttachManager:
         await flush_chunk()
 
     async def _run_tmux_send_keys(self, args: list[str]) -> None:
-        cmd = ["tmux", "send-keys", "-t", self._tmux_target, *args]
+        cmd = ["tmux", "send-keys", "-t", self._tmux_session_target, *args]
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
@@ -464,7 +473,7 @@ class TmuxAttachManager:
             "tmux",
             "resize-window",
             "-t",
-            self._tmux_target,
+            self._tmux_session_target,
             "-x",
             str(cols),
             "-y",
@@ -480,18 +489,12 @@ class TmuxAttachManager:
             message = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
             raise RuntimeError(f"Failed to resize tmux window: {message}")
 
-    async def capture_snapshot(self) -> bytes:
+    async def capture_snapshot(self, include_escape_sequences: bool = False) -> bytes:
         """現在の tmux ペイン内容を取得する。"""
-        cmd = [
-            "tmux",
-            "capture-pane",
-            "-p",
-            "-e",
-            "-S",
-            "-200",
-            "-t",
-            self._tmux_target,
-        ]
+        cmd = ["tmux", "capture-pane", "-p"]
+        if include_escape_sequences:
+            cmd.append("-e")
+        cmd.extend(["-S", "-200", "-t", self._tmux_session_target])
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
@@ -520,7 +523,7 @@ class TmuxAttachManager:
             "display-message",
             "-p",
             "-t",
-            self._tmux_target,
+            self._tmux_session_target,
             "#{cursor_x},#{cursor_y},#{pane_height}",
         ]
         process = await asyncio.create_subprocess_exec(

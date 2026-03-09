@@ -178,6 +178,13 @@ class TerminalSession(BaseModel):
     created: str | None = Field(None, description="セッション作成時刻")
 
 
+class TerminalSnapshotResponse(BaseModel):
+    """端末スナップショットレスポンス。"""
+
+    session_id: str = Field(..., description="tmuxセッションID")
+    content: str = Field(..., description="キャプチャした端末テキスト")
+
+
 # ============================================================================
 # プッシュ通知モデル
 # ============================================================================
