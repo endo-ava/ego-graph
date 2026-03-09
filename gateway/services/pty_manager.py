@@ -341,7 +341,8 @@ class TmuxAttachManager:
             return
         if abs(lines) > MAX_SCROLL_LINES:
             raise ValueError(
-                f"lines must be between {-MAX_SCROLL_LINES} and {MAX_SCROLL_LINES}, got {lines}"
+                "lines must be between "
+                f"{-MAX_SCROLL_LINES} and {MAX_SCROLL_LINES}, got {lines}"
             )
 
         if lines < 0:

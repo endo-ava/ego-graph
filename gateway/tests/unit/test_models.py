@@ -7,8 +7,8 @@ from pydantic import ValidationError
 
 from gateway.domain.models import (
     PushNotificationRequest,
-    TerminalSnapshotResponse,
     TerminalSession,
+    TerminalSnapshotResponse,
     WebhookPayload,
     WSScrollMessage,
 )

@@ -137,8 +137,9 @@ fun TerminalCopyModeSheet(
                     }
                     SelectionContainer {
                         Text(
-                            text = snapshot?.content?.ifBlank { "No terminal output available." }
-                                ?: "No terminal output available.",
+                            text =
+                                snapshot?.content?.ifBlank { "No terminal output available." }
+                                    ?: "No terminal output available.",
                             style = MaterialTheme.typography.monospaceBody,
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier =

@@ -22,8 +22,7 @@ from gateway.config import (
     is_tailscale_hostname,
 )
 from gateway.dependencies import get_config, verify_gateway_token
-from gateway.domain.models import SessionStatus
-from gateway.domain.models import TerminalSnapshotResponse
+from gateway.domain.models import SessionStatus, TerminalSnapshotResponse
 from gateway.infrastructure.tmux import list_sessions, session_exists
 from gateway.services.pty_manager import TmuxAttachManager
 from gateway.services.websocket_handler import TerminalWebSocketHandler
