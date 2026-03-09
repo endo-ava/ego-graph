@@ -94,6 +94,8 @@ class TestGetSessionSnapshot:
             "session_id": "agent-0001",
             "content": "line 1\nline 2",
         }
+        assert response.headers["Cache-Control"] == "no-store"
+        assert response.headers["Pragma"] == "no-cache"
         mock_manager.capture_snapshot.assert_awaited_once_with(
             include_escape_sequences=False
         )

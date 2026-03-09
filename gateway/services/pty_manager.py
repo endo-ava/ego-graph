@@ -216,6 +216,11 @@ class TmuxAttachManager:
 
         logger.info("Detaching from session: %s", self._session_id)
 
+        try:
+            await self._exit_copy_mode_if_needed()
+        except Exception as e:
+            logger.debug("Failed to exit copy mode before detach: %s", e)
+
         # プロセスを終了
         if self._process and self._process.returncode is None:
             try:
@@ -265,6 +270,7 @@ class TmuxAttachManager:
             raise RuntimeError("Not attached to session")
 
         try:
+            await self._exit_copy_mode_if_needed()
             if self._master_fd is not None:
                 await self._write_master(data)
                 return
@@ -353,6 +359,10 @@ class TmuxAttachManager:
         if await self._is_in_copy_mode():
             await self._run_tmux_copy_mode_command("scroll-down", lines)
 
+    async def _exit_copy_mode_if_needed(self) -> None:
+        if await self._is_in_copy_mode():
+            await self._run_tmux_copy_mode_command("cancel")
+
     async def _enter_copy_mode(self) -> None:
         cmd = ["tmux", "copy-mode", "-e", "-t", self._tmux_session_target]
         process = await asyncio.create_subprocess_exec(
@@ -402,17 +412,21 @@ class TmuxAttachManager:
 
         return stdout.decode("utf-8", errors="ignore").strip() == "1"
 
-    async def _run_tmux_copy_mode_command(self, command: str, count: int) -> None:
+    async def _run_tmux_copy_mode_command(
+        self,
+        command: str,
+        count: int | None = None,
+    ) -> None:
         cmd = [
             "tmux",
             "send-keys",
             "-t",
             self._tmux_session_target,
             "-X",
-            "-N",
-            str(count),
             command,
         ]
+        if count is not None:
+            cmd[5:5] = ["-N", str(count)]
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,

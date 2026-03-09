@@ -24,7 +24,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -34,7 +33,6 @@ import dev.egograph.shared.core.ui.components.ErrorView
 import dev.egograph.shared.core.ui.components.LoadingView
 import dev.egograph.shared.core.ui.theme.EgoGraphThemeTokens
 import dev.egograph.shared.core.ui.theme.monospaceBody
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,27 +43,40 @@ fun TerminalCopyModeSheet(
 ) {
     val repository = koinInject<TerminalRepository>()
     val dimens = EgoGraphThemeTokens.dimens
-    val coroutineScope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var snapshot by remember { mutableStateOf<TerminalSnapshot?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var reloadToken by remember(agentId) { mutableStateOf(0) }
+    var activeRequestId by remember(agentId) { mutableStateOf(0) }
+    var snapshot by remember(agentId) { mutableStateOf<TerminalSnapshot?>(null) }
+    var isLoading by remember(agentId) { mutableStateOf(true) }
+    var error by remember(agentId) { mutableStateOf<String?>(null) }
 
-    suspend fun loadSnapshot() {
+    suspend fun loadSnapshot(requestId: Int) {
         isLoading = true
         error = null
         repository
             .getSnapshot(agentId)
             .onSuccess {
+                if (activeRequestId != requestId) {
+                    return@onSuccess
+                }
                 snapshot = it
             }.onFailure {
+                if (activeRequestId != requestId) {
+                    return@onFailure
+                }
+                snapshot = null
                 error = it.message ?: "Failed to load terminal snapshot"
             }
+        if (activeRequestId != requestId) {
+            return
+        }
         isLoading = false
     }
 
-    LaunchedEffect(agentId) {
-        loadSnapshot()
+    LaunchedEffect(agentId, reloadToken) {
+        val requestId = activeRequestId + 1
+        activeRequestId = requestId
+        loadSnapshot(requestId)
     }
 
     ModalBottomSheet(
@@ -89,9 +100,7 @@ fun TerminalCopyModeSheet(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Button(
-                    onClick = {
-                        coroutineScope.launch { loadSnapshot() }
-                    },
+                    onClick = { reloadToken += 1 },
                 ) {
                     Text("Refresh")
                 }
@@ -119,9 +128,7 @@ fun TerminalCopyModeSheet(
                     ErrorView(message = error ?: "Unknown error")
                     Spacer(modifier = Modifier.height(dimens.space12))
                     Button(
-                        onClick = {
-                            coroutineScope.launch { loadSnapshot() }
-                        },
+                        onClick = { reloadToken += 1 },
                     ) {
                         Text("Retry")
                     }

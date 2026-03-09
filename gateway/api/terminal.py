@@ -163,7 +163,13 @@ async def get_session_snapshot(request: Request) -> JSONResponse:
         session_id=session_id,
         content=snapshot.decode("utf-8", errors="replace"),
     )
-    return JSONResponse(response.model_dump())
+    return JSONResponse(
+        response.model_dump(),
+        headers={
+            "Cache-Control": "no-store",
+            "Pragma": "no-cache",
+        },
+    )
 
 
 def get_terminal_routes() -> list[Route]:

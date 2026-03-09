@@ -103,7 +103,7 @@ class TestHandleClientMessage:
 
         await websocket_handler._handle_client_message(json.dumps(message_data))
 
-        pty_manager.scroll_history.assert_called_once_with(-3)
+        pty_manager.scroll_history.assert_awaited_once_with(-3)
 
     @pytest.mark.asyncio
     async def test_handle_ping_message(self, websocket_handler):

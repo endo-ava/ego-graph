@@ -288,14 +288,19 @@
                 var cellHeight = Math.max(getCellHeight(), 1);
                 touchScrollRemainder += pixelDelta * SCROLL_DAMPING_FACTOR;
                 var lineDelta = Math.trunc(touchScrollRemainder / cellHeight);
-                touchScrollRemainder -= lineDelta * cellHeight;
+                var sentAny = false;
 
-                if (lineDelta === 0) {
-                    return false;
+                while (lineDelta !== 0) {
+                    var clampedLines = clamp(lineDelta, -MAX_SCROLL_LINES, MAX_SCROLL_LINES);
+                    if (!sendScroll(clampedLines)) {
+                        return sentAny;
+                    }
+                    touchScrollRemainder -= clampedLines * cellHeight;
+                    sentAny = true;
+                    lineDelta = Math.trunc(touchScrollRemainder / cellHeight);
                 }
 
-                var clampedLines = clamp(lineDelta, -MAX_SCROLL_LINES, MAX_SCROLL_LINES);
-                return sendScroll(clampedLines);
+                return sentAny;
             }
 
             function handleMouseWheelScroll(event) {
