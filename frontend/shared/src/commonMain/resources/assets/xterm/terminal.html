@@ -72,8 +72,9 @@
             var MIN_ROWS = 12;
             var MAX_ROWS = 200;
             var MIN_SCROLL_DELTA = 1;
-            var SCROLL_DAMPING_FACTOR = 0.5;
-            var MAX_SCROLL_LINES = 6;
+            var MAX_SCROLL_LINES = 20;
+            var TUI_WHEEL_DAMPING_FACTOR = 0.25;
+            var MAX_TUI_WHEEL_STEPS = 4;
             var RESIZE_DEBOUNCE_MS = 200;
 
             var TERMINAL_THEME = {
@@ -88,10 +89,13 @@
             var terminal = null;
             var websocket = null;
             var touchScrollRemainder = 0;
+            var tuiWheelRemainder = 0;
             var pointerScrollLastY = null;
             var pointerDragActive = false;
             var viewportListenersBound = false;
             var resizeTimeout = null;
+            var mouseReportingEnabled = false;
+            var terminalModeTail = '';
 
             // ===== Bridge 連携 =====
             function notifyError(message) {
@@ -241,8 +245,58 @@
                 }));
             }
 
+            function sendScroll(lines) {
+                if (!isSocketOpen() || typeof lines !== 'number' || lines === 0) {
+                    return false;
+                }
+
+                websocket.send(JSON.stringify({
+                    type: 'scroll',
+                    lines: lines,
+                }));
+                return true;
+            }
+
             function routeInput(data) {
                 sendInput(data);
+            }
+
+            function resetTerminalInteractionModes() {
+                mouseReportingEnabled = false;
+                terminalModeTail = '';
+            }
+
+            function shouldUseTuiWheelScroll() {
+                return mouseReportingEnabled;
+            }
+
+            function updateTerminalModes(textChunk) {
+                if (!textChunk) {
+                    return;
+                }
+
+                var text = terminalModeTail + textChunk;
+                var privateModeRegex = /\u001b\[\?([0-9;]+)([hl])/g;
+                var match = null;
+                while ((match = privateModeRegex.exec(text)) !== null) {
+                    var params = match[1].split(';');
+                    var enable = match[2] === 'h';
+                    for (var i = 0; i < params.length; i++) {
+                        var code = Number(params[i]);
+                        if (
+                            code === 1000 ||
+                            code === 1002 ||
+                            code === 1003 ||
+                            code === 1005 ||
+                            code === 1006 ||
+                            code === 1015
+                        ) {
+                            mouseReportingEnabled = enable;
+                        }
+                    }
+                }
+
+                terminalModeTail = text.slice(-64);
             }
 
             function writeOutputChunk(text) {
@@ -264,28 +318,18 @@
                     bytes[i] = bin.charCodeAt(i);
                 }
                 var text = new TextDecoder('utf-8').decode(bytes);
+                updateTerminalModes(text);
                 writeOutputChunk(text);
             }
 
             // ===== スクロール制御 =====
-            function scrollTerminalByPixels(pixelDelta) {
-                if (!terminal || !isSocketOpen()) {
+            function sendWheelScroll(lines) {
+                if (!terminal || !isSocketOpen() || lines === 0) {
                     return false;
                 }
 
-                var cellHeight = Math.max(getCellHeight(), 1);
-                touchScrollRemainder += pixelDelta * SCROLL_DAMPING_FACTOR;
-                var lineDelta = Math.trunc(touchScrollRemainder / cellHeight);
-                if (lineDelta === 0) {
-                    return false;
-                }
-
-                touchScrollRemainder -= lineDelta * cellHeight;
-
-                // 通常スワイプは tmux copy-mode ではなく、xterm へのホイール入力として扱う。
-                // これにより mouse reporting を使う TUI が内部スクロールを継続できる。
-                var steps = Math.min(Math.abs(lineDelta), MAX_SCROLL_LINES);
-                var isWheelUp = lineDelta < 0;
+                var steps = Math.min(Math.abs(lines), MAX_TUI_WHEEL_STEPS);
+                var isWheelUp = lines < 0;
                 var buttonCode = isWheelUp ? 64 : 65;
                 var col = Math.max(1, Math.floor(terminal.cols / 2));
                 var row = Math.max(1, Math.floor(terminal.rows / 2));
@@ -296,6 +340,45 @@
                 }
 
                 return true;
+            }
+
+            function scrollTerminalByPixels(pixelDelta) {
+                if (!terminal || !isSocketOpen()) {
+                    return false;
+                }
+
+                var cellHeight = Math.max(getCellHeight(), 1);
+                var scrollRemainder = touchScrollRemainder;
+                if (shouldUseTuiWheelScroll()) {
+                    scrollRemainder = tuiWheelRemainder + (pixelDelta * TUI_WHEEL_DAMPING_FACTOR);
+                } else {
+                    scrollRemainder += pixelDelta;
+                }
+
+                var lineDelta = Math.trunc(scrollRemainder / cellHeight);
+                var sentAny = false;
+                while (lineDelta !== 0) {
+                    var clampedLines = clamp(lineDelta, -MAX_SCROLL_LINES, MAX_SCROLL_LINES);
+                    var didSend = shouldUseTuiWheelScroll()
+                        ? sendWheelScroll(clampedLines)
+                        : sendScroll(clampedLines);
+                    if (!didSend) {
+                        return sentAny;
+                    }
+                    scrollRemainder -= clampedLines * cellHeight;
+                    sentAny = true;
+                    lineDelta = Math.trunc(scrollRemainder / cellHeight);
+                }
+
+                if (shouldUseTuiWheelScroll()) {
+                    tuiWheelRemainder = scrollRemainder;
+                    touchScrollRemainder = 0;
+                } else {
+                    touchScrollRemainder = scrollRemainder;
+                    tuiWheelRemainder = 0;
+                }
+
+                return sentAny;
             }
 
             function handleMouseWheelScroll(event) {
@@ -343,6 +426,7 @@
                 pointerDragActive = false;
                 pointerScrollLastY = null;
                 touchScrollRemainder = 0;
+                tuiWheelRemainder = 0;
             }
 
             function bindViewportScrollListeners() {
@@ -429,6 +513,7 @@
                     websocket.close();
                     websocket = null;
                 }
+                resetTerminalInteractionModes();
             }
 
             function attachWebSocketHandlers(ws, wsToken) {
@@ -470,6 +555,7 @@
                         return;
                     }
                     notifyConnectionChanged(false);
+                    resetTerminalInteractionModes();
                     websocket = null;
                 };
             }
@@ -480,6 +566,7 @@
                 }
 
                 closeCurrentWebSocket();
+                resetTerminalInteractionModes();
                 var ws = new WebSocket(wsUrl);
                 websocket = ws;
                 attachWebSocketHandlers(ws, wsToken);

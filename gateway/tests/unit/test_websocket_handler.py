@@ -7,7 +7,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from gateway.domain.models import WSInputMessage
-from gateway.services.websocket_handler import TerminalWebSocketHandler
+from gateway.services.websocket_handler import (
+    TOUCH_SCROLL_SENSITIVITY_FACTOR,
+    TerminalWebSocketHandler,
+)
 
 # ============================================================================
 # Fixtures
@@ -96,14 +99,33 @@ class TestHandleClientMessage:
     @pytest.mark.asyncio
     async def test_handle_scroll_message(self, websocket_handler):
         """スクロールメッセージが正しく処理されることを確認する。"""
-        message_data = {"type": "scroll", "lines": -3}
+        message_data = {
+            "type": "scroll",
+            "lines": int(-4 / TOUCH_SCROLL_SENSITIVITY_FACTOR),
+        }
         pty_manager = MagicMock()
         pty_manager.scroll_history = AsyncMock()
         websocket_handler._pty_manager = pty_manager
 
         await websocket_handler._handle_client_message(json.dumps(message_data))
 
-        pty_manager.scroll_history.assert_awaited_once_with(-3)
+        pty_manager.scroll_history.assert_awaited_once_with(-4)
+
+    @pytest.mark.asyncio
+    async def test_handle_scroll_message_accumulates_fractional_lines(
+        self, websocket_handler
+    ):
+        """端数が gateway 側で累積されることを確認する。"""
+        message_data = {"type": "scroll", "lines": -1}
+        pty_manager = MagicMock()
+        pty_manager.scroll_history = AsyncMock()
+        websocket_handler._pty_manager = pty_manager
+
+        await websocket_handler._handle_client_message(json.dumps(message_data))
+        pty_manager.scroll_history.assert_not_awaited()
+
+        await websocket_handler._handle_client_message(json.dumps(message_data))
+        pty_manager.scroll_history.assert_awaited_once_with(-1)
 
     @pytest.mark.asyncio
     async def test_handle_ping_message(self, websocket_handler):
