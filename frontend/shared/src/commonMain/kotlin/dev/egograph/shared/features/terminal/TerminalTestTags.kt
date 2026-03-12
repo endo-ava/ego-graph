@@ -20,12 +20,6 @@ object TerminalTestTags {
     /** ターミナル画面の戻るボタンのタグ */
     const val TERMINAL_BACK_BUTTON = "terminal_back_button"
 
-    /** ターミナルキーボードの表示/非表示を切り替えるボタンのタグ */
-    const val TERMINAL_KEYBOARD_TOGGLE = "terminal_keyboard_toggle"
-
     /** ターミナル内容をコピーするボタンのタグ */
     const val TERMINAL_COPY_BUTTON = "terminal_copy_button"
-
-    /** コピー完了フィードバック（トースト等）のタグ */
-    const val TERMINAL_COPY_FEEDBACK = "terminal_copy_feedback"
 }
