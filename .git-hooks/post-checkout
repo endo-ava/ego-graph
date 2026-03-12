@@ -47,8 +47,8 @@ echo "=========================================="
 echo "🚀 Worktree セットアップを開始します"
 echo "=========================================="
 
-# バックグラウンドで実行
-bash "$SCRIPT_PATH" "$WORKTREE_PATH" "$MAIN_REPO_PATH" &
+# worktree add 後の hook 終了に巻き込まれないよう、HUP を無視してバックグラウンド実行
+nohup bash "$SCRIPT_PATH" "$WORKTREE_PATH" "$MAIN_REPO_PATH" >/dev/null 2>&1 &
 
 echo "セットアップをバックグラウンドで実行中..."
 echo "ログ: tail -f $WORKTREE_PATH/.worktree-setup.log で確認できます"

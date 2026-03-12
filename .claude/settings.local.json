@@ -65,7 +65,8 @@
       "Bash(./gradlew :shared:test)",
       "Bash(./gradlew:*)",
       "Bash(maestro test:*)",
-      "Bash(codex exec:*)"
+      "Bash(codex exec:*)",
+      "Bash(tmux capture-pane:*)"
     ],
     "deny": [
       "Read(.env)",

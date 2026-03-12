@@ -196,6 +196,24 @@ bash scripts/install-git-hooks.sh
 
 ## Development
 
+### Claude / Codex 連携
+
+Claude 用に管理している Skill / Command を Codex からも使いたい場合は、リポジトリルートで以下を実行してください。
+
+```bash
+mkdir -p ~/.codex/skills ~/.codex/prompts
+
+find "$PWD/.claude/skills" -mindepth 1 -maxdepth 1 -type d \
+  -exec ln -sfn {} ~/.codex/skills/ \;
+
+find "$PWD/.claude/commands" -mindepth 1 -maxdepth 1 -type f -name '*.md' \
+  -exec ln -sfn {} ~/.codex/prompts/ \;
+```
+
+- Codex では custom command は `~/.codex/prompts/` 配下の Markdown を slash command として扱います
+- Claude の `.claude/commands/*.md` は、そのまま Codex 側の prompt として再利用できます
+- Skill は `~/.codex/skills/` 配下に配置すると Codex から参照されます
+
 ### テスト実行
 
 ```bash
