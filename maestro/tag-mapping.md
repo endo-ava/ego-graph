@@ -108,6 +108,20 @@ API設定とテーマ設定を行う画面。
 
 ※ `SystemPromptTabs.kt`の行32で動的生成: `testTag("prompt_tab_${tab.apiName}")`
 
+### 8. ターミナル画面 (Terminal Screen)
+
+tmuxセッションへの接続、ターミナル操作、セッション管理を行う画面。
+
+| testtag                    | 要素                                   | ファイル                  | 行番号 |
+| ------------------------- | -------------------------------------- | ------------------------- | ------ |
+| `session_item`            | セッションリストの個別アイテム         | `SessionListItem.kt`      | 71     |
+| `session_preview`         | セッションのターミナルプレビュー表示   | `SessionListItem.kt`      | 126    |
+| `terminal_status_pill`    | ターミナル下部のフローティングピル     | `TerminalControls.kt`     | 77     |
+| `terminal_back_button`    | ターミナル画面の戻るボタン             | `TerminalControls.kt`     | 32     |
+| `terminal_copy_button`    | ターミナル内容コピーボタン             | `TerminalControls.kt`     | 61     |
+
+※ タグ定数は `TerminalTestTags.kt` で一元管理されています。
+
 ## ファイルパス
 
 全てのUIファイルは以下のパスに配置されています:
@@ -130,6 +144,19 @@ frontend/shared/src/commonMain/kotlin/dev/egograph/shared/ui/
     └── SystemPromptEditorScreen.kt
 ```
 
+**ターミナル機能のファイル:**
+
+```
+frontend/shared/src/commonMain/kotlin/dev/egograph/shared/features/terminal/
+├── TerminalTestTags.kt
+├── agentlist/components/
+│   └── SessionListItem.kt
+└── session/components/
+    ├── TerminalControls.kt
+    ├── SpecialKeysBar.kt
+    └── ...
+```
+
 ## Maestroフローでの使用例
 
 ```yaml
@@ -147,6 +174,12 @@ frontend/shared/src/commonMain/kotlin/dev/egograph/shared/ui/
 - tapOn: "api_url_input"
 - inputText: "https://api.egograph.dev"
 - tapOn: "save_settings_button"
+
+# ターミナル操作
+- tapOn: "session_item"
+- assertVisible: "terminal_back_button"
+- tapOn: "terminal_copy_button"
+```
 ```
 
 ## 実装ガイドライン

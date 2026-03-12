@@ -19,7 +19,6 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.ByteArrayInputStream
@@ -53,7 +52,7 @@ class AndroidTerminalWebView(
 ) : TerminalWebView {
     private val terminalWebView: WebView by lazy { createWebView() }
     private val connectionStateMutable = MutableStateFlow(false)
-    private val errorsMutable = MutableSharedFlow<String>(replay = 0)
+    private val errorsMutable = kotlinx.coroutines.flow.MutableSharedFlow<String>(replay = 0)
 
     @Volatile
     private var currentWsUrl: String? = null
