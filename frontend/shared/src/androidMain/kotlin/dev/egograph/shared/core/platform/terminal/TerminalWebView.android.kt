@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -32,6 +33,7 @@ private const val TERMINAL_DARK_BACKGROUND = "#1e1e1e"
 private const val TERMINAL_LIGHT_BACKGROUND = "#FFFFFF"
 private const val MIN_TAP_TOLERANCE_PX = 2f
 private const val MIN_VERTICAL_SCROLL_DELTA_PX = 1f
+private const val TERMINAL_WEBVIEW_LOG_TAG = "TerminalWebView"
 
 private enum class TouchDragDirection {
     UNDETERMINED,
@@ -64,6 +66,7 @@ class AndroidTerminalWebView(
     private val isTerminalReady = AtomicBoolean(false)
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val cssPixelDensity: Float = context.resources.displayMetrics.density.coerceAtLeast(1f)
     private val touchSlopPx: Float = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
     private val tapMoveTolerancePx: Float = max(MIN_TAP_TOLERANCE_PX, touchSlopPx * 0.25f)
 
@@ -94,6 +97,14 @@ class AndroidTerminalWebView(
     private fun evaluateJavascript(script: String) {
         terminalWebView.evaluateJavascript(script.trimIndent(), null)
     }
+
+    /**
+     * Android の実ピクセルを WebView/CSS ピクセルへ変換する。
+     *
+     * terminal.html 側の style / clientHeight / scrollTop は CSS px 基準のため、
+     * 端末密度ぶん縮めて渡さないと過大なオフセットになる。
+     */
+    private fun toCssPixels(devicePixels: Float): Float = devicePixels / cssPixelDensity
 
     /**
      * TerminalAPI 呼び出しの共通テンプレート。
@@ -316,6 +327,7 @@ class AndroidTerminalWebView(
      */
     private fun focusInputAtBottomInternal(showKeyboard: Boolean) {
         runOnMainThread {
+            Log.d(TERMINAL_WEBVIEW_LOG_TAG, "focusInputAtBottomInternal(showKeyboard=$showKeyboard)")
             terminalWebView.requestFocus()
             terminalWebView.evaluateJavascript(
                 """
@@ -411,7 +423,14 @@ class AndroidTerminalWebView(
      */
     private fun createTerminalWebChromeClient(): WebChromeClient =
         object : WebChromeClient() {
-            override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean = false
+            override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
+                Log.d(
+                    TERMINAL_WEBVIEW_LOG_TAG,
+                    "console[${consoleMessage.messageLevel()}] ${consoleMessage.message()} " +
+                        "@${consoleMessage.sourceId()}:${consoleMessage.lineNumber()}",
+                )
+                return false
+            }
         }
 
     /**
@@ -541,6 +560,18 @@ class AndroidTerminalWebView(
     override fun sendKey(key: String) {
         val escapedKey = escapeJsString(key)
         executeTerminalApiScript("window.TerminalAPI.sendKey('$escapedKey');")
+    }
+
+    override fun setBottomScrollPadding(paddingPx: Float) {
+        val sanitizedPaddingPx = paddingPx.coerceAtLeast(0f)
+        val cssPaddingPx = toCssPixels(sanitizedPaddingPx)
+        Log.d(
+            TERMINAL_WEBVIEW_LOG_TAG,
+            "setBottomScrollPadding(devicePx=$sanitizedPaddingPx, cssPx=$cssPaddingPx, density=$cssPixelDensity)",
+        )
+        executeTerminalApiScript(
+            "window.TerminalAPI.setBottomScrollPadding($cssPaddingPx);",
+        )
     }
 
     override fun focusInputAtBottom() {

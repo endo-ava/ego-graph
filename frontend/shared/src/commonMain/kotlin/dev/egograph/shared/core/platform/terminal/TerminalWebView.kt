@@ -38,12 +38,14 @@ interface TerminalWebView {
     fun sendKey(key: String)
 
     /**
-     * Focus terminal input and move viewport to the latest line.
-     *
-     * Used when software keyboard becomes visible so input always targets
-     * the current prompt at the bottom.
+     * Focus terminal input at the latest prompt.
      */
     fun focusInputAtBottom()
+
+    /**
+     * Keep the latest prompt above IME overlays by extending terminal scroll space.
+     */
+    fun setBottomScrollPadding(paddingPx: Float)
 
     /**
      * Apply terminal color theme.
