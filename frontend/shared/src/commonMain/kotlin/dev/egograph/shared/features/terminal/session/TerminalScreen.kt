@@ -36,8 +36,9 @@ import dev.egograph.shared.core.platform.PlatformPrefsKeys
 import dev.egograph.shared.core.platform.rememberKeyboardState
 import dev.egograph.shared.core.settings.AppTheme
 import dev.egograph.shared.core.settings.ThemeRepository
+import dev.egograph.shared.features.terminal.session.components.DraggableTerminalFloatingControlPill
 import dev.egograph.shared.features.terminal.session.components.SpecialKeysBar
-import dev.egograph.shared.features.terminal.session.components.TerminalFloatingControlPill
+import dev.egograph.shared.features.terminal.session.components.TerminalFloatingControlPosition
 import dev.egograph.shared.features.terminal.session.components.TerminalView
 import dev.egograph.shared.features.terminal.session.components.rememberTerminalWebView
 import kotlinx.coroutines.Job
@@ -97,6 +98,7 @@ private fun TerminalContent(
     var reconnectJob by remember { mutableStateOf<Job?>(null) }
     var isCopyModeOpen by remember { mutableStateOf(false) }
     var keyboardAccessoryHeightPx by remember { mutableIntStateOf(0) }
+    var floatingControlPosition by remember(agentId) { mutableStateOf<TerminalFloatingControlPosition?>(null) }
     val backoff = remember { createTerminalReconnectBackoff() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -147,6 +149,14 @@ private fun TerminalContent(
         with(density) {
             if (keyboardState.isVisible) {
                 keyboardState.height.toPx() + keyboardAccessoryHeightPx + TERMINAL_KEYBOARD_FOCUS_BUFFER.toPx()
+            } else {
+                0f
+            }
+        }
+    val floatingControlBottomObstacleHeightPx =
+        with(density) {
+            if (keyboardState.isVisible) {
+                keyboardState.height.toPx() + keyboardAccessoryHeightPx.toFloat()
             } else {
                 0f
             }
@@ -271,23 +281,17 @@ private fun TerminalContent(
                     )
                 }
             }
-        } else {
-            TerminalFloatingControlPill(
-                sessionId = agentId,
-                isConnected = connectionState && displayError == null,
-                onBack = { onClose?.invoke() ?: navigator.pop() },
-                onCopy = { isCopyModeOpen = true },
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 16.dp,
-                            bottom = 16.dp,
-                        ),
-            )
         }
+
+        DraggableTerminalFloatingControlPill(
+            sessionId = agentId,
+            isConnected = connectionState && displayError == null,
+            onBack = { onClose?.invoke() ?: navigator.pop() },
+            onCopy = { isCopyModeOpen = true },
+            position = floatingControlPosition,
+            onPositionChange = { position -> floatingControlPosition = position },
+            bottomObstacleHeightPx = floatingControlBottomObstacleHeightPx,
+        )
     }
 
     if (isCopyModeOpen) {
