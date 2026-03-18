@@ -178,12 +178,86 @@ sudo systemctl start egograph-backend
 sudo systemctl status egograph-backend
 ```
 
-### 5.1 定期 sync
+### 5.1 parquet sync service
 
-local mirror を追従させるため、cron か systemd timer で定期 sync を実行する。
+local mirror の更新は backend 本体とは分けて `systemd` で管理する。
+`egograph-backend.service` は起動前に1回同期し、定期同期は別 service + timer で実行する。
+
+`/etc/systemd/system/egograph-parquet-sync.service`:
+
+```ini
+[Unit]
+Description=EgoGraph Parquet Sync
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/egograph/repo
+EnvironmentFile=/opt/egograph/repo/backend/.env
+Environment=USE_ENV_FILE=false
+Environment=LOCAL_PARQUET_ROOT=/opt/egograph/data/parquet
+ExecStart=/usr/bin/flock -n /tmp/egograph-sync.lock /root/.local/bin/uv run python backend/scripts/sync_compacted_parquet.py --root /opt/egograph/data/parquet
+User=root
+Group=root
+```
+
+作成:
 
 ```bash
-*/30 * * * * cd /opt/egograph/repo && flock -n /tmp/egograph-sync.lock /root/.local/bin/uv run python backend/scripts/sync_compacted_parquet.py --root /opt/egograph/data/parquet >> /var/log/egograph-sync.log 2>&1
+sudo touch /etc/systemd/system/egograph-parquet-sync.service
+sudo nano /etc/systemd/system/egograph-parquet-sync.service
+```
+
+手動実行確認:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start egograph-parquet-sync
+sudo systemctl status egograph-parquet-sync
+```
+
+### 5.2 parquet sync timer
+
+ingest は 1 日数回なので、local mirror の定期同期は 6 時間ごとで十分とする。
+
+`/etc/systemd/system/egograph-parquet-sync.timer`:
+
+```ini
+[Unit]
+Description=Run EgoGraph Parquet Sync every 6 hours
+
+[Timer]
+OnBootSec=10m
+OnUnitActiveSec=6h
+Unit=egograph-parquet-sync.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+作成:
+
+```bash
+sudo touch /etc/systemd/system/egograph-parquet-sync.timer
+sudo nano /etc/systemd/system/egograph-parquet-sync.timer
+```
+
+有効化:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable egograph-parquet-sync.timer
+sudo systemctl start egograph-parquet-sync.timer
+sudo systemctl list-timers --all | grep egograph-parquet-sync
+```
+
+ログ確認:
+
+```bash
+journalctl -u egograph-parquet-sync.service -f
+journalctl -u egograph-parquet-sync.timer -f
 ```
 
 ## 6. GitHub Actions で main をデプロイ
