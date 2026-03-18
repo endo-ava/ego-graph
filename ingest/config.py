@@ -83,6 +83,7 @@ class R2Config(BaseModel):
     raw_path: str = "raw/"
     events_path: str = "events/"
     master_path: str = "master/"
+    compacted_path: str = "compacted/"
 
 
 class DuckDBConfig(BaseModel):

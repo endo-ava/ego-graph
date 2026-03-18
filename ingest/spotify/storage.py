@@ -11,6 +11,13 @@ import boto3
 import pandas as pd
 from botocore.exceptions import ClientError
 
+from ingest.compaction import (
+    build_compacted_key,
+    compact_records,
+    dataframe_to_parquet_bytes,
+    read_parquet_records_from_prefix,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,6 +38,7 @@ class SpotifyStorage:
         raw_path: str = "raw/",
         events_path: str = "events/",
         master_path: str = "master/",
+        compacted_path: str = "compacted/",
     ):
         """Storageを初期化する。
 
@@ -42,11 +50,13 @@ class SpotifyStorage:
             raw_path: 生データの保存先プレフィックス
             events_path: イベントデータの保存先プレフィックス
             master_path: マスターデータの保存先プレフィックス
+            compacted_path: compact版データの保存先プレフィックス
         """
         self.bucket_name = bucket_name
         self.raw_path = _normalize_path(raw_path)
         self.events_path = _normalize_path(events_path)
         self.master_path = _normalize_path(master_path)
+        self.compacted_path = _normalize_path(compacted_path)
 
         self.s3 = boto3.client(
             "s3",
@@ -235,3 +245,41 @@ class SpotifyStorage:
             logger.info("Saved ingest state to %s", key)
         except Exception:
             logger.exception("Failed to save ingest state")
+
+    def compact_month(
+        self,
+        data_domain: str,
+        dataset_path: str,
+        year: int,
+        month: int,
+        dedupe_key: str,
+        sort_by: str | None = None,
+    ) -> str | None:
+        """指定月のParquetをcompact版として保存する。"""
+        source_root = self.events_path if data_domain == "events" else self.master_path
+        source_prefix = (
+            f"{source_root}{dataset_path}/year={year}/month={month:02d}/"
+        )
+        records = read_parquet_records_from_prefix(
+            self.s3, self.bucket_name, source_prefix
+        )
+        if not records:
+            logger.info("No parquet records found for compaction: %s", source_prefix)
+            return None
+
+        compacted_df = compact_records(records, dedupe_key=dedupe_key, sort_by=sort_by)
+        key = build_compacted_key(
+            self.compacted_path,
+            data_domain=data_domain,
+            dataset_path=dataset_path,
+            year=year,
+            month=month,
+        )
+        self.s3.put_object(
+            Bucket=self.bucket_name,
+            Key=key,
+            Body=dataframe_to_parquet_bytes(compacted_df),
+            ContentType="application/octet-stream",
+        )
+        logger.info("Saved compacted parquet to %s", key)
+        return key

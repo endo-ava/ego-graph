@@ -11,8 +11,8 @@ from ingest.config import (
     Config,
     DuckDBConfig,
     EmbeddingConfig,
-    GoogleActivityConfig,
     GitHubWorklogConfig,
+    GoogleActivityConfig,
     QdrantConfig,
     R2Config,
     SpotifyConfig,
@@ -193,6 +193,7 @@ class R2Settings(BaseSettings):
     raw_path: str = Field("raw/", alias="R2_RAW_PATH")
     events_path: str = Field("events/", alias="R2_EVENTS_PATH")
     master_path: str = Field("master/", alias="R2_MASTER_PATH")
+    compacted_path: str = Field("compacted/", alias="R2_COMPACTED_PATH")
 
     def to_config(self) -> R2Config:
         return R2Config(
@@ -203,6 +204,7 @@ class R2Settings(BaseSettings):
             raw_path=self.raw_path,
             events_path=self.events_path,
             master_path=self.master_path,
+            compacted_path=self.compacted_path,
         )
 
 
