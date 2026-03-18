@@ -1,5 +1,6 @@
 """Compaction helpers for monthly parquet outputs."""
 
+from datetime import datetime, timezone
 from io import BytesIO
 from typing import Any
 
@@ -50,6 +51,30 @@ def dataframe_to_parquet_bytes(df: pd.DataFrame) -> bytes:
     df.to_parquet(buffer, index=False, engine="pyarrow")
     buffer.seek(0)
     return buffer.getvalue()
+
+
+def resolve_target_months(
+    year: int | None = None,
+    month: int | None = None,
+    *,
+    now: datetime | None = None,
+) -> list[tuple[int, int]]:
+    """Resolve target months for compaction.
+
+    If year/month are provided, only that month is returned.
+    Otherwise current and previous UTC month are returned so month-boundary
+    late-arriving events are compacted as well.
+    """
+    if year is not None and month is not None:
+        return [(year, month)]
+
+    current = now or datetime.now(timezone.utc)
+    current_pair = (current.year, current.month)
+    if current.month == 1:
+        previous_pair = (current.year - 1, 12)
+    else:
+        previous_pair = (current.year, current.month - 1)
+    return [previous_pair, current_pair]
 
 
 def read_parquet_records_from_prefix(

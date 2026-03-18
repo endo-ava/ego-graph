@@ -1,8 +1,14 @@
 """Compaction helper tests."""
 
+from datetime import datetime, timezone
+
 import pandas as pd
 
-from ingest.compaction import build_compacted_key, compact_records
+from ingest.compaction import (
+    build_compacted_key,
+    compact_records,
+    resolve_target_months,
+)
 
 
 class TestBuildCompactedKey:
@@ -67,3 +73,20 @@ class TestCompactRecords:
         df = compact_records([], dedupe_key="track_id")
 
         assert df.empty
+
+
+class TestResolveTargetMonths:
+    """resolve_target_months tests."""
+
+    def test_returns_explicit_month_when_given(self):
+        assert resolve_target_months(2024, 3) == [(2024, 3)]
+
+    def test_returns_current_and_previous_month_by_default(self):
+        now = datetime(2024, 3, 15, tzinfo=timezone.utc)
+
+        assert resolve_target_months(now=now) == [(2024, 2), (2024, 3)]
+
+    def test_handles_year_boundary(self):
+        now = datetime(2024, 1, 10, tzinfo=timezone.utc)
+
+        assert resolve_target_months(now=now) == [(2023, 12), (2024, 1)]

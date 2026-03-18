@@ -2,8 +2,8 @@
 
 import argparse
 import logging
-from datetime import datetime, timezone
 
+from ingest.compaction import resolve_target_months
 from ingest.settings import IngestSettings
 from ingest.spotify.storage import SpotifyStorage
 
@@ -20,9 +20,6 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     """Generate monthly compacted parquet files for Spotify datasets."""
     args = _parse_args()
-    now = datetime.now(timezone.utc)
-    year = args.year or now.year
-    month = args.month or now.month
 
     config = IngestSettings.load()
     if not config.duckdb or not config.duckdb.r2:
@@ -40,31 +37,33 @@ def main() -> None:
         compacted_path=r2_conf.compacted_path,
     )
 
-    storage.compact_month(
-        data_domain="events",
-        dataset_path="spotify/plays",
-        year=year,
-        month=month,
-        dedupe_key="play_id",
-        sort_by="played_at_utc",
-    )
-    storage.compact_month(
-        data_domain="master",
-        dataset_path="spotify/tracks",
-        year=year,
-        month=month,
-        dedupe_key="track_id",
-        sort_by="updated_at",
-    )
-    storage.compact_month(
-        data_domain="master",
-        dataset_path="spotify/artists",
-        year=year,
-        month=month,
-        dedupe_key="artist_id",
-        sort_by="updated_at",
-    )
-    logger.info("Spotify compaction finished for %d-%02d", year, month)
+    target_months = resolve_target_months(args.year, args.month)
+    for year, month in target_months:
+        storage.compact_month(
+            data_domain="events",
+            dataset_path="spotify/plays",
+            year=year,
+            month=month,
+            dedupe_key="play_id",
+            sort_by="played_at_utc",
+        )
+        storage.compact_month(
+            data_domain="master",
+            dataset_path="spotify/tracks",
+            year=year,
+            month=month,
+            dedupe_key="track_id",
+            sort_by="updated_at",
+        )
+        storage.compact_month(
+            data_domain="master",
+            dataset_path="spotify/artists",
+            year=year,
+            month=month,
+            dedupe_key="artist_id",
+            sort_by="updated_at",
+        )
+    logger.info("Spotify compaction finished for %s", target_months)
 
 
 if __name__ == "__main__":

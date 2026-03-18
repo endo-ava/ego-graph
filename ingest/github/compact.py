@@ -2,8 +2,8 @@
 
 import argparse
 import logging
-from datetime import datetime, timezone
 
+from ingest.compaction import resolve_target_months
 from ingest.github.storage import GitHubWorklogStorage
 from ingest.settings import IngestSettings
 
@@ -20,9 +20,6 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     """Generate monthly compacted parquet files for GitHub datasets."""
     args = _parse_args()
-    now = datetime.now(timezone.utc)
-    year = args.year or now.year
-    month = args.month or now.month
 
     config = IngestSettings.load()
     if not config.duckdb or not config.duckdb.r2:
@@ -40,21 +37,23 @@ def main() -> None:
         compacted_path=r2_conf.compacted_path,
     )
 
-    storage.compact_month(
-        dataset_path="github/commits",
-        year=year,
-        month=month,
-        dedupe_key="commit_event_id",
-        sort_by="committed_at_utc",
-    )
-    storage.compact_month(
-        dataset_path="github/pull_requests",
-        year=year,
-        month=month,
-        dedupe_key="pr_event_id",
-        sort_by="updated_at_utc",
-    )
-    logger.info("GitHub compaction finished for %d-%02d", year, month)
+    target_months = resolve_target_months(args.year, args.month)
+    for year, month in target_months:
+        storage.compact_month(
+            dataset_path="github/commits",
+            year=year,
+            month=month,
+            dedupe_key="commit_event_id",
+            sort_by="committed_at_utc",
+        )
+        storage.compact_month(
+            dataset_path="github/pull_requests",
+            year=year,
+            month=month,
+            dedupe_key="pr_event_id",
+            sort_by="updated_at_utc",
+        )
+    logger.info("GitHub compaction finished for %s", target_months)
 
 
 if __name__ == "__main__":
