@@ -82,5 +82,5 @@ uv run pytest backend/tests
 uv run pytest backend/tests/test_api.py
 
 # compacted parquet の local mirror を同期
-uv run python backend/scripts/sync_compacted_parquet.py --root data/parquet
+uv run python -m backend.scripts.sync_compacted_parquet --root data/parquet
 ```
