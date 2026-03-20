@@ -130,8 +130,18 @@ uv run python -c "import duckdb; conn = duckdb.connect(); print(conn.execute(\"S
 
 systemdで常駐化し、障害時は自動復旧させる。
 `WorkingDirectory` と `.env` のパスは固定で運用する。
-backend は local mirror を優先して compacted parquet を読み込む。
-起動前に compacted mirror を同期するため、`ExecStartPre` を追加する。
+
+管理するunitは以下の3つ
+
+- `egograph-backend.service`
+  - FastAPI 本体
+  - 起動前に 1 回だけ parquet sync を実行する
+- `egograph-parquet-sync.service`
+  - compacted parquet を R2 から local mirror に同期する one-shot job
+- `egograph-parquet-sync.timer`
+  - 上の sync service を 6 時間ごとに起動する scheduler
+
+backend の起動前に compacted mirror を同期するため、`ExecStartPre` を追加する。
 `/etc/systemd/system/egograph-backend.service`:
 
 作成と編集:
@@ -182,7 +192,7 @@ sudo systemctl status egograph-backend
 
 local mirror の更新は backend 本体とは分けて `systemd` で管理する。
 `egograph-backend.service` は起動前に1回同期し、定期同期は別 service + timer で実行する。
-`backend/scripts/...` のようなファイル直接実行ではなく、module 実行を使う。
+backend 起動前の同期と、timer からの定期同期の両方で同じコマンドを使う。
 
 `/etc/systemd/system/egograph-parquet-sync.service`:
 

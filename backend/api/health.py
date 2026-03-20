@@ -2,6 +2,7 @@
 
 import logging
 
+import duckdb
 from fastapi import APIRouter, Depends
 
 from backend.config import BackendConfig
@@ -12,6 +13,24 @@ from backend.infrastructure.database import DuckDBConnection, build_dataset_glob
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["health"])
+
+
+def _build_health_response(*, data_available: bool) -> dict[str, str | bool]:
+    """ヘルスチェックの標準レスポンスを構築する。"""
+    return {
+        "status": "ok",
+        "duckdb": "connected",
+        "r2": "accessible",
+        "data_available": data_available,
+    }
+
+
+def _is_empty_dataset_error(error: Exception) -> bool:
+    """初回投入前の空データ状態かどうかを判定する。"""
+    if isinstance(error, FileNotFoundError):
+        return True
+
+    return isinstance(error, duckdb.IOException) and "No files found" in str(error)
 
 
 @router.get("/health")
@@ -52,16 +71,11 @@ async def health_check(
             # データが存在するか確認
             data_exists = result is not None
 
-        return {
-            "status": "ok",
-            "duckdb": "connected",
-            "r2": "accessible",
-            "data_available": data_exists,
-        }
-
-    except FileNotFoundError as e:
-        logger.warning("Health check local parquet not found: %s", e)
-        return {"status": "error", "error": str(e)}
+        return _build_health_response(data_available=data_exists)
     except Exception as e:
+        if _is_empty_dataset_error(e):
+            logger.info("Health check found no compacted parquet yet: %s", e)
+            return _build_health_response(data_available=False)
+
         logger.exception("Health check failed")
         return {"status": "error", "error": str(e)}
