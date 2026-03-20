@@ -2,9 +2,12 @@ name: Spotify Data Ingestion to R2 Data Lake
 
 on:
   schedule:
-    # 1日2回実行（50曲以上の取りこぼしを防ぐ）
-    - cron: '0 2 * * *'   # 02:00 UTC = 11:00 JST (午前)
-    - cron: '0 14 * * *'  # 14:00 UTC = 23:00 JST (夜)
+    # 深夜帯を薄くしつつ、日中帯を細かく収集する（50曲以上の取りこぼしを防ぐ）
+    - cron: '0 22 * * *'  # 22:00 UTC = 07:00 JST
+    - cron: '0 2 * * *'   # 02:00 UTC = 11:00 JST
+    - cron: '0 6 * * *'   # 06:00 UTC = 15:00 JST
+    - cron: '0 10 * * *'  # 10:00 UTC = 19:00 JST
+    - cron: '0 14 * * *'  # 14:00 UTC = 23:00 JST
   workflow_dispatch:
 
 jobs:
