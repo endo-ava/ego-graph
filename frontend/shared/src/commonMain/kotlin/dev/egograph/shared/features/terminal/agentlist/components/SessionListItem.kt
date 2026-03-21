@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -31,7 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import dev.egograph.shared.core.domain.model.terminal.Session
 import dev.egograph.shared.core.ui.common.testTagResourceId
 import dev.egograph.shared.core.ui.common.toCompactIsoDateTime
@@ -48,6 +51,10 @@ internal fun previewDisplayLines(session: Session): List<String> =
     }
 
 internal fun sessionSubtitle(session: Session): String? = session.name.takeUnless { it.isBlank() || it == session.sessionId }
+
+internal fun sessionHeaderTitle(session: Session): String? = session.title?.takeUnless { it.isBlank() }
+
+internal fun sessionHeaderPath(session: Session): String? = session.currentPath?.takeUnless { it.isBlank() }
 
 /**
  * セッションリストアイテムコンポーネント
@@ -105,7 +112,13 @@ fun SessionListItem(
         )
 
     LaunchedEffect(previewLines) {
-        previewScrollState.scrollTo(previewScrollState.maxValue)
+        // 末尾3行目付近を表示するようスクロール位置を調整
+        // 行数-3の位置をビューの下端あたりに表示
+        val totalLines = previewLines.size
+        if (totalLines > 3) {
+            val targetRatio = (totalLines - 3).toFloat() / totalLines.toFloat()
+            previewScrollState.scrollTo((previewScrollState.maxValue * targetRatio).toInt())
+        }
     }
 
     Column(modifier = cardModifier) {
@@ -151,6 +164,50 @@ fun SessionListItem(
         }
 
         Spacer(modifier = Modifier.height(dimens.space12))
+
+        // タイトルとパスを表示（プレビューの手前）
+        val headerTitle = sessionHeaderTitle(session)
+        val headerPath = sessionHeaderPath(session)
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                headerTitle?.let { title ->
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.monospaceLabelSmall,
+                        fontSize = 9.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (headerTitle != null && headerPath != null) {
+                Spacer(modifier = Modifier.width(dimens.space12))
+            }
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                headerPath?.let { path ->
+                    Text(
+                        text = path,
+                        style = MaterialTheme.typography.monospaceLabelSmall,
+                        fontSize = 9.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.End,
+                    )
+                }
+            }
+        }
+        if (headerTitle != null || headerPath != null) {
+            Spacer(modifier = Modifier.height(dimens.space8))
+        }
 
         Box(modifier = previewBoxModifier) {
             Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
