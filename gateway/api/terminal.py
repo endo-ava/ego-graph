@@ -7,6 +7,7 @@ import asyncio
 import json
 import logging
 import re
+import subprocess
 from urllib.parse import urlparse
 
 import anyio
@@ -32,6 +33,20 @@ logger = logging.getLogger(__name__)
 
 AUTH_TIMEOUT_SECONDS = 10
 WEBVIEW_ALLOWED_ORIGINS = {"null", "file://", "file:///"}
+
+
+def _parse_pane_metadata(stdout: str) -> tuple[str | None, str | None]:
+    """tmux list-panes 出力から pane_title / pane_current_path を抽出する。"""
+    for raw_line in stdout.splitlines():
+        line = raw_line.rstrip("\r")
+        if not line:
+            continue
+        title, separator, current_path = line.partition("\t")
+        if not separator:
+            return (title or None, None)
+        return (title or None, current_path or None)
+
+    return (None, None)
 
 
 async def get_sessions(request: Request) -> JSONResponse:
@@ -417,7 +432,24 @@ async def _build_session_response(session_id: str, session) -> dict:
         "status": SessionStatus.CONNECTED.value,
         "preview_available": False,
         "preview_lines": [],
+        "title": None,
+        "current_path": None,
     }
+
+    # tmuxペインのメタデータを取得
+    try:
+        result = subprocess.run(
+            ["tmux", "list-panes", "-t", session_id, "-F", "#{pane_title}\t#{pane_current_path}"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            title, current_path = _parse_pane_metadata(result.stdout)
+            response["title"] = title
+            response["current_path"] = current_path
+    except Exception as e:
+        logger.debug("Failed to get pane metadata for %s: %s", session_id, e)
 
     # プレビュースナップショットの取得を試みる
     try:

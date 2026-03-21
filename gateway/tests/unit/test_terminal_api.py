@@ -10,7 +10,9 @@ import pytest
 from starlette.exceptions import HTTPException
 
 from gateway.api.terminal import (
+    _build_session_response,
     _extract_preview_lines,
+    _parse_pane_metadata,
     get_session,
     get_sessions,
 )
@@ -217,6 +219,41 @@ class TestBuildSessionResponse:
             assert len(response["preview_lines"]) == 10
             assert response["preview_lines"][0] == "Line 0"
             assert response["preview_lines"][9] == "Line 9"
+
+    @pytest.mark.asyncio
+    async def test_keeps_current_path_when_pane_title_is_blank(self, mock_session):
+        """pane title が空でも current_path を title と取り違えないことを確認する."""
+        mock_completed = MagicMock(returncode=0, stdout="\t/root/workspace/ego-graph\n")
+
+        with (
+            patch("gateway.api.terminal.verify_gateway_token"),
+            patch("gateway.api.terminal.subprocess.run", return_value=mock_completed),
+            patch("gateway.api.terminal.TmuxAttachManager") as mock_manager_class,
+        ):
+            mock_manager = MagicMock()
+            mock_manager.capture_snapshot = AsyncMock(return_value=b"preview")
+            mock_manager_class.return_value = mock_manager
+
+            response = await _build_session_response("agent-0001", mock_session)
+
+            assert response["title"] is None
+            assert response["current_path"] == "/root/workspace/ego-graph"
+
+
+class TestParsePaneMetadata:
+    """_parse_pane_metadata 関数のテスト."""
+
+    def test_returns_title_and_path_when_both_exist(self):
+        title, current_path = _parse_pane_metadata("Claude Code\t/root/workspace/ego-graph\n")
+
+        assert title == "Claude Code"
+        assert current_path == "/root/workspace/ego-graph"
+
+    def test_preserves_blank_title_with_path(self):
+        title, current_path = _parse_pane_metadata("\t/root/workspace/ego-graph\n")
+
+        assert title is None
+        assert current_path == "/root/workspace/ego-graph"
 
 
 # ============================================================================
