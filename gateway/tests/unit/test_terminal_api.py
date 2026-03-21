@@ -10,6 +10,7 @@ import pytest
 from starlette.exceptions import HTTPException
 
 from gateway.api.terminal import (
+    _build_session_response,
     _extract_preview_lines,
     get_session,
     get_sessions,
@@ -218,6 +219,26 @@ class TestBuildSessionResponse:
             assert response["preview_lines"][0] == "Line 0"
             assert response["preview_lines"][9] == "Line 9"
 
+    @pytest.mark.asyncio
+    async def test_keeps_current_path_when_pane_title_is_blank(self, mock_session):
+        """pane title が空でも current_path を title と取り違えないことを確認する."""
+        with (
+            patch("gateway.api.terminal.verify_gateway_token"),
+            patch(
+                "gateway.api.terminal.get_active_pane_metadata",
+                return_value=(None, "/root/workspace/ego-graph"),
+            ),
+            patch("gateway.api.terminal.TmuxAttachManager") as mock_manager_class,
+        ):
+            mock_manager = MagicMock()
+            mock_manager.capture_snapshot = AsyncMock(return_value=b"preview")
+            mock_manager_class.return_value = mock_manager
+
+            response = await _build_session_response("agent-0001", mock_session)
+
+            assert response["title"] is None
+            assert response["current_path"] == "/root/workspace/ego-graph"
+
 
 # ============================================================================
 # get_sessions エンドポイントのテスト
@@ -240,7 +261,11 @@ class TestGetSessions:
             mock_sessions = [
                 Session(name="agent-0001", last_activity=now, created_at=now),
             ]
-            mock_run_sync.return_value = mock_sessions
+            mock_run_sync.side_effect = lambda func, *args: (
+                mock_sessions
+                if getattr(func, "__name__", "") == "list_sessions"
+                else ("Claude Code", "/root/workspace/ego-graph")
+            )
             mock_manager = MagicMock()
             mock_manager.capture_snapshot = AsyncMock(
                 return_value=b"$ echo hello\nhello\n$ "
@@ -282,7 +307,11 @@ class TestGetSession:
             mock_sessions = [
                 Session(name="agent-0001", last_activity=now, created_at=now),
             ]
-            mock_run_sync.return_value = mock_sessions
+            mock_run_sync.side_effect = lambda func, *args: (
+                mock_sessions
+                if getattr(func, "__name__", "") == "list_sessions"
+                else ("Claude Code", "/root/workspace/ego-graph")
+            )
             mock_manager = MagicMock()
             mock_manager.capture_snapshot = AsyncMock(
                 return_value=b"Preview content\nLine 2"

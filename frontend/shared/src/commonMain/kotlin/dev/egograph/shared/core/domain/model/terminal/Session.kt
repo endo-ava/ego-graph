@@ -30,6 +30,10 @@ data class Session(
     val previewAvailable: Boolean = false,
     @SerialName("preview_lines")
     val previewLines: List<String> = emptyList(),
+    @SerialName("title")
+    val title: String? = null,
+    @SerialName("current_path")
+    val currentPath: String? = null,
 )
 
 /**
