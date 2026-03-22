@@ -23,7 +23,11 @@ from gateway.config import (
 )
 from gateway.dependencies import get_config, verify_gateway_token
 from gateway.domain.models import SessionStatus, TerminalSnapshotResponse
-from gateway.infrastructure.tmux import list_sessions, session_exists
+from gateway.infrastructure.tmux import (
+    get_active_pane_metadata,
+    list_sessions,
+    session_exists,
+)
 from gateway.services.pty_manager import TmuxAttachManager
 from gateway.services.websocket_handler import TerminalWebSocketHandler
 from gateway.services.ws_token_store import terminal_ws_token_store
@@ -417,7 +421,14 @@ async def _build_session_response(session_id: str, session) -> dict:
         "status": SessionStatus.CONNECTED.value,
         "preview_available": False,
         "preview_lines": [],
+        "title": None,
+        "current_path": None,
     }
+
+    response["title"], response["current_path"] = await anyio.to_thread.run_sync(
+        get_active_pane_metadata,
+        session_id,
+    )
 
     # プレビュースナップショットの取得を試みる
     try:

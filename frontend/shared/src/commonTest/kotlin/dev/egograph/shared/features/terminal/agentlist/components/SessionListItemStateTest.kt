@@ -49,4 +49,34 @@ class SessionListItemStateTest {
             ),
         )
     }
+
+    @Test
+    fun `sessionHeaderTitle returns null when title is blank`() {
+        assertEquals(
+            null,
+            sessionHeaderTitle(
+                session(true, listOf("preview")).copy(title = "   "),
+            ),
+        )
+    }
+
+    @Test
+    fun `sessionHeaderPath returns null when path is blank`() {
+        assertEquals(
+            null,
+            sessionHeaderPath(
+                session(true, listOf("preview")).copy(currentPath = ""),
+            ),
+        )
+    }
+
+    @Test
+    fun `sessionHeaderPath keeps non blank path`() {
+        assertEquals(
+            "/tmp/worktree",
+            sessionHeaderPath(
+                session(true, listOf("preview")).copy(currentPath = "/tmp/worktree"),
+            ),
+        )
+    }
 }

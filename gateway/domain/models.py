@@ -182,6 +182,8 @@ class TerminalSession(BaseModel):
         session_id: tmuxセッションID (例: agent-0001)
         activity: 最終アクティブ時刻 (tmuxフォーマット)
         created: セッション作成時刻 (tmuxフォーマット)
+        title: ペインタイトル（アプリが設定した場合）
+        current_path: カレントディレクトリ
     """
 
     session_id: str = Field(..., description="tmuxセッションID")
@@ -192,6 +194,8 @@ class TerminalSession(BaseModel):
         default_factory=list,
         description="プレビュー表示用の最新端末行",
     )
+    title: str | None = Field(None, description="ペインタイトル")
+    current_path: str | None = Field(None, description="カレントディレクトリ")
 
 
 class TerminalSnapshotResponse(BaseModel):

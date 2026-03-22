@@ -31,7 +31,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import dev.egograph.shared.core.domain.model.terminal.Session
 import dev.egograph.shared.core.ui.common.testTagResourceId
 import dev.egograph.shared.core.ui.common.toCompactIsoDateTime
@@ -48,6 +50,10 @@ internal fun previewDisplayLines(session: Session): List<String> =
     }
 
 internal fun sessionSubtitle(session: Session): String? = session.name.takeUnless { it.isBlank() || it == session.sessionId }
+
+internal fun sessionHeaderTitle(session: Session): String? = session.title?.takeUnless { it.isBlank() }
+
+internal fun sessionHeaderPath(session: Session): String? = session.currentPath?.takeUnless { it.isBlank() }
 
 /**
  * セッションリストアイテムコンポーネント
@@ -105,7 +111,13 @@ fun SessionListItem(
         )
 
     LaunchedEffect(previewLines) {
-        previewScrollState.scrollTo(previewScrollState.maxValue)
+        // 末尾3行目付近を表示するようスクロール位置を調整
+        // 行数-3の位置をビューの下端あたりに表示
+        val totalLines = previewLines.size
+        if (totalLines > 3) {
+            val targetRatio = (totalLines - 3).toFloat() / totalLines.toFloat()
+            previewScrollState.scrollTo((previewScrollState.maxValue * targetRatio).toInt())
+        }
     }
 
     Column(modifier = cardModifier) {
@@ -151,6 +163,75 @@ fun SessionListItem(
         }
 
         Spacer(modifier = Modifier.height(dimens.space12))
+
+        // タイトルとパスを表示（プレビューの手前）
+        val headerTitle = sessionHeaderTitle(session)
+        val headerPath = sessionHeaderPath(session)
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            if (headerTitle != null && headerPath != null) {
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(
+                        text = headerTitle,
+                        style = MaterialTheme.typography.monospaceLabelSmall,
+                        fontSize = 9.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(modifier = Modifier.width(dimens.space12))
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Text(
+                        text = headerPath,
+                        style = MaterialTheme.typography.monospaceLabelSmall,
+                        fontSize = 9.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.End,
+                    )
+                }
+            } else if (headerPath != null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Text(
+                        text = headerPath,
+                        style = MaterialTheme.typography.monospaceLabelSmall,
+                        fontSize = 9.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.End,
+                    )
+                }
+            } else if (headerTitle != null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(
+                        text = headerTitle,
+                        style = MaterialTheme.typography.monospaceLabelSmall,
+                        fontSize = 9.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        if (headerTitle != null || headerPath != null) {
+            Spacer(modifier = Modifier.height(dimens.space8))
+        }
 
         Box(modifier = previewBoxModifier) {
             Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
