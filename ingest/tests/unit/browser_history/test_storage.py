@@ -36,13 +36,13 @@ class TestBrowserHistoryStorage:
             "ingest.browser_history.storage.pd.DataFrame.to_parquet"
         ) as _mock_to_parquet:
             key = self.storage.save_parquet(
-                [{"event_id": "e1", "visited_at_utc": "2026-03-22T08:31:12Z"}],
+                [{"page_view_id": "pv1", "started_at_utc": "2026-03-22T08:31:12Z"}],
                 year=2026,
                 month=3,
             )
 
         assert key is not None
-        assert key.startswith("events/browser_history/visits/year=2026/month=03/")
+        assert key.startswith("events/browser_history/page_views/year=2026/month=03/")
         assert key.endswith(".parquet")
 
     def test_build_state_key_uses_source_browser_profile_granularity(self):
@@ -93,7 +93,7 @@ class TestBrowserHistoryStorage:
         with patch(
             "ingest.browser_history.storage.read_parquet_records_from_prefix",
             return_value=[
-                {"event_id": "e1", "ingested_at_utc": "2026-03-22T12:00:00Z"}
+                {"page_view_id": "pv1", "ingested_at_utc": "2026-03-22T12:00:00Z"}
             ],
         ), patch(
             "ingest.browser_history.storage.compact_records",
@@ -105,5 +105,5 @@ class TestBrowserHistoryStorage:
             key = self.storage.compact_month(year=2026, month=3)
 
         assert key == (
-            "compacted/events/browser_history/visits/year=2026/month=03/data.parquet"
+            "compacted/events/browser_history/page_views/year=2026/month=03/data.parquet"
         )

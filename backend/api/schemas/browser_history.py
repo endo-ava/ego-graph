@@ -18,7 +18,6 @@ class BrowserHistoryItemRequest(BaseModel):
     visit_id: str | None = None
     referring_visit_id: str | None = None
     transition: str | None = None
-    visit_count: int | None = Field(default=None, ge=0)
 
 
 class BrowserHistoryIngestRequest(BaseModel):

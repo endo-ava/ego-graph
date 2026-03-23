@@ -56,7 +56,7 @@ def main() -> None:
                 month,
                 exc,
             )
-            failures.append(f"browser_history/visits:{year}-{month:02d}")
+            failures.append(f"browser_history/page_views:{year}-{month:02d}")
 
     if failures:
         joined_failures = ", ".join(failures)

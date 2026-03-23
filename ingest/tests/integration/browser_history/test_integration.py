@@ -72,7 +72,7 @@ def test_integration_saves_raw_events_and_state():
         keys = list(memory_s3.objects)
         assert any(key.startswith("raw/browser_history/edge/") for key in keys)
         assert any(
-            key.startswith("events/browser_history/visits/year=2026/month=03/")
+            key.startswith("events/browser_history/page_views/year=2026/month=03/")
             for key in keys
         )
         assert "state/browser_history/device-1/edge/Default.json" in keys
@@ -95,7 +95,7 @@ def test_integration_compaction_deduplicates_duplicate_event_ids():
         key = storage.compact_month(year=2026, month=3)
 
         assert key == (
-            "compacted/events/browser_history/visits/year=2026/month=03/data.parquet"
+            "compacted/events/browser_history/page_views/year=2026/month=03/data.parquet"
         )
         df = pd.read_parquet(BytesIO(memory_s3.objects[key]))
         assert len(df) == 1

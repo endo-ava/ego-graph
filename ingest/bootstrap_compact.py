@@ -170,8 +170,8 @@ def _compact_browser_history(
     failures: list[str] = []
     dataset = DatasetSpec(
         "events",
-        "browser_history/visits",
-        "event_id",
+        "browser_history/page_views",
+        "page_view_id",
         "ingested_at_utc",
     )
 

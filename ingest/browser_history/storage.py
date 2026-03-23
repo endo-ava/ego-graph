@@ -99,7 +99,7 @@ class BrowserHistoryStorage:
         *,
         year: int,
         month: int,
-        prefix: str = "browser_history/visits",
+        prefix: str = "browser_history/page_views",
     ) -> str | None:
         """events parquet を保存する。"""
         if not rows:
@@ -166,8 +166,8 @@ class BrowserHistoryStorage:
         *,
         year: int,
         month: int,
-        dataset_path: str = "browser_history/visits",
-        dedupe_key: str = "event_id",
+        dataset_path: str = "browser_history/page_views",
+        dedupe_key: str = "page_view_id",
         sort_by: str | None = "ingested_at_utc",
     ) -> str | None:
         """指定月の browser history events を compact する。"""

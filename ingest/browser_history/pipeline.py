@@ -9,7 +9,7 @@ from ingest.browser_history.schema import (
     BrowserHistoryPayload,
 )
 from ingest.browser_history.storage import BrowserHistoryStorage
-from ingest.browser_history.transform import transform_payload_to_event_rows
+from ingest.browser_history.transform import transform_payload_to_page_view_rows
 
 
 @dataclass(frozen=True)
@@ -44,16 +44,21 @@ def run_browser_history_pipeline(
             raise RuntimeError("Failed to save raw browser history payload")
         raw_saved = True
 
-    rows = transform_payload_to_event_rows(payload, ingested_at=normalized_received_at)
+    rows = transform_payload_to_page_view_rows(payload, ingested_at=normalized_received_at)
     events_saved = False
     if rows:
         monthly_rows: dict[tuple[int, int], list[dict[str, object]]] = defaultdict(list)
         for row in rows:
-            visited_at = row["visited_at_utc"]
-            monthly_rows[(visited_at.year, visited_at.month)].append(row)
+            started_at = row["started_at_utc"]
+            monthly_rows[(started_at.year, started_at.month)].append(row)
 
         for (year, month), partition_rows in monthly_rows.items():
-            saved_key = storage.save_parquet(partition_rows, year=year, month=month)
+            saved_key = storage.save_parquet(
+                partition_rows,
+                year=year,
+                month=month,
+                prefix="browser_history/page_views",
+            )
             if not saved_key:
                 raise RuntimeError(
                     f"Failed to save browser history events for {year}-{month:02d}"

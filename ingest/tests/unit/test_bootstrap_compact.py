@@ -113,7 +113,7 @@ class TestCompactBrowserHistory:
         storage.compact_month.side_effect = [None, RuntimeError("boom")]
 
         discovered_months = {
-            ("events/", "events", "browser_history/visits"): [(2024, 1), (2024, 2)],
+            ("events/", "events", "browser_history/page_views"): [(2024, 1), (2024, 2)],
         }
 
         def mock_discover(s3, bucket_name, root_prefix, dataset):
@@ -135,7 +135,7 @@ class TestCompactBrowserHistory:
             storage=storage,
         )
 
-        assert failures == ["browser_history:browser_history/visits:2024-02"]
+        assert failures == ["browser_history:browser_history/page_views:2024-02"]
         assert storage.compact_month.call_count == 2
 
 
