@@ -80,7 +80,7 @@
    - ブラウザ起動時に拡張が起動
    - 拡張が `last_successful_sync_at` 以降の履歴を取得
    - 取得データを `sync_id`, `browser`, `profile`, `device_id` 付きでミニPCへ送信
-   - サーバが受信 payload を検証し、raw JSON と events parquet に保存する
+   - サーバが受信 payload を検証し、raw JSON と page view parquet に保存する
    - サーバは `sync_id` 単位で進行状態を更新する
    - 成功時のみ拡張側が `last_successful_sync_at` を更新
 
@@ -93,7 +93,7 @@
 3. **初回導入**
    - `last_successful_sync_at` が存在しない
    - 拡張は履歴 API の取得可能範囲で初回バックフィルを実行する
-   - 初回バックフィルは 1 回の request で最大 1,000 件までを送り、それを超える場合は後続起動で継続する
+   - 初回バックフィルは全体で最大 50,000 件まで取得し、1 request あたり最大 1,000 件ずつ送る
    - サーバは初回 payload も通常データと同様に保存する
 
 ### 画面/入出力（ある場合）
@@ -120,8 +120,7 @@
       "visit_time": "2026-03-22T08:31:12Z",
       "visit_id": "optional-browser-visit-id",
       "referring_visit_id": "optional-ref-id",
-      "transition": "link",
-      "visit_count": 3
+      "transition": "link"
     }
   ]
 }
@@ -138,7 +137,7 @@
 - 起動時差分同期
 - `Bearer token` 認証
 - `backend` 上の受信 endpoint
-- raw JSON / events parquet 保存
+- raw JSON / page view parquet 保存
 - `sync_id` ベースの最小同期状態管理
 - `browser`, `profile`, `source_device` を含むイベントスキーマ設計
 - 基本的な重複許容 + 後段吸収前提の append-only 保存
@@ -169,7 +168,7 @@
 | 初期設定する | URL / token / browser_id / device_id を設定する | 自動検出する |
 | 履歴を収集する | 起動時に差分履歴を読む | 起動中の定期再同期も行う |
 | サーバへ送る | Tailscale 経由で一括 POST する | オフラインキューを強化する |
-| 保存する | raw JSON / events parquet に保存する | compact を自動生成する |
+| 保存する | raw JSON / page view parquet に保存する | compact を自動生成する |
 | 分析する | browser / profile 単位でクエリできる | YouTube 専用 dataset に派生する |
 
 ---
@@ -192,7 +191,7 @@
 **Given** 拡張から有効な payload が送信される  
 **When** ingest endpoint がリクエストを受ける  
 **Then** raw JSON が R2 に保存される  
-**And** events parquet が R2 に append-only で保存される  
+**And** page view parquet が R2 に append-only で保存される  
 **And** `sync_id` 単位で処理状態を追跡できる
 
 ### AC4: ブラウザ別の分析可能性
@@ -207,7 +206,7 @@
 **Then** browser history 正本を壊さずに YouTube 専用 dataset を派生生成できる
 
 ### AC6: compact の整合
-**Given** browser history の events parquet が保存されている  
+**Given** browser history の page view parquet が保存されている  
 **When** 既存 provider と同じ compaction フローを実行する  
 **Then** browser history も同じパターンで compacted parquet を生成できる
 
@@ -323,8 +322,7 @@
       "visit_time": "2026-03-22T08:31:12Z",
       "visit_id": "12345",
       "referring_visit_id": "12344",
-      "transition": "link",
-      "visit_count": 3
+      "transition": "link"
     }
   ]
 }
@@ -350,7 +348,7 @@
 - `profile` は必須
 - `items` は空配列を許容する
 - `url` と `visit_time` は必須
-- `visit_id`, `referring_visit_id`, `transition`, `visit_count`, `title` は任意
+- `visit_id`, `referring_visit_id`, `transition`, `title` は任意
 
 ---
 
@@ -383,23 +381,22 @@ raw/browser_history/{browser}/{YYYY}/{MM}/{DD}/{timestamp}_{uuid}.json
 ### 12.2 Events 保存
 
 ```text
-events/browser_history/visits/year={YYYY}/month={MM}/{uuid}.parquet
+events/browser_history/page_views/year={YYYY}/month={MM}/{uuid}.parquet
 ```
 
 ### 12.3 Events スキーマ案
 
 ```sql
-event_id            VARCHAR PRIMARY KEY  -- browser/profile/url/visit_time などから生成する安定ID
-visited_at_utc      TIMESTAMP NOT NULL
+page_view_id        VARCHAR PRIMARY KEY  -- browser/profile/url/start/end などから生成する安定ID
+started_at_utc      TIMESTAMP NOT NULL
+ended_at_utc        TIMESTAMP NOT NULL
 url                 VARCHAR NOT NULL
 title               VARCHAR
 browser             VARCHAR NOT NULL     -- edge / brave / chrome
 profile             VARCHAR NOT NULL
 source_device       VARCHAR NOT NULL
-visit_id            VARCHAR
-referring_visit_id  VARCHAR
 transition          VARCHAR
-visit_count         INTEGER
+visit_span_count    INTEGER NOT NULL
 synced_at_utc       TIMESTAMP NOT NULL
 ingested_at_utc     TIMESTAMP NOT NULL
 ```
@@ -407,7 +404,7 @@ ingested_at_utc     TIMESTAMP NOT NULL
 ### 12.4 一意性と重複方針
 
 - 拡張側は at-least-once 配信
-- サーバ側では `event_id` を安定生成できるようにする
+- サーバ側では `page_view_id` を安定生成できるようにする
 - ただし append-only 保存を優先し、重複完全排除は compact / 再処理で吸収可能な設計とする
 
 ---

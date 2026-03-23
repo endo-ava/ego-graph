@@ -187,7 +187,7 @@ X-API-Key: {xApiKey}
 
 - この拡張機能は `chrome.history` API が返す visit をそのまま近い形で収集します
 - 同一 URL に対して短時間で複数の visit が発生することがあります。特に `link` と `reload` が短い間隔で並ぶケースは正常です
-- 収集層では raw visit を保持し、`page view` 相当の圧縮や重複吸収は下流の集計バッチで行う前提です
+- バックエンドでは受信 payload を raw JSON として保存しつつ、`events` には 2 秒以内の同一 URL 連続 visit を畳んだ `page view` を保存します
 
 ### レスポンス
 
