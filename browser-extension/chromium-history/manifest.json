@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "EgoGraph Chromium History Sync",
+  "version": "0.1.0",
+  "description": "Sync Chromium browser history into EgoGraph.",
+  "permissions": ["history", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background/main.js",
+    "type": "module"
+  },
+  "options_page": "options/index.html"
+}
