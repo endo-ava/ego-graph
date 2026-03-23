@@ -29,11 +29,11 @@ function makeHistoryApi(visitCount: number) {
 }
 
 describe("history collection", () => {
-  it("caps the first sync to 1000 visits", async () => {
+  it("caps the first sync to 50000 visits", async () => {
     const items = await collectHistoryItems(
       undefined,
       "2026-03-22T13:00:00.000Z",
-      makeHistoryApi(1200)
+      makeHistoryApi(51000)
     );
 
     expect(items).toHaveLength(INITIAL_SYNC_LIMIT);

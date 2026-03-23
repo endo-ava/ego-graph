@@ -24,7 +24,6 @@ export interface BrowserHistoryPayloadItem {
   visit_id?: string;
   referring_visit_id?: string;
   transition?: string;
-  visit_count?: number;
 }
 
 export interface BrowserHistoryPayload {

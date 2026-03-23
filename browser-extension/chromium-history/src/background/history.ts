@@ -1,6 +1,6 @@
 import type { BrowserHistoryPayloadItem } from "../shared/types.js";
 
-const INITIAL_SYNC_LIMIT = 1000;
+const INITIAL_SYNC_LIMIT = 50000;
 const INCREMENTAL_SEARCH_PAGE_SIZE = 10000;
 
 export interface HistoryApi {
@@ -30,8 +30,7 @@ async function collectVisitsForItem(
       visit_id: visit.visitId !== undefined ? String(visit.visitId) : undefined,
       referring_visit_id:
         visit.referringVisitId !== undefined ? String(visit.referringVisitId) : undefined,
-      transition: visit.transition,
-      visit_count: item.visitCount
+      transition: visit.transition
     }));
 }
 

@@ -64,7 +64,6 @@ def transform_payload_to_event_rows(
                 "visit_id": item.visit_id,
                 "referring_visit_id": item.referring_visit_id,
                 "transition": item.transition,
-                "visit_count": item.visit_count,
                 "synced_at_utc": normalized_synced_at,
                 "ingested_at_utc": normalized_ingested_at,
             }

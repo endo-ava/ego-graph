@@ -23,7 +23,6 @@ def _payload() -> BrowserHistoryPayload:
                     "visit_id": "12345",
                     "referring_visit_id": "12344",
                     "transition": "link",
-                    "visit_count": 3,
                 }
             ],
         }
