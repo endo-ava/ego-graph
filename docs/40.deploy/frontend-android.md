@@ -74,7 +74,8 @@ export KEY_PASSWORD="your-password"
 
 ## 5. 旧手順（Capacitor）
 
-React + Capacitor 時代のデプロイ手順は以下を参照してください：
+React + Capacitor 時代のデプロイ手順は、分離済み legacy repo を前提に以下を参照してください：
 
 - [frontend-android-capacitor.md](./frontend-android-capacitor.md) (旧デプロイ手順)
 - [capacitor.md](./capacitor.md) (アーキテクチャ・プラグイン)
+- External repo: <https://github.com/endo-ava/egograph-frontend-capacitor-legacy>

@@ -383,7 +383,7 @@ GitHub Actions で自動化推奨。
 
 ### 7.7 GitHub Actions（デバッグ Web アセット自動配信）
 
-`deploy-capacitor-updater.yml` を使用する。
+legacy repo の `deploy-capacitor-updater.yml` を使用する。
 R2 に `capacitor_updates/` を配置し、`latest.json` を更新する。
 
 **必要な GitHub 設定**:
@@ -402,7 +402,7 @@ Repository Secrets:
 
 **動作**:
 
-- `frontend` の `npm run build` を実行
+- `endo-ava/egograph-frontend-capacitor-legacy` の repo root で `npm run build` を実行
 - `dist/` を zip 化し `app-<version>-<sha>.zip` を生成
 - `latest.json` を生成（`url` は Workers の URL を使用）
 - R2 へアップロード（配信先: `s3://<bucket>/capacitor_updates/`）
