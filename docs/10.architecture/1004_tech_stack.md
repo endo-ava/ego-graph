@@ -8,9 +8,9 @@
 
 | コンポーネント | 言語/FW     | パッケージマネージャー | 主要ライブラリ                        |
 | -------------- | ----------- | ---------------------- | ------------------------------------- |
-| **ingest/**    | Python 3.12 | uv                     | Spotipy, PyGithub, DuckDB, boto3, pyarrow |
-| **backend/**   | Python 3.12 | uv                     | FastAPI, Uvicorn, DuckDB              |
-| **gateway/**   | Python 3.12 | uv                     | Starlette, Uvicorn, WebSocket, FCM    |
+| **ingest/**    | Python 3.13 | uv                     | Spotipy, PyGithub, DuckDB, boto3, pyarrow |
+| **backend/**   | Python 3.13 | uv                     | FastAPI, Uvicorn, DuckDB              |
+| **gateway/**   | Python 3.13 | uv                     | Starlette, Uvicorn, WebSocket, FCM    |
 | **frontend/**  | Kotlin 2.2.21  | Gradle                 | Compose Multiplatform, Voyager, Koin, Ktor, FCM |
 
 - **Python Workspace**: uv で ingest, backend, gateway を一元管理
@@ -49,7 +49,7 @@
 
 ## 2. Ingest Pipeline（データ収集）
 
-- **Language**: Python 3.12
+- **Language**: Python 3.13
 - **実行環境**: GitHub Actions（定期実行: 1日2回）
 - **主要ライブラリ**:
   - `spotipy`: Spotify API クライアント
@@ -63,7 +63,7 @@
 
 ## 3. Backend（Agent API Server）
 
-- **Framework**: FastAPI (Python 3.12)
+- **Framework**: FastAPI (Python 3.13)
 - **Web Server**: Uvicorn (ASGI)
 - **主要ライブラリ**:
   - `duckdb`: データアクセス
@@ -82,7 +82,7 @@
 
 モバイル端末からの tmux セッション接続とプッシュ通知を担当する独立サービス。
 
-- **Framework**: Starlette (Python 3.12)
+- **Framework**: Starlette (Python 3.13)
 - **Web Server**: Uvicorn (ASGI)
 - **主要ライブラリ**:
   - `websockets`: WebSocket 通信（端末入出力）
