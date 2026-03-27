@@ -37,7 +37,7 @@ EgoGraphプロジェクトのフロントエンド実装に関する設計書。
 
 ## 全体アーキテクチャ図
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Presentation Layer                        │
 │  ┌───────────────────────────────────────────────────────────┐  │
@@ -94,7 +94,7 @@ EgoGraphプロジェクトのフロントエンド実装に関する設計書。
 
 ### データフロー
 
-```
+```text
 User Input → Screen → ScreenModel.func() → Repository → API
                 ↓                                  ↓
         collectAsState()                    Result<T>
@@ -106,7 +106,7 @@ User Input → Screen → ScreenModel.func() → Repository → API
 
 ## レイヤー構成
 
-```
+```text
 frontend/shared/src/commonMain/kotlin/dev/egograph/shared/
 ├── core/
 │   ├── domain/

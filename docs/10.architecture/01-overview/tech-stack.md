@@ -8,9 +8,9 @@
 
 | コンポーネント | 言語/FW     | パッケージマネージャー | 主要ライブラリ                        |
 | -------------- | ----------- | ---------------------- | ------------------------------------- |
-| **ingest/**    | Python 3.12+ | uv                     | Spotipy, PyGithub, DuckDB, boto3, pyarrow |
-| **backend/**   | Python 3.12+ | uv                     | FastAPI, Uvicorn, DuckDB              |
-| **gateway/**   | Python 3.12+ | uv                     | Starlette, Uvicorn, WebSocket, FCM    |
+| **ingest/**    | Python 3.13 | uv                     | Spotipy, requests, DuckDB, boto3, pyarrow |
+| **backend/**   | Python 3.13 | uv                     | FastAPI, Uvicorn, DuckDB              |
+| **gateway/**   | Python 3.13 | uv                     | Starlette, Uvicorn, WebSocket, FCM    |
 | **frontend/**  | Kotlin 2.2.21  | Gradle                 | Compose Multiplatform, Voyager, Koin, Ktor, FCM |
 
 - **Python Workspace**: uv で ingest, backend, gateway を一元管理
@@ -50,10 +50,10 @@
 ## 2. Ingest Pipeline（データ収集）
 
 - **Language**: Python 3.13
-- **実行環境**: GitHub Actions（定期実行: 1日2回）
+- **実行環境**: GitHub Actions（定期実行: GitHub 1日1回、Spotify 5回/日）
 - **主要ライブラリ**:
   - `spotipy`: Spotify API クライアント
-  - `pygithub`: GitHub API クライアント
+  - `requests`: HTTP クライアント（GitHub API 用）
   - `pyarrow`: Parquet ファイル作成
   - `boto3`: R2 アップロード
   - `duckdb`: データ変換・検証
@@ -131,8 +131,8 @@
 | `ci-ingest.yml`          | `ingest/**`   | Ingest テスト・Lint     |
 | `ci-gateway.yml`         | `gateway/**`  | Gateway テスト・Lint    |
 | `ci-frontend.yml`        | `frontend/**` | Frontend テスト (JUnit) |
-| `job-ingest-spotify.yml` | Cron (1日2回) | Spotify データ収集      |
-| `job-ingest-github.yml`  | Cron (1日2回) | GitHub データ収集       |
+| `job-ingest-spotify.yml` | Cron (5回/日) | Spotify データ収集      |
+| `job-ingest-github.yml`  | Cron (1日1回) | GitHub データ収集       |
 
 ### テストツール
 

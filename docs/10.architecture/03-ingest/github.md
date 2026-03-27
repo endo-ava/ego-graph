@@ -23,27 +23,84 @@
 
 ## 3. スキーマ定義
 
-### 3.1 共通フィールド
+### 3.1 Commit イベントスキーマ
 
 | フィールド | 型 | 説明 |
 |-----------|---|------|
-| `id` | string | 一意識別子 (GitHub API の ID) |
-| `timestamp` | datetime | イベント発生時刻 (UTC) |
-| `event_type` | string | イベントタイプ (commit, issue, pr, review, workflow_run) |
-| `repository` | string | リポジトリ名 (owner/repo 形式) |
-| `actor` | string | 実行者の GitHub ユーザー名 |
-| `payload` | json | イベント固有のデータ |
+| `commit_event_id` | string | 一意識別子 (`{repo_full_name}:{sha}`) |
+| `source` | string | データソース (`github`) |
+| `owner` | string | リポジトリオーナー |
+| `repo` | string | リポジトリ名 |
+| `repo_full_name` | string | リポジトリフルネーム (`owner/repo`) |
+| `sha` | string | コミットハッシュ |
+| `message` | string | コミットメッセージ |
+| `committed_at_utc` | datetime | コミット時刻 (UTC) |
+| `changed_files_count` | int | 変更ファイル数 |
+| `additions` | int | 追加行数 |
+| `deletions` | int | 削除行数 |
+| `ingested_at_utc` | datetime | 取り込み時刻 (UTC) |
 
-### 3.2 Parquet 保存先
+### 3.2 Pull Request イベントスキーマ
 
-```
+| フィールド | 型 | 説明 |
+|-----------|---|------|
+| `pr_event_id` | string | 一意識別子（ハッシュ値） |
+| `pr_key` | string | PRユニークキー（ハッシュ値） |
+| `source` | string | データソース (`github`) |
+| `owner` | string | リポジトリオーナー |
+| `repo` | string | リポジトリ名 |
+| `repo_full_name` | string | リポジトリフルネーム (`owner/repo`) |
+| `pr_number` | int | PR番号 |
+| `pr_id` | int | GitHub PR ID |
+| `action` | string | アクション種別 (`opened`, `updated`, `closed`, `merged`, `reopened`) |
+| `state` | string | PR状態 (`open`, `closed`) |
+| `is_merged` | bool | マージ済みフラグ |
+| `title` | string | PRタイトル |
+| `labels` | array | ラベル一覧 |
+| `base_ref` | string | マージ先ブランチ |
+| `head_ref` | string | マージ元ブランチ |
+| `created_at_utc` | datetime | 作成時刻 (UTC) |
+| `updated_at_utc` | datetime | 更新時刻 (UTC) |
+| `closed_at_utc` | datetime | クローズ時刻 (UTC) |
+| `merged_at_utc` | datetime | マージ時刻 (UTC) |
+| `comments_count` | int | コメント数 |
+| `review_comments_count` | int | レビューコメント数 |
+| `reviews_count` | int | レビュー数 |
+| `commits_count` | int | コミット数 |
+| `additions` | int | 追加行数 |
+| `deletions` | int | 削除行数 |
+| `changed_files_count` | int | 変更ファイル数 |
+| `ingested_at_utc` | datetime | 取り込み時刻 (UTC) |
+
+### 3.3 共通フィールド
+
+以下のフィールドは Commit / Pull Request 両イベントで共通：
+
+| フィールド | 型 | 説明 |
+|-----------|---|------|
+| `source` | string | データソース (`github`) |
+| `owner` | string | リポジトリオーナー |
+| `repo` | string | リポジトリ名 |
+| `repo_full_name` | string | リポジトリフルネーム (`owner/repo`) |
+| `ingested_at_utc` | datetime | 取り込み時刻 (UTC) |
+
+### 3.4 Parquet 保存先
+
+```text
 s3://ego-graph/events/github/
-  ├── year=2024/
-  │   ├── month=01/
-  │   │   └── data.parquet
-  │   └── month=02/
-  │       └── data.parquet
-  └── ...
+  ├── commits/
+  │   ├── year=2024/
+  │   │   ├── month=01/
+  │   │   │   └── {uuid}.parquet
+  │   │   └── month=02/
+  │   │       └── {uuid}.parquet
+  │   └── ...
+  └── pull_requests/
+      ├── year=2024/
+      │   ├── month=01/
+      │   │   └── {uuid}.parquet
+      │   └── ...
+      └── ...
 ```
 
 ---
@@ -51,8 +108,8 @@ s3://ego-graph/events/github/
 ## 4. ワークフロー
 
 - **ワークフロー**: `job-ingest-github.yml`
-- **実行タイミング**: Cron (1日2回: 00:00 UTC, 12:00 UTC)
-- **増分取り込み**: R2 内のカーソル (state/github_cursor.json) で管理
+- **実行タイミング**: Cron (1日1回: 15:00 UTC = 00:00 JST 深夜)
+- **増分取り込み**: R2 内のカーソル (`state/github_worklog_ingest_state.json`) で管理
 
 ---
 
@@ -75,7 +132,7 @@ ingest/github/
 
 - **認証方式**: GitHub Personal Access Token (PAT)
 - **必要なスコープ**: `repo`, `read:user`
-- **環境変数**: `GITHUB_TOKEN`
+- **環境変数**: `GITHUB_PAT`, `GITHUB_LOGIN`
 
 ---
 
@@ -100,9 +157,9 @@ ingest/github/
 
 | 質問 | 検索戦略 |
 |-----|---------|
-| 「先週どんなコードを書いた？」 | `event_type=commit`, `timestamp` で期間フィルタ |
-| 「最近マージしたPRは？」 | `event_type=pr_merge`, `timestamp` で降順ソート |
-| 「失敗したワークフローは？」 | `event_type=workflow_failure` |
+| 「先週どんなコードを書いた？」 | `commits` テーブル、`committed_at_utc` で期間フィルタ |
+| 「最近マージしたPRは？」 | `pull_requests` テーブル、`is_merged=true`、`merged_at_utc` で降順ソート |
+| 「特定リポジトリの活動は？」 | `repo_full_name` でフィルタ |
 
 ---
 

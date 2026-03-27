@@ -39,7 +39,7 @@ EgoGraphのシステムアーキテクチャ設計。全体構成、データモ
 |---|---|
 | [README](./03-ingest/README.md) | データソース別設計の概要 |
 | [spotify](./03-ingest/spotify.md) | Spotifyデータソース設計 |
-| [github](./03-ingest/github.md) | GitHubデータソース設計 |
+| [GitHub](./03-ingest/github.md) | GitHubデータソース設計 |
 | [browser-history](./03-ingest/browser-history.md) | ブラウザ履歴データソース設計 |
 | [_template](./03-ingest/_template.md) | データソース設計テンプレート |
 
