@@ -44,6 +44,48 @@ def test_compact_browser_history_targets_wraps_storage_errors():
     assert exc_info.value.__cause__ is not None
 
 
+def test_compact_browser_history_targets_attempts_all_targets_before_raising():
+    storage = MagicMock()
+
+    def side_effect(*, year: int, month: int):
+        if (year, month) == (2026, 3):
+            raise RuntimeError("march failed")
+        return None
+
+    storage.compact_month.side_effect = side_effect
+
+    with pytest.raises(
+        RuntimeError,
+        match="Browser history compaction failed for 2026-03",
+    ):
+        compact_browser_history_targets(storage, [(2026, 3), (2026, 4)])
+
+    storage.compact_month.assert_any_call(year=2026, month=3)
+    storage.compact_month.assert_any_call(year=2026, month=4)
+    assert storage.compact_month.call_count == 2
+
+
+def test_compact_browser_history_targets_aggregates_multiple_failures():
+    storage = MagicMock()
+
+    def side_effect(*, year: int, month: int):
+        raise RuntimeError(f"failed-{year}-{month:02d}")
+
+    storage.compact_month.side_effect = side_effect
+
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            "Browser history compaction failed for: "
+            "2026-03: RuntimeError: failed-2026-03, "
+            "2026-04: RuntimeError: failed-2026-04"
+        ),
+    ) as exc_info:
+        compact_browser_history_targets(storage, [(2026, 3), (2026, 4)])
+
+    assert exc_info.value.__cause__ is not None
+
+
 def test_compact_browser_history_targets_handles_empty_targets():
     storage = MagicMock()
 
