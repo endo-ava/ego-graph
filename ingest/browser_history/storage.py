@@ -174,27 +174,28 @@ class BrowserHistoryStorage:
         source_prefix = (
             f"{self.events_path}{dataset_path}/year={year}/month={month:02d}/"
         )
-        try:
-            records = read_parquet_records_from_prefix(
-                self.s3,
-                self.bucket_name,
-                source_prefix,
-            )
-            if not records:
-                return None
+        records = read_parquet_records_from_prefix(
+            self.s3,
+            self.bucket_name,
+            source_prefix,
+        )
+        if not records:
+            logger.info("No parquet records found for compaction: %s", source_prefix)
+            return None
 
-            compacted_df = compact_records(
-                records,
-                dedupe_key=dedupe_key,
-                sort_by=sort_by,
-            )
-            key = build_compacted_key(
-                self.compacted_path,
-                data_domain="events",
-                dataset_path=dataset_path,
-                year=year,
-                month=month,
-            )
+        compacted_df = compact_records(
+            records,
+            dedupe_key=dedupe_key,
+            sort_by=sort_by,
+        )
+        key = build_compacted_key(
+            self.compacted_path,
+            data_domain="events",
+            dataset_path=dataset_path,
+            year=year,
+            month=month,
+        )
+        try:
             self.s3.put_object(
                 Bucket=self.bucket_name,
                 Key=key,
@@ -203,11 +204,13 @@ class BrowserHistoryStorage:
             )
         except Exception:
             logger.exception(
-                "Failed to compact browser history parquet: "
-                "dataset=%s year=%d month=%02d",
+                "Failed to save compacted browser history parquet: "
+                "dataset=%s year=%d month=%02d key=%s",
                 dataset_path,
                 year,
                 month,
+                key,
             )
-            return None
+            raise
+        logger.info("Saved compacted browser history parquet to %s", key)
         return key

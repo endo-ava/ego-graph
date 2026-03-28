@@ -32,7 +32,13 @@ def compact_browser_history_targets(
 
     for year, month in sorted(set(targets)):
         try:
-            storage.compact_month(year=year, month=month)
+            key = storage.compact_month(year=year, month=month)
+            if key is None:
+                logger.info(
+                    "Browser history compaction skipped because no records were found "
+                    "for target=%s",
+                    (year, month),
+                )
         except Exception as exc:
             target = (year, month)
             errors.append((target, exc))

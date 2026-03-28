@@ -1,6 +1,7 @@
 import json
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from ingest.browser_history.storage import BrowserHistoryStorage
@@ -107,3 +108,35 @@ class TestBrowserHistoryStorage:
         assert key == (
             "compacted/events/browser_history/page_views/year=2026/month=03/data.parquet"
         )
+
+    def test_compact_month_returns_none_when_source_records_are_missing(self):
+        with patch(
+            "ingest.browser_history.storage.read_parquet_records_from_prefix",
+            return_value=[],
+        ):
+            key = self.storage.compact_month(year=2026, month=3)
+
+        assert key is None
+        self.mock_s3.put_object.assert_not_called()
+
+    def test_compact_month_raises_when_compacted_parquet_save_fails(self):
+        self.mock_s3.put_object.side_effect = RuntimeError("r2 down")
+
+        with (
+            patch(
+                "ingest.browser_history.storage.read_parquet_records_from_prefix",
+                return_value=[
+                    {"page_view_id": "pv1", "ingested_at_utc": "2026-03-22T12:00:00Z"}
+                ],
+            ),
+            patch(
+                "ingest.browser_history.storage.compact_records",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "ingest.browser_history.storage.dataframe_to_parquet_bytes",
+                return_value=b"x",
+            ),
+            pytest.raises(RuntimeError, match="r2 down"),
+        ):
+            self.storage.compact_month(year=2026, month=3)

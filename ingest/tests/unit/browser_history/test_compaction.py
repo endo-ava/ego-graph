@@ -92,3 +92,12 @@ def test_compact_browser_history_targets_handles_empty_targets():
     compact_browser_history_targets(storage, [])
 
     storage.compact_month.assert_not_called()
+
+
+def test_compact_browser_history_targets_treats_none_as_no_records(caplog):
+    storage = MagicMock()
+    storage.compact_month.return_value = None
+
+    compact_browser_history_targets(storage, [(2026, 3)])
+
+    assert "no records were found" in caplog.text
