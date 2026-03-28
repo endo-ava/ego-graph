@@ -8,8 +8,8 @@ from zoneinfo import ZoneInfo
 
 import backend.dependencies as deps
 from backend.domain.models.llm import ChatResponse, Message, StreamChunk, ToolCall
-from backend.infrastructure.database import ChatDuckDBConnection
-from backend.infrastructure.repositories import DuckDBThreadRepository
+from backend.infrastructure.database import ChatSQLiteConnection
+from backend.infrastructure.repositories import ThreadRepository
 
 JST = ZoneInfo("Asia/Tokyo")
 
@@ -499,7 +499,7 @@ class TestChatStreamingEndpoint:
 
             assert thread_id is not None
 
-            with ChatDuckDBConnection() as conn:
+            with ChatSQLiteConnection() as conn:
                 messages = conn.execute(
                     """
                     SELECT role, content, model_name
@@ -573,7 +573,7 @@ class TestChatStreamingEndpoint:
 
             assert thread_id is not None
 
-            with ChatDuckDBConnection() as conn:
+            with ChatSQLiteConnection() as conn:
                 thread = conn.execute(
                     "SELECT thread_id, title, user_id FROM threads WHERE thread_id = ?",
                     (thread_id,),
@@ -589,8 +589,8 @@ class TestChatStreamingEndpoint:
     ):
         """ストリーミングモードで既存スレッドにメッセージが追加される。"""
         # Arrange
-        with ChatDuckDBConnection() as conn:
-            repo = DuckDBThreadRepository(conn)
+        with ChatSQLiteConnection() as conn:
+            repo = ThreadRepository(conn)
             thread = repo.create_thread("default_user", "Existing thread")
             existing_thread_id = thread.thread_id
 
@@ -634,7 +634,7 @@ class TestChatStreamingEndpoint:
             # Assert
             assert response.status_code == 200
 
-            with ChatDuckDBConnection() as conn:
+            with ChatSQLiteConnection() as conn:
                 messages = conn.execute(
                     """
                     SELECT role, content
@@ -703,7 +703,7 @@ class TestChatStreamingEndpoint:
                     if data.get("thread_id"):
                         thread_id = data["thread_id"]
 
-            with ChatDuckDBConnection() as conn:
+            with ChatSQLiteConnection() as conn:
                 messages = conn.execute(
                     "SELECT role, content FROM messages WHERE thread_id = ?",
                     (thread_id,),
