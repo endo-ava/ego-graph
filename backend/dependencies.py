@@ -5,14 +5,15 @@
 
 import logging
 import secrets
+import sqlite3
 from collections.abc import Generator
 
 import duckdb
 from fastapi import Depends, Header, HTTPException
 
 from backend.config import BackendConfig
-from backend.infrastructure.database import ChatDuckDBConnection, DuckDBConnection
-from backend.infrastructure.repositories import DuckDBThreadRepository
+from backend.infrastructure.database import ChatSQLiteConnection, DuckDBConnection
+from backend.infrastructure.repositories import ThreadRepository
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ def get_config() -> BackendConfig:
 def get_db_connection(
     config: BackendConfig = Depends(get_config),
 ) -> Generator[duckdb.DuckDBPyConnection, None, None]:
-    """DuckDB接続を取得します。
+    """DuckDB接続を取得します（R2データレイク用）。
 
     DuckDBConnectionをコンテキストマネージャーとして使用し、
     開かれた接続をyieldします。接続は自動的にクローズされます。
@@ -62,19 +63,19 @@ def get_db_connection(
         yield conn
 
 
-def get_chat_db() -> Generator[duckdb.DuckDBPyConnection, None, None]:
-    """チャット履歴用DuckDB接続を取得します。
+def get_chat_db() -> Generator[sqlite3.Connection, None, None]:
+    """チャット履歴用SQLite接続を取得します。
 
-    ChatDuckDBConnectionをコンテキストマネージャーとして使用し、
+    ChatSQLiteConnectionをコンテキストマネージャーとして使用し、
     開かれた接続をyieldします。接続は自動的にクローズされます。
 
     Yields:
-        duckdb.DuckDBPyConnection: 開かれたDuckDB接続（チャット履歴用）
+        sqlite3.Connection: 開かれたSQLite接続（チャット履歴用）
 
     Raises:
-        duckdb.Error: DuckDB接続に失敗した場合
+        sqlite3.Error: SQLite接続に失敗した場合
     """
-    with ChatDuckDBConnection() as conn:
+    with ChatSQLiteConnection() as conn:
         yield conn
 
 
@@ -105,14 +106,14 @@ async def verify_api_key(
 
 
 def get_thread_repository(
-    chat_db: duckdb.DuckDBPyConnection = Depends(get_chat_db),
-) -> DuckDBThreadRepository:
+    chat_db: sqlite3.Connection = Depends(get_chat_db),
+) -> ThreadRepository:
     """スレッドリポジトリを取得します。
 
     Args:
-        chat_db: チャット履歴用DuckDB接続
+        chat_db: チャット履歴用SQLite接続
 
     Returns:
-        DuckDBThreadRepository: スレッドリポジトリの実装
+        ThreadRepository: スレッドリポジトリの実装
     """
-    return DuckDBThreadRepository(chat_db)
+    return ThreadRepository(chat_db)

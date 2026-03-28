@@ -240,9 +240,7 @@ class TestChatEndpointModelSelection:
             patch(
                 "backend.usecases.chat.chat_usecase.ToolRegistry"
             ) as mock_registry_class,
-            patch(
-                "backend.api.chat.DuckDBThreadRepository"
-            ) as mock_thread_service_class,
+            patch("backend.api.chat.ThreadRepository") as mock_thread_service_class,
         ):
             # クラスメソッド from_config をモック
             mock_llm_instance = MagicMock()

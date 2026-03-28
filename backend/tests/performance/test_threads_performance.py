@@ -3,22 +3,26 @@
 大量データでのN+1クエリ問題やレスポンスタイムを検証します。
 """
 
+import sqlite3
 import time
 
-import duckdb
 import pytest
 
 from backend.infrastructure.database import create_chat_tables
 from backend.infrastructure.repositories import (
     AddMessageParams,
-    DuckDBThreadRepository,
+    ThreadRepository,
 )
 
 
 @pytest.fixture
 def in_memory_db():
-    """インメモリDuckDB接続を提供します。"""
-    conn = duckdb.connect(":memory:")
+    """インメモリSQLite接続を提供します。"""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    # パフォーマンス最適化
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
     create_chat_tables(conn)
     yield conn
     conn.close()
@@ -26,8 +30,8 @@ def in_memory_db():
 
 @pytest.fixture
 def thread_service(in_memory_db):
-    """DuckDBThreadRepositoryインスタンスを提供します。"""
-    return DuckDBThreadRepository(in_memory_db)
+    """ThreadRepositoryインスタンスを提供します。"""
+    return ThreadRepository(in_memory_db)
 
 
 def test_get_threads_performance_1000_threads(thread_service):
@@ -162,14 +166,14 @@ def test_query_count_for_threads_retrieval(in_memory_db):
 
     現在の実装では、get_threads()は以下のクエリを実行します:
     1. COUNT(*)でtotal取得
-    2. 1つのJOINクエリでスレッド一覧とpreview, message_count取得
+    2. 1つのクエリでスレッド一覧とpreview, message_count取得（サブクエリ使用）
 
     合計2クエリのみであることを確認します（スレッド数に依存しない）。
     """
     user_id = "query_count_test_user"
 
-    # DuckDBThreadRepositoryを使ってスレッドを作成
-    service = DuckDBThreadRepository(in_memory_db)
+    # ThreadRepositoryを使ってスレッドを作成
+    service = ThreadRepository(in_memory_db)
 
     # 50件のスレッドを作成
     for i in range(50):
@@ -183,10 +187,6 @@ def test_query_count_for_threads_retrieval(in_memory_db):
             )
         )
 
-    # クエリログを有効化（DuckDBの場合はプロファイリング使用）
-    in_memory_db.execute("PRAGMA enable_profiling;")
-    in_memory_db.execute("PRAGMA profiling_output='query_graph';")
-
     # スレッド取得
     threads, total = service.get_threads(user_id, limit=50, offset=0)
 
@@ -194,6 +194,5 @@ def test_query_count_for_threads_retrieval(in_memory_db):
     assert total == 50
     assert len(threads) == 50
 
-    # 注: DuckDBのプロファイリング出力を直接確認するのは複雑なため、
-    # ここでは実行時間のみでパフォーマンスを判断します。
+    # 注: SQLiteのEXPLAIN QUERY PLANでクエリ構造を確認可能
     # 実際のN+1問題がある場合、50件でも明らかに遅くなるはずです。

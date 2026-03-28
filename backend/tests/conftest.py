@@ -12,7 +12,7 @@ from pydantic import SecretStr
 import backend.dependencies as deps
 from backend.config import BackendConfig, LLMConfig, R2Config
 from backend.infrastructure.database import (
-    ChatDuckDBConnection,
+    ChatSQLiteConnection,
     chat_connection,
     create_chat_tables,
 )
@@ -462,7 +462,7 @@ def test_client_with_chat_db(tmp_path, monkeypatch):
     """
 
     # 一時的なチャット履歴DBパスを設定
-    chat_db_path = tmp_path / "test_chat.duckdb"
+    chat_db_path = tmp_path / "test_chat.sqlite"
 
     # chat_connection.pyのDB_PATHをモンキーパッチ
     monkeypatch.setattr(chat_connection, "DB_PATH", chat_db_path)
@@ -478,7 +478,7 @@ def test_client_with_chat_db(tmp_path, monkeypatch):
     monkeypatch.setenv("R2_BUCKET_NAME", "test-bucket")
 
     # テーブルを事前に作成
-    with ChatDuckDBConnection() as conn:
+    with ChatSQLiteConnection() as conn:
         create_chat_tables(conn)
 
     app = create_app()
@@ -539,12 +539,8 @@ def github_with_sample_data(duckdb_conn, tmp_path):
             "updated_at_utc": pd.to_datetime(
                 ["2024-01-01 10:00:00", "2024-01-02 10:00:00", "2024-01-02 10:00:00"]
             ),
-            "closed_at_utc": pd.to_datetime(
-                [None, "2024-01-02 10:00:00", None]
-            ),
-            "merged_at_utc": pd.to_datetime(
-                [None, "2024-01-02 10:00:00", None]
-            ),
+            "closed_at_utc": pd.to_datetime([None, "2024-01-02 10:00:00", None]),
+            "merged_at_utc": pd.to_datetime([None, "2024-01-02 10:00:00", None]),
             "comments_count": [5, 10, 3],
             "review_comments_count": [2, 5, 1],
             "reviews_count": [1, 2, 0],
@@ -552,9 +548,7 @@ def github_with_sample_data(duckdb_conn, tmp_path):
             "additions": [100, 150, 50],
             "deletions": [20, 30, 10],
             "changed_files_count": [5, 8, 2],
-            "ingested_at_utc": pd.to_datetime(
-                ["2024-01-01 10:00:00"] * 3
-            ),
+            "ingested_at_utc": pd.to_datetime(["2024-01-01 10:00:00"] * 3),
         }
     )
 
@@ -578,9 +572,7 @@ def github_with_sample_data(duckdb_conn, tmp_path):
             "changed_files_count": [5, 3, 1],
             "additions": [100, 50, 10],
             "deletions": [20, 10, 5],
-            "ingested_at_utc": pd.to_datetime(
-                ["2024-01-01 10:00:00"] * 3
-            ),
+            "ingested_at_utc": pd.to_datetime(["2024-01-01 10:00:00"] * 3),
         }
     )
 
@@ -615,9 +607,7 @@ def github_with_sample_data(duckdb_conn, tmp_path):
             ),
             "repo_summary_text": ["Test repo summary", None],
             "summary_source": ["manual", None],
-            "summary_updated_at_utc": pd.to_datetime(
-                ["2024-01-01 10:00:00", None]
-            ),
+            "summary_updated_at_utc": pd.to_datetime(["2024-01-01 10:00:00", None]),
         }
     )
 
@@ -641,9 +631,7 @@ def github_with_sample_data(duckdb_conn, tmp_path):
     duckdb_conn.unregister("github_commits_df")
 
     duckdb_conn.register("github_repos_df", repos_data)
-    duckdb_conn.execute(
-        "CREATE TABLE github_repos AS SELECT * FROM github_repos_df"
-    )
+    duckdb_conn.execute("CREATE TABLE github_repos AS SELECT * FROM github_repos_df")
     duckdb_conn.unregister("github_repos_df")
 
     # ラッパーオブジェクトを作成

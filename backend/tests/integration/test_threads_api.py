@@ -7,13 +7,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.infrastructure.database import (
-    ChatDuckDBConnection,
+    ChatSQLiteConnection,
     chat_connection,
     create_chat_tables,
 )
 from backend.infrastructure.repositories import (
     AddMessageParams,
-    DuckDBThreadRepository,
+    ThreadRepository,
 )
 from backend.main import create_app
 
@@ -22,7 +22,7 @@ from backend.main import create_app
 def test_client_with_threads(tmp_path, monkeypatch):
     """スレッドAPI用のテストクライアントを提供します。"""
     # 一時的なチャット履歴DBパスを設定
-    chat_db_path = tmp_path / "test_chat.duckdb"
+    chat_db_path = tmp_path / "test_chat.sqlite"
 
     # chat_connection.pyのDB_PATHをモンキーパッチ
     monkeypatch.setattr(chat_connection, "DB_PATH", chat_db_path)
@@ -34,7 +34,7 @@ def test_client_with_threads(tmp_path, monkeypatch):
     monkeypatch.setenv("R2_BUCKET_NAME", "test-bucket")
 
     # テーブルを事前に作成
-    with ChatDuckDBConnection() as conn:
+    with ChatSQLiteConnection() as conn:
         create_chat_tables(conn)
 
     app = create_app()
@@ -47,16 +47,16 @@ def test_client_with_threads(tmp_path, monkeypatch):
 def populated_threads(tmp_path, monkeypatch):
     """テストデータが投入されたスレッドDBを提供します。"""
     # 一時的なチャット履歴DBパスを設定
-    chat_db_path = tmp_path / "test_chat_populated.duckdb"
+    chat_db_path = tmp_path / "test_chat_populated.sqlite"
 
     monkeypatch.setattr(chat_connection, "DB_PATH", chat_db_path)
 
     # テーブル作成
-    with ChatDuckDBConnection() as conn:
+    with ChatSQLiteConnection() as conn:
         create_chat_tables(conn)
 
         # テストデータを投入
-        service = DuckDBThreadRepository(conn)
+        service = ThreadRepository(conn)
         threads = []
         for i in range(5):
             thread = service.create_thread("default_user", f"Test message {i}")

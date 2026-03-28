@@ -8,9 +8,9 @@ import asyncio
 import json
 import logging
 import re
+import sqlite3
 from typing import Any, AsyncGenerator
 
-import duckdb
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -28,7 +28,7 @@ from backend.api.schemas import (
 from backend.config import BackendConfig
 from backend.dependencies import get_chat_db, get_config, verify_api_key
 from backend.infrastructure.repositories import (
-    DuckDBThreadRepository,
+    ThreadRepository,
 )
 from backend.usecases.chat import (
     ChatUseCase,
@@ -133,7 +133,7 @@ async def get_tools_endpoint(
 @router.post("", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
-    chat_db: duckdb.DuckDBPyConnection = Depends(get_chat_db),
+    chat_db: sqlite3.Connection = Depends(get_chat_db),
     config: BackendConfig = Depends(get_config),
     _: None = Depends(verify_api_key),
 ):
@@ -206,7 +206,7 @@ async def chat(
 
 async def _chat_non_streaming(
     request: ChatRequest,
-    chat_db: duckdb.DuckDBPyConnection,
+    chat_db: sqlite3.Connection,
     config: BackendConfig,
     model_name: str,
 ) -> ChatResponse:
@@ -224,7 +224,7 @@ async def _chat_non_streaming(
     Raises:
         HTTPException: 各種エラー
     """
-    thread_repository = DuckDBThreadRepository(chat_db)
+    thread_repository = ThreadRepository(chat_db)
     use_case = ChatUseCase(thread_repository, config.llm, config.r2)
 
     try:
@@ -273,7 +273,7 @@ async def _chat_non_streaming(
 
 async def _stream_chat(
     request: ChatRequest,
-    chat_db: duckdb.DuckDBPyConnection,
+    chat_db: sqlite3.Connection,
     config: BackendConfig,
 ) -> AsyncGenerator[str, None]:
     """ストリーミングモードでチャットを実行します。
@@ -291,7 +291,7 @@ async def _stream_chat(
     Raises:
         HTTPException: 各種エラー
     """
-    thread_repository = DuckDBThreadRepository(chat_db)
+    thread_repository = ThreadRepository(chat_db)
     use_case = ChatUseCase(thread_repository, config.llm, config.r2)
 
     try:
