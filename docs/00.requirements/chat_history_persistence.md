@@ -4,7 +4,7 @@
 
 - やりたいこと：チャットUIの会話履歴を永続化し、スレッド一覧から過去の会話に戻れるようにする
 - 理由：現状はセッションクリアで会話が消え、過去の会話を参照できない
-- 対象：Backend API（DuckDB永続化）+ Frontend UI（スレッド一覧・履歴表示）
+- 対象：Backend API（SQLite永続化）+ Frontend UI（スレッド一覧・履歴表示）
 - 優先：MVP最小限（一覧・新規作成・履歴閲覧のみ、編集・削除・検索は次フェーズ）
 
 ## 2. Purpose (WHY)
@@ -36,7 +36,7 @@
   - メッセージ履歴の取得
 
 - データ永続化
-  - DuckDBローカルファイルに保存（`backend/data/chat.duckdb`）
+  - SQLiteローカルファイルに保存（`backend/data/chat.sqlite`）
   - threads テーブル（スレッドメタデータ）
   - messages テーブル（メッセージ本文）
 
@@ -165,34 +165,39 @@
 **threads テーブル**
 ```sql
 CREATE TABLE threads (
-  thread_id UUID PRIMARY KEY,
-  user_id VARCHAR NOT NULL,  -- MVP: 固定値 'default_user'
-  title VARCHAR(50) NOT NULL,  -- 初回メッセージの先頭50文字
-  created_at TIMESTAMP NOT NULL,
-  last_message_at TIMESTAMP NOT NULL,
-  INDEX idx_user_last_message (user_id, last_message_at DESC)
+  thread_id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,  -- MVP: 固定値 'default_user'
+  title TEXT NOT NULL,  -- 初回メッセージの先頭50文字
+  created_at TEXT NOT NULL,  -- ISO8601 UTC
+  last_message_at TEXT NOT NULL  -- ISO8601 UTC
 );
+
+CREATE INDEX idx_user_last_message
+ON threads(user_id, last_message_at DESC);
 ```
 
 **messages テーブル**
 ```sql
 CREATE TABLE messages (
-  message_id UUID PRIMARY KEY,
-  thread_id UUID NOT NULL,
-  user_id VARCHAR NOT NULL,  -- 将来の複数ユーザー対応用
-  role VARCHAR NOT NULL,  -- 'user', 'assistant', 'system'
+  message_id TEXT PRIMARY KEY,
+  thread_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,  -- 将来の複数ユーザー対応用
+  role TEXT NOT NULL,  -- 'user', 'assistant', 'system'
   content TEXT NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (thread_id) REFERENCES threads(thread_id),
-  INDEX idx_thread_created (thread_id, created_at)
+  created_at TEXT NOT NULL,  -- ISO8601 UTC
+  model_name TEXT,
+  FOREIGN KEY (thread_id) REFERENCES threads(thread_id)
 );
+
+CREATE INDEX idx_thread_created
+ON messages(thread_id, created_at);
 ```
 
 ## 4. Scope
 
 ### 今回やる（MVP）
 - Backend
-  - DuckDBローカルファイルでの永続化
+  - SQLiteローカルファイルでの永続化
   - スレッド自動作成（初回メッセージ送信時）
   - スレッド一覧API（ページネーション対応）
   - メッセージ履歴取得API
@@ -301,7 +306,7 @@ CREATE TABLE messages (
 ## 8. Non-Functional Requirements (FURPS)
 
 - **Performance**:
-  - スレッド一覧取得: 100ms以内（ローカルDuckDB、インデックス使用）
+  - スレッド一覧取得: 100ms以内（ローカルSQLite、インデックス使用）
   - メッセージ履歴取得: 200ms以内（100件程度想定）
   - 無限スクロール: 追加読み込み時のラグを最小化
 
@@ -320,7 +325,7 @@ CREATE TABLE messages (
   - ログに個人の会話内容を出力しない（DEBUG時を除く）
 
 - **Constraints（技術/期限/外部APIなど）**:
-  - 技術: DuckDBローカルファイル（backend/data/chat.duckdb）
+  - 技術: SQLiteローカルファイル（backend/data/chat.sqlite）
   - 言語: Python 3.13（Backend）、React 19（Frontend）
   - 認証: 既存のAPI Key認証を使用
   - 単一ユーザー前提（将来的に複数ユーザー化の可能性）
@@ -328,7 +333,7 @@ CREATE TABLE messages (
 ## 9. RAID (Risks, Assumptions, Issues, Dependencies)
 
 - **Risk**:
-  - DuckDBの同時書き込み競合（個人用途では低リスク）
+  - SQLite単一ファイルの書き込み競合やロック待ち
   - スレッド数増加時のパフォーマンス低下（インデックスで対応）
   - Frontend の無限スクロール実装の複雑さ
 
@@ -343,14 +348,14 @@ CREATE TABLE messages (
   - タイムゾーンはUTCで統一（Frontend でローカル変換）
 
 - **Dependency**:
-  - Backend: DuckDB、FastAPI、Pydantic
+  - Backend: SQLite（`sqlite3`）、FastAPI、Pydantic
   - Frontend: React 19、既存のチャットUI実装
   - 既存の `/v1/chat` API実装
   - 既存のMessage/ChatRequest モデル
 
 ## 10. Reference
 
-- 技術選定ドキュメント: `docs/20.technical_selections/03_chat_history_storage.md`
+- データ戦略: `docs/10.architecture/01-overview/data-strategy.md`
 - 既存API実装: `backend/api/chat.py`
 - 既存モデル: `backend/llm/models.py`
 - システムアーキテクチャ: `docs/10.architecture/1001_system_architecture.md`

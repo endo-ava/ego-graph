@@ -11,7 +11,6 @@ EgoGraphの各コンポーネントにおける技術選定の詳細と比較検
 | ドキュメント | 内容 |
 |---|---|
 | [embedding](./embedding.md) | Embedding戦略の詳細（Nomic Embed選定理由、比較） |
-| [chat-history-storage](./chat-history-storage.md) | チャット履歴の永続化（DuckDBローカル保存の選定理由） |
 | [youtube-history-collection](./youtube-history-collection.md) | YouTube視聴履歴収集（Playwright + MyActivity スクレイピング選定理由） |
 | [kmp-cmp-migration](./kmp-cmp-migration.md) | Kotlin Multiplatform / Compose Multiplatform 移行記録 |
 
