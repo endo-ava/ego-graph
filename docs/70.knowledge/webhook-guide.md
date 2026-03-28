@@ -556,8 +556,8 @@ curl -X POST http://localhost:8001/v1/push/webhook \
    # Gatewayのデータベースを確認
    cd /root/workspace/ego-graph/wt1/gateway
    uv run python -c "
-   import duckdb
-   conn = duckdb.connect('gateway.db')
+   import sqlite3
+   conn = sqlite3.connect('gateway.db')
    result = conn.execute('SELECT * FROM push_devices').fetchall()
    for row in result:
        print(row)

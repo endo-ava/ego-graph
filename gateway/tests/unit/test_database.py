@@ -1,8 +1,8 @@
 """データベースモジュールの単体テスト。"""
 
+import sqlite3
 from unittest.mock import MagicMock, patch
 
-import duckdb
 import pytest
 
 from gateway.infrastructure.database import (
@@ -19,11 +19,11 @@ from gateway.infrastructure.database import (
 class TestGetDbConnection:
     """get_db_connection関数のテスト。"""
 
-    @patch("gateway.infrastructure.database.duckdb.connect")
+    @patch("gateway.infrastructure.database.sqlite3.connect")
     def test_returns_connection(self, mock_connect):
-        """DuckDB接続オブジェクトが返されることを確認する。"""
+        """SQLite 接続オブジェクトが返されることを確認する。"""
         # Arrange
-        mock_conn = MagicMock(spec=duckdb.DuckDBPyConnection)
+        mock_conn = MagicMock(spec=sqlite3.Connection)
         mock_connect.return_value = mock_conn
 
         # Act
@@ -32,11 +32,11 @@ class TestGetDbConnection:
             assert conn is mock_conn
             mock_connect.assert_called_once()
 
-    @patch("gateway.infrastructure.database.duckdb.connect")
-    def test_closes_connection_on_exit(self, mock_connect):
-        """コンテキストマネージャー終了時に接続が閉じられることを確認する。"""
+    @patch("gateway.infrastructure.database.sqlite3.connect")
+    def test_commits_and_closes_connection_on_exit(self, mock_connect):
+        """正常終了時に commit と close が呼ばれることを確認する。"""
         # Arrange
-        mock_conn = MagicMock(spec=duckdb.DuckDBPyConnection)
+        mock_conn = MagicMock(spec=sqlite3.Connection)
         mock_connect.return_value = mock_conn
 
         # Act
@@ -44,13 +44,15 @@ class TestGetDbConnection:
             pass
 
         # Assert
+        mock_conn.commit.assert_called_once()
+        mock_conn.rollback.assert_not_called()
         mock_conn.close.assert_called_once()
 
-    @patch("gateway.infrastructure.database.duckdb.connect")
-    def test_closes_connection_on_exception(self, mock_connect):
-        """例外発生時にも接続が閉じられることを確認する。"""
+    @patch("gateway.infrastructure.database.sqlite3.connect")
+    def test_rolls_back_and_closes_connection_on_exception(self, mock_connect):
+        """例外発生時に rollback と close が呼ばれることを確認する。"""
         # Arrange
-        mock_conn = MagicMock(spec=duckdb.DuckDBPyConnection)
+        mock_conn = MagicMock(spec=sqlite3.Connection)
         mock_connect.return_value = mock_conn
 
         # Act & Assert
@@ -58,6 +60,8 @@ class TestGetDbConnection:
             with get_db_connection():
                 raise ValueError("Test error")
 
+        mock_conn.commit.assert_not_called()
+        mock_conn.rollback.assert_called_once()
         mock_conn.close.assert_called_once()
 
 
@@ -73,7 +77,7 @@ class TestCreatePushTables:
     def test_creates_push_devices_table(self, mock_logger):
         """push_devicesテーブルが作成されることを確認する。"""
         # Arrange
-        mock_conn = MagicMock(spec=duckdb.DuckDBPyConnection)
+        mock_conn = MagicMock(spec=sqlite3.Connection)
 
         # Act
         create_push_tables(mock_conn)
@@ -94,7 +98,7 @@ class TestCreatePushTables:
     def test_table_schema_includes_all_columns(self, mock_logger):
         """テーブルスキーマに全てのカラムが含まれることを確認する。"""
         # Arrange
-        mock_conn = MagicMock(spec=duckdb.DuckDBPyConnection)
+        mock_conn = MagicMock(spec=sqlite3.Connection)
 
         # Act
         create_push_tables(mock_conn)
@@ -107,7 +111,7 @@ class TestCreatePushTables:
         assert "device_token TEXT NOT NULL UNIQUE" in call_args
         assert "platform TEXT NOT NULL" in call_args
         assert "device_name TEXT" in call_args
-        assert "enabled BOOLEAN NOT NULL DEFAULT TRUE" in call_args
+        assert "enabled INTEGER NOT NULL DEFAULT 1" in call_args
         assert "last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" in call_args
         assert "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" in call_args
 
@@ -126,7 +130,7 @@ class TestInitDatabase:
     def test_creates_tables(self, mock_logger, mock_create_tables, mock_get_connection):
         """データベース初期化時にテーブルが作成されることを確認する。"""
         # Arrange
-        mock_conn = MagicMock(spec=duckdb.DuckDBPyConnection)
+        mock_conn = MagicMock(spec=sqlite3.Connection)
         mock_get_connection.return_value.__enter__.return_value = mock_conn
 
         # Act
@@ -140,7 +144,7 @@ class TestInitDatabase:
     def test_creates_index(self, mock_logger, mock_get_connection):
         """データベース初期化時にインデックスが作成されることを確認する。"""
         # Arrange
-        mock_conn = MagicMock(spec=duckdb.DuckDBPyConnection)
+        mock_conn = MagicMock(spec=sqlite3.Connection)
         mock_get_connection.return_value.__enter__.return_value = mock_conn
 
         # Act
@@ -165,7 +169,7 @@ class TestInitDatabase:
     ):
         """初期化成功時にログが出力されることを確認する。"""
         # Arrange
-        mock_conn = MagicMock(spec=duckdb.DuckDBPyConnection)
+        mock_conn = MagicMock(spec=sqlite3.Connection)
         mock_get_connection.return_value.__enter__.return_value = mock_conn
 
         # Act
@@ -182,7 +186,7 @@ class TestInitDatabase:
     ):
         """初期化後に接続が閉じられることを確認する。"""
         # Arrange
-        mock_conn = MagicMock(spec=duckdb.DuckDBPyConnection)
+        mock_conn = MagicMock(spec=sqlite3.Connection)
         cm = mock_get_connection.return_value
         cm.__enter__.return_value = mock_conn
         cm.__exit__.return_value = None
