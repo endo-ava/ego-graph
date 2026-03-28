@@ -6,6 +6,8 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from sqlite3 import Connection
+from typing import Any
 
 from gateway.infrastructure.database import get_db_connection
 
@@ -39,6 +41,45 @@ class PushDevice:
 
 class PushTokenRepository:
     """プッシュ通知トークンのリポジトリクラス。"""
+
+    @staticmethod
+    def _parse_datetime(value: Any) -> datetime:
+        """SQLite から取得した日時を datetime に正規化します。"""
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            return datetime.fromisoformat(value)
+        raise ValueError(f"Unsupported datetime value: {value!r}")
+
+    def _row_to_push_device(self, row: tuple[Any, ...]) -> PushDevice:
+        """DB 行を PushDevice に変換します。"""
+        return PushDevice(
+            id=int(row[0]),
+            user_id=str(row[1]),
+            device_token=str(row[2]),
+            platform=str(row[3]),
+            device_name=row[4],
+            enabled=bool(row[5]),
+            last_seen_at=self._parse_datetime(row[6]),
+            created_at=self._parse_datetime(row[7]),
+        )
+
+    def _fetch_device_by_token(
+        self, conn: Connection, device_token: str
+    ) -> PushDevice:
+        """デバイストークンで端末情報を取得します。"""
+        row = conn.execute(
+            """
+            SELECT id, user_id, device_token, platform, device_name,
+                   enabled, last_seen_at, created_at
+            FROM push_devices
+            WHERE device_token = ?
+        """,
+            [device_token],
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"push_device not found for token: {device_token}")
+        return self._row_to_push_device(row)
 
     def save_token(
         self,
@@ -76,61 +117,28 @@ class PushTokenRepository:
                     SET user_id = ?,
                         platform = ?,
                         device_name = ?,
-                        enabled = TRUE,
+                        enabled = 1,
                         last_seen_at = CURRENT_TIMESTAMP
                     WHERE device_token = ?
                 """,
                     [user_id, platform, device_name, device_token],
                 )
 
-                # 更新後のデータを取得
-                row = conn.execute(
-                    """
-                    SELECT id, user_id, device_token, platform, device_name,
-                           enabled, last_seen_at, created_at
-                    FROM push_devices
-                    WHERE device_token = ?
-                """,
-                    [device_token],
-                ).fetchone()
-
                 logger.info("Updated existing push token: user_id=%s", user_id)
             else:
                 # 新規登録
-                next_id = conn.execute(
-                    "SELECT COALESCE(MAX(id), 0) + 1 FROM push_devices"
-                ).fetchone()[0]
                 conn.execute(
                     """
                     INSERT INTO push_devices
-                    (id, user_id, device_token, platform, device_name)
-                    VALUES (?, ?, ?, ?, ?)
+                    (user_id, device_token, platform, device_name)
+                    VALUES (?, ?, ?, ?)
                 """,
-                    [next_id, user_id, device_token, platform, device_name],
+                    [user_id, device_token, platform, device_name],
                 )
-
-                row = conn.execute(
-                    """
-                    SELECT id, user_id, device_token, platform, device_name,
-                           enabled, last_seen_at, created_at
-                    FROM push_devices
-                    WHERE device_token = ?
-                """,
-                    [device_token],
-                ).fetchone()
 
                 logger.info("Registered new push token: user_id=%s", user_id)
 
-            return PushDevice(
-                id=row[0],
-                user_id=row[1],
-                device_token=row[2],
-                platform=row[3],
-                device_name=row[4],
-                enabled=row[5],
-                last_seen_at=row[6],
-                created_at=row[7],
-            )
+            return self._fetch_device_by_token(conn, device_token)
 
     def get_tokens(self, user_id: str) -> list[PushDevice]:
         """ユーザーに紐づく全てのトークンを取得します。
@@ -147,25 +155,13 @@ class PushTokenRepository:
                 SELECT id, user_id, device_token, platform, device_name,
                        enabled, last_seen_at, created_at
                 FROM push_devices
-                WHERE user_id = ? AND enabled = TRUE
+                WHERE user_id = ? AND enabled = 1
                 ORDER BY last_seen_at DESC
             """,
                 [user_id],
             ).fetchall()
 
-            return [
-                PushDevice(
-                    id=row[0],
-                    user_id=row[1],
-                    device_token=row[2],
-                    platform=row[3],
-                    device_name=row[4],
-                    enabled=row[5],
-                    last_seen_at=row[6],
-                    created_at=row[7],
-                )
-                for row in rows
-            ]
+            return [self._row_to_push_device(row) for row in rows]
 
     def update_last_seen(self, device_token: str) -> None:
         """デバイストークンの最終確認日時を更新します。
@@ -198,7 +194,7 @@ class PushTokenRepository:
             conn.execute(
                 """
                 UPDATE push_devices
-                SET enabled = FALSE
+                SET enabled = 0
                 WHERE device_token = ?
             """,
                 [device_token],

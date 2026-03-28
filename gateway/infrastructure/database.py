@@ -1,13 +1,12 @@
-"""DuckDBデータベース接続とスキーマ管理。
+"""SQLite データベース接続とスキーマ管理。
 
 プッシュ通知トークンを管理するテーブルを提供します。
 """
 
 import logging
+import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-
-import duckdb
 
 logger = logging.getLogger(__name__)
 
@@ -17,27 +16,31 @@ DB_PATH = Path(__file__).parent.parent / "gateway.db"
 
 @contextmanager
 def get_db_connection():
-    """DuckDBデータベース接続を提供するコンテキストマネージャー。
+    """SQLite データベース接続を提供するコンテキストマネージャー。
 
     Yields:
-        duckdb.DuckDBPyConnection: DuckDB接続オブジェクト
+        sqlite3.Connection: SQLite 接続オブジェクト
 
     Example:
         >>> with get_db_connection() as conn:
         ...     result = conn.execute("SELECT 1").fetchone()
     """
-    conn = duckdb.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(DB_PATH))
     try:
         yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
 
-def create_push_tables(conn: duckdb.DuckDBPyConnection) -> None:
+def create_push_tables(conn: sqlite3.Connection) -> None:
     """プッシュ通知関連のテーブルを作成します。
 
     Args:
-        conn: DuckDB接続オブジェクト
+        conn: SQLite 接続オブジェクト
 
     Note:
         テーブルが既存の場合はスキップします。
@@ -49,7 +52,7 @@ def create_push_tables(conn: duckdb.DuckDBPyConnection) -> None:
             device_token TEXT NOT NULL UNIQUE,
             platform TEXT NOT NULL,
             device_name TEXT,
-            enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            enabled INTEGER NOT NULL DEFAULT 1,
             last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
