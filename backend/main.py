@@ -21,7 +21,7 @@ from backend.api import (
     threads,
 )
 from backend.config import BackendConfig
-from backend.infrastructure.database import ChatDuckDBConnection, create_chat_tables
+from backend.infrastructure.database import ChatSQLiteConnection, create_chat_tables
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
     """
     logger.info("Running startup tasks")
     try:
-        with ChatDuckDBConnection() as conn:
+        with ChatSQLiteConnection() as conn:
             create_chat_tables(conn)
         logger.info("Chat tables initialized successfully")
     except Exception:

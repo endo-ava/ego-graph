@@ -9,12 +9,12 @@ from typing import AsyncGenerator, cast
 
 from pydantic import BaseModel
 
-from backend.config import LLMConfig
+from backend.config import LLMConfig, R2Config
 from backend.domain.models.llm import StreamChunk
 from backend.infrastructure.llm import LLMClient, Message
 from backend.infrastructure.repositories import (
     AddMessageParams,
-    DuckDBThreadRepository,
+    ThreadRepository,
 )
 from backend.usecases.chat.system_prompt_builder import SystemPromptBuilder
 from backend.usecases.chat.tool_executor import (
@@ -22,7 +22,6 @@ from backend.usecases.chat.tool_executor import (
     ToolExecutor,
 )
 from backend.usecases.tools import ToolRegistry, build_tool_registry
-from backend.config import R2Config
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +78,7 @@ class ChatUseCase:
 
     def __init__(
         self,
-        thread_repository: DuckDBThreadRepository,
+        thread_repository: ThreadRepository,
         llm_config: LLMConfig,
         r2_config: R2Config | None,
     ):
