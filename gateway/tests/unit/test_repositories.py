@@ -68,20 +68,19 @@ class TestPushTokenRepositorySaveAndRetrieve:
 
         # データベースに既存トークンがない状態をモック
         # 1回目: 既存トークンチェック（None）
-        # 2回目: next_id取得
-        # 3回目: 挿入後データ取得
+        # 2回目: 挿入後データ取得
         mock_new_row = [
             1,  # id
             sample_device_data["user_id"],
             sample_device_data["device_token"],
             sample_device_data["platform"],
             sample_device_data["device_name"],
-            True,  # enabled
-            datetime.now(),  # last_seen_at
-            datetime.now(),  # created_at
+            1,  # enabled
+            "2025-02-08 12:00:00",
+            "2025-02-08 12:00:00",
         ]
 
-        mock_cursor.fetchone.side_effect = [None, (1,), mock_new_row]
+        mock_cursor.fetchone.side_effect = [None, mock_new_row]
         mock_conn.execute.return_value = mock_cursor
         mock_conn.__enter__ = MagicMock(return_value=mock_conn)
         mock_conn.__exit__ = MagicMock(return_value=False)
@@ -100,6 +99,7 @@ class TestPushTokenRepositorySaveAndRetrieve:
             assert result.platform == sample_device_data["platform"]
             assert result.device_name == sample_device_data["device_name"]
             assert result.enabled is True
+            assert isinstance(result.last_seen_at, datetime)
 
     def test_save_token_updates_existing_device(
         self, push_token_repository, sample_device_data
@@ -117,9 +117,9 @@ class TestPushTokenRepositorySaveAndRetrieve:
             sample_device_data["device_token"],
             sample_device_data["platform"],
             sample_device_data["device_name"],
-            True,  # enabled
-            datetime.now(),  # last_seen_at
-            datetime.now(),  # created_at
+            1,  # enabled
+            "2025-02-08 12:00:00",
+            "2025-02-08 12:00:00",
         ]
 
         mock_cursor.fetchone.side_effect = [mock_existing_row, mock_updated_row]
@@ -138,6 +138,7 @@ class TestPushTokenRepositorySaveAndRetrieve:
             assert isinstance(result, PushDevice)
             assert result.user_id == sample_device_data["user_id"]
             assert result.enabled is True
+            assert isinstance(result.created_at, datetime)
 
     def test_get_tokens_returns_user_devices(
         self, push_token_repository, sample_device_data
@@ -154,9 +155,9 @@ class TestPushTokenRepositorySaveAndRetrieve:
                 sample_device_data["device_token"],
                 sample_device_data["platform"],
                 sample_device_data["device_name"],
-                True,  # enabled
-                datetime.now(),
-                datetime.now(),
+                1,  # enabled
+                "2025-02-08 12:00:00",
+                "2025-02-08 12:00:00",
             ]
         ]
 
@@ -177,6 +178,7 @@ class TestPushTokenRepositorySaveAndRetrieve:
             assert isinstance(result[0], PushDevice)
             assert result[0].user_id == sample_device_data["user_id"]
             assert result[0].enabled is True
+            assert isinstance(result[0].last_seen_at, datetime)
 
 
 # ============================================================================
@@ -208,9 +210,9 @@ class TestPushTokenRepositoryDeleteRemovesToken:
 
             # Assert
             mock_conn.execute.assert_called()
-            # SQLクエリにenabled = FALSEが含まれることを確認
+            # SQLクエリにenabled = 0が含まれることを確認
             call_args = mock_conn.execute.call_args_list
-            assert any("enabled = FALSE" in str(call) for call in call_args)
+            assert any("enabled = 0" in str(call) for call in call_args)
 
     def test_get_tokens_excludes_disabled_tokens(
         self, push_token_repository, sample_device_data
@@ -228,9 +230,9 @@ class TestPushTokenRepositoryDeleteRemovesToken:
                 "active_token",
                 sample_device_data["platform"],
                 sample_device_data["device_name"],
-                True,  # enabled
-                datetime.now(),
-                datetime.now(),
+                1,  # enabled
+                "2025-02-08 12:00:00",
+                "2025-02-08 12:00:00",
             ]
         ]
 
@@ -249,9 +251,38 @@ class TestPushTokenRepositoryDeleteRemovesToken:
             # Assert
             assert len(result) == 1
             assert result[0].enabled is True
-            # SQLクエリにenabled = TRUEが含まれることを確認
+            # SQLクエリにenabled = 1が含まれることを確認
             call_args = mock_conn.execute.call_args_list
-            assert any("enabled = TRUE" in str(call) for call in call_args)
+            assert any("enabled = 1" in str(call) for call in call_args)
+
+    def test_save_token_raises_for_unsupported_datetime(
+        self, push_token_repository, sample_device_data
+    ):
+        """想定外の日時型を検出したら例外にする。"""
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        invalid_row = [
+            1,
+            sample_device_data["user_id"],
+            sample_device_data["device_token"],
+            sample_device_data["platform"],
+            sample_device_data["device_name"],
+            1,
+            12345,
+            "2025-02-08 12:00:00",
+        ]
+
+        mock_cursor.fetchone.side_effect = [None, invalid_row]
+        mock_conn.execute.return_value = mock_cursor
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+
+        with patch(
+            "gateway.infrastructure.repositories.get_db_connection",
+            return_value=mock_conn,
+        ):
+            with pytest.raises(ValueError, match="Unsupported datetime value"):
+                push_token_repository.save_token(**sample_device_data)
 
     def test_update_last_seen_updates_timestamp(self, push_token_repository):
         """最終確認日時が更新されることを確認する。"""
