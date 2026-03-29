@@ -57,7 +57,6 @@ Python (uv workspace) + Kotlin Multiplatform のモノレポ構成です。
 ego-graph/
 ├── ingest/                # データ収集ワーカー（uv workspace メンバー）
 ├── backend/               # Agent API（uv workspace メンバー）
-├── gateway/               # Terminal Gateway（uv workspace メンバー）
 ├── frontend/              # KMP Android アプリ（Gradle）
 ├── docs/                  # プロジェクトドキュメント
 ├── maestro/               # E2E テスト（Maestro）
