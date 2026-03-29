@@ -1,5 +1,7 @@
 # FCM Token Management - Production Design
 
+> Note: 通知 runtime の所有権は 2026-03 時点で **Plexus** 側へ移管済み。Gateway 前提の記述は移管前の設計メモとして読むこと。
+
 ## 本番環境での一般的な設計
 
 ### 現状の課題
@@ -23,7 +25,7 @@
 
 **実装:**
 - Androidアプリ: 現在の自動登録を維持
-- Gateway: 管理用APIエンドポイントを追加
+- Plexus runtime: 管理用APIエンドポイントを追加
 - 管理画面: トークン一覧・削除・テスト通知機能
 
 ### パターン2: ダッシュボード + 監視
@@ -38,7 +40,7 @@
 
 **実装:**
 - Grafana + Prometheus で監視
-- GatewayのDBを直接参照
+- Plexus runtime のDBを直接参照
 
 ### パターン3: ユーザー管理画面
 
@@ -54,7 +56,7 @@
 
 ## 推奨実装：管理APIの追加
 
-### Gatewayに管理用エンドポイントを追加
+### Plexus runtime に管理用エンドポイントを追加
 
 #### GET /v1/push/devices
 

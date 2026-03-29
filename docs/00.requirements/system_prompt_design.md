@@ -9,7 +9,7 @@ assignees: ""
 <!--
 追加ラベル:
 - カテゴリ: feature, fix
-- コンポーネント: backend, frontend, ingest, gateway
+- コンポーネント: backend, frontend, ingest
 -->
 
 ## 1. Summary
