@@ -49,17 +49,6 @@ MVVM (StateFlow + Channel) - Kotlin Multiplatform + Compose Multiplatform
 - Tech Stack: Kotlin 2.2.21, Compose Multiplatform 1.9.0, Ktor 3.3.3, Voyager 1.1.0-beta03, Kermit
 - Testing: kotlin-test, Turbine, MockK, Ktor MockEngine
 
-- 注意：旧 React + Capacitor フロントエンドは別 repo `endo-ava/egograph-frontend-capacitor-legacy` へ移行済みのため、このモノレポでは無視してください
-
-### gateway (Terminal GW)
-
-Layered Architecture - Starlette ベースの軽量 API
-
-- tmux Integration: `agent-XXXX` 形式のセッションを列挙・管理
-- WebSocket: 端末入出力の双方向通信
-- Push Notification: FCM 経由の通知送信
-- Tech Stack: Starlette, Uvicorn, WebSocket, libtmux
-
 ## 開発コマンド
 
 ```bash
@@ -79,10 +68,6 @@ tmux new-session -d -s fastapi 'uv run python -m backend.main'
 uv run python -m backend.main
 uv run pytest backend/tests --cov=backend
 uv run python -m backend.dev_tools.chat_cli   # デバッグ用CLIツール
-
-# === Gateway ===
-tmux new-session -d -s gateway 'uv run python -m gateway.main'
-uv run pytest gateway/tests --cov=gateway
 
 # === Frontend (cd frontend) ===
 cd frontend # PJルートからはgradlewは使えないことに注意
@@ -163,15 +148,15 @@ Windows ─ netsh (0.0.0.0:5559→127.0.0.1:5555) ─ Android Emulator (:5555)
 
 # initial plan review request
 
-## 必ず -m でモデルを指定すること (gpt-5.3-codex が最適)
+## 必ず -m でモデルを指定すること
 ```bash
-codex exec -m gpt-5.3-codex "このプランをレビューして。致命的な点だけ指摘して: {plan_full_path} (ref: {CLAUDE.md full_path})"
+codex exec -m gpt-5.4 "このプランをレビューして。致命的な点だけ指摘して: {plan_full_path} (ref: {CLAUDE.md full_path})"
 ```
 
 # updated plan review request
 ```bash 
 resume --last をつけないと最初のレビューの文脈が失われるから注意
-codex exec resume --last -m gpt-5.3-codex "プランを更新したからレビューして。致命的な点だけ指摘して: {plan_full_path} (ref: {CLAUDE.md full_path})"
+codex exec resume --last -m gpt-5.4 "プランを更新したからレビューして。致命的な点だけ指摘して: {plan_full_path} (ref: {CLAUDE.md full_path})"
 ```
 
 ## その他

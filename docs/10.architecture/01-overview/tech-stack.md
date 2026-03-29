@@ -10,10 +10,9 @@
 | -------------- | ----------- | ---------------------- | ------------------------------------- |
 | **ingest/**    | Python 3.13 | uv                     | Spotipy, requests, DuckDB, boto3, pyarrow |
 | **backend/**   | Python 3.13 | uv                     | FastAPI, Uvicorn, DuckDB              |
-| **gateway/**   | Python 3.13 | uv                     | Starlette, Uvicorn, WebSocket, FCM    |
 | **frontend/**  | Kotlin 2.2.21  | Gradle                 | Compose Multiplatform, Voyager, Koin, Ktor, FCM |
 
-- **Python Workspace**: uv で ingest, backend, gateway を一元管理
+- **Python Workspace**: uv で ingest, backend を一元管理
 - **Frontend**: Kotlin Multiplatform (Gradle)
 
 ---
@@ -78,31 +77,7 @@
 
 ---
 
-## 4. Gateway（Terminal Gateway）
-
-モバイル端末からの tmux セッション接続とプッシュ通知を担当する独立サービス。
-
-- **Framework**: Starlette (Python 3.13)
-- **Web Server**: Uvicorn (ASGI)
-- **主要ライブラリ**:
-  - `websockets`: WebSocket 通信（端末入出力）
-  - `firebase-admin`: FCM プッシュ通知
-  - `sqlite3`: プッシュトークン永続化
-  - `pydantic`: データモデル定義
-  - `pydantic-settings`: 環境変数管理
-- **認証方式**: Bearer Token（環境変数照合）
-- **実行環境**: LXC（常駐サーバー）
-- **特性**:
-  - tmux セッションの列挙・接続管理
-  - WebSocket による双方向端末入出力
-  - FCM によるタスク完了/入力要求通知
-  - EgoGraph Backend からは独立したサービス
-
-詳細: [Terminal Gateway 要件定義](../../00.requirements/mobile_terminal_gateway.md)
-
----
-
-## 5. Frontend（モバイル/Web アプリ）
+## 4. Frontend（モバイル/Web アプリ）
 
 - **Framework**: Kotlin Multiplatform + Compose Multiplatform
 - **Language**: Kotlin 2.2.21
@@ -121,7 +96,7 @@
 
 ---
 
-## 6. CI/CD
+## 5. CI/CD
 
 ### GitHub Actions
 
@@ -129,7 +104,6 @@
 | ------------------------ | ------------- | ----------------------- |
 | `ci-backend.yml`         | `backend/**`  | Backend テスト・Lint    |
 | `ci-ingest.yml`          | `ingest/**`   | Ingest テスト・Lint     |
-| `ci-gateway.yml`         | `gateway/**`  | Gateway テスト・Lint    |
 | `ci-frontend.yml`        | `frontend/**` | Frontend テスト (JUnit) |
 | `job-ingest-spotify.yml` | Cron (5回/日) | Spotify データ収集      |
 | `job-ingest-github.yml`  | Cron (1日1回) | GitHub データ収集       |
@@ -141,7 +115,7 @@
 
 ---
 
-## 7. Deployment Infrastructure
+## 6. Deployment Infrastructure
 
 ### 開発環境
 
@@ -170,7 +144,7 @@
 
 ### モノレポ + uv workspace
 
-1. **コンポーネント分離**: 各層（ingest/backend/gateway）が独立した責任範囲
+1. **コンポーネント分離**: 各層（ingest/backend/frontend）が独立した責任範囲
 2. **依存関係の透明性**: workspace 依存で Python パッケージの共通基盤を明示
 3. **開発効率**: `uv sync` 一発で全 Python パッケージをセットアップ
 4. **CI/CD の最適化**: コンポーネント別テストで高速フィードバック
