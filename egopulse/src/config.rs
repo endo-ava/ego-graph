@@ -212,6 +212,29 @@ mod tests {
     }
 
     #[test]
+    fn loads_from_dotenv_environment() {
+        clear_env();
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let env_path = temp_dir.path().join(".env");
+        let mut file = std::fs::File::create(&env_path).expect("create dotenv");
+        writeln!(
+            file,
+            "EGOPULSE_MODEL=gpt-5-mini\nEGOPULSE_API_KEY=sk-dotenv\nEGOPULSE_BASE_URL=https://api.openai.com/v1\nEGOPULSE_LOG_LEVEL=trace"
+        )
+        .expect("write dotenv");
+
+        dotenvy::from_path_override(&env_path).expect("load dotenv");
+
+        let config = AppConfig::load(ConfigOverrides::default()).expect("load config");
+
+        assert_eq!(config.model(), "gpt-5-mini");
+        assert_eq!(config.authorization_token(), "sk-dotenv");
+        assert_eq!(config.base_url().as_str(), "https://api.openai.com/v1");
+        assert_eq!(config.log_level(), "trace");
+        clear_env();
+    }
+
+    #[test]
     fn allows_local_base_url_without_api_key() {
         clear_env();
 

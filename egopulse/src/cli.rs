@@ -58,6 +58,7 @@ impl From<&GlobalOptions> for ConfigOverrides {
 }
 
 pub async fn run() -> Result<(), EgoPulseError> {
+    load_dotenv();
     let cli = Cli::parse();
     let config = AppConfig::load(ConfigOverrides::from(&cli.global))?;
     init_logging(config.log_level())?;
@@ -72,4 +73,9 @@ pub async fn run() -> Result<(), EgoPulseError> {
     }
 
     Ok(())
+}
+
+fn load_dotenv() {
+    let _ = dotenvy::from_filename(".env");
+    let _ = dotenvy::from_filename_override(".env.local");
 }
