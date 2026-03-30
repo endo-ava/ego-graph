@@ -34,6 +34,8 @@ export EGOPULSE_LOG_LEVEL="info"
 
 ### Dotenv
 
+サンプルは [`./.env.example`](./.env.example) をそのままコピーして使えます。
+
 ```bash
 cat > .env <<'EOF'
 EGOPULSE_MODEL=gpt-5-mini
