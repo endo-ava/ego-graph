@@ -92,6 +92,7 @@ egograph/backend/data/
 *.db-wal
 *.db-shm
 *.sqlite
+*.duckdb
 *.log
 logs/
 pip-log.txt
