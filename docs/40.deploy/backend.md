@@ -368,7 +368,6 @@ GitHub Actions から参照されなくなる。
 | `R2_ACCESS_KEY_ID` | `R2_ACCESS_KEY_ID` |
 | `R2_SECRET_ACCESS_KEY` | `R2_SECRET_ACCESS_KEY` |
 | `R2_BUCKET_NAME` | `R2_BUCKET_NAME` |
-| `R2_MASTER_PATH` | `R2_MASTER_PATH` |
 
 ## 7. 変更フロー（手動）
 
