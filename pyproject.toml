@@ -1,5 +1,5 @@
 [tool.uv.workspace]
-members = ["egograph/ingest", "egograph/backend"]
+members = ["egograph/backend", "egograph/pipelines"]
 
 [tool.ruff]
 line-length = 88
@@ -19,13 +19,16 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pytest.ini_options]
-testpaths = ["egograph/ingest/tests", "egograph/backend/tests"]
+testpaths = [
+    "egograph/backend/tests",
+    "egograph/pipelines/tests",
+]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --strict-markers --tb=short"
 markers = [
-    "integration: Integration tests (deselect with '-m \"not integration\"')",
+    "live: Live API tests (requires credentials, excluded from CI)",
 ]
 
 [dependency-groups]

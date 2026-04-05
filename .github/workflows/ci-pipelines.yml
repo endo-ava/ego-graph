@@ -1,0 +1,46 @@
+name: Test Pipelines
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'egograph/pipelines/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'egograph/pipelines/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-packages
+
+      - name: Run tests
+        run: |
+          uv run pytest egograph/pipelines/tests/unit \
+                        egograph/pipelines/tests/integration \
+                        egograph/pipelines/tests/e2e \
+                        -v --cov=pipelines --cov-report=xml --cov-report=term
+
+      # Future: Enable Codecov when needed (requires CODECOV_TOKEN in GitHub Secrets)
+      # - name: Upload coverage
+      #   uses: codecov/codecov-action@v4
+      #   if: always()
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     file: ./egograph/pipelines/coverage.xml
+      #     fail_ci_if_error: false
