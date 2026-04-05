@@ -3,9 +3,10 @@
 from unittest.mock import patch
 
 import pytest
+from egograph_paths import PARQUET_DATA_DIR
 from pydantic import SecretStr, ValidationError
 
-from backend.config import BackendConfig, LLMConfig
+from backend.config import BackendConfig, LLMConfig, R2Settings
 
 
 class TestLLMConfig:
@@ -203,6 +204,7 @@ class TestBackendConfig:
         # Assert: R2のみが設定されることを検証（LLMはデフォルト値で作成される）
         assert config.r2 is not None
         assert config.r2.bucket_name == "test-bucket"
+        assert config.r2.local_parquet_root == str(PARQUET_DATA_DIR)
         # LLMConfigは必須フィールドがないため常に作成される（APIキーはNone）
 
     def test_from_env_with_llm_and_r2(self, monkeypatch):
@@ -235,6 +237,19 @@ class TestBackendConfig:
         assert config.llm.openrouter_api_key.get_secret_value() == (
             "sk-or-test-openrouter"
         )
+
+
+class TestR2Settings:
+    """R2Settings のテスト。"""
+
+    def test_defaults_local_parquet_root_from_shared_paths(self, monkeypatch):
+        monkeypatch.setenv("R2_ENDPOINT_URL", "https://test.r2.cloudflarestorage.com")
+        monkeypatch.setenv("R2_ACCESS_KEY_ID", "test_key")
+        monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "test_secret")
+
+        settings = R2Settings()
+
+        assert settings.local_parquet_root == str(PARQUET_DATA_DIR)
 
     def test_validate_for_production_with_api_key_and_llm(self, mock_backend_config):
         """API KeyとLLMがあれば本番環境検証成功。"""

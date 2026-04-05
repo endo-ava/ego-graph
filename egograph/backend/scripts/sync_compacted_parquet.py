@@ -6,10 +6,10 @@ import os
 from pathlib import Path
 
 import boto3
-from botocore.exceptions import ClientError
-
 from backend.config import BackendConfig
 from backend.infrastructure.database.parquet_paths import COMPACTED_ROOT
+from botocore.exceptions import ClientError
+from egograph_paths import PARQUET_DATA_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ def main() -> None:
     if config.r2 is None:
         raise ValueError("R2 configuration is required")
 
-    local_root = Path(args.root or config.r2.local_parquet_root or "data/parquet")
+    local_root = Path(args.root or config.r2.local_parquet_root or PARQUET_DATA_DIR)
     local_root.mkdir(parents=True, exist_ok=True)
 
     s3 = boto3.client(

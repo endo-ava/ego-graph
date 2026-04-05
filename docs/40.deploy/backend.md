@@ -163,7 +163,6 @@ Type=simple
 WorkingDirectory=/opt/egograph/repo
 EnvironmentFile=/opt/egograph/repo/egograph/backend/.env
 Environment=USE_ENV_FILE=false
-Environment=LOCAL_PARQUET_ROOT=/opt/egograph/data/parquet
 ExecStart=/root/.local/bin/uv run uvicorn backend.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=10
@@ -197,8 +196,8 @@ sudo systemctl status egograph-backend
 
 ingest / compact / local mirror sync の定期実行と Browser History 受信 API は
 `pipelines` が担当する。
-backend は `LOCAL_PARQUET_ROOT` に local mirror がなければ R2 compacted parquet へ
-フォールバックして起動できるため、`egograph-pipelines.service` への hard dependency は
+backend は `repo` の兄弟 `data/parquet` に local mirror がなければ R2 compacted parquet
+へフォールバックして起動できるため、`egograph-pipelines.service` への hard dependency は
 設定しない。
 
 `/etc/systemd/system/egograph-pipelines.service`:
@@ -214,7 +213,6 @@ Type=simple
 WorkingDirectory=/opt/egograph/repo
 EnvironmentFile=/opt/egograph/repo/egograph/pipelines/.env
 Environment=USE_ENV_FILE=false
-Environment=LOCAL_PARQUET_ROOT=/opt/egograph/data/parquet
 ExecStart=/root/.local/bin/uv run python -m pipelines.main serve --host 127.0.0.1 --port 8001
 Restart=always
 RestartSec=10

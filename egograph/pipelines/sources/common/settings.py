@@ -5,6 +5,7 @@ import os
 from collections.abc import Callable
 from typing import TypeVar
 
+from egograph_paths import ANALYTICS_DUCKDB_PATH, PARQUET_DATA_DIR
 from pydantic import AliasChoices, Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -163,10 +164,7 @@ class R2Settings(_RuntimeBaseSettings):
     raw_path: str = "raw/"
     events_path: str = "events/"
     master_path: str = "master/"
-    local_parquet_root: str | None = Field(
-        "data/parquet",
-        alias="LOCAL_PARQUET_ROOT",
-    )
+    local_parquet_root: str | None = str(PARQUET_DATA_DIR)
 
     def to_config(self) -> R2Config:
         return R2Config(
@@ -184,7 +182,7 @@ class R2Settings(_RuntimeBaseSettings):
 class DuckDBSettings(_RuntimeBaseSettings):
     """DuckDB設定。"""
 
-    db_path: str = "data/analytics.duckdb"
+    db_path: str = str(ANALYTICS_DUCKDB_PATH)
 
     def to_config(self, r2_config: R2Config | None) -> DuckDBConfig:
         return DuckDBConfig(db_path=self.db_path, r2=r2_config)

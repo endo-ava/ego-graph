@@ -25,6 +25,7 @@ import sys
 from pathlib import Path
 
 import duckdb
+from egograph_paths import CHAT_SQLITE_PATH, LEGACY_CHAT_DUCKDB_PATH
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,9 +33,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# デフォルトパス（backend/data/ 配下）
-DEFAULT_DUCKDB_PATH = Path(__file__).parent.parent / "data" / "chat.duckdb"
-DEFAULT_SQLITE_PATH = Path(__file__).parent.parent / "data" / "chat.sqlite"
+# デフォルトパス（repo の兄弟 data/ 配下）
+DEFAULT_DUCKDB_PATH = LEGACY_CHAT_DUCKDB_PATH
+DEFAULT_SQLITE_PATH = CHAT_SQLITE_PATH
 
 BATCH_SIZE = 500
 
@@ -182,7 +183,10 @@ def migrate(
 
     # --- messages 移行 ---
     messages_result = duck_conn.execute(
-        "SELECT message_id, thread_id, user_id, role, content, created_at, model_name FROM messages"
+        """
+        SELECT message_id, thread_id, user_id, role, content, created_at, model_name
+        FROM messages
+        """
     ).fetchall()
 
     new_messages = 0
@@ -229,7 +233,11 @@ def migrate(
     # --- 検証 ---
     final_threads = sqlite_conn.execute("SELECT COUNT(*) FROM threads").fetchone()[0]
     final_messages = sqlite_conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
-    logger.info("Final SQLite records: threads=%d, messages=%d", final_threads, final_messages)
+    logger.info(
+        "Final SQLite records: threads=%d, messages=%d",
+        final_threads,
+        final_messages,
+    )
 
     sqlite_conn.close()
     duck_conn.close()

@@ -1,5 +1,6 @@
 """Pipelines source configuration models."""
 
+from egograph_paths import ANALYTICS_DUCKDB_PATH, PARQUET_DATA_DIR
 from pydantic import BaseModel, SecretStr, field_validator
 
 
@@ -80,13 +81,13 @@ class R2Config(BaseModel):
     raw_path: str = "raw/"
     events_path: str = "events/"
     master_path: str = "master/"
-    local_parquet_root: str | None = "data/parquet"
+    local_parquet_root: str | None = str(PARQUET_DATA_DIR)
 
 
 class DuckDBConfig(BaseModel):
     """DuckDB設定。"""
 
-    db_path: str = "data/analytics.duckdb"
+    db_path: str = str(ANALYTICS_DUCKDB_PATH)
     r2: R2Config | None = None
 
 
