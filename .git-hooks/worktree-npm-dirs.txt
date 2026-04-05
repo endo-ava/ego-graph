@@ -1,6 +1,0 @@
-# worktree 作成時に npm install を実行するディレクトリ一覧
-# - 空行と # から始まる行は無視されます
-# - パスはリポジトリルートからの相対パスで指定します
-
-# 現在は未使用のため、worktree 作成時には npm install を実行しない
-# legacy frontend は外部 repo へ移行済み: https://github.com/endo-ava/egograph-frontend-capacitor-legacy

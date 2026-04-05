@@ -104,17 +104,15 @@ run_npm_install_for_dir() {
 }
 
 readonly -a DEFAULT_COPY_FILES=(
-    ".env"
-    "backend/.env"
-    "frontend/.env"
-    "frontend-capacitor/.env"
-    "frontend/androidApp/google-services.json"
+    "egograph/backend/.env"
+    "egograph/pipelines/.env"
     "egopulse/egopulse.config.yaml"
+
+    "frontend/.env"
+    "frontend/androidApp/google-services.json"
 )
 
-readonly -a DEFAULT_NPM_DIRS=(
-    "frontend-capacitor"
-)
+readonly -a DEFAULT_NPM_DIRS=()
 
 mapfile -t COPY_FILES < <(load_path_list "$COPY_FILES_CONFIG" "${DEFAULT_COPY_FILES[@]}")
 mapfile -t NPM_DIRS < <(load_path_list "$NPM_DIRS_CONFIG" "${DEFAULT_NPM_DIRS[@]}")

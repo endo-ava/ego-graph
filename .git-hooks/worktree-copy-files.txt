@@ -1,9 +1,0 @@
-# worktree 作成時にメインリポジトリからコピーするファイル一覧
-# - 空行と # から始まる行は無視されます
-# - パスはリポジトリルートからの相対パスで指定します
-
-.env
-egograph/backend/.env
-frontend/.env
-frontend/androidApp/google-services.json
-egopulse/egopulse.config.yaml
