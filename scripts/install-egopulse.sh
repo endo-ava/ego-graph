@@ -5,6 +5,7 @@ REPO="endo-ava/ego-graph"
 BIN_NAME="egopulse"
 API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 SKIP_RUN="${EGOPULSE_INSTALL_SKIP_RUN:-0}"
+RUN_SETUP="${EGOPULSE_INSTALL_RUN_SETUP:-0}"
 
 log() {
   printf '%s\n' "$*"
@@ -20,13 +21,15 @@ need_cmd() {
 
 print_help() {
   cat <<'EOF'
-Usage: install-egopulse.sh [--skip-run]
+Usage: install-egopulse.sh [--skip-run] [--setup]
 
 Options:
   --skip-run   Do not auto-run egopulse after install.
+  --setup      Run egopulse setup wizard after install.
 
 Environment variables:
   EGOPULSE_INSTALL_SKIP_RUN   Set to "1" as an alternative to --skip-run.
+  EGOPULSE_INSTALL_RUN_SETUP  Set to "1" as an alternative to --setup.
 EOF
 }
 
@@ -35,6 +38,9 @@ parse_args() {
     case "$1" in
       --skip-run)
         SKIP_RUN=1
+        ;;
+      --setup)
+        RUN_SETUP=1
         ;;
       -h|--help)
         print_help
@@ -246,6 +252,25 @@ main() {
     fi
     log "Then run: ${install_dir}/${BIN_NAME}"
   fi
+
+  log ""
+  log "Next steps:"
+  log "  1. Run '${BIN_NAME} setup' to create your configuration"
+  log "  2. Run '${BIN_NAME} start' to launch channel adapters"
+  log "  3. Or run '${BIN_NAME}' to open the TUI"
+
+  run_setup_normalized="$(printf '%s' "$RUN_SETUP" | tr '[:upper:]' '[:lower:]')"
+  case "$run_setup_normalized" in
+    1|true|yes)
+      if need_cmd "${BIN_NAME}"; then
+        log ""
+        log "Running: ${BIN_NAME} setup"
+        "${BIN_NAME}" setup
+      else
+        err "Cannot run setup: '${BIN_NAME}' not found in PATH"
+      fi
+      ;;
+  esac
 }
 
 main "$@"
