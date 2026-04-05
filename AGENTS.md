@@ -88,6 +88,17 @@ cd frontend # PJルートからはgradlewは使えないことに注意
 # === E2E Test (Maestro) ===
 maestro test frontend/maestro/flows/           # 全テスト一括実行
 
+# === EgoPulse (cd egopulse) ===
+cd egopulse
+cargo fmt --check                              # フォーマットチェック
+cargo check -p egopulse                        # コンパイルチェック
+cargo clippy --all-targets --all-features -- -D warnings  # Lint
+cargo test -p egopulse                         # テスト
+cargo run -p egopulse                          # TUI起動
+cargo run -p egopulse -- ask "hello"           # 単発プロンプト
+cargo run -p egopulse -- start                 # 全チャネル起動
+cargo run -p egopulse -- setup                 # セットアップウィザード
+
 # === Coderabbit review ===
 coderabbit --prompt-only -t uncommitted              # Commit前
 coderabbit --prompt-only -t committed --base main    # PR作成前
