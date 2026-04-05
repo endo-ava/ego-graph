@@ -5,12 +5,13 @@
 
 import logging
 import sqlite3
-from pathlib import Path
+
+from egograph_paths import CHAT_SQLITE_PATH
 
 logger = logging.getLogger(__name__)
 
-# チャット履歴DBのパス（backend/data/chat.sqlite）
-DB_PATH = Path(__file__).parent.parent.parent / "data" / "chat.sqlite"
+# チャット履歴DBのパス（repo の兄弟 data/backend/chat.sqlite）
+DB_PATH = CHAT_SQLITE_PATH
 
 
 class ChatSQLiteConnection:
@@ -49,7 +50,8 @@ class ChatSQLiteConnection:
         logger.debug("Opening chat database at path: %s", DB_PATH)
 
         # ローカルファイルベースの接続を作成
-        # check_same_thread=False: FastAPIの非同期処理で複数スレッドからアクセス可能にする
+        # check_same_thread=False:
+        # FastAPIの非同期処理で複数スレッドからアクセス可能にする
         self.conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
 

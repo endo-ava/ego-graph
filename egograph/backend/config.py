@@ -6,6 +6,7 @@ LLM APIとバックエンドサーバー固有の設定を追加します。
 import logging
 import os
 
+from egograph_paths import PARQUET_DATA_DIR
 from pydantic import BaseModel, Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -24,7 +25,7 @@ class R2Config(BaseModel):
     raw_path: str = "raw/"
     events_path: str = "events/"
     master_path: str = "master/"
-    local_parquet_root: str | None = None
+    local_parquet_root: str | None = str(PARQUET_DATA_DIR)
 
 
 PROVIDERS_CONFIG = {
@@ -204,7 +205,7 @@ class R2Settings(BaseSettings):
     raw_path: str = Field("raw/", alias="R2_RAW_PATH")
     events_path: str = Field("events/", alias="R2_EVENTS_PATH")
     master_path: str = Field("master/", alias="R2_MASTER_PATH")
-    local_parquet_root: str | None = Field(None, alias="LOCAL_PARQUET_ROOT")
+    local_parquet_root: str | None = str(PARQUET_DATA_DIR)
 
     def to_config(self) -> R2Config:
         return R2Config(

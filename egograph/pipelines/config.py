@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 
+from egograph_paths import PIPELINES_LOGS_DIR, PIPELINES_STATE_DB_PATH
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -20,8 +21,8 @@ class PipelinesConfig(BaseSettings):
         extra="ignore",
     )
 
-    database_path: Path = Path("data/pipelines/state.sqlite3")
-    logs_root: Path = Path("data/pipelines/logs")
+    database_path: Path = PIPELINES_STATE_DB_PATH
+    logs_root: Path = PIPELINES_LOGS_DIR
     host: str = "127.0.0.1"
     port: int = 8001
     api_key: SecretStr | None = None

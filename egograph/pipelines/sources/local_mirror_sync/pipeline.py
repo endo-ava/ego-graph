@@ -8,6 +8,7 @@ from pathlib import Path
 
 import boto3
 from botocore.exceptions import ClientError
+from egograph_paths import PARQUET_DATA_DIR
 
 from pipelines.sources.common.compaction import COMPACTED_ROOT
 from pipelines.sources.common.config import Config, R2Config
@@ -56,7 +57,7 @@ def run_local_mirror_sync(
 ) -> LocalMirrorSyncResult:
     """compacted parquet を R2 から local mirror へ同期する。"""
     resolved_r2 = _resolve_r2_config(config, r2_config)
-    root = Path(local_root or resolved_r2.local_parquet_root or "data/parquet")
+    root = Path(local_root or resolved_r2.local_parquet_root or PARQUET_DATA_DIR)
     root.mkdir(parents=True, exist_ok=True)
 
     s3 = boto3.client(

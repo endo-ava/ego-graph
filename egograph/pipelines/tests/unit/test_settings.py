@@ -1,9 +1,11 @@
 import os
 from unittest.mock import patch
 
+from egograph_paths import ANALYTICS_DUCKDB_PATH, PARQUET_DATA_DIR
 from pipelines.sources.common.settings import (
     GitHubWorklogSettings,
     PipelinesSettings,
+    R2Settings,
 )
 
 
@@ -45,3 +47,23 @@ def test_github_worklog_settings_accepts_github_token_fallback():
         settings = GitHubWorklogSettings()
 
     assert settings.token.get_secret_value() == "legacy-token"
+
+
+def test_r2_settings_defaults_local_parquet_root_from_shared_paths():
+    env = {
+        "R2_ENDPOINT_URL": "https://test.r2.cloudflarestorage.com",
+        "R2_ACCESS_KEY_ID": "test-key",
+        "R2_SECRET_ACCESS_KEY": "test-secret",
+    }
+    with patch.dict(os.environ, env, clear=True):
+        settings = R2Settings()
+
+    assert settings.local_parquet_root == str(PARQUET_DATA_DIR)
+
+
+def test_pipelines_settings_defaults_duckdb_path_from_shared_paths():
+    with patch.dict(os.environ, {}, clear=True):
+        config = PipelinesSettings.load()
+
+    assert config.duckdb is not None
+    assert config.duckdb.db_path == str(ANALYTICS_DUCKDB_PATH)
