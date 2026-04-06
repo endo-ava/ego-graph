@@ -52,10 +52,10 @@ uv run python -m egograph.backend.main
 # バイナリインストール(推奨)
 curl -fsSL https://raw.githubusercontent.com/endo-ava/ego-graph/main/scripts/install-egopulse.sh | bash
 egopulse setup                     # 初回セットアップウィザード
-egopulse start                     # 全チャネル起動（Web / Discord / Telegram）
+egopulse run                      # 全チャネル起動（Web / Discord / Telegram）
 
 # またはソースから起動
-cargo run -p egopulse -- start     # 全チャネル起動（Web / Discord / Telegram）
+cargo run -p egopulse -- run         # 全チャネル起動（Web / Discord / Telegram）
 ```
 
 OpenAI 互換エンドポイント（OpenRouter, Ollama 等）に対応。詳細は [egopulse/README.md](./egopulse/README.md) を参照。

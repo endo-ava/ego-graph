@@ -385,9 +385,9 @@ FCM Service (onMessageReceived)
 | `egopulse setup` | 対話型セットアップウィザード（Ratatui TUI） |
 | `egopulse ask "prompt"` | 単発クエリ |
 | `egopulse chat` | CLIチャット |
-| `egopulse start` | 全有効チャネル起動 |
+| `egopulse run` | 全有効チャネル起動 |
 | `egopulse gateway install` | systemdサービス登録 |
-| `egopulse gateway status/restart/uninstall` | systemd管理 |
+| `egopulse gateway start/stop/status/restart/uninstall` | systemd管理 |
 | `egopulse update` | GitHub Releasesから自己更新 |
 
 #### チャネル

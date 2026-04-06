@@ -96,7 +96,7 @@ cargo clippy --all-targets --all-features -- -D warnings  # Lint
 cargo test -p egopulse                         # テスト
 cargo run -p egopulse                          # TUI起動
 cargo run -p egopulse -- ask "hello"           # 単発プロンプト
-cargo run -p egopulse -- start                 # 全チャネル起動
+cargo run -p egopulse -- run                   # 全チャネル起動
 cargo run -p egopulse -- setup                 # セットアップウィザード
 
 # === Coderabbit review ===
