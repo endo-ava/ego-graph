@@ -189,7 +189,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 # バイナリパスと設定ファイルパスは環境に合わせて変更してください
-ExecStart=/usr/local/bin/egopulse --config %h/.egopulse/egopulse.config.yaml start
+ExecStart=/usr/local/bin/egopulse --config "%h/.egopulse/egopulse.config.yaml" start
 Restart=always
 RestartSec=10
 User=root
