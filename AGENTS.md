@@ -4,7 +4,7 @@
 
 Personal AI Agent and Personal Data Warehouse and Personal Mobile App（サーバーレス・ローカルファースト）
 
-構成: Python (uv workspace) + Kotlin Multiplatform / Compose Multiplatform
+構成: Python (uv workspace) + Rust (Cargo) + Kotlin Multiplatform / Compose Multiplatform
 
 ## アーキテクチャ
 
@@ -50,6 +50,19 @@ MVVM (StateFlow + Channel) - Kotlin Multiplatform + Compose Multiplatform
 - State Management: StateFlow + Channel (Kotlin Coroutines)
 - Tech Stack: Kotlin 2.2.21, Compose Multiplatform 1.9.0, Ktor 3.3.3, Voyager 1.1.0-beta03, Kermit
 - Testing: kotlin-test, Turbine, MockK, Ktor MockEngine
+
+### egopulse (Personal Agent Runtime)
+
+シングルバイナリの常駐 AI エージェントランタイム。TUI / Web UI / Discord / Telegram の各チャネルから同じ会話基盤と永続セッションを共有する。
+
+- `main.rs`: CLI エントリーポイント。`run`, `setup`, `gateway`, `ask`, `chat` などの入口
+- `runtime.rs`: `AppState` 構築とチャネル起動 supervision
+- `agent_loop/`: 会話 1 ターン処理、session 解決、履歴ロード、永続化
+- `channels/`: CLI / TUI / Discord / Telegram のチャネル実装
+- `web.rs`, `web/`: Web UI, SSE, WebSocket, config/session API
+- `storage.rs`: SQLite ベースの会話履歴・session・tool call 永続化
+- `llm.rs`: OpenAI 互換 LLM provider 呼び出し
+- Tech Stack: Rust, Tokio, Ratatui, Axum, Rusqlite, Serenity, Teloxide
 
 ## 開発コマンド
 
