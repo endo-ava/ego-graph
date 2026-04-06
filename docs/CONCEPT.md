@@ -1,66 +1,91 @@
-# プロジェクト概要
+# EgoGraph — 設計思想と背景
 
-## 1. EgoGraphとは
-
-**EgoGraph**は、個人のあらゆるデジタル活動ログ（ライフログ）を統合し、プライバシーを最優先にした「デジタル分身」を構築するプロジェクトです。
-音楽再生履歴、購買記録、Web閲覧履歴、日記など、散在する個人のデジタルフットプリントを一箇所に集約し、AIエージェントを通じて過去の自分と対話・分析できる基盤を提供します。
+> 「自分のデータは自分で所有し、自分のために使う」
 
 ---
 
-## 2. プロジェクトの目的
-
-### 2.1 ビジョン
+## Vision
 
 **「自分自身のデジタル分身を構築し、過去の自分と対話・分析できる未来を創る」**
 
-私たちは、自分のデータは自分で所有し、コントロールすべきだと考えます。
-クラウドサービスに分散したデータを手元に取り戻し、AIの力を使って「自分を知る」ためのツールを作ります。
-
-### 2.2 解決する課題
-
-| 課題             | EgoGraphによる解決                                                       |
-| ---------------- | ------------------------------------------------------------------------ |
-| **データの散在** | Spotify, Amazon, 銀行などのデータを単一のデータウェアハウスに統合        |
-| **検索の限界**   | 「回数」「合計」などの正確な事実検索と、あいまいな意味検索の両立         |
-| **プライバシー** | データを外部サーバーではなく、ユーザー自身の管理下（R2/ローカル）で運用  |
-| **コンテキスト** | 単なるログの羅列ではなく、AIによる「要約」を生成して文脈を保存           |
+散在するデータを統合し、AIがその文脈を理解し、いつでもどこからでも自分の過去と未来について対話できる世界。データをエクスポートして死蔵するのではなく、常に生きた状態で、自分のために使える状態にしておく。
 
 ---
 
-## 3. 基本方針 (Design Philosophy)
+## Problem Statement
 
-### 3.1 "My Data" First Architecture
+個人のデジタルデータは、Spotify、GitHub、ブラウザ、YouTubeなど数多くのサービスに分散している。これらのデータは各サービスの閉じた世界にあり、横断して振り返ることはできない。「去年の夏によく聴いていた曲は？」「あの技術記事をいつ読んだっけ？」——こうした問いに答えるには、サービスを一つずつ開いて探すしかない。
 
-インフラコストや外部サービスの制約に縛られないよう、**サーバーレスかつローカルファースト**なアーキテクチャを採用します。
-事実データ（ログ）は **Parquetファイル** として Cloudflare R2 に管理され、ポータビリティを確保します。
+汎用的なAIチャットボットに聞いても、自分のデータにはアクセスできないため答えられない。AIは賢いが、私のことを何も知らない。
 
-### 3.2 Hybrid Intelligence (Facts + Meaning)
-
-「正確な事実」と「あいまいな意味」の両方を扱えるよう、適材適所のエンジンを組み合わせます。
-
-| エンジン     | 役割               | 技術       | 例                                   |
-| ------------ | ------------------ | ---------- | ------------------------------------ |
-| **Analytics** | 事実の集計・台帳管理 | DuckDB     | 「去年一番聴いたアルバムは？」       |
-| **Semantic**  | 意味の検索         | Qdrant     | 「悲しい時に聴いた曲は？」           |
-
-これらを **Agent** が統合してユーザーに届けます。
+EgoGraphは、この2つの課題——**データの散在**と**AIのコンテキスト不足**——を同時に解決する。
 
 ---
 
-## 4. システム構成
+## Architecture
 
-### 4.1 モノレポ構成
+EgoGraphは「データ基盤」と「エージェントランタイム」の2つの問題領域を、独立したコンポーネントとして扱う。それぞれ単独でも価値を提供するが、組み合わせることで「自分のデータに基づいたAI」が実現する。
 
-Python (uv workspace) + Kotlin Multiplatform のモノレポ構成です。
+### Data Foundation — EgoGraph (Personal Data Warehouse)
 
-```text
-ego-graph/
-├── ingest/                # データ収集ワーカー（uv workspace メンバー）
-├── backend/               # Agent API（uv workspace メンバー）
-├── frontend/              # KMP Android アプリ（Gradle）
-├── docs/                  # プロジェクトドキュメント
-├── maestro/               # E2E テスト（Maestro）
-├── .github/workflows/     # CI/CD ワークフロー
-├── pyproject.toml         # Python workspace 設定
-└── uv.lock                # Python 依存関係ロック
+各種サービスからデータを定期収集し、一元管理するデータウェアハウス。
+
+**Parquetという選択**がこのプロジェクトの特徴だ。収集したデータをParquet形式で保存する。Parquetは列指向のオープンなフォーマットで、DuckDBなどの分析エンジンから直接クエリできる。データベースサーバーを立てる必要がない。ファイルとして存在し、いつでもコピー・移動・削除ができる。Cloudflare R2（S3互換）に置いておけば、どこからでもHTTPで読み出せる。DuckDBの `httpfs` 拡張を使えば、R2上のParquetを直接SQLで叩ける。サーバーレスで、インフラコストほぼゼロで、分析用データ基盤が完成する。
+
+一度Parquetに落ちたデータは、もとのサービスが終了しても残る。エクスポートして死蔵するのではなく、いつでも問い合わせ可能な状態で手元に置いておく。
+
+### Agent Runtime — EgoPulse
+
+EgoPulseは、OpenClawにインスパイアされた**Rust製のセルフホストAIエージェントランタイム**だ。
+
+OpenClawは「Any OS gateway for AI agents」を掲げ、Discord / Telegram / WhatsApp / Slack などのチャットアプリを単一のGatewayで束ね、どこからでもAIエージェントにアクセスできるようにする。EgoPulseはこの思想をRustで実装し、TUI / Web UI / Discord / Telegram を単一バイナリで提供する。
+
+**なぜRustか。** Python（EgoGraph）とRust（EgoPulse）を混在させるのは複雑だが、意図的だ。AIエージェントランタイムは長時間稼働し、並行して複数チャネルを処理する。この用途には、Tokioの非同期ランタイムとRustのメモリ安全性が適している。単一バイナリで配布でき、Node.jsのランタイムも不要。`egopulse setup` で対話型セットアップ、`egopulse run` で全チャネル起動、`egopulse gateway install` でsystemdに登録。個人サーバーに置いておけば、24時間365日、いつでもどこからでも自分のAIエージェントに話しかけられる。
+
+---
+
+## Design Principles
+
+### My Data First
+
+データは自分で所有し、自分でコントロールする。外部サーバーに預けてAPIで借り受けるのではなく、自分の管理下（R2またはローカル）に置く。Parquetというポータブルなフォーマットを選ぶのは、特定のプラットフォームにロックインされないためだ。
+
+### Serverless & Local-First
+
+データベースサーバーを立てない。分析はDuckDBのインメモリモードで、リクエスト毎にR2から直接Parquetを読み込む。状態管理はSQLiteで十分。インフラコストを最小に抑え、個人で持続可能な運用を目指す。
+
+### Loose Coupling
+
+EgoGraph（Pipelines、Backend）とEgoPulseとFrontendは、それぞれ独立して動作する。EgoPulseがなくてもEgoGraphはデータを収集・分析できる。EgoGraphがなくてもEgoPulseはAIエージェントとして動く。Frontendはその両方にアクセスするUI。ゆるい結合で、必要なところだけを使える。
+
+---
+
+## Roadmap
+
+### 現在
+
+- EgoGraph: Pipelines + Backend + Agent API 運用中
+- EgoPulse: TUI / Web UI / Discord / Telegram 対応済み
+- Frontend: Android チャットUI 実装済み
+
+### 今後
+
+- **MCP 統合**: EgoGraphのデータアクセスツールをMCPサーバーとして公開し、EgoPulseからTool Useで自由に呼び出せるようにする。これにより、どこからでも自分のデータに基づいたAIとの対話が可能になる
+- **データ可視化**: 個人データのグラフ・チャート表示（Frontend）
+- **ベクトル検索**: Qdrantによる意味的検索の追加
+
+---
+
+## Repository Structure
+
 ```
+ego-graph/
+├── egograph/           # Data Foundation (Python / uv workspace)
+│   ├── pipelines/      #   常駐ETLサービス — データ収集・変換・保存
+│   └── backend/        #   Agent API — LLMツール呼び出し + REST API
+├── egopulse/           # Agent Runtime (Rust)
+├── frontend/           # Mobile App (Kotlin Multiplatform)
+└── browser-extension/  # ブラウザ履歴収集 (Chromium)
+```
+
+Pythonでデータ処理を、Rustでエージェントランタイムを、KotlinでモバイルUIを。各領域に最適な技術を選び、モノレポで一括管理する。
