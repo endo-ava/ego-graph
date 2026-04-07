@@ -5,6 +5,7 @@ from pipelines.domain.workflow import (
     StepRunStatus,
     TriggerType,
     WorkflowDefinition,
+    WorkflowRun,
     WorkflowRunStatus,
 )
 from pipelines.infrastructure.db.connection import connect
@@ -236,3 +237,63 @@ def test_dispatch_once_marks_inprocess_step_failed_on_timeout(tmp_path):
     assert steps[0].status == StepRunStatus.FAILED
     assert steps[0].exit_code is None
     assert "TimeoutError: step timed out after 1s" in (steps[0].stderr_tail or "")
+
+
+def test_invoke_does_not_pass_workflow_run_to_non_workflow_run_params():
+    """第一引数が WorkflowRun 型でない関数には WorkflowRun を渡さない。
+
+    回帰テスト: _invoke が WorkflowRun を pipeline 関数の config 引数に渡し、
+    AttributeError: 'WorkflowRun' object has no attribute 'spotify' で
+    クラッシュしていた問題を防止する。
+    """
+    from pipelines.infrastructure.execution.inprocess_executor import (
+        InProcessStepExecutor,
+    )
+
+    class FakeConfig:
+        spotify = "loaded"
+
+    def pipeline_like_function(config=None):
+        resolved = config or FakeConfig()
+        return resolved.spotify
+
+    run = _make_minimal_run()
+    result = InProcessStepExecutor._invoke(pipeline_like_function, run)
+    assert result == "loaded"
+
+
+def test_invoke_passes_workflow_run_when_annotated():
+    """第一引数が WorkflowRun 型の関数には WorkflowRun を渡す。"""
+    from pipelines.infrastructure.execution.inprocess_executor import (
+        InProcessStepExecutor,
+    )
+
+    received = {}
+
+    def takes_workflow_run(run: WorkflowRun):
+        received["run_id"] = run.run_id
+
+    run = _make_minimal_run()
+    InProcessStepExecutor._invoke(takes_workflow_run, run)
+    assert received["run_id"] == run.run_id
+
+
+def _make_minimal_run() -> WorkflowRun:
+    """テスト用 WorkflowRun。"""
+    from datetime import datetime, timezone
+
+    return WorkflowRun(
+        run_id="test-run-id",
+        workflow_id="test_workflow",
+        trigger_type=TriggerType.MANUAL,
+        queued_reason=QueuedReason.MANUAL_REQUEST,
+        status=WorkflowRunStatus.RUNNING,
+        scheduled_at=None,
+        queued_at=datetime.now(timezone.utc),
+        started_at=datetime.now(timezone.utc),
+        finished_at=None,
+        last_error_message=None,
+        requested_by="test",
+        parent_run_id=None,
+        result_summary=None,
+    )

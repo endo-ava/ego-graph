@@ -1,7 +1,5 @@
 """In-process step execution."""
 
-from __future__ import annotations
-
 import importlib
 import inspect
 import io
@@ -102,10 +100,14 @@ class InProcessStepExecutor:
 
     @staticmethod
     def _invoke(target: Callable[..., Any], run: WorkflowRun) -> Any:
-        signature = inspect.signature(target)
-        if len(signature.parameters) == 0:
+        sig = inspect.signature(target)
+        if not sig.parameters:
             return target()
-        return target(run)
+        first_param = next(iter(sig.parameters.values()))
+        ann = first_param.annotation
+        if ann is WorkflowRun or (isinstance(ann, str) and "WorkflowRun" in ann):
+            return target(run)
+        return target()
 
 
 def _execute_callable_in_child(
@@ -133,8 +135,7 @@ def _execute_callable_in_child(
             {
                 "ok": False,
                 "stdout": stdout_buffer.getvalue(),
-                "stderr": stderr_buffer.getvalue()
-                + f"\n{type(exc).__name__}: {exc}",
+                "stderr": stderr_buffer.getvalue() + f"\n{type(exc).__name__}: {exc}",
                 "result_summary": None,
                 "error_message": str(exc),
             }
