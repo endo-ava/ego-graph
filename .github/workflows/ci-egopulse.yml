@@ -44,5 +44,10 @@ jobs:
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fd-find ripgrep
+
       - name: Run tests
         run: cargo test
