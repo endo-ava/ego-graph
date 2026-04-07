@@ -19,7 +19,7 @@
 - path 解決は workspace 配下に制限される
 - tool 実行結果は turn loop で `{"tool":"...","status":"success|error","result":"...","details":{...}}` の JSON に包まれて LLM に返る
 - `details` は tool によって `truncation`、`diff`、`firstChangedLine`、`fullOutputPath` などを含む
-- 現在の LLM message transport は text-only なので、画像は「画像として検出して説明を返す」ところまで対応している。モデルへ実画像そのものはまだ渡していない
+- マルチモーダル画像対応: `read` tool で画像ファイルを検出した場合、base64 data URL として LLM に直接渡す。マルチモーダルメッセージが含まれる場合は OpenAI Responses API (`/responses`) に自動ルーティングされる（Chat Completions API はマルチモーダル tool result に非対応のため）。セッション永続化時は画像を SHA256 ハッシュで内容重複排除し、参照形式 (`input_image_ref`) で保存する
 
 ## Tool Registry
 
@@ -46,8 +46,8 @@
 - 挙動:
   - workspace 配下の path のみ読める
   - テキストに加えて `png` / `jpg` / `jpeg` / `gif` / `webp` を画像として判定する
-  - 画像ファイルは現状 `Read image file [image/...]\n[Image omitted: inline image output is not supported by egopulse yet.]` を返す
-  - 実画像バイナリや base64 image payload を LLM に渡すところまではまだ未対応
+  - 画像ファイルは base64 data URL にエンコードし、`MessageContent::Parts` (InputText + InputImage) として LLM に渡す
+  - マルチモーダル tool result を含むメッセージ履歴は OpenAI Responses API に自動ルーティングされる
   - テキスト出力は最大 `2000` 行または `50KB`
   - 続きがある場合は `offset=...` の continuation hint を返す
   - 先頭 1 行だけで `50KB` を超える場合は `bash` fallback を促す
@@ -264,6 +264,6 @@
 
 ## 現在残っている主な非互換
 
-- `read` は画像ファイルを検出できるが、`pi` のように画像そのものを LLM に添付して読ませることはまだできない
-- 原因は `egopulse` の会話ループと LLM transport が text-only だから
-- 本物の画像対応は別 Plan で扱う
+- `read` は画像ファイルを検出して LLM に渡すところまで対応済み（Responses API 経由）
+- セッション永続化でも画像を SHA256 参照形式で保存・復元できる
+- 未対応: ストリーミングでのマルチモーダル tool result（tools 使用時はストリーミングを無効化して通常 API にフォールバックしている）
