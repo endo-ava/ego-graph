@@ -58,7 +58,7 @@
 
 ## 1. MicroClaw Built-in Tools
 
-ここから下は `microclaw` の built-in tool 一覧。`/root/workspace/microclaw/src/tools/` の実装を読んで整理している。
+ここから下は `microclaw` の built-in tool 一覧。`microclaw/src/tools/` の実装を読んで整理している。
 
 ### 1.1 Workspace / File Editing
 

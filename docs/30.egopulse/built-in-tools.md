@@ -13,11 +13,13 @@
 
 ## 前提
 
-- 実装本体: [tools.rs](/root/workspace/ego-graph-issue106/egopulse/src/tools.rs)
+- 実装本体: [egopulse/src/tools.rs](../../egopulse/src/tools.rs)
 - workspace ルート: `~/.egopulse/workspace`
 - skills ルート: `~/.egopulse/workspace/skills`
 - path 解決は workspace 配下に制限される
-- tool 実行結果は turn loop で `{"tool":"...","status":"success|error","result":"..."}` の JSON に包まれて LLM に返る
+- tool 実行結果は turn loop で `{"tool":"...","status":"success|error","result":"...","details":{...}}` の JSON に包まれて LLM に返る
+- `details` は tool によって `truncation`、`diff`、`firstChangedLine`、`fullOutputPath` などを含む
+- 現在の LLM message transport は text-only なので、画像は「画像として検出して説明を返す」ところまで対応している。モデルへ実画像そのものはまだ渡していない
 
 ## Tool Registry
 
@@ -32,7 +34,7 @@
 - `ls`
 - `activate_skill`
 
-登録箇所: [tools.rs](/root/workspace/ego-graph-issue106/egopulse/src/tools.rs:64)
+登録箇所: [egopulse/src/tools.rs](../../egopulse/src/tools.rs)
 
 ## `read`
 
@@ -43,16 +45,21 @@
   - `limit: integer` 任意。最大行数
 - 挙動:
   - workspace 配下の path のみ読める
-  - UTF-8 テキストのみ対応
-  - 出力は最大 `2000` 行または `50KB`
+  - テキストに加えて `png` / `jpg` / `jpeg` / `gif` / `webp` を画像として判定する
+  - 画像ファイルは現状 `Read image file [image/...]\n[Image omitted: inline image output is not supported by egopulse yet.]` を返す
+  - 実画像バイナリや base64 image payload を LLM に渡すところまではまだ未対応
+  - テキスト出力は最大 `2000` 行または `50KB`
   - 続きがある場合は `offset=...` の continuation hint を返す
+  - 先頭 1 行だけで `50KB` を超える場合は `bash` fallback を促す
+- `details`:
+  - `truncation`
 - 主な失敗:
   - `Missing required parameter: path`
   - `File not found: ...`
   - `Offset ... is beyond end of file`
-  - `Only UTF-8 text files are supported by read in egopulse right now.`
+  - `Failed to read file: file is not valid UTF-8 text or a supported image.`
 
-実装: [tools.rs](/root/workspace/ego-graph-issue106/egopulse/src/tools.rs:219)
+実装: [egopulse/src/tools.rs](../../egopulse/src/tools.rs)
 
 ## `write`
 
@@ -65,14 +72,14 @@
   - 親ディレクトリは自動作成
   - 既存ファイルは上書き
 - 成功時:
-  - `Successfully wrote <path>`
+  - `Successfully wrote <bytes> bytes to <path>`
 - 主な失敗:
   - `Missing required parameter: path`
   - `Missing required parameter: content`
   - `Failed to create directories: ...`
   - `Failed to write file: ...`
 
-実装: [tools.rs](/root/workspace/ego-graph-issue106/egopulse/src/tools.rs:361)
+実装: [egopulse/src/tools.rs](../../egopulse/src/tools.rs)
 
 ## `edit`
 
@@ -80,6 +87,7 @@
 - 入力:
   - `path: string` 必須
   - `edits: array` 必須
+  - legacy 互換として top-level `oldText` / `newText` も受け取り、内部で `edits[]` に畳み込む
   - 各 edit は:
     - `oldText: string`
     - `newText: string`
@@ -87,20 +95,26 @@
   - すべて original file に対してマッチする
   - `oldText` は各 edit ごとに 1 回だけ一致する必要がある
   - overlapping edit は拒否
-  - BOM と CRLF を保存する
+  - BOM と元の改行コードを保存する
+  - exact match で見つからない場合は、末尾空白や smart quotes/dashes/special spaces をある程度正規化した fuzzy match を試みる
+- `details`:
+  - `diff`
+  - `firstChangedLine`
 - 成功時:
-  - `Successfully replaced N block(s) in <path>.`
+  - `Successfully edited <path> with <N> replacement(s).`
 - 主な失敗:
   - `Missing required parameter: path`
   - `Edit tool input is invalid. edits must contain at least one replacement.`
   - `Each edit must include oldText`
   - `Each edit must include newText`
   - `File not found: ...`
-  - `oldText not found in file. Make sure it matches exactly.`
-  - `oldText found N times in file. It must be unique.`
-  - `Edit ranges overlap. Merge nearby changes into one edit instead.`
+  - `oldText must not be empty in <path>.`
+  - `Could not find the exact text in <path>. The old text must match exactly including all whitespace and newlines.`
+  - `Found N occurrences of the text in <path>. The text must be unique. Please provide more context to make it unique.`
+  - `edits[i] and edits[j] overlap in <path>. Merge them into one edit or target disjoint regions.`
+  - `No changes made to <path>. ...`
 
-実装: [tools.rs](/root/workspace/ego-graph-issue106/egopulse/src/tools.rs:433)
+実装: [egopulse/src/tools.rs](../../egopulse/src/tools.rs)
 
 ## `bash`
 
@@ -109,10 +123,15 @@
   - `command: string` 必須
   - `timeout: integer` 任意。秒
 - 挙動:
-  - `bash -lc <command>` で実行
-  - stdout / stderr を結合して返す
-  - 出力は末尾側を最大 `2000` 行または `50KB` に truncation
-  - 終了コードが非 0 の場合は error 扱い
+  - workspace を cwd にして `bash -lc` で実行する
+  - stdout / stderr は 1 つのログに結合する
+  - 出力は末尾側を最大 `2000` 行または `50KB` に tail truncation する
+  - truncation が発生した場合は full output を temp file に保存する
+  - 最後の 1 行だけで byte limit を超える場合は、その行の末尾だけを返す special case がある
+- `details`:
+  - `truncation`
+  - `fullOutputPath`
+- 終了コードが非 0 の場合は error 扱い
 - 成功時:
   - command output
   - output が空なら `(no output)`
@@ -122,7 +141,7 @@
   - `Command timed out after N seconds`
   - `Command exited with code N`
 
-実装: [tools.rs](/root/workspace/ego-graph-issue106/egopulse/src/tools.rs:549)
+実装: [egopulse/src/tools.rs](../../egopulse/src/tools.rs)
 
 ## `grep`
 
@@ -138,16 +157,23 @@
 - 挙動:
   - `rg` を使用
   - workspace 配下の path のみ検索
+  - `limit` は最低でも `1`
   - 1 行は最大 `500` 文字に短縮
-  - 結果全体は `50KB` で truncation
-  - マッチ 0 件は success 扱いで `No matches found.`
+  - 結果全体は head 側を `50KB` で truncation
+  - マッチ 0 件は success 扱いで `No matches found`
+  - result limit や line truncation が起きた場合は notice を追記する
+- `details`:
+  - `truncation`
+  - `matchLimitReached`
+  - `linesTruncated`
 - 主な失敗:
   - `Missing required parameter: pattern`
   - `Path not found: ...`
-  - `ripgrep (rg) is not available. Install rg to use grep.`
-  - `Search failed: ...`
+  - `ripgrep (rg) is not available and could not be downloaded`
+  - `Failed to run ripgrep: ...`
+  - `ripgrep exited with code N`
 
-実装: [tools.rs](/root/workspace/ego-graph-issue106/egopulse/src/tools.rs:644)
+実装: [egopulse/src/tools.rs](../../egopulse/src/tools.rs)
 
 ## `find`
 
@@ -159,15 +185,22 @@
 - 挙動:
   - `fd` を使用
   - workspace 配下の path のみ検索
+  - 検索ルート配下の nested `.gitignore` も `--ignore-file` で明示的に渡す
+  - 結果パスは検索ルート相対に正規化し、`/` 区切りに揃える
   - 結果が空なら `No files found matching pattern`
-  - 結果全体は `50KB` で truncation
+  - 結果全体は head 側を `50KB` で truncation
+  - result limit に達した場合は `Use limit=... for more, or refine pattern` を追記する
+- `details`:
+  - `truncation`
+  - `resultLimitReached`
 - 主な失敗:
   - `Missing required parameter: pattern`
   - `Path not found: ...`
-  - `fd is not available. Install fd to use find.`
-  - `Search failed: ...`
+  - `fd is not available and could not be downloaded`
+  - `Failed to run fd: ...`
+  - `fd exited with code N`
 
-実装: [tools.rs](/root/workspace/ego-graph-issue106/egopulse/src/tools.rs:786)
+実装: [egopulse/src/tools.rs](../../egopulse/src/tools.rs)
 
 ## `ls`
 
@@ -179,14 +212,19 @@
   - workspace 配下の path のみ一覧
   - ディレクトリは `/` suffix を付ける
   - dotfiles を含む
+  - case-insensitive に sort する
   - 空 directory は `(empty directory)`
-  - 結果全体は `50KB` で truncation
+  - 結果全体は head 側を `50KB` で truncation
+  - entry limit に達した場合は `Use limit=... for more` を追記する
+- `details`:
+  - `truncation`
+  - `entryLimitReached`
 - 主な失敗:
   - `Path not found: ...`
   - `Not a directory: ...`
   - `Cannot read directory: ...`
 
-実装: [tools.rs](/root/workspace/ego-graph-issue106/egopulse/src/tools.rs:905)
+実装: [egopulse/src/tools.rs](../../egopulse/src/tools.rs)
 
 ## `activate_skill`
 
@@ -201,25 +239,31 @@
   - `Skill '<name>' not found. ...`
   - `failed to read skill '<name>': ...`
 
-実装: [tools.rs](/root/workspace/ego-graph-issue106/egopulse/src/tools.rs:1066)
+実装: [egopulse/src/tools.rs](../../egopulse/src/tools.rs)
 
 ## Skill Catalog
 
 `activate_skill` とは別に、各 turn の system prompt には skill の概要一覧が入る。
 
-- catalog 生成: [skills.rs](/root/workspace/ego-graph-issue106/egopulse/src/skills.rs:101) `build_skills_catalog()`
-- prompt への埋め込み: [turn.rs](/root/workspace/ego-graph-issue106/egopulse/src/agent_loop/turn.rs:246)
+- catalog 生成: [egopulse/src/skills.rs](../../egopulse/src/skills.rs) `build_skills_catalog()`
+- prompt への埋め込み: [egopulse/src/agent_loop/turn.rs](../../egopulse/src/agent_loop/turn.rs)
 
 つまり skill 本文は初期ロードされず、最初に入るのは概要一覧だけ。
 
 ## Path and Directory Rules
 
 - workspace root:
-  - [config.rs](/root/workspace/ego-graph-issue106/egopulse/src/config.rs:207)
+  - [egopulse/src/config.rs](../../egopulse/src/config.rs)
   - `~/.egopulse/workspace`
 - skills root:
-  - [config.rs](/root/workspace/ego-graph-issue106/egopulse/src/config.rs:203)
+  - [egopulse/src/config.rs](../../egopulse/src/config.rs)
   - `~/.egopulse/workspace/skills`
 - path guard:
-  - [tools.rs](/root/workspace/ego-graph-issue106/egopulse/src/tools.rs:1229)
+  - [egopulse/src/tools.rs](../../egopulse/src/tools.rs)
   - `..` で workspace 外へ出る path は拒否する
+
+## 現在残っている主な非互換
+
+- `read` は画像ファイルを検出できるが、`pi` のように画像そのものを LLM に添付して読ませることはまだできない
+- 原因は `egopulse` の会話ループと LLM transport が text-only だから
+- 本物の画像対応は別 Plan で扱う
