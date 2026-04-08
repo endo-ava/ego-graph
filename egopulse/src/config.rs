@@ -199,6 +199,14 @@ impl Config {
             .get("telegram")
             .and_then(|c| c.bot_username.clone())
     }
+
+    pub fn skills_dir(&self) -> PathBuf {
+        default_workspace_dir().join("skills")
+    }
+
+    pub fn workspace_dir(&self) -> PathBuf {
+        default_workspace_dir()
+    }
 }
 
 pub fn default_config_path() -> PathBuf {
@@ -462,12 +470,15 @@ pub fn authorization_token(config: &Config) -> Option<&str> {
 mod tests {
     use std::collections::HashMap;
     use std::io::Write;
-    use std::path::PathBuf;
     use std::sync::{LazyLock, Mutex, MutexGuard};
 
     use serial_test::serial;
 
-    use super::{Config, authorization_token, default_config_path, default_data_dir};
+    use std::path::PathBuf;
+
+    use super::{
+        Config, authorization_token, default_config_path, default_data_dir, default_workspace_dir,
+    };
     use crate::error::ConfigError;
 
     static ENV_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
@@ -561,6 +572,8 @@ mod tests {
         assert_eq!(authorization_token(&config), Some("sk-file"));
         assert_eq!(config.llm_base_url, "https://openrouter.ai/api/v1");
         assert_eq!(PathBuf::from(&config.data_dir), default_data_dir());
+        assert_eq!(config.workspace_dir(), default_workspace_dir());
+        assert_eq!(config.skills_dir(), default_workspace_dir().join("skills"));
         assert_eq!(config.log_level, "debug");
         assert!(config.web_enabled());
         assert_eq!(config.web_host(), "127.0.0.1");

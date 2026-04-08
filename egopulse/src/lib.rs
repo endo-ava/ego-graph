@@ -1,4 +1,5 @@
 pub mod agent_loop;
+pub mod assets;
 pub mod channel_adapter;
 pub mod channels;
 pub mod config;
@@ -8,6 +9,8 @@ pub mod llm;
 pub mod logging;
 pub mod runtime;
 pub mod setup;
+pub mod skills;
 pub mod storage;
 pub mod text;
+pub mod tools;
 pub mod web;

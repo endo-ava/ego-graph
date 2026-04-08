@@ -7,45 +7,125 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::config::{Config, authorization_token};
 use crate::error::LlmError;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Message {
-    pub role: String,
-    pub content: String,
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ToolCall {
+    pub id: String,
+    pub name: String,
+    pub arguments: serde_json::Value,
 }
 
-#[derive(Clone, Debug, Serialize)]
-struct MessagesRequest {
-    model: String,
-    messages: Vec<Message>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    stream: Option<bool>,
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ToolDefinition {
+    pub name: String,
+    pub description: String,
+    pub parameters: serde_json::Value,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Message {
+    pub role: String,
+    pub content: MessageContent,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tool_calls: Vec<ToolCall>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum MessageContent {
+    Text(String),
+    Parts(Vec<MessageContentPart>),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "type")]
+pub enum MessageContentPart {
+    #[serde(rename = "input_text")]
+    InputText { text: String },
+    #[serde(rename = "input_image")]
+    InputImage {
+        image_url: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        detail: Option<String>,
+    },
+}
+
+impl Default for MessageContent {
+    fn default() -> Self {
+        Self::Text(String::new())
+    }
+}
+
+impl MessageContent {
+    pub fn text(text: impl Into<String>) -> Self {
+        Self::Text(text.into())
+    }
+
+    pub fn parts(parts: Vec<MessageContentPart>) -> Self {
+        Self::Parts(parts)
+    }
+
+    pub fn is_multimodal(&self) -> bool {
+        matches!(self, Self::Parts(parts) if parts.iter().any(|part| matches!(part, MessageContentPart::InputImage { .. })))
+    }
+
+    pub fn as_text_lossy(&self) -> String {
+        match self {
+            Self::Text(text) => text.clone(),
+            Self::Parts(parts) => parts
+                .iter()
+                .filter_map(|part| match part {
+                    MessageContentPart::InputText { text } => Some(text.clone()),
+                    MessageContentPart::InputImage { .. } => None,
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        }
+    }
+
+    pub fn is_empty_textual(&self) -> bool {
+        self.as_text_lossy().trim().is_empty()
+    }
+}
+
+impl Message {
+    pub fn text(role: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            role: role.into(),
+            content: MessageContent::text(content),
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MessagesResponse {
     pub content: String,
+    pub tool_calls: Vec<ToolCall>,
 }
 
 #[async_trait]
 pub trait LlmProvider: Send + Sync {
-    /// Non-streaming message send.
     async fn send_message(
         &self,
-        _system: &str,
+        system: &str,
         messages: Vec<Message>,
+        tools: Option<Vec<ToolDefinition>>,
     ) -> Result<MessagesResponse, LlmError>;
 
-    /// Streaming message send.
-    /// text_tx receives each text chunk as it arrives from the LLM.
     async fn send_message_stream(
         &self,
         system: &str,
         messages: Vec<Message>,
+        tools: Option<Vec<ToolDefinition>>,
         text_tx: Option<&UnboundedSender<String>>,
     ) -> Result<MessagesResponse, LlmError> {
-        // Default: fall back to non-streaming
-        let response = self.send_message(system, messages).await?;
-        if let Some(tx) = text_tx {
+        let response = self.send_message(system, messages, tools).await?;
+        if let Some(tx) = text_tx
+            && !response.content.is_empty()
+        {
             let _ = tx.send(response.content.clone());
         }
         Ok(response)
@@ -77,15 +157,63 @@ impl OpenAiProvider {
             base_url: config.llm_base_url.clone(),
         })
     }
+
+    async fn send_message_via_responses(
+        &self,
+        system: &str,
+        messages: Vec<Message>,
+        tools: Option<Vec<ToolDefinition>>,
+    ) -> Result<MessagesResponse, LlmError> {
+        let url = format!("{}/responses", self.base_url.trim_end_matches('/'));
+        let mut headers = HeaderMap::new();
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        if let Some(api_key) = &self.api_key {
+            let auth_value = HeaderValue::from_str(&format!("Bearer {api_key}"))
+                .map_err(|error| LlmError::RequestConstructionFailed(error.to_string()))?;
+            headers.insert(AUTHORIZATION, auth_value);
+        }
+
+        let response = self
+            .http
+            .post(url)
+            .headers(headers)
+            .json(&build_responses_request_body(
+                &self.model,
+                system,
+                &messages,
+                tools.as_deref(),
+            ))
+            .send()
+            .await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(LlmError::ApiError {
+                status,
+                body_preview: preview_body(&body),
+            });
+        }
+
+        let body: ResponsesApiResponse = response.json().await?;
+        parse_responses_response(body)
+    }
 }
 
 #[async_trait]
 impl LlmProvider for OpenAiProvider {
     async fn send_message(
         &self,
-        _system: &str,
+        system: &str,
         messages: Vec<Message>,
+        tools: Option<Vec<ToolDefinition>>,
     ) -> Result<MessagesResponse, LlmError> {
+        if should_use_responses_api(&messages) {
+            return self
+                .send_message_via_responses(system, messages, tools)
+                .await;
+        }
+
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
         let mut headers = HeaderMap::new();
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
@@ -99,11 +227,13 @@ impl LlmProvider for OpenAiProvider {
             .http
             .post(url)
             .headers(headers)
-            .json(&MessagesRequest {
-                model: self.model.clone(),
-                messages,
-                stream: None,
-            })
+            .json(&build_request_body(
+                &self.model,
+                system,
+                &messages,
+                tools.as_deref(),
+                None,
+            ))
             .send()
             .await?;
 
@@ -117,21 +247,26 @@ impl LlmProvider for OpenAiProvider {
         }
 
         let body: OpenAiResponse = response.json().await?;
-        let choice = body
-            .choices
-            .into_iter()
-            .next()
-            .ok_or_else(|| LlmError::InvalidResponse("choices[0] missing".to_string()))?;
-        let content = extract_text(choice.message.content)?;
-        Ok(MessagesResponse { content })
+        parse_openai_response(body)
     }
 
     async fn send_message_stream(
         &self,
-        _system: &str,
+        system: &str,
         messages: Vec<Message>,
+        tools: Option<Vec<ToolDefinition>>,
         text_tx: Option<&UnboundedSender<String>>,
     ) -> Result<MessagesResponse, LlmError> {
+        if tools.as_ref().is_some_and(|tools| !tools.is_empty()) {
+            let response = self.send_message(system, messages, tools).await?;
+            if let Some(tx) = text_tx
+                && !response.content.is_empty()
+            {
+                let _ = tx.send(response.content.clone());
+            }
+            return Ok(response);
+        }
+
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
         let mut headers = HeaderMap::new();
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
@@ -145,11 +280,13 @@ impl LlmProvider for OpenAiProvider {
             .http
             .post(url)
             .headers(headers)
-            .json(&MessagesRequest {
-                model: self.model.clone(),
-                messages,
-                stream: Some(true),
-            })
+            .json(&build_request_body(
+                &self.model,
+                system,
+                &messages,
+                None,
+                Some(true),
+            ))
             .send()
             .await?;
 
@@ -162,7 +299,6 @@ impl LlmProvider for OpenAiProvider {
             });
         }
 
-        // Process streaming response
         let mut byte_stream = response.bytes_stream();
         let mut sse = SseEventParser::default();
         let mut text = String::new();
@@ -171,7 +307,7 @@ impl LlmProvider for OpenAiProvider {
         'outer: while let Some(chunk_res) = byte_stream.next().await {
             let chunk = match chunk_res {
                 Ok(c) => c,
-                Err(e) => return Err(LlmError::RequestFailed(e)),
+                Err(error) => return Err(LlmError::RequestFailed(error)),
             };
             for data in sse.push_chunk(chunk.as_ref()) {
                 if data == "[DONE]" {
@@ -189,7 +325,6 @@ impl LlmProvider for OpenAiProvider {
             }
         }
 
-        // Flush any remaining data (skip if [DONE] was already seen)
         if !done {
             for data in sse.finish() {
                 if data == "[DONE]" {
@@ -220,12 +355,345 @@ impl LlmProvider for OpenAiProvider {
             ));
         }
 
-        Ok(MessagesResponse { content: text })
+        Ok(MessagesResponse {
+            content: text,
+            tool_calls: Vec::new(),
+        })
     }
 }
 
-/// SSE event parser for streaming responses.
-/// Based on Microclaw's SseEventParser implementation.
+fn build_request_body(
+    model: &str,
+    system: &str,
+    messages: &[Message],
+    tools: Option<&[ToolDefinition]>,
+    stream: Option<bool>,
+) -> serde_json::Value {
+    let mut translated = Vec::new();
+    if !system.trim().is_empty() {
+        translated.push(serde_json::json!({
+            "role": "system",
+            "content": system,
+        }));
+    }
+    translated.extend(messages.iter().map(translate_message_to_openai));
+
+    let mut body = serde_json::json!({
+        "model": model,
+        "messages": translated,
+    });
+    if let Some(stream) = stream {
+        body["stream"] = serde_json::Value::Bool(stream);
+    }
+    if let Some(tools) = tools
+        && !tools.is_empty()
+    {
+        body["tools"] = serde_json::Value::Array(
+            tools
+                .iter()
+                .map(|tool| {
+                    serde_json::json!({
+                        "type": "function",
+                        "function": {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.parameters,
+                        }
+                    })
+                })
+                .collect(),
+        );
+    }
+    body
+}
+
+fn build_responses_request_body(
+    model: &str,
+    system: &str,
+    messages: &[Message],
+    tools: Option<&[ToolDefinition]>,
+) -> serde_json::Value {
+    let mut body = serde_json::json!({
+        "model": model,
+        "input": messages
+            .iter()
+            .flat_map(translate_message_to_responses)
+            .collect::<Vec<_>>(),
+    });
+    if !system.trim().is_empty() {
+        body["instructions"] = serde_json::Value::String(system.to_string());
+    }
+    if let Some(tools) = tools
+        && !tools.is_empty()
+    {
+        body["tools"] = serde_json::Value::Array(
+            tools
+                .iter()
+                .map(|tool| {
+                    serde_json::json!({
+                        "type": "function",
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters,
+                    })
+                })
+                .collect(),
+        );
+    }
+    body
+}
+
+fn translate_message_to_openai(message: &Message) -> serde_json::Value {
+    match message.role.as_str() {
+        "assistant" if !message.tool_calls.is_empty() => serde_json::json!({
+            "role": "assistant",
+            "content": if message.content.is_empty_textual() {
+                serde_json::Value::Null
+            } else {
+                translate_content_to_chat_completions(&message.content)
+            },
+            "tool_calls": message.tool_calls.iter().map(|tool_call| {
+                serde_json::json!({
+                    "id": tool_call.id,
+                    "type": "function",
+                    "function": {
+                        "name": tool_call.name,
+                        "arguments": tool_call.arguments.to_string(),
+                    }
+                })
+            }).collect::<Vec<_>>(),
+        }),
+        "tool" => serde_json::json!({
+            "role": "tool",
+            "content": message.content.as_text_lossy(),
+            "tool_call_id": message.tool_call_id,
+        }),
+        _ => serde_json::json!({
+            "role": message.role,
+            "content": translate_content_to_chat_completions(&message.content),
+        }),
+    }
+}
+
+fn translate_content_to_chat_completions(content: &MessageContent) -> serde_json::Value {
+    match content {
+        MessageContent::Text(text) => serde_json::Value::String(text.clone()),
+        MessageContent::Parts(parts) => serde_json::Value::Array(
+            parts
+                .iter()
+                .map(|part| match part {
+                    MessageContentPart::InputText { text } => serde_json::json!({
+                        "type": "text",
+                        "text": text,
+                    }),
+                    MessageContentPart::InputImage { image_url, detail } => serde_json::json!({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_url,
+                            "detail": detail.clone().unwrap_or_else(|| "auto".to_string()),
+                        }
+                    }),
+                })
+                .collect(),
+        ),
+    }
+}
+
+fn translate_message_to_responses(message: &Message) -> Vec<serde_json::Value> {
+    match message.role.as_str() {
+        "assistant" if !message.tool_calls.is_empty() => {
+            let mut items = Vec::new();
+            if !message.content.is_empty_textual() {
+                items.push(serde_json::json!({
+                    "type": "message",
+                    "role": "assistant",
+                    "content": translate_content_to_responses_message(&message.content),
+                }));
+            }
+            items.extend(message.tool_calls.iter().map(|tool_call| {
+                serde_json::json!({
+                    "type": "function_call",
+                    "call_id": tool_call.id,
+                    "name": tool_call.name,
+                    "arguments": tool_call.arguments.to_string(),
+                })
+            }));
+            items
+        }
+        "tool" => {
+            let mut items = vec![serde_json::json!({
+                "type": "function_call_output",
+                "call_id": message.tool_call_id.clone().unwrap_or_default(),
+                "output": message.content.as_text_lossy(),
+            })];
+            if message.content.is_multimodal() {
+                items.push(serde_json::json!({
+                    "type": "message",
+                    "role": "user",
+                    "content": synthetic_tool_attachment_parts(&message.content),
+                }));
+            }
+            items
+        }
+        _ => vec![serde_json::json!({
+            "type": "message",
+            "role": message.role,
+            "content": translate_content_to_responses_message(&message.content),
+        })],
+    }
+}
+
+fn translate_content_to_responses_message(content: &MessageContent) -> Vec<serde_json::Value> {
+    match content {
+        MessageContent::Text(text) => vec![serde_json::json!({
+            "type": "input_text",
+            "text": text,
+        })],
+        MessageContent::Parts(parts) => parts
+            .iter()
+            .map(|part| match part {
+                MessageContentPart::InputText { text } => serde_json::json!({
+                    "type": "input_text",
+                    "text": text,
+                }),
+                MessageContentPart::InputImage { image_url, detail } => serde_json::json!({
+                    "type": "input_image",
+                    "image_url": image_url,
+                    "detail": detail.clone().unwrap_or_else(|| "auto".to_string()),
+                }),
+            })
+            .collect(),
+    }
+}
+
+fn synthetic_tool_attachment_parts(content: &MessageContent) -> Vec<serde_json::Value> {
+    let mut parts = vec![serde_json::json!({
+        "type": "input_text",
+        "text": "System-generated attachment for the immediately preceding tool result. Treat it as tool output context, not as a new user request.",
+    })];
+    if let MessageContent::Parts(items) = content {
+        parts.extend(items.iter().filter_map(|part| match part {
+            MessageContentPart::InputText { .. } => None,
+            MessageContentPart::InputImage { image_url, detail } => Some(serde_json::json!({
+                "type": "input_image",
+                "image_url": image_url,
+                "detail": detail.clone().unwrap_or_else(|| "auto".to_string()),
+            })),
+        }));
+    }
+    parts
+}
+
+fn parse_openai_response(body: OpenAiResponse) -> Result<MessagesResponse, LlmError> {
+    let choice = body
+        .choices
+        .into_iter()
+        .next()
+        .ok_or_else(|| LlmError::InvalidResponse("choices[0] missing".to_string()))?;
+    let tool_calls = choice
+        .message
+        .tool_calls
+        .unwrap_or_default()
+        .into_iter()
+        .map(parse_tool_call)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let content = extract_text(
+        choice
+            .message
+            .content
+            .unwrap_or(OpenAiMessageContent::Text(String::new())),
+    );
+    if content.is_empty() && tool_calls.is_empty() {
+        return Err(LlmError::InvalidResponse(
+            "assistant content was empty".to_string(),
+        ));
+    }
+
+    Ok(MessagesResponse {
+        content,
+        tool_calls,
+    })
+}
+
+fn parse_responses_response(body: ResponsesApiResponse) -> Result<MessagesResponse, LlmError> {
+    let mut content_parts = Vec::new();
+    let mut tool_calls = Vec::new();
+
+    for item in body.output {
+        match item {
+            ResponsesOutputItem::Message { role, content } if role == "assistant" => {
+                for part in content {
+                    match part {
+                        ResponsesOutputPart::OutputText { text } => content_parts.push(text),
+                        ResponsesOutputPart::Refusal { refusal } => content_parts.push(refusal),
+                        ResponsesOutputPart::Ignored => {}
+                    }
+                }
+            }
+            ResponsesOutputItem::FunctionCall {
+                call_id,
+                name,
+                arguments,
+            } => {
+                let arguments = if arguments.trim().is_empty() {
+                    serde_json::json!({})
+                } else {
+                    serde_json::from_str::<serde_json::Value>(&arguments).map_err(|error| {
+                        LlmError::InvalidResponse(format!(
+                            "invalid tool arguments for '{}': {error}",
+                            name
+                        ))
+                    })?
+                };
+                tool_calls.push(ToolCall {
+                    id: call_id,
+                    name,
+                    arguments,
+                });
+            }
+            ResponsesOutputItem::Ignored | ResponsesOutputItem::Message { .. } => {}
+        }
+    }
+
+    let content = content_parts.join("\n").trim().to_string();
+    if content.is_empty() && tool_calls.is_empty() {
+        return Err(LlmError::InvalidResponse(
+            "assistant content was empty".to_string(),
+        ));
+    }
+
+    Ok(MessagesResponse {
+        content,
+        tool_calls,
+    })
+}
+
+fn parse_tool_call(raw: OaiToolCall) -> Result<ToolCall, LlmError> {
+    let arguments = if raw.function.arguments.trim().is_empty() {
+        serde_json::json!({})
+    } else {
+        serde_json::from_str::<serde_json::Value>(&raw.function.arguments).map_err(|error| {
+            LlmError::InvalidResponse(format!(
+                "invalid tool arguments for '{}': {error}",
+                raw.function.name
+            ))
+        })?
+    };
+
+    Ok(ToolCall {
+        id: raw.id,
+        name: raw.function.name,
+        arguments,
+    })
+}
+
+fn should_use_responses_api(messages: &[Message]) -> bool {
+    messages
+        .iter()
+        .any(|message| message.content.is_multimodal())
+}
+
 #[derive(Default)]
 struct SseEventParser {
     pending: Vec<u8>,
@@ -236,7 +704,7 @@ impl SseEventParser {
     fn push_chunk(&mut self, chunk: impl AsRef<[u8]>) -> Vec<String> {
         self.pending.extend_from_slice(chunk.as_ref());
         let mut events = Vec::new();
-        while let Some(pos) = self.pending.iter().position(|b| *b == b'\n') {
+        while let Some(pos) = self.pending.iter().position(|byte| *byte == b'\n') {
             let mut line: Vec<u8> = self.pending.drain(..=pos).collect();
             if line.last() == Some(&b'\n') {
                 line.pop();
@@ -273,7 +741,7 @@ impl SseEventParser {
     fn decode_line(line: Vec<u8>) -> String {
         match String::from_utf8(line) {
             Ok(line) => line,
-            Err(err) => String::from_utf8_lossy(&err.into_bytes()).into_owned(),
+            Err(error) => String::from_utf8_lossy(&error.into_bytes()).into_owned(),
         }
     }
 
@@ -285,10 +753,7 @@ impl SseEventParser {
             return None;
         }
         let (field, value) = match line.split_once(':') {
-            Some((f, v)) => {
-                let v = v.strip_prefix(' ').unwrap_or(v);
-                (f, v)
-            }
+            Some((field, value)) => (field, value.strip_prefix(' ').unwrap_or(value)),
             None => (line, ""),
         };
         if field == "data" {
@@ -307,45 +772,39 @@ impl SseEventParser {
     }
 }
 
-/// Process a single OpenAI streaming event and extract text delta.
 fn process_openai_stream_event(data: &str) -> Option<String> {
-    let v: serde_json::Value = serde_json::from_str(data).ok()?;
-    let choice = v.get("choices")?.as_array()?.first()?;
+    let value: serde_json::Value = serde_json::from_str(data).ok()?;
+    let choice = value.get("choices")?.as_array()?.first()?;
     let delta = choice.get("delta")?;
     let content = delta.get("content")?;
     match content {
-        serde_json::Value::String(s) if !s.is_empty() => Some(s.clone()),
-        serde_json::Value::Array(arr) => {
-            let text: String = arr
+        serde_json::Value::String(text) if !text.is_empty() => Some(text.clone()),
+        serde_json::Value::Array(parts) => {
+            let text = parts
                 .iter()
-                .filter_map(|item| item.get("text")?.as_str())
-                .collect();
+                .filter_map(|part| part.get("text")?.as_str())
+                .collect::<String>();
             if text.is_empty() { None } else { Some(text) }
         }
         _ => None,
     }
 }
 
-fn extract_text(content: MessageContent) -> Result<String, LlmError> {
-    let text = match content {
-        MessageContent::Text(text) => text,
-        MessageContent::Parts(parts) => parts
+fn extract_text(content: OpenAiMessageContent) -> String {
+    match content {
+        OpenAiMessageContent::Text(text) => text.trim().to_string(),
+        OpenAiMessageContent::Parts(parts) => parts
             .into_iter()
             .filter_map(|part| match part {
-                ContentPart::Text { text } => Some(text),
-                ContentPart::Refusal { refusal } => Some(refusal),
-                ContentPart::Ignored => None,
+                OpenAiContentPart::Text { text } => Some(text),
+                OpenAiContentPart::Refusal { refusal } => Some(refusal),
+                OpenAiContentPart::Ignored => None,
             })
             .collect::<Vec<_>>()
-            .join("\n"),
-    };
-    let text = text.trim().to_string();
-    if text.is_empty() {
-        return Err(LlmError::InvalidResponse(
-            "assistant content was empty".to_string(),
-        ));
+            .join("\n")
+            .trim()
+            .to_string(),
     }
-    Ok(text)
 }
 
 fn preview_body(body: &str) -> String {
@@ -367,25 +826,62 @@ struct OpenAiResponse {
 }
 
 #[derive(Debug, Deserialize)]
+struct ResponsesApiResponse {
+    output: Vec<ResponsesOutputItem>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type")]
+enum ResponsesOutputItem {
+    #[serde(rename = "message")]
+    Message {
+        role: String,
+        content: Vec<ResponsesOutputPart>,
+    },
+    #[serde(rename = "function_call")]
+    FunctionCall {
+        call_id: String,
+        name: String,
+        arguments: String,
+    },
+    #[serde(other)]
+    Ignored,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type")]
+enum ResponsesOutputPart {
+    #[serde(rename = "output_text")]
+    OutputText { text: String },
+    #[serde(rename = "refusal")]
+    Refusal { refusal: String },
+    #[serde(other)]
+    Ignored,
+}
+
+#[derive(Debug, Deserialize)]
 struct Choice {
     message: AssistantMessage,
 }
 
 #[derive(Debug, Deserialize)]
 struct AssistantMessage {
-    content: MessageContent,
+    #[serde(default)]
+    content: Option<OpenAiMessageContent>,
+    #[serde(default)]
+    tool_calls: Option<Vec<OaiToolCall>>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-enum MessageContent {
+enum OpenAiMessageContent {
     Text(String),
-    Parts(Vec<ContentPart>),
+    Parts(Vec<OpenAiContentPart>),
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
-enum ContentPart {
+enum OpenAiContentPart {
     #[serde(rename = "text")]
     Text { text: String },
     #[serde(rename = "refusal")]
@@ -394,20 +890,31 @@ enum ContentPart {
     Ignored,
 }
 
+#[derive(Debug, Deserialize)]
+struct OaiToolCall {
+    id: String,
+    function: OaiFunction,
+}
+
+#[derive(Debug, Deserialize)]
+struct OaiFunction {
+    name: String,
+    arguments: String,
+}
+
 #[cfg(test)]
 mod tests {
-    use wiremock::matchers::{body_partial_json, header, method, path};
+    use wiremock::matchers::{body_partial_json, body_string_contains, header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     use crate::config::Config;
 
-    use super::{Message, create_provider};
+    use super::{
+        Message, MessageContent, MessageContentPart, ToolCall, ToolDefinition, create_provider,
+    };
 
     fn message(content: &str) -> Vec<Message> {
-        vec![Message {
-            role: "user".to_string(),
-            content: content.to_string(),
-        }]
+        vec![Message::text("user", content)]
     }
 
     fn config(model: &str, base_url: String, api_key: Option<&str>) -> Config {
@@ -458,11 +965,12 @@ mod tests {
         .expect("provider");
 
         let response = provider
-            .send_message("", message("hello"))
+            .send_message("", message("hello"), None)
             .await
             .expect("response");
 
         assert_eq!(response.content, "hello back");
+        assert!(response.tool_calls.is_empty());
     }
 
     #[tokio::test]
@@ -489,7 +997,7 @@ mod tests {
         .expect("provider");
 
         let response = provider
-            .send_message("", message("hello"))
+            .send_message("", message("hello"), None)
             .await
             .expect("response");
 
@@ -516,10 +1024,136 @@ mod tests {
                 .expect("provider");
 
         let response = provider
-            .send_message("", message("hello"))
+            .send_message("", message("hello"), None)
             .await
             .expect("response");
 
         assert_eq!(response.content, "local answer");
+    }
+
+    #[tokio::test]
+    async fn sends_tools_and_parses_tool_calls() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .and(body_partial_json(serde_json::json!({
+                "tools": [{
+                    "type": "function",
+                    "function": {
+                        "name": "read"
+                    }
+                }]
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{
+                    "message": {
+                        "content": "",
+                        "tool_calls": [{
+                            "id": "call_1",
+                            "function": {
+                                "name": "read",
+                                "arguments": "{\"path\":\"README.md\"}"
+                            }
+                        }]
+                    }
+                }]
+            })))
+            .mount(&server)
+            .await;
+
+        let provider = create_provider(&config(
+            "gpt-4o-mini",
+            format!("{}/v1", server.uri()),
+            Some("sk-test"),
+        ))
+        .expect("provider");
+
+        let response = provider
+            .send_message(
+                "system prompt",
+                message("read it"),
+                Some(vec![ToolDefinition {
+                    name: "read".to_string(),
+                    description: "Read a file".to_string(),
+                    parameters: serde_json::json!({"type": "object"}),
+                }]),
+            )
+            .await
+            .expect("response");
+
+        assert_eq!(
+            response.tool_calls,
+            vec![ToolCall {
+                id: "call_1".to_string(),
+                name: "read".to_string(),
+                arguments: serde_json::json!({"path": "README.md"}),
+            }]
+        );
+    }
+
+    #[tokio::test]
+    async fn uses_responses_api_for_multimodal_tool_context() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/responses"))
+            .and(body_string_contains("\"type\":\"function_call_output\""))
+            .and(body_string_contains("\"call_id\":\"call_1\""))
+            .and(body_string_contains("\"type\":\"input_image\""))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "output": [{
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": "I can see the image"}]
+                }]
+            })))
+            .mount(&server)
+            .await;
+
+        let provider = create_provider(&config(
+            "gpt-4o-mini",
+            format!("{}/v1", server.uri()),
+            Some("sk-test"),
+        ))
+        .expect("provider");
+
+        let response = provider
+            .send_message(
+                "",
+                vec![
+                    Message {
+                        role: "assistant".to_string(),
+                        content: MessageContent::text(""),
+                        tool_calls: vec![ToolCall {
+                            id: "call_1".to_string(),
+                            name: "read".to_string(),
+                            arguments: serde_json::json!({"path": "image.png"}),
+                        }],
+                        tool_call_id: None,
+                    },
+                    Message {
+                        role: "tool".to_string(),
+                        content: MessageContent::parts(vec![
+                            MessageContentPart::InputText {
+                                text: "{\"tool\":\"read\",\"status\":\"success\",\"result\":\"Read image file [image/png]\"}".to_string(),
+                            },
+                            MessageContentPart::InputImage {
+                                image_url: "data:image/png;base64,AAAA".to_string(),
+                                detail: Some("auto".to_string()),
+                            },
+                        ]),
+                        tool_calls: Vec::new(),
+                        tool_call_id: Some("call_1".to_string()),
+                    },
+                ],
+                Some(vec![ToolDefinition {
+                    name: "read".to_string(),
+                    description: "Read a file".to_string(),
+                    parameters: serde_json::json!({"type": "object"}),
+                }]),
+            )
+            .await
+            .expect("response");
+
+        assert_eq!(response.content, "I can see the image");
     }
 }
