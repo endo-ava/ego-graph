@@ -186,7 +186,8 @@ text 化ルールは次の通り。
 
 ### 8.5 Role 補正
 
-recent message を append する際、同じ role が連続したら merge する。
+recent message を append する際、同じ role の plain-text message どうしで、`tool_calls`
+が空かつ `tool_call_id` が `None` の場合のみ merge する。
 
 目的:
 
@@ -227,7 +228,7 @@ compaction 発火時は、compact 前の全文会話を markdown として archi
 ### 出力先
 
 ```text
-<data_dir>/groups/<channel>/<chat_id>/conversations/<timestamp>.md
+<data_dir>/groups/<channel>/<chat_id>/conversations/<timestamp>-<unique_suffix>.md
 ```
 
 ### 目的
