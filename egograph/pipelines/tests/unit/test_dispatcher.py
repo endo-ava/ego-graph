@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from pipelines.domain.workflow import (
     QueuedReason,
     StepDefinition,
@@ -9,8 +11,10 @@ from pipelines.domain.workflow import (
     WorkflowRunStatus,
 )
 from pipelines.infrastructure.db.connection import connect
-from pipelines.infrastructure.db.repositories import WorkflowStateRepository
+from pipelines.infrastructure.db.run_repository import RunRepository
 from pipelines.infrastructure.db.schema import initialize_schema
+from pipelines.infrastructure.db.step_run_repository import StepRunRepository
+from pipelines.infrastructure.db.workflow_repository import WorkflowRepository
 from pipelines.infrastructure.dispatching.lock_manager import WorkflowLockManager
 from pipelines.infrastructure.dispatching.run_dispatcher import RunDispatcher
 from pipelines.infrastructure.execution.inprocess_executor import InProcessStepExecutor
@@ -23,12 +27,15 @@ from pipelines.infrastructure.execution.subprocess_executor import (
 def _build_dispatcher(tmp_path, workflows):
     conn = connect(tmp_path / "state.sqlite3")
     initialize_schema(conn)
-    repository = WorkflowStateRepository(conn)
-    repository.register_workflows(workflows)
+    workflow_repository = WorkflowRepository(conn)
+    workflow_repository.register_workflows(workflows)
+    run_repository = RunRepository(workflow_repository, conn)
+    step_run_repository = StepRunRepository(conn)
     log_store = LocalLogStore(tmp_path / "logs")
     lock_manager = WorkflowLockManager(conn, lease_seconds=60)
     dispatcher = RunDispatcher(
-        repository=repository,
+        run_repository=run_repository,
+        step_run_repository=step_run_repository,
         workflows=workflows,
         lock_manager=lock_manager,
         subprocess_executor=SubprocessStepExecutor(log_store),
@@ -36,7 +43,7 @@ def _build_dispatcher(tmp_path, workflows):
         poll_seconds=0.01,
         heartbeat_seconds=60,
     )
-    return repository, dispatcher, lock_manager
+    return run_repository, step_run_repository, dispatcher, lock_manager
 
 
 def test_dispatch_once_succeeds_and_writes_step_log(tmp_path):
@@ -57,8 +64,10 @@ def test_dispatch_once_succeeds_and_writes_step_log(tmp_path):
             ),
         )
     }
-    repository, dispatcher, _ = _build_dispatcher(tmp_path, workflows)
-    run = repository.enqueue_run(
+    run_repository, step_run_repository, dispatcher, _ = _build_dispatcher(
+        tmp_path, workflows
+    )
+    run = run_repository.enqueue_run(
         workflow_id="dummy_workflow",
         trigger_type=TriggerType.MANUAL,
         queued_reason=QueuedReason.MANUAL_REQUEST,
@@ -66,8 +75,8 @@ def test_dispatch_once_succeeds_and_writes_step_log(tmp_path):
 
     # Act
     dispatched = dispatcher.dispatch_once()
-    updated_run = repository.get_run(run.run_id)
-    steps = repository.list_step_runs(run.run_id)
+    updated_run = run_repository.get_run(run.run_id)
+    steps = step_run_repository.list_step_runs(run.run_id)
 
     # Assert
     assert dispatched is True
@@ -103,8 +112,10 @@ def test_dispatch_once_skips_remaining_steps_after_failure(tmp_path):
             ),
         )
     }
-    repository, dispatcher, _ = _build_dispatcher(tmp_path, workflows)
-    run = repository.enqueue_run(
+    run_repository, step_run_repository, dispatcher, _ = _build_dispatcher(
+        tmp_path, workflows
+    )
+    run = run_repository.enqueue_run(
         workflow_id="dummy_workflow",
         trigger_type=TriggerType.MANUAL,
         queued_reason=QueuedReason.MANUAL_REQUEST,
@@ -112,8 +123,8 @@ def test_dispatch_once_skips_remaining_steps_after_failure(tmp_path):
 
     # Act
     dispatcher.dispatch_once()
-    updated_run = repository.get_run(run.run_id)
-    steps = repository.list_step_runs(run.run_id)
+    updated_run = run_repository.get_run(run.run_id)
+    steps = step_run_repository.list_step_runs(run.run_id)
 
     # Assert
     assert updated_run.status == WorkflowRunStatus.FAILED
@@ -139,8 +150,8 @@ def test_dispatch_once_executes_step_with_run_summary_context(tmp_path):
             ),
         )
     }
-    repository, dispatcher, _ = _build_dispatcher(tmp_path, workflows)
-    run = repository.enqueue_run(
+    run_repository, _, dispatcher, _ = _build_dispatcher(tmp_path, workflows)
+    run = run_repository.enqueue_run(
         workflow_id="event_workflow",
         trigger_type=TriggerType.EVENT,
         queued_reason=QueuedReason.EVENT_ENQUEUE,
@@ -149,7 +160,7 @@ def test_dispatch_once_executes_step_with_run_summary_context(tmp_path):
 
     # Act
     dispatcher.dispatch_once()
-    updated_run = repository.get_run(run.run_id)
+    updated_run = run_repository.get_run(run.run_id)
 
     # Assert
     assert updated_run.status == WorkflowRunStatus.SUCCEEDED
@@ -177,8 +188,10 @@ def test_dispatch_once_requeues_run_when_lock_is_active(tmp_path):
             ),
         )
     }
-    repository, dispatcher, lock_manager = _build_dispatcher(tmp_path, workflows)
-    run = repository.enqueue_run(
+    run_repository, step_run_repository, dispatcher, lock_manager = _build_dispatcher(
+        tmp_path, workflows
+    )
+    run = run_repository.enqueue_run(
         workflow_id="dummy_workflow",
         trigger_type=TriggerType.MANUAL,
         queued_reason=QueuedReason.MANUAL_REQUEST,
@@ -187,8 +200,8 @@ def test_dispatch_once_requeues_run_when_lock_is_active(tmp_path):
 
     # Act
     dispatched = dispatcher.dispatch_once()
-    updated_run = repository.get_run(run.run_id)
-    steps = repository.list_step_runs(run.run_id)
+    updated_run = run_repository.get_run(run.run_id)
+    steps = step_run_repository.list_step_runs(run.run_id)
 
     # Assert
     assert dispatched is False
@@ -217,8 +230,10 @@ def test_dispatch_once_marks_inprocess_step_failed_on_timeout(tmp_path):
             ),
         )
     }
-    repository, dispatcher, _ = _build_dispatcher(tmp_path, workflows)
-    run = repository.enqueue_run(
+    run_repository, step_run_repository, dispatcher, _ = _build_dispatcher(
+        tmp_path, workflows
+    )
+    run = run_repository.enqueue_run(
         workflow_id="timeout_workflow",
         trigger_type=TriggerType.MANUAL,
         queued_reason=QueuedReason.MANUAL_REQUEST,
@@ -226,8 +241,8 @@ def test_dispatch_once_marks_inprocess_step_failed_on_timeout(tmp_path):
 
     # Act
     dispatched = dispatcher.dispatch_once()
-    updated_run = repository.get_run(run.run_id)
-    steps = repository.list_step_runs(run.run_id)
+    updated_run = run_repository.get_run(run.run_id)
+    steps = step_run_repository.list_step_runs(run.run_id)
 
     # Assert
     assert dispatched is True
@@ -246,10 +261,6 @@ def test_invoke_does_not_pass_workflow_run_to_non_workflow_run_params():
     AttributeError: 'WorkflowRun' object has no attribute 'spotify' で
     クラッシュしていた問題を防止する。
     """
-    from pipelines.infrastructure.execution.inprocess_executor import (
-        InProcessStepExecutor,
-    )
-
     class FakeConfig:
         spotify = "loaded"
 
@@ -264,10 +275,6 @@ def test_invoke_does_not_pass_workflow_run_to_non_workflow_run_params():
 
 def test_invoke_passes_workflow_run_when_annotated():
     """第一引数が WorkflowRun 型の関数には WorkflowRun を渡す。"""
-    from pipelines.infrastructure.execution.inprocess_executor import (
-        InProcessStepExecutor,
-    )
-
     received = {}
 
     def takes_workflow_run(run: WorkflowRun):
@@ -280,8 +287,6 @@ def test_invoke_passes_workflow_run_when_annotated():
 
 def _make_minimal_run() -> WorkflowRun:
     """テスト用 WorkflowRun。"""
-    from datetime import datetime, timezone
-
     return WorkflowRun(
         run_id="test-run-id",
         workflow_id="test_workflow",

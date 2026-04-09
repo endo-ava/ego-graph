@@ -7,8 +7,12 @@ from pipelines.domain.workflow import (
     WorkflowDefinition,
 )
 from pipelines.infrastructure.db.connection import connect
-from pipelines.infrastructure.db.repositories import WorkflowStateRepository
+from pipelines.infrastructure.db.run_repository import RunRepository
+from pipelines.infrastructure.db.schedule_state_repository import (
+    ScheduleStateRepository,
+)
 from pipelines.infrastructure.db.schema import initialize_schema
+from pipelines.infrastructure.db.workflow_repository import WorkflowRepository
 from pipelines.infrastructure.scheduling.apscheduler_app import ScheduleTriggerApp
 
 
@@ -17,7 +21,9 @@ def test_enqueue_schedule_run_ignores_disabled_workflow(tmp_path):
     # Arrange
     conn = connect(tmp_path / "state.sqlite3")
     initialize_schema(conn)
-    repository = WorkflowStateRepository(conn)
+    workflow_repository = WorkflowRepository(conn)
+    schedule_state_repository = ScheduleStateRepository(conn)
+    run_repository = RunRepository(workflow_repository, conn)
     workflows = {
         "probe_workflow": WorkflowDefinition(
             workflow_id="probe_workflow",
@@ -35,19 +41,21 @@ def test_enqueue_schedule_run_ignores_disabled_workflow(tmp_path):
         )
     }
     scheduler = ScheduleTriggerApp(
-        repository=repository,
+        workflow_repository=workflow_repository,
+        schedule_state_repository=schedule_state_repository,
+        run_repository=run_repository,
         workflows=workflows,
         timezone="UTC",
     )
     scheduler.sync_jobs()
-    repository.set_workflow_enabled("probe_workflow", False)
+    workflow_repository.set_workflow_enabled("probe_workflow", False)
 
     # Act
     scheduler._enqueue_schedule_run("probe_workflow:0", "probe_workflow")
 
     # Assert
-    workflow = repository.get_workflow("probe_workflow")
-    assert repository.list_runs(workflow_id="probe_workflow") == []
+    workflow = workflow_repository.get_workflow("probe_workflow")
+    assert run_repository.list_runs(workflow_id="probe_workflow") == []
     assert workflow["enabled"] is False
     assert workflow["schedules"][0]["next_run_at"] is None
     assert datetime.fromisoformat(

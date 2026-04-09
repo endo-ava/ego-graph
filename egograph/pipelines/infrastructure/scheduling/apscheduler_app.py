@@ -12,7 +12,11 @@ from apscheduler.triggers.interval import IntervalTrigger
 from pipelines.domain.errors import WorkflowDisabledError
 from pipelines.domain.schedule import MisfirePolicy, TriggerSpec, TriggerSpecType
 from pipelines.domain.workflow import QueuedReason, TriggerType, WorkflowDefinition
-from pipelines.infrastructure.db.repositories import WorkflowStateRepository
+from pipelines.infrastructure.db.run_repository import RunRepository
+from pipelines.infrastructure.db.schedule_state_repository import (
+    ScheduleStateRepository,
+)
+from pipelines.infrastructure.db.workflow_repository import WorkflowRepository
 
 
 class ScheduleTriggerApp:
@@ -21,11 +25,15 @@ class ScheduleTriggerApp:
     def __init__(
         self,
         *,
-        repository: WorkflowStateRepository,
+        workflow_repository: WorkflowRepository,
+        schedule_state_repository: ScheduleStateRepository,
+        run_repository: RunRepository,
         workflows: dict[str, WorkflowDefinition],
         timezone: str,
     ) -> None:
-        self._repository = repository
+        self._workflow_repository = workflow_repository
+        self._schedule_state_repository = schedule_state_repository
+        self._run_repository = run_repository
         self._workflows = workflows
         self._scheduler = BackgroundScheduler(timezone=ZoneInfo(timezone))
 
@@ -42,21 +50,23 @@ class ScheduleTriggerApp:
 
     def sync_jobs(self) -> None:
         """registry と DB schedule 状態を同期して job を再登録する。"""
-        self._repository.register_workflows(self._workflows)
+        self._workflow_repository.register_workflows(self._workflows)
         for job in self._scheduler.get_jobs():
             self._scheduler.remove_job(job.id)
 
         schedule_states = {
             schedule.schedule_id: schedule
-            for schedule in self._repository.get_schedule_states()
+            for schedule in self._schedule_state_repository.get_schedule_states()
         }
         now = datetime.now(tz=UTC)
         for workflow in self._workflows.values():
             for index, trigger_spec in enumerate(workflow.triggers):
                 schedule_id = f"{workflow.workflow_id}:{index}"
-                workflow_state = self._repository.get_workflow(workflow.workflow_id)
+                workflow_state = self._workflow_repository.get_workflow(
+                    workflow.workflow_id
+                )
                 if not workflow_state["enabled"]:
-                    self._repository.update_schedule_state(
+                    self._schedule_state_repository.update_schedule_state(
                         schedule_id=schedule_id,
                         next_run_at=None,
                         last_scheduled_at=schedule_states.get(
@@ -74,7 +84,7 @@ class ScheduleTriggerApp:
                     and state.next_run_at <= now
                     and workflow.misfire_policy == MisfirePolicy.COALESCE_LATEST
                 ):
-                    self._repository.enqueue_run(
+                    self._run_repository.enqueue_run(
                         workflow_id=workflow.workflow_id,
                         trigger_type=TriggerType.RECONCILE,
                         queued_reason=QueuedReason.STARTUP_RECONCILE,
@@ -83,7 +93,7 @@ class ScheduleTriggerApp:
                     )
 
                 next_run_at = trigger.get_next_fire_time(None, now)
-                self._repository.update_schedule_state(
+                self._schedule_state_repository.update_schedule_state(
                     schedule_id=schedule_id,
                     next_run_at=next_run_at,
                     last_scheduled_at=state.last_scheduled_at if state else None,
@@ -107,7 +117,7 @@ class ScheduleTriggerApp:
         result_summary: dict | None = None,
     ):
         """event 由来の run を queue に積む。"""
-        return self._repository.enqueue_run(
+        return self._run_repository.enqueue_run(
             workflow_id=workflow_id,
             trigger_type=TriggerType.EVENT,
             queued_reason=QueuedReason.EVENT_ENQUEUE,
@@ -119,7 +129,7 @@ class ScheduleTriggerApp:
     def _enqueue_schedule_run(self, schedule_id: str, workflow_id: str) -> None:
         now = datetime.now(tz=UTC)
         try:
-            self._repository.enqueue_run(
+            self._run_repository.enqueue_run(
                 workflow_id=workflow_id,
                 trigger_type=TriggerType.SCHEDULE,
                 queued_reason=QueuedReason.SCHEDULE_TICK,
@@ -127,14 +137,14 @@ class ScheduleTriggerApp:
                 scheduled_at=now,
             )
         except WorkflowDisabledError:
-            self._repository.update_schedule_state(
+            self._schedule_state_repository.update_schedule_state(
                 schedule_id=schedule_id,
                 next_run_at=None,
                 last_scheduled_at=now,
             )
             return
         job = self._scheduler.get_job(schedule_id)
-        self._repository.update_schedule_state(
+        self._schedule_state_repository.update_schedule_state(
             schedule_id=schedule_id,
             next_run_at=job.next_run_time if job else None,
             last_scheduled_at=now,
