@@ -15,7 +15,8 @@ from pipelines.domain.workflow import (
     WorkflowRun,
     WorkflowRunStatus,
 )
-from pipelines.infrastructure.db.repositories import WorkflowStateRepository
+from pipelines.infrastructure.db.run_repository import RunRepository
+from pipelines.infrastructure.db.step_run_repository import StepRunRepository
 from pipelines.infrastructure.dispatching.lock_manager import (
     WorkflowLease,
     WorkflowLockManager,
@@ -36,7 +37,8 @@ class RunDispatcher:
     def __init__(
         self,
         *,
-        repository: WorkflowStateRepository,
+        run_repository: RunRepository,
+        step_run_repository: StepRunRepository,
         workflows: dict[str, WorkflowDefinition],
         lock_manager: WorkflowLockManager,
         subprocess_executor: SubprocessStepExecutor,
@@ -44,7 +46,8 @@ class RunDispatcher:
         poll_seconds: float,
         heartbeat_seconds: int,
     ) -> None:
-        self._repository = repository
+        self._run_repository = run_repository
+        self._step_run_repository = step_run_repository
         self._workflows = workflows
         self._lock_manager = lock_manager
         self._subprocess_executor = subprocess_executor
@@ -77,13 +80,13 @@ class RunDispatcher:
 
     def dispatch_once(self) -> bool:
         """queued run を1件処理する。"""
-        run = self._repository.lease_next_queued_run()
+        run = self._run_repository.lease_next_queued_run()
         if run is None:
             return False
 
         workflow = self._workflows.get(run.workflow_id)
         if workflow is None:
-            self._repository.update_run_result(
+            self._run_repository.update_run_result(
                 run_id=run.run_id,
                 status=WorkflowRunStatus.FAILED,
                 error_message=f"unknown workflow: {run.workflow_id}",
@@ -96,7 +99,7 @@ class RunDispatcher:
                 run_id=run.run_id,
             )
         except WorkflowLockUnavailableError as exc:
-            self._repository.requeue_run(
+            self._run_repository.requeue_run(
                 run_id=run.run_id,
                 reason=str(exc),
             )
@@ -144,14 +147,14 @@ class RunDispatcher:
                     steps=workflow.steps[sequence_no:],
                     first_sequence_no=sequence_no + 1,
                 )
-                self._repository.update_run_result(
+                self._run_repository.update_run_result(
                     run_id=run.run_id,
                     status=WorkflowRunStatus.FAILED,
                     error_message=f"step failed: {step.step_id}",
                     result_summary=last_summary,
                 )
                 return
-        self._repository.update_run_result(
+        self._run_repository.update_run_result(
             run_id=run.run_id,
             status=WorkflowRunStatus.SUCCEEDED,
             result_summary=last_summary,
@@ -166,7 +169,7 @@ class RunDispatcher:
         sequence_no: int,
     ) -> tuple[bool, dict | None]:
         for attempt_no in range(1, step.max_attempts + 1):
-            step_run = self._repository.insert_step_run(
+            step_run = self._step_run_repository.insert_step_run(
                 run_id=run.run_id,
                 step_id=step.step_id,
                 step_name=step.step_name,
@@ -174,14 +177,14 @@ class RunDispatcher:
                 attempt_no=attempt_no,
                 command=self._format_command(step),
             )
-            self._repository.set_step_running(step_run.step_run_id)
+            self._step_run_repository.set_step_running(step_run.step_run_id)
             result = self._execute_definition(
                 workflow_id=workflow.workflow_id,
                 run=run,
                 step=step,
                 attempt_no=attempt_no,
             )
-            self._repository.update_step_result(
+            self._step_run_repository.update_step_result(
                 step_run_id=step_run.step_run_id,
                 status=result.status,
                 exit_code=result.exit_code,
@@ -226,7 +229,7 @@ class RunDispatcher:
         first_sequence_no: int,
     ) -> None:
         for offset, step in enumerate(steps):
-            step_run = self._repository.insert_step_run(
+            step_run = self._step_run_repository.insert_step_run(
                 run_id=run.run_id,
                 step_id=step.step_id,
                 step_name=step.step_name,
@@ -235,7 +238,7 @@ class RunDispatcher:
                 command=self._format_command(step),
                 status=StepRunStatus.SKIPPED,
             )
-            self._repository.update_step_result(
+            self._step_run_repository.update_step_result(
                 step_run_id=step_run.step_run_id,
                 status=StepRunStatus.SKIPPED,
                 exit_code=None,

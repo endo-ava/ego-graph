@@ -3,13 +3,11 @@
 retry_run, cancel_run, get_step_log などの運用機能を検証する。
 """
 
-from pathlib import Path
-
-from pydantic import SecretStr
-
-from pipelines.app import create_app
 from pipelines.config import PipelinesConfig
+from pipelines.domain.errors import WorkflowNotFoundError, WorkflowRunNotFoundError
+from pipelines.domain.workflow import StepRunStatus
 from pipelines.service import PipelineService
+from pydantic import SecretStr
 
 
 def _make_service(tmp_path, api_key: str | None = None) -> PipelineService:
@@ -41,8 +39,6 @@ def test_retry_run_404_for_unknown_run(tmp_path):
     """存在しない run_id のリトライは例外を送出する。"""
     service = _make_service(tmp_path)
 
-    from pipelines.domain.errors import WorkflowRunNotFoundError
-
     try:
         service.retry_run("nonexistent-run-id")
         raise AssertionError("Should have raised WorkflowRunNotFoundError")
@@ -65,8 +61,6 @@ def test_cancel_run_404_for_unknown_run(tmp_path):
     """存在しない run_id のキャンセルは例外を送出する。"""
     service = _make_service(tmp_path)
 
-    from pipelines.domain.errors import WorkflowRunNotFoundError
-
     try:
         service.cancel_run("nonexistent-run-id")
         raise AssertionError("Should have raised WorkflowRunNotFoundError")
@@ -86,23 +80,28 @@ def test_get_step_log_returns_log_content(tmp_path):
 
     # run と step を作成
     run = service.trigger_workflow("spotify_ingest_workflow")
-    steps = service.repository.list_step_runs(run.run_id)
+    step = service.step_run_repository.insert_step_run(
+        run_id=run.run_id,
+        step_id="test-step",
+        step_name="Test step",
+        sequence_no=1,
+        attempt_no=1,
+        command="echo test",
+    )
+    service.step_run_repository.update_step_result(
+        step_run_id=step.step_run_id,
+        status=StepRunStatus.SUCCEEDED,
+        log_path=str(step_log_path),
+    )
 
-    # step の log_path を手動で設定
-    if steps:
-        step = steps[0]
-        service.repository.update_step_log_path(step.step_id, str(step_log_path))
-
-        log_content = service.get_step_log(run.run_id, step.step_id)
-        assert "test log line 1" in log_content
-        assert "test log line 2" in log_content
+    log_content = service.get_step_log(run.run_id, "test-step")
+    assert "test log line 1" in log_content
+    assert "test log line 2" in log_content
 
 
 def test_get_step_log_404_for_missing_step(tmp_path):
     """存在しない step のログ取得は例外を送出する。"""
     service = _make_service(tmp_path)
-
-    from pipelines.domain.errors import WorkflowNotFoundError
 
     try:
         service.get_step_log("nonexistent-run-id", "nonexistent-step-id")

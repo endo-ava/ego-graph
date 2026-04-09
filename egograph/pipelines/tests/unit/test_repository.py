@@ -10,8 +10,9 @@ from pipelines.domain.workflow import (
     WorkflowRunStatus,
 )
 from pipelines.infrastructure.db.connection import connect
-from pipelines.infrastructure.db.repositories import WorkflowStateRepository
+from pipelines.infrastructure.db.run_repository import RunRepository
 from pipelines.infrastructure.db.schema import initialize_schema
+from pipelines.infrastructure.db.workflow_repository import WorkflowRepository
 
 
 def _workflow() -> WorkflowDefinition:
@@ -36,11 +37,12 @@ def test_register_workflows_and_enqueue_run(tmp_path):
     # Arrange
     conn = connect(tmp_path / "state.sqlite3")
     initialize_schema(conn)
-    repository = WorkflowStateRepository(conn)
-    repository.register_workflows({"dummy_workflow": _workflow()})
+    workflow_repository = WorkflowRepository(conn)
+    workflow_repository.register_workflows({"dummy_workflow": _workflow()})
+    run_repository = RunRepository(workflow_repository, conn)
 
     # Act
-    run = repository.enqueue_run(
+    run = run_repository.enqueue_run(
         workflow_id="dummy_workflow",
         trigger_type=TriggerType.MANUAL,
         queued_reason=QueuedReason.MANUAL_REQUEST,
@@ -52,7 +54,7 @@ def test_register_workflows_and_enqueue_run(tmp_path):
     assert run.workflow_id == "dummy_workflow"
     assert run.status == WorkflowRunStatus.QUEUED
     assert run.requested_by == "api"
-    assert repository.get_workflow("dummy_workflow")["enabled"] is True
+    assert workflow_repository.get_workflow("dummy_workflow")["enabled"] is True
 
 
 def test_set_workflow_enabled_blocks_new_runs(tmp_path):
@@ -60,16 +62,17 @@ def test_set_workflow_enabled_blocks_new_runs(tmp_path):
     # Arrange
     conn = connect(tmp_path / "state.sqlite3")
     initialize_schema(conn)
-    repository = WorkflowStateRepository(conn)
-    repository.register_workflows({"dummy_workflow": _workflow()})
+    workflow_repository = WorkflowRepository(conn)
+    workflow_repository.register_workflows({"dummy_workflow": _workflow()})
+    run_repository = RunRepository(workflow_repository, conn)
 
     # Act
-    workflow = repository.set_workflow_enabled("dummy_workflow", False)
+    workflow = workflow_repository.set_workflow_enabled("dummy_workflow", False)
 
     # Assert
     assert workflow["enabled"] is False
     try:
-        repository.enqueue_run(
+        run_repository.enqueue_run(
             workflow_id="dummy_workflow",
             trigger_type=TriggerType.MANUAL,
             queued_reason=QueuedReason.MANUAL_REQUEST,
@@ -85,12 +88,12 @@ def test_register_workflows_preserves_runtime_enabled_state(tmp_path):
     # Arrange
     conn = connect(tmp_path / "state.sqlite3")
     initialize_schema(conn)
-    repository = WorkflowStateRepository(conn)
-    repository.register_workflows({"dummy_workflow": _workflow()})
-    repository.set_workflow_enabled("dummy_workflow", False)
+    workflow_repository = WorkflowRepository(conn)
+    workflow_repository.register_workflows({"dummy_workflow": _workflow()})
+    workflow_repository.set_workflow_enabled("dummy_workflow", False)
 
     # Act
-    repository.register_workflows({"dummy_workflow": _workflow()})
+    workflow_repository.register_workflows({"dummy_workflow": _workflow()})
 
     # Assert
-    assert repository.get_workflow("dummy_workflow")["enabled"] is False
+    assert workflow_repository.get_workflow("dummy_workflow")["enabled"] is False
