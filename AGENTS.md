@@ -1,68 +1,37 @@
-# EgoGraph 開発ガイドライン
+# EgoGraph
 
-## 概要
+## プロジェクトコンセプト
 
-Personal AI Agent and Personal Data Warehouse and Personal Mobile App（サーバーレス・ローカルファースト）
-
-構成: Python (uv workspace) + Rust (Cargo) + Kotlin Multiplatform / Compose Multiplatform
+- 散在する個人データを一箇所に集約し、自分自身の文脈を理解するAIエージェントを構築する
+- 以下の2層で実現
+  - データ層（EgoGraph）: 各種サービスからデータを定期収集し、Parquetファイルとして一元管理する。データ提供APIをMCPとして提供するエージェントファースト設計。
+  - エージェント層（EgoPulse）: Openclaw, Microclaw風の完全自律型AIエージェント。EgoGraph の蓄積データにツール経由でアクセス。
 
 ## アーキテクチャ
 
+Python (uv workspace) + Rust (Cargo) + Kotlin Multiplatform / Compose Multiplatform
+
 ### egograph/pipelines (データ収集・ジョブ実行)
 
-常駐 Pipelines Service + ETL/ELT Pipeline:
-Schedule Trigger → Run Dispatcher → Step Executor → Provider → Collector → Transform → Storage → Data Lake
+常駐 Pipelines Service + ETL/ELT Pipeline。R2 に Parquet + JSON を保存し、SQLite でジョブ状態を管理。
+詳細: @docs/20.egograph/pipelines/
 
-- Collector: API から生データ取得
-- Transform: クレンジング & スキーママッピング
-- Storage: Parquet (分析用) + JSON (Raw) を R2 に保存
-- Stateful: R2 内のカーソル位置を追跡し、増分取り込みをサポート
-- Job State: SQLite で workflow/run/step/lock を管理
-- Tech Stack: Python 3.12+, FastAPI, APScheduler, SQLite, DuckDB, boto3
+### egograph/backend (データ提供API)
 
-### egograph/backend (Agent API)
-
-DDD (Domain-Driven Design) - レイヤードアーキテクチャ
-
-- api/: プレゼンテーション (FastAPI ルート、リクエスト/レスポンス)
-- usecases/: アプリケーション (ユースケース、ツールファクトリ、LLM調整)
-- infrastructure/: インフラストラクチャ (DuckDB、LLMプロバイダ、Repository実装)
-- database/: DuckDB ステートレス設計（`:memory:`）、R2 から直接 Parquet 読み込み
-- Tech Stack: FastAPI, Uvicorn, DuckDB, pandas, httpx, Pydantic
+DDD レイヤードアーキテクチャ（api / usecases / infrastructure / database）。DuckDBでParquet読み込み。
+詳細: @docs/20.egograph/backend/
 
 ### frontend (Mobile App)
 
-MVVM (StateFlow + Channel) - Kotlin Multiplatform + Compose Multiplatform
-
-- core/domain/: DTOs, Repository インターフェース
-- core/network/: HTTP クライアント (Ktor)
-- features/: 機能モジュール (Screen + ScreenModel + State + Effect)
-- di/: 依存性注入 (Koin)
-
-| レイヤー    | 役割                       | 例                 |
-| ----------- | -------------------------- | ------------------ |
-| Screen      | Compose UI 表示            | ChatScreen.kt      |
-| ScreenModel | ビジネスロジック・状態更新 | ChatScreenModel.kt |
-| State       | UI 状態（データクラス）    | ChatState.kt       |
-| Effect      | One-shot イベント          | ChatEffect.kt      |
-
-- DI: Koin 4.0.0
-- State Management: StateFlow + Channel (Kotlin Coroutines)
-- Tech Stack: Kotlin 2.2.21, Compose Multiplatform 1.9.0, Ktor 3.3.3, Voyager 1.1.0-beta03, Kermit
-- Testing: kotlin-test, Turbine, MockK, Ktor MockEngine
+MVVM (StateFlow + Channel) - Kotlin Multiplatform + Compose Multiplatform。
+features/ 配下に Screen + ScreenModel + State + Effect の各モジュール。DI は Koin。
+将来的に、収集データの可視化やエージェントの管理画面などで使用する予定。
+詳細: @docs/40.frontend/
 
 ### egopulse (Personal Agent Runtime)
 
-シングルバイナリの常駐 AI エージェントランタイム。TUI / Web UI / Discord / Telegram の各チャネルから同じ会話基盤と永続セッションを共有する。
-
-- `main.rs`: CLI エントリーポイント。`run`, `setup`, `gateway`, `ask`, `chat` などの入口
-- `runtime.rs`: `AppState` 構築とチャネル起動 supervision
-- `agent_loop/`: 会話 1 ターン処理、session 解決、履歴ロード、永続化
-- `channels/`: CLI / TUI / Discord / Telegram のチャネル実装
-- `web.rs`, `web/`: Web UI, SSE, WebSocket, config/session API
-- `storage.rs`: SQLite ベースの会話履歴・session・tool call 永続化
-- `llm.rs`: OpenAI 互換 LLM provider 呼び出し
-- Tech Stack: Rust, Tokio, Ratatui, Axum, Rusqlite, Serenity, Teloxide
+シングルバイナリの常駐 AI エージェントランタイム。TUI / Web / Discord / Telegram で永続セッションを共有。
+詳細: @docs/30.egopulse/
 
 ## 開発コマンド
 
@@ -77,60 +46,49 @@ uv run ruff format .              # Format
 # === Pipelines ===
 uv run python -m pipelines.main serve
 uv run python -m pipelines.main workflow list --json
-uv run pytest egograph/pipelines/tests/unit egograph/pipelines/tests/integration egograph/pipelines/tests/e2e --cov=pipelines  # CI用
-# Live（手動・要認証）
-uv run pytest egograph/pipelines/tests/e2e                             
+uv run pytest egograph/pipelines/tests --cov=pipelines
 
 # === Backend ===
-tmux new-session -d -s fastapi 'uv run python -m egograph.backend.main'
 uv run python -m egograph.backend.main
 uv run pytest egograph/backend/tests --cov=backend
-uv run python -m egograph.backend.dev_tools.chat_cli   # デバッグ用CLIツール
+uv run python -m egograph.backend.dev_tools.chat_cli
 
 # === Frontend (cd frontend) ===
-cd frontend # PJルートからはgradlewは使えないことに注意
-./gradlew :androidApp:assembleDebug      # ビルド
-./gradlew :androidApp:installDebug      # インストール
-./gradlew :shared:testDebugUnitTest     # テスト
-./gradlew :shared:koverHtmlReportDebug  # カバレッジ率
-./gradlew ktlintCheck                   # Lint
-./gradlew ktlintFormat                  # Format
-./gradlew detekt                        # 静的解析
-# NOTE: ktlintFormat/ktlintCheck は同一コマンドで連続実行せず、先に ktlintFormat 単体で実行する（同一Gradle実行内だと ktlintCheck が先に走って失敗することがあるため）
-
-# === E2E Test (Maestro) ===
-maestro test frontend/maestro/flows/           # 全テスト一括実行
+# ※ルートからはgradlew不可。必ず cd frontend してから実行
+# ※ktlintFormat と ktlintCheck は別々に実行（同一Gradle実行内だと競合）
+./gradlew :androidApp:assembleDebug
+./gradlew :androidApp:installDebug
+./gradlew :shared:testDebugUnitTest
+./gradlew ktlintFormat
+./gradlew ktlintCheck
+./gradlew detekt
 
 # === EgoPulse (cd egopulse) ===
-cd egopulse
-cargo fmt --check                              # フォーマットチェック
-cargo check -p egopulse                        # コンパイルチェック
-cargo clippy --all-targets --all-features -- -D warnings  # Lint
-cargo test -p egopulse                         # テスト
-cargo run -p egopulse                          # TUI起動
-cargo run -p egopulse -- ask "hello"           # 単発プロンプト
-cargo run -p egopulse -- run                   # 全チャネル起動
-cargo run -p egopulse -- setup                 # セットアップウィザード
+cargo fmt --check
+cargo check -p egopulse
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test -p egopulse
 
 # === Coderabbit review ===
-coderabbit --prompt-only -t uncommitted              # Commit前
-coderabbit --prompt-only -t committed --base main    # PR作成前
+coderabbit --prompt-only -t uncommitted
+coderabbit --prompt-only -t committed --base main
 ```
 
 ## 規約
 
 ### コーディング
 
-#### 基本原則
-
-- **「長期的な保守性」「コードの美しさ」「堅牢性」**を担保するようなコーディングを意識
-  - SOLID原則
-  - KISS (Keep It Simple, Stupid) & YAGNI (You Ain't Gonna Need It):
+- **「長期的な保守性」「コードの美しさ」「堅牢性」** を担保するコーディング
+  - SOLID 原則
+  - KISS (Keep It Simple, Stupid) & YAGNI (You Ain't Gonna Need It)
   - DRY (Don't Repeat Yourself)
-  - 責務の分離 (Separation of Concerns): ビジネスロジック、UI、データアクセスなどが適切に分離されているか？
+  - 責務の分離: ビジネスロジック、UI、データアクセスなどが適切に分離されているか
   - 可読性と美しさ
-
-#### その他のルール
+- **コードレビューで一つも指摘されないレベル**のコード品質を目指す。Coderabbit,Codexのレビューはとても細かいです。
+- 場当たり的な対応は禁止（バグフォールバック、ビルド/テスト通過のためだけの本質的でない修正）
+- 「後方互換」は負債。既存利用維持のための互換分岐や旧仕様フォールバックは追加しない。新仕様へ一直線に置き換える
+- うまくいかない時にコードを増やし続けない。コードを削除する勇気を持つ。シンプルが最も美しい
+- frontend実装はエミュレータ―接続前提。目視確認のため、`installDebug`までおこなうこと。接続されてない場合は報告。
 
 | 項目      | ルール                                             |
 | --------- | -------------------------------------------------- |
@@ -140,65 +98,49 @@ coderabbit --prompt-only -t committed --base main    # PR作成前
 | Docstring | 日本語                                             |
 | テスト    | AAA パターン必須、Python: pytest、Frontend: Kotest |
 
-### Git / CI
+### 文書
 
-- GitHub Flow: `main` 直接コミット禁止、ブランチ `<type>/<desc>`
+- 文書作成時はどんな時でも **MECE** を意識する（セクション構成、要件定義、設計書、PR詳細などすべて）
+
+### Git / CI / PR
+
+- GitHub Flow: ブランチ `<type>/<desc>`
 - コミット: Conventional Commits（英語）
 - ワークフロー: `ci-*.yml`(テスト), `job-*.yml`(定期), `deploy-*.yml`, `release-*.yml`
+- Issue, Planなど、**計画あり**で進めた実装: Git Worktreeを作成しその中で作業する（`worktree-create` skill使用）
+- ブレインストーミングや壁打ち系など、**計画なし**で進めた実装: mainブランチで作業やプッシュしてよい
+- PR description は日本語。該当Issueがある場合は `Close #XX` 明記
+- PR レビューはCoderabbitが自動で提供。PR作成後10分程度の時間差あり。レビューバックは`pr-review-back-workflow` skill使用
+
+### セキュリティ
+
+- `.env` 系・ローカル秘密設定ファイルの読み取り禁止。秘密が必要な場合はユーザーに明示してもらう
 
 ## デバッグ
 
-### スキル選択
+| シナリオ             | 使用スキル                             |
+| -------------------- | -------------------------------------- |
+| APIのみ          | `tmux-api-debug`                       |
+| UI + API（E2E）  | `android-adb-debug` + `tmux-api-debug` |
+| LLM ToolCall検証 | `agent-tool-test`                      |
 
-| シナリオ             | 使用スキル                             | 説明                                           |
-| -------------------- | -------------------------------------- | ---------------------------------------------- |
-| APIのみ          | `tmux-api-debug`                       | Backend APIの動作確認・デバッグ                |
-| UI + API（E2E）  | `android-adb-debug` + `tmux-api-debug` | フロントエンドからバックエンドまでの統合テスト |
-| LLM ToolCall検証 | `agent-tool-test`                      | 各LLMモデルの全ツール使用可否テスト            |
+## Plan作成方針
 
-### 環境構成
+- 基本的なPlanのスコープ: WT作成 -> 実装(TDD) -> コミット(意味ごとに分離) -> PR作成
+- 計画には必ずUTや動作確認などの検証を入れる
+- プラン作成後は以下の方法でレビュー依頼
 
-```
-Linux ─ Backend (tmux) + ADB Client
-    ↓ Tailscale:100.x.x.x:5559
-Windows ─ netsh (0.0.0.0:5559→127.0.0.1:5555) ─ Android Emulator (:5555)
-```
-
-※ 5559を外部公開する理由: エミュレータの:5555とのポート競合回避
-
-### Frontend～Backend間の検証方法
-
-1. Windows側でエミュ起動 or デバッグ用実機でadb待ち受け（ユーザー作業）
-2. Linux から ADB 接続（`adb connect <WINDOWS_OR_ANDROID_IP>:PORT`）(エミュ:5559, 実機:5669)
-3. Backend を起動（tmux推奨）
-4. adb コマンドで現在の挙動を確認しながら実装
-5. ビルド & インストール
-6. adb コマンドでビルド内容の確認
-
-# initial plan review request
-
-## 必ず -m でモデルを指定すること
+初回:
 ```bash
-codex exec -m gpt-5.4 "このプランをレビューして。致命的な点だけ指摘して: {plan_full_path} (ref: {CLAUDE.md full_path})"
+codex exec -m gpt-5.4 "このプランをレビューして。致命的な点だけ指摘して: {plan_path}"
+```
+更新:
+```bash
+codex exec resume --last -m gpt-5.4 "プランを更新したからレビューして。致命的な点だけ指摘して: {plan_path}"
 ```
 
-# updated plan review request
-```bash 
-resume --last をつけないと最初のレビューの文脈が失われるから注意
-codex exec resume --last -m gpt-5.4 "プランを更新したからレビューして。致命的な点だけ指摘して: {plan_full_path} (ref: {CLAUDE.md full_path})"
-```
+## エージェント運用
 
-## その他
-
-- 質問は `AskUserQuestion` 等を積極的に活用
 - サブエージェント活用でコンテキストをクリーンに（`delegate_task` を使用、`task` は使わない）
 - コード変更後はテスト確認必須
-- **コードレビューで一つも指摘されないレベル**のコード品質を目指す。不十分なコードの場合、レビュー指摘によりより多くの時間とトークンを消費します
-- 目の前の目標を達成するためだけの場当たり的な対応は禁止
-  - バグを潰すための場当たり的なフォールバック処理
-  - テストやビルドを通すためだけの本質的ではない修正
-- 「後方互換」は負債にしかならないため禁止。既存利用維持のための互換分岐、旧仕様フォールバック、移行期間のための二重実装は例外なく追加しない。既存仕様を変える場合は、新仕様へ一直線に置き換える。
-- うまくいかない時にコードを増やし続けない。コードを削除する勇気を持つ。シンプルが最も美しい。
-- ui/uxの調整タスクは言葉での認識合わせが難しいことを考慮し、必要に応じてASCII等を使いながらユーザーに確認する
-- `.env`系を読むことは禁止
-- ローカル秘密設定ファイル（例: `egopulse/egopulse.local.yaml`）も読まないこと。秘密が必要な場合はユーザーに値を明示してもらうか、実行時の環境変数/引数で受け取る前提で進める
+- UI/UX調整タスクは言葉での認識合わせが難しいため、必要に応じて ASCII 等を使いながらユーザーに確認する

@@ -2,8 +2,6 @@
 
 各コンポーネントが使用している技術の一覧。
 
-技術選定の理由（ADR）→ [../../70.knowledge/technical-selections/](../../70.knowledge/technical-selections/)
-
 ---
 
 ## モノレポ構成
