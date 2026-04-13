@@ -21,6 +21,32 @@ from backend.mcp_server import create_mcp_server
 logger = logging.getLogger(__name__)
 
 
+class _ApiKeyAuthMiddleware(BaseHTTPMiddleware):
+    """REST API と MCP エンドポイント全体に適用されるAPI Key認証。
+
+    BACKEND_API_KEYが設定されている場合、全リクエストでX-API-Keyヘッダーを検証する。
+    ヘルスチェックとドキュメントパスは除外。
+    設定されていない場合は認証をスキップする。
+    """
+
+    _PUBLIC_PATHS = frozenset(
+        {"/v1/health", "/health", "/docs", "/redoc", "/openapi.json"}
+    )
+
+    def __init__(self, app, api_key: str):
+        super().__init__(app)
+        self._api_key = api_key
+
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path in self._PUBLIC_PATHS:
+            return await call_next(request)
+
+        api_key = request.headers.get("x-api-key")
+        if not api_key or not secrets.compare_digest(api_key, self._api_key):
+            return JSONResponse(status_code=401, content={"detail": "Invalid API key"})
+        return await call_next(request)
+
+
 def create_app(config: BackendConfig | None = None) -> FastAPI:
     """FastAPIアプリケーションを作成します。
 
@@ -73,32 +99,21 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
+    # API Key認証（REST + MCP 共通）
+    if config.api_key is not None:
+        app.add_middleware(
+            _ApiKeyAuthMiddleware, api_key=str(config.api_key.get_secret_value())
+        )
+
     # ルーターの登録
     app.include_router(health.router)
     app.include_router(data.router)
     app.include_router(browser_history_data.router)
     app.include_router(github.router)
 
-    # MCP Server を /mcp パスにマウント（API Key認証付き）
+    # MCP Server を /mcp パスにマウント
     mcp = create_mcp_server(config)
-    mcp_app = mcp.streamable_http_app()
-
-    if config.api_key is not None:
-
-        class _MCPApiKeyAuth(BaseHTTPMiddleware):
-            async def dispatch(self, request: Request, call_next):
-                api_key = request.headers.get("x-api-key")
-                if not api_key or not secrets.compare_digest(
-                    api_key, str(config.api_key.get_secret_value())
-                ):
-                    return JSONResponse(
-                        status_code=401, content={"detail": "Invalid API key"}
-                    )
-                return await call_next(request)
-
-        mcp_app.add_middleware(_MCPApiKeyAuth)
-
-    app.mount("/mcp", mcp_app)
+    app.mount("/mcp", mcp.streamable_http_app())
 
     logger.info("EgoGraph Backend initialized (REST + MCP)")
 

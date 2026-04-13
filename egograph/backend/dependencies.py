@@ -1,14 +1,13 @@
 """FastAPI dependency functions.
 
-設定の取得、DuckDB接続ファクトリ、認証などの依存関数を提供します。
+設定の取得、DuckDB接続ファクトリなどの依存関数を提供します。
 """
 
 import logging
-import secrets
 from collections.abc import Generator
 
 import duckdb
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends
 
 from backend.config import BackendConfig
 from backend.infrastructure.database import DuckDBConnection
@@ -59,27 +58,3 @@ def get_db_connection(
 
     with DuckDBConnection(config.r2) as conn:
         yield conn
-async def verify_api_key(
-    x_api_key: str | None = Header(None),
-    config: BackendConfig = Depends(get_config),
-) -> None:
-    """API Key認証（オプショナル）。
-
-    設定でBACKEND_API_KEYが指定されている場合のみ認証を行います。
-
-    Args:
-        x_api_key: X-API-Keyヘッダーの値
-        config: Backend設定
-
-    Raises:
-        HTTPException: 認証に失敗した場合（401）
-    """
-    # API Keyが設定されていない場合は認証不要
-    if config.api_key is None:
-        return
-
-    # API Keyが設定されている場合は検証（timing attack対策）
-    if not x_api_key or not secrets.compare_digest(
-        str(x_api_key), str(config.api_key.get_secret_value())
-    ):
-        raise HTTPException(status_code=401, detail="Invalid API key")

@@ -23,7 +23,7 @@ from backend.constants import (
     MAX_LIMIT,
     MIN_LIMIT,
 )
-from backend.dependencies import get_config, get_db_connection, verify_api_key
+from backend.dependencies import get_config, get_db_connection
 from backend.infrastructure.database import (
     GitHubQueryParams,
     get_activity_stats,
@@ -55,7 +55,6 @@ def get_pull_requests_endpoint(
     ),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
-    _: None = Depends(verify_api_key),
 ):
     """指定期間のPull Requestイベントを取得します。
 
@@ -96,7 +95,9 @@ def get_pull_requests_endpoint(
         start_date=start,
         end_date=end,
     )
-    return get_pull_requests(params, owner=owner, repo=repo, state=state, limit=validated_limit)
+    return get_pull_requests(
+        params, owner=owner, repo=repo, state=state, limit=validated_limit
+    )
 
 
 @router.get("/commits", response_model=list[CommitResponse])
@@ -110,7 +111,6 @@ def get_commits_endpoint(
     ),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
-    _: None = Depends(verify_api_key),
 ):
     """指定期間のCommitイベントを取得します。
 
@@ -160,7 +160,6 @@ def get_repositories_endpoint(
     ),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
-    _: None = Depends(verify_api_key),
 ):
     """Repositoryマスターを取得します。
 
@@ -196,7 +195,6 @@ def get_activity_stats_endpoint(
     ),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
-    _: None = Depends(verify_api_key),
 ):
     """期間別のアクティビティ統計を取得します。
 
@@ -242,7 +240,6 @@ def get_repo_summary_stats_endpoint(
     repo: str | None = Query(None, description="フィルタ対象のリポジトリ"),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
-    _: None = Depends(verify_api_key),
 ):
     """リポジトリ別のサマリー統計を取得します。
 
