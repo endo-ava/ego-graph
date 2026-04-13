@@ -1,16 +1,22 @@
-"""EgoGraph Backend - FastAPI application entry point.
+"""EgoGraph Backend - FastAPI + MCP Server.
 
-データ提供 API に特化した FastAPI サーバー。
+REST API と MCP (Model Context Protocol) を単一サーバーで提供する。
+MCP エンドポイントは /mcp パスにマウントされる。
 """
 
 import logging
+import secrets
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from backend.api import browser_history_data, data, github, health
 from backend.config import BackendConfig
+from backend.mcp_server import create_mcp_server
 
 logger = logging.getLogger(__name__)
 
@@ -73,24 +79,36 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
     app.include_router(browser_history_data.router)
     app.include_router(github.router)
 
-    logger.info("EgoGraph Backend initialized successfully")
+    # MCP Server を /mcp パスにマウント（API Key認証付き）
+    mcp = create_mcp_server(config)
+    mcp_app = mcp.streamable_http_app()
+
+    if config.api_key is not None:
+
+        class _MCPApiKeyAuth(BaseHTTPMiddleware):
+            async def dispatch(self, request: Request, call_next):
+                api_key = request.headers.get("x-api-key")
+                if not api_key or not secrets.compare_digest(
+                    api_key, str(config.api_key.get_secret_value())
+                ):
+                    return JSONResponse(
+                        status_code=401, content={"detail": "Invalid API key"}
+                    )
+                return await call_next(request)
+
+        mcp_app.add_middleware(_MCPApiKeyAuth)
+
+    app.mount("/mcp", mcp_app)
+
+    logger.info("EgoGraph Backend initialized (REST + MCP)")
 
     return app
 
 
 if __name__ == "__main__":
-    import argparse
     import sys
 
-    parser = argparse.ArgumentParser(description="EgoGraph Backend")
-    parser.add_argument("--mcp", action="store_true", help="MCP Server mode")
-    parser.add_argument(
-        "--transport",
-        choices=["stdio", "streamable-http"],
-        default="streamable-http",
-        help="MCP transport (default: streamable-http)",
-    )
-    args = parser.parse_args()
+    import uvicorn
 
     try:
         config = BackendConfig.from_env()
@@ -105,29 +123,20 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    if args.mcp:
-        from backend.mcp_server import create_mcp_server
+    logger.info("Starting EgoGraph Backend on %s:%s", config.host, config.port)
 
-        logger.info("Starting EgoGraph MCP Server (transport=%s)", args.transport)
-        server = create_mcp_server(config)
-        server.run(transport=args.transport, host=config.host, port=config.port)
+    if config.reload:
+        uvicorn.run(
+            "backend.main:create_app",
+            host=config.host,
+            port=config.port,
+            reload=True,
+            factory=True,
+        )
     else:
-        import uvicorn
-
-        logger.info("Starting EgoGraph Backend on %s:%s", config.host, config.port)
-
-        if config.reload:
-            uvicorn.run(
-                "backend.main:create_app",
-                host=config.host,
-                port=config.port,
-                reload=True,
-                factory=True,
-            )
-        else:
-            uvicorn.run(
-                create_app(config),
-                host=config.host,
-                port=config.port,
-                reload=False,
-            )
+        uvicorn.run(
+            create_app(config),
+            host=config.host,
+            port=config.port,
+            reload=False,
+        )
