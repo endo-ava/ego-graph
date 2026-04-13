@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
         logger.info("Starting EgoGraph MCP Server (transport=%s)", args.transport)
         server = create_mcp_server(config)
-        server.run(transport=args.transport)
+        server.run(transport=args.transport, host=config.host, port=config.port)
     else:
         import uvicorn
 
