@@ -30,11 +30,17 @@ pub enum GatewayAction {
     Restart,
 }
 
-fn resolve_config_for_service(cli_config: Option<&PathBuf>) -> Option<PathBuf> {
+fn resolve_config_for_service(cli_config: Option<&PathBuf>) -> Result<PathBuf, EgoPulseError> {
     if let Some(path) = cli_config {
-        return Some(resolve_cli_config_path(path));
+        return Ok(resolve_cli_config_path(path));
     }
-    Config::resolve_config_path().ok().flatten()
+    Config::resolve_config_path()
+        .map_err(EgoPulseError::Config)?
+        .ok_or_else(|| {
+            EgoPulseError::Internal(
+                "No configuration found. Run 'egopulse setup' first, then retry.".into(),
+            )
+        })
 }
 
 /// Resolves a CLI config path to an absolute filesystem path.
@@ -49,7 +55,7 @@ pub fn resolve_cli_config_path(path: &std::path::Path) -> PathBuf {
 }
 
 fn runtime_default_config_path() -> Option<PathBuf> {
-    dirs::home_dir().map(|home| home.join(".egopulse").join("egopulse.config.yaml"))
+    crate::config::default_config_path().ok()
 }
 
 fn escape_systemd_exec_arg(value: &str) -> String {
@@ -173,15 +179,7 @@ ACTIONS:
             let exe_path = std::env::current_exe().map_err(|e| {
                 EgoPulseError::Internal(format!("failed to resolve binary path: {e}"))
             })?;
-            let config_path = resolve_config_for_service(cli_config);
-
-            if config_path.is_none() {
-                return Err(EgoPulseError::Internal(
-                    "No configuration found. Run 'egopulse setup' first, then retry.".into(),
-                ));
-            }
-
-            let config_path = config_path.unwrap();
+            let config_path = resolve_config_for_service(cli_config)?;
             if !config_path.exists() {
                 return Err(EgoPulseError::Internal(format!(
                     "Config not found at: {}. Run 'egopulse setup' first, then retry.",

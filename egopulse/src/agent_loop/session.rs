@@ -64,7 +64,7 @@ pub(crate) async fn resolve_chat_id(
     state: &AppState,
     context: &SurfaceContext,
 ) -> Result<i64, EgoPulseError> {
-    call_blocking(state.db.clone(), {
+    call_blocking(Arc::clone(&state.db), {
         let channel = context.channel.clone();
         let session_key = context.session_key();
         let surface_thread = context.surface_thread.clone();
@@ -79,7 +79,7 @@ pub(crate) async fn resolve_chat_id(
 
 /// Lists all persisted sessions available in the local database.
 pub async fn list_sessions(state: &AppState) -> Result<Vec<SessionSummary>, EgoPulseError> {
-    call_blocking(state.db.clone(), move |db| db.list_sessions())
+    call_blocking(Arc::clone(&state.db), move |db| db.list_sessions())
         .await
         .map_err(EgoPulseError::from)
 }
@@ -90,7 +90,10 @@ pub async fn load_session_messages(
     context: &SurfaceContext,
 ) -> Result<Vec<Message>, EgoPulseError> {
     let chat_id = resolve_chat_id(state, context).await?;
-    let history = call_blocking(state.db.clone(), move |db| db.get_all_messages(chat_id)).await?;
+    let history = call_blocking(Arc::clone(&state.db), move |db| {
+        db.get_all_messages(chat_id)
+    })
+    .await?;
     Ok(history
         .into_iter()
         .map(|message| {
@@ -112,7 +115,7 @@ pub(crate) async fn load_messages_for_turn(
     chat_id: i64,
 ) -> Result<LoadedSession, EgoPulseError> {
     let max_history_messages = state.config.max_history_messages;
-    let snapshot = call_blocking(state.db.clone(), move |db| {
+    let snapshot = call_blocking(Arc::clone(&state.db), move |db| {
         db.load_session_snapshot(chat_id, max_history_messages)
     })
     .await?;
@@ -139,63 +142,81 @@ pub(crate) async fn persist_phase(
     messages: &[Message],
     session_updated_at: Option<String>,
 ) -> Result<PersistedTurn, EgoPulseError> {
-    let mut retry_snapshot = messages.to_vec();
-    let mut retry_session_updated_at = session_updated_at;
-
-    for attempt in 0..2 {
-        match store_phase_snapshot(
-            state,
-            message.clone(),
-            retry_snapshot.clone(),
-            retry_session_updated_at.clone(),
-        )
-        .await
-        {
-            Ok(persisted) => return Ok(persisted),
-            Err(StorageError::SessionSnapshotConflict) if attempt == 0 => {
-                // 同じ session に別ターンが先に保存された場合は、最新 snapshot を読み直して
-                // 今回の phase だけを末尾に積み直し、競合解消後の 1 回だけ再試行する。
-                let LoadedSession {
-                    messages,
-                    session_updated_at,
-                } = load_messages_for_turn(state, message.chat_id).await?;
-                let mut refreshed_messages = messages;
-                refreshed_messages.push(phase_message.clone());
-                retry_snapshot = refreshed_messages;
-                retry_session_updated_at = session_updated_at;
-            }
-            Err(error) => return Err(EgoPulseError::Storage(error)),
-        }
+    let persisted = store_phase_snapshot(
+        state,
+        message.clone(),
+        messages.to_vec(),
+        session_updated_at.clone(),
+    )
+    .await;
+    if let Some(turn) = persisted_turn_or_retry(persisted)? {
+        return Ok(turn);
     }
 
-    Err(EgoPulseError::Storage(
-        StorageError::SessionSnapshotConflict,
-    ))
+    // 同じ session に別ターンが先に保存された場合は、最新 snapshot を読み直して
+    // 今回の phase だけを末尾に積み直し、競合解消後の 1 回だけ再試行する。
+    let LoadedSession {
+        messages: mut refreshed_messages,
+        session_updated_at: refreshed_updated_at,
+    } = load_messages_for_turn(state, message.chat_id).await?;
+    refreshed_messages.push(phase_message);
+
+    store_phase_snapshot(state, message, refreshed_messages, refreshed_updated_at)
+        .await
+        .map_err(EgoPulseError::Storage)
+}
+
+fn persisted_turn_or_retry(
+    persisted: Result<PersistedTurn, StorageError>,
+) -> Result<Option<PersistedTurn>, EgoPulseError> {
+    match persisted {
+        Ok(turn) => Ok(Some(turn)),
+        Err(StorageError::SessionSnapshotConflict) => Ok(None),
+        Err(error) => Err(EgoPulseError::Storage(error)),
+    }
 }
 
 async fn snapshot_to_loaded(
     snapshot: SessionSnapshot,
     assets: Arc<AssetStore>,
 ) -> Result<LoadedSession, EgoPulseError> {
-    if let Some(json) = snapshot.messages_json {
+    let Some(json) = snapshot.messages_json.as_ref() else {
+        return Ok(loaded_from_recent(&snapshot));
+    };
+
+    let restored = tokio::task::spawn_blocking({
         let assets = Arc::clone(&assets);
-        let restored =
-            tokio::task::spawn_blocking(move || restore_snapshot_messages(&assets, &json))
-                .await
-                .map_err(|error| {
-                    EgoPulseError::Storage(StorageError::TaskJoin(error.to_string()))
-                })?;
-        if let Ok(restored) = restored
-            && !restored.is_empty()
-        {
-            return Ok(LoadedSession {
-                messages: restored,
-                session_updated_at: snapshot.updated_at,
-            });
-        }
-    }
+        let json = json.clone();
+        move || restore_snapshot_messages(&assets, &json)
+    })
+    .await
+    .map_err(|error| EgoPulseError::Storage(StorageError::TaskJoin(error.to_string())))?;
+
+    let Some(messages) = restored_messages_or_recent(restored) else {
+        return Ok(loaded_from_recent(&snapshot));
+    };
 
     Ok(LoadedSession {
+        messages,
+        session_updated_at: snapshot.updated_at,
+    })
+}
+
+fn restored_messages_or_recent(
+    restored: Result<Vec<Message>, StorageError>,
+) -> Option<Vec<Message>> {
+    let Ok(messages) = restored else {
+        return None;
+    };
+    if messages.is_empty() {
+        return None;
+    }
+
+    Some(messages)
+}
+
+fn loaded_from_recent(snapshot: &SessionSnapshot) -> LoadedSession {
+    LoadedSession {
         messages: snapshot
             .recent_messages
             .iter()
@@ -209,9 +230,9 @@ async fn snapshot_to_loaded(
                     message.content.clone(),
                 )
             })
-            .collect::<Vec<_>>(),
-        session_updated_at: snapshot.updated_at,
-    })
+            .collect(),
+        session_updated_at: snapshot.updated_at.clone(),
+    }
 }
 
 async fn serialize_snapshot(
@@ -316,17 +337,20 @@ fn restore_part(assets: &AssetStore, part: PersistedMessageContentPart) -> Messa
             image_ref,
             mime_type,
             detail,
-        } => match assets.load_image_data_url(&image_ref, &mime_type) {
-            Ok(image_url) => MessageContentPart::InputImage { image_url, detail },
-            Err(StorageError::NotFound(_)) => MessageContentPart::InputText {
-                text: format!(
-                    "Previously attached image could not be restored: missing image_ref {image_ref}"
-                ),
-            },
-            Err(error) => MessageContentPart::InputText {
-                text: format!("Previously attached image could not be restored: {error}"),
-            },
-        },
+        } => assets
+            .load_image_data_url(&image_ref, &mime_type)
+            .map(|image_url| MessageContentPart::InputImage { image_url, detail })
+            .unwrap_or_else(|error| missing_image_text_part(&image_ref, error)),
+    }
+}
+
+fn missing_image_text_part(image_ref: &str, error: StorageError) -> MessageContentPart {
+    let reason = match error {
+        StorageError::NotFound(_) => format!("missing image_ref {image_ref}"),
+        other => other.to_string(),
+    };
+    MessageContentPart::InputText {
+        text: format!("Previously attached image could not be restored: {reason}"),
     }
 }
 
@@ -342,7 +366,7 @@ async fn store_phase_snapshot(
             EgoPulseError::Storage(storage) => storage,
             other => StorageError::TaskJoin(other.to_string()),
         })?;
-    let updated_at = call_blocking(state.db.clone(), move |db| {
+    let updated_at = call_blocking(Arc::clone(&state.db), move |db| {
         db.store_message_with_session(&message, &session_json, session_updated_at.as_deref())
     })
     .await?;
@@ -362,7 +386,7 @@ mod tests {
     use super::{load_messages_for_turn, persist_phase};
     use crate::agent_loop::SurfaceContext;
     use crate::assets::AssetStore;
-    use crate::config::Config;
+    use crate::config::{Config, ProviderConfig};
     use crate::error::LlmError;
     use crate::llm::{LlmProvider, Message, MessageContent, MessageContentPart, MessagesResponse};
     use crate::runtime::AppState;
@@ -396,9 +420,18 @@ mod tests {
 
     fn test_config(data_dir: String) -> Config {
         Config {
-            model: "gpt-4o-mini".to_string(),
-            api_key: Some(SecretString::new("sk-test".to_string().into_boxed_str())),
-            llm_base_url: "https://api.openai.com/v1".to_string(),
+            default_provider: "openai".to_string(),
+            default_model: Some("gpt-4o-mini".to_string()),
+            providers: std::collections::HashMap::from([(
+                "openai".to_string(),
+                ProviderConfig {
+                    label: "OpenAI".to_string(),
+                    base_url: "https://api.openai.com/v1".to_string(),
+                    api_key: Some(SecretString::new("sk-test".to_string().into_boxed_str())),
+                    default_model: "gpt-4o-mini".to_string(),
+                    models: vec!["gpt-4o-mini".to_string()],
+                },
+            )]),
             data_dir,
             log_level: "info".to_string(),
             compaction_timeout_secs: 180,
@@ -429,12 +462,14 @@ mod tests {
     fn build_state_with_provider(data_dir: String, llm: Box<dyn LlmProvider>) -> AppState {
         use crate::channel_adapter::ChannelRegistry;
         let config = test_config(data_dir.clone());
-        let skills = Arc::new(SkillManager::from_skills_dir(config.skills_dir()));
+        let skills = Arc::new(SkillManager::from_skills_dir(
+            config.skills_dir().expect("skills_dir"),
+        ));
         AppState {
             db: Arc::new(Database::new(&data_dir).expect("db")),
             config: config.clone(),
             config_path: None,
-            llm: Arc::from(llm),
+            llm_override: Some(Arc::from(llm)),
             channels: Arc::new(ChannelRegistry::new()),
             skills: Arc::clone(&skills),
             tools: Arc::new(ToolRegistry::new(&config, skills)),
@@ -453,7 +488,7 @@ mod tests {
         );
         let context = cli_context("conflict");
 
-        let chat_id = call_blocking(state.db.clone(), {
+        let chat_id = call_blocking(Arc::clone(&state.db), {
             let channel = context.channel.clone();
             let session_key = context.session_key();
             let surface_thread = context.surface_thread.clone();
@@ -478,7 +513,7 @@ mod tests {
             is_from_bot: false,
             timestamp: "2024-01-01T00:00:00Z".to_string(),
         };
-        call_blocking(state.db.clone(), {
+        call_blocking(Arc::clone(&state.db), {
             let message = seed_message.clone();
             move |db| {
                 db.store_message_with_session(
@@ -492,7 +527,7 @@ mod tests {
         .await
         .expect("seed session");
 
-        let stale_session_updated_at = call_blocking(state.db.clone(), move |db| {
+        let stale_session_updated_at = call_blocking(Arc::clone(&state.db), move |db| {
             db.load_session(chat_id)
                 .map(|session| session.expect("session").1)
         })
@@ -507,7 +542,7 @@ mod tests {
             is_from_bot: true,
             timestamp: "2024-01-01T00:00:01Z".to_string(),
         };
-        call_blocking(state.db.clone(), {
+        call_blocking(Arc::clone(&state.db), {
             let message = concurrent_message.clone();
             let expected_updated_at = stale_session_updated_at.clone();
             move |db| {
@@ -591,7 +626,7 @@ mod tests {
         .await
         .expect("persist image turn");
 
-        let (session_json, _) = call_blocking(state.db.clone(), move |db| {
+        let (session_json, _) = call_blocking(Arc::clone(&state.db), move |db| {
             db.load_session(chat_id)
                 .map(|session| session.expect("session row"))
         })
@@ -628,7 +663,7 @@ mod tests {
             .await
             .expect("chat id");
 
-        call_blocking(state.db.clone(), move |db| {
+        call_blocking(Arc::clone(&state.db), move |db| {
             db.save_session(
                 chat_id,
                 r#"[{"role":"tool","content":[{"type":"input_text","text":"Read image file [image/png]"},{"type":"input_image_ref","image_ref":"missing-ref","mime_type":"image/png","detail":"auto"}],"tool_call_id":"call_1"}]"#,
@@ -675,7 +710,7 @@ mod tests {
             .collect::<Vec<_>>();
         let snapshot_json = serde_json::to_string(&snapshot).expect("snapshot json");
 
-        call_blocking(state.db.clone(), move |db| {
+        call_blocking(Arc::clone(&state.db), move |db| {
             db.save_session(chat_id, &snapshot_json)
         })
         .await
@@ -712,14 +747,14 @@ mod tests {
             .collect::<Vec<_>>();
         let seed_json = serde_json::to_string(&seed_messages).expect("seed json");
 
-        call_blocking(state.db.clone(), {
+        call_blocking(Arc::clone(&state.db), {
             let seed_json = seed_json.clone();
             move |db| db.save_session(chat_id, &seed_json)
         })
         .await
         .expect("save seed snapshot");
 
-        let stale_session_updated_at = call_blocking(state.db.clone(), move |db| {
+        let stale_session_updated_at = call_blocking(Arc::clone(&state.db), move |db| {
             db.load_session(chat_id)
                 .map(|session| session.expect("session").1)
         })
@@ -738,7 +773,7 @@ mod tests {
         latest_messages.push(Message::text("assistant", "concurrent"));
         let latest_json = serde_json::to_string(&latest_messages).expect("latest json");
 
-        call_blocking(state.db.clone(), {
+        call_blocking(Arc::clone(&state.db), {
             let message = concurrent_message.clone();
             let latest_json = latest_json.clone();
             let expected_updated_at = stale_session_updated_at.clone();

@@ -19,9 +19,23 @@ type MessageItem = {
   timestamp: string;
 };
 
-type ConfigPayload = {
-  model: string;
+type ProviderInfo = {
+  id: string;
+  label: string;
   base_url: string;
+  default_model: string;
+  models: string[];
+  has_api_key: boolean;
+};
+
+type ChannelOverride = {
+  provider?: string;
+  model?: string;
+};
+
+type ConfigPayload = {
+  default_provider: string;
+  default_model: string;
   data_dir: string;
   workspace_dir: string;
   web_enabled: boolean;
@@ -30,7 +44,16 @@ type ConfigPayload = {
   web_auth_enabled: boolean;
   has_api_key: boolean;
   config_path: string;
-  requires_restart: boolean;
+  providers: ProviderInfo[];
+  channel_overrides: Record<string, ChannelOverride>;
+};
+
+type ProviderUpdate = {
+  label: string;
+  base_url: string;
+  default_model: string;
+  models: string[];
+  api_key?: string;
 };
 
 type HealthPayload = {
@@ -259,6 +282,22 @@ function App() {
       selectedSession
     );
   }, [selectedSession, sessions]);
+
+  const selectedProvider = useMemo(() => {
+    return config?.providers.find((item) => item.id === config.default_provider) || null;
+  }, [config]);
+
+  useEffect(() => {
+    setConfigApiKey("");
+    setConfig((current) =>
+      current
+        ? {
+            ...current,
+            has_api_key: selectedProvider?.has_api_key || false,
+          }
+        : current,
+    );
+  }, [selectedProvider?.id]);
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ block: "end" });
@@ -647,31 +686,51 @@ function App() {
     event.preventDefault();
     if (!config) return;
 
+    const providersPayload: Record<string, ProviderUpdate> = {};
+    for (const provider of config.providers) {
+      providersPayload[provider.id] = {
+        label: provider.label,
+        base_url: provider.base_url,
+        default_model: provider.default_model,
+        models: provider.models,
+      };
+    }
+
+    const activeProviderId = config.default_provider;
+    const activeProvider = providersPayload[activeProviderId];
+    if (activeProvider) {
+      const apiKey = configApiKey.trim();
+      if (apiKey === "*CLEAR*") {
+        activeProvider.api_key = apiKey;
+      } else if (apiKey) {
+        activeProvider.api_key = apiKey;
+      }
+    }
+
     const payload = {
-      model: config.model,
-      base_url: config.base_url,
+      default_provider: config.default_provider,
+      default_model: config.default_model,
+      providers: providersPayload,
       web_enabled: config.web_enabled,
       web_host: config.web_host,
       web_port: config.web_port,
-      api_key: configApiKey,
+      channel_overrides: config.channel_overrides,
     };
 
     try {
-      const response = await api<{
-        ok: boolean;
-        config: ConfigPayload;
-        requires_restart: boolean;
-      }>("/api/config", authTokenRef.current, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      });
+      const response = await api<{ ok: boolean; config: ConfigPayload }>(
+        "/api/config",
+        authTokenRef.current,
+        {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        },
+      );
       setConfig(response.config);
       setConfigApiKey("");
       setStatus({
         tone: "ok",
-        text: response.requires_restart
-          ? "Config saved. Restart required for runtime changes."
-          : "Config saved.",
+        text: "Config saved. Changes take effect on the next turn.",
       });
       setShowSettings(false);
     } catch (error) {
@@ -730,6 +789,7 @@ function App() {
                 }}
               >
                 <strong>{item.label}</strong>
+                <span className="session-channel-badge">{item.channel}</span>
                 <small>{item.last_message_preview || "No messages yet"}</small>
               </button>
             ))}
@@ -823,40 +883,86 @@ function App() {
             </div>
 
             <form className="config-form" onSubmit={handleSaveConfig}>
+              <div className="config-section-title">Default LLM</div>
+              <label>
+                <span>Provider</span>
+                <select
+                  value={config.default_provider}
+                  onChange={(event) => {
+                    const providerId = event.target.value;
+                    const provider = config.providers.find(
+                      (item) => item.id === providerId,
+                    );
+                    setConfigApiKey("");
+                    setConfig({
+                      ...config,
+                      default_provider: providerId,
+                      default_model: provider?.default_model || config.default_model,
+                      has_api_key: provider?.has_api_key || false,
+                    });
+                  }}
+                >
+                  {config.providers.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label>
                 <span>Model</span>
                 <input
-                  value={config.model}
+                  list="provider-models"
+                  value={config.default_model}
                   onChange={(event) =>
-                    setConfig({ ...config, model: event.target.value })
+                    setConfig({ ...config, default_model: event.target.value })
                   }
                 />
-              </label>
-              <label>
-                <span>Base URL</span>
-                <input
-                  value={config.base_url}
-                  onChange={(event) =>
-                    setConfig({ ...config, base_url: event.target.value })
-                  }
-                />
+                <datalist id="provider-models">
+                  {(selectedProvider?.models || []).map((model) => (
+                    <option key={model} value={model} />
+                  ))}
+                </datalist>
               </label>
               <label>
                 <span>API Key</span>
+                <div className="api-key-row">
+                  <input
+                    type="password"
+                    value={configApiKey}
+                    placeholder={
+                      selectedProvider?.has_api_key
+                        ? "Configured. Enter to replace."
+                        : "Enter API key"
+                    }
+                    onChange={(event) => setConfigApiKey(event.target.value)}
+                  />
+                  {selectedProvider?.has_api_key ? (
+                    <button
+                      type="button"
+                      className="secondary-button api-key-clear"
+                      onClick={() => setConfigApiKey("*CLEAR*")}
+                    >
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+              </label>
+
+              <div className="config-section-title">Web Server</div>
+              <label className="checkbox-row">
                 <input
-                  type="password"
-                  value={configApiKey}
-                  placeholder={
-                    config.has_api_key
-                      ? "Configured. Enter to replace."
-                      : "Enter API key"
+                  type="checkbox"
+                  checked={config.web_enabled}
+                  onChange={(event) =>
+                    setConfig({ ...config, web_enabled: event.target.checked })
                   }
-                  onChange={(event) => setConfigApiKey(event.target.value)}
                 />
+                <span>Enable</span>
               </label>
               <div className="grid-two">
                 <label>
-                  <span>Web Host</span>
+                  <span>Host</span>
                   <input
                     value={config.web_host}
                     onChange={(event) =>
@@ -865,7 +971,7 @@ function App() {
                   />
                 </label>
                 <label>
-                  <span>Web Port</span>
+                  <span>Port</span>
                   <input
                     type="number"
                     value={config.web_port}
@@ -883,21 +989,106 @@ function App() {
                   />
                 </label>
               </div>
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={config.web_enabled}
-                  onChange={(event) =>
-                    setConfig({ ...config, web_enabled: event.target.checked })
-                  }
-                />
-                <span>Enable web channel</span>
-              </label>
+
+              <div className="config-section-title">Providers</div>
+              <div className="provider-list">
+                {config.providers.map((provider) => (
+                  <div key={provider.id} className="provider-card">
+                    <div className="provider-card-header">
+                      <strong>{provider.label}</strong>
+                      <code className="provider-id">{provider.id}</code>
+                    </div>
+                    <div className="provider-card-body">
+                      <span className="provider-detail">
+                        <span className="provider-detail-label">base_url</span>
+                        <span className="provider-detail-value">{provider.base_url}</span>
+                      </span>
+                      <span className="provider-detail">
+                        <span className="provider-detail-label">default</span>
+                        <span className="provider-detail-value">{provider.default_model}</span>
+                      </span>
+                      {provider.models.length > 0 && (
+                        <span className="provider-detail">
+                          <span className="provider-detail-label">models</span>
+                          <span className="provider-detail-value">{provider.models.join(", ")}</span>
+                        </span>
+                      )}
+                      <span className="provider-detail">
+                        <span className="provider-detail-label">api_key</span>
+                        <span className={`provider-detail-value ${provider.has_api_key ? "status-ok" : "status-none"}`}>
+                          {provider.has_api_key ? "configured" : "not set"}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="config-section-title">Channel Overrides</div>
+              {(["discord", "telegram"] as const).map((channel) => {
+                const override = config.channel_overrides[channel] || {};
+                return (
+                  <div key={channel} className="channel-override-row">
+                    <span className="channel-override-label">{channel}</span>
+                    <div className="grid-two">
+                      <label>
+                        <span>Provider</span>
+                        <select
+                          value={override.provider || ""}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            const provider = config.providers.find(
+                              (item) => item.id === value,
+                            );
+                            setConfig({
+                              ...config,
+                              channel_overrides: {
+                                ...config.channel_overrides,
+                                [channel]: {
+                                  ...override,
+                                  provider: value || undefined,
+                                  model: provider?.default_model || undefined,
+                                },
+                              },
+                            });
+                          }}
+                        >
+                          <option value="">---</option>
+                          {config.providers.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Model</span>
+                        <input
+                          value={override.model || ""}
+                          placeholder="Use default"
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setConfig({
+                              ...config,
+                              channel_overrides: {
+                                ...config.channel_overrides,
+                                [channel]: {
+                                  ...override,
+                                  model: value || undefined,
+                                },
+                              },
+                            });
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
+
               <div className="config-footer">
                 <span>
-                  {config.requires_restart
-                    ? "Changes are persisted to disk. Restart EgoPulse to apply runtime changes."
-                    : ""}
+                  Changes take effect on the next turn.
                 </span>
                 <button className="primary-button" type="submit">
                   Save

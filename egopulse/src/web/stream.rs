@@ -9,12 +9,15 @@ use axum::response::IntoResponse;
 use axum::response::sse::{Event, KeepAlive, Sse};
 use serde::Deserialize;
 use serde_json::json;
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::agent_loop::{SurfaceContext, process_turn_with_events};
 
+use super::sessions::parse_chat_id_from_session_key;
 use super::sse::AgentEvent;
 use super::{RUN_TTL_SECONDS, RunLookupError, WEB_ACTOR, WebState, web_session_key};
+use crate::storage::call_blocking;
 
 #[derive(Debug, Clone, Deserialize)]
 /// Represents a chat message request sent from the web UI.
@@ -134,14 +137,64 @@ pub(super) async fn start_stream_run(
         return Err((StatusCode::BAD_REQUEST, "message is required".to_string()));
     }
 
-    let session_key = web_session_key(request.session_key.as_deref().unwrap_or("main"));
+    let raw_session_key = request.session_key.as_deref().unwrap_or("main");
+    let parsed_chat_id = parse_chat_id_from_session_key(raw_session_key);
+
+    let (session_key, context) = if let Some(chat_id) = parsed_chat_id {
+        let db = Arc::clone(&state.app_state.db);
+        let chat_info = call_blocking(db, move |db| db.get_chat_by_id(chat_id))
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+        match chat_info {
+            Some(info) => {
+                let surface_thread = info
+                    .external_chat_id
+                    .strip_prefix(&format!("{}:", info.channel))
+                    .unwrap_or(&info.external_chat_id)
+                    .to_string();
+                (
+                    format!("chat:{}", chat_id),
+                    SurfaceContext {
+                        channel: info.channel,
+                        surface_user: actor.to_string(),
+                        surface_thread,
+                        chat_type: info.chat_type,
+                    },
+                )
+            }
+            None => {
+                let key = web_session_key(raw_session_key);
+                (
+                    key.clone(),
+                    SurfaceContext {
+                        channel: "web".to_string(),
+                        surface_user: actor.to_string(),
+                        surface_thread: key,
+                        chat_type: "web".to_string(),
+                    },
+                )
+            }
+        }
+    } else {
+        let key = web_session_key(raw_session_key);
+        (
+            key.clone(),
+            SurfaceContext {
+                channel: "web".to_string(),
+                surface_user: actor.to_string(),
+                surface_thread: key,
+                chat_type: "web".to_string(),
+            },
+        )
+    };
+
     let run_id = Uuid::new_v4().to_string();
     state.run_hub.create(&run_id, actor.to_string()).await;
 
     let state_for_task = state.clone();
     let run_id_for_task = run_id.clone();
-    let session_key_for_task = session_key.clone();
-    let actor_for_task = actor.to_string();
+    let context_for_task = context;
     tokio::spawn(async move {
         state_for_task
             .run_hub
@@ -151,13 +204,6 @@ pub(super) async fn start_stream_run(
                 json!({"message": "running"}).to_string(),
             )
             .await;
-
-        let context = SurfaceContext {
-            channel: "web".to_string(),
-            surface_user: actor_for_task.clone(),
-            surface_thread: session_key_for_task.clone(),
-            chat_type: "web".to_string(),
-        };
 
         let (evt_tx, mut evt_rx) = tokio::sync::mpsc::unbounded_channel::<AgentEvent>();
         let run_hub = state_for_task.run_hub.clone();
@@ -233,11 +279,15 @@ pub(super) async fn start_stream_run(
             }
         });
 
-        let result =
-            process_turn_with_events(&state_for_task.app_state, &context, &message, |event| {
+        let result = process_turn_with_events(
+            &state_for_task.app_state,
+            &context_for_task,
+            &message,
+            |event| {
                 let _ = evt_tx.send(event);
-            })
-            .await;
+            },
+        )
+        .await;
 
         if let Err(error) = result {
             let _ = evt_tx.send(super::sse::AgentEvent::Error {

@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use chrono::Utc;
 use tokio::task::{JoinError, JoinHandle};
 use tracing::info;
 
@@ -16,6 +17,9 @@ use crate::config::Config;
 use crate::error::{ChannelError, EgoPulseError};
 use crate::llm::{Message, create_provider};
 use crate::skills::SkillManager;
+use crate::status::{
+    self, ChannelEntry, ChannelsStatus, ProviderStatus, StatusSnapshot, WebChannelStatus,
+};
 use crate::storage::Database;
 use crate::tools::ToolRegistry;
 use crate::web::WebAdapter;
@@ -25,7 +29,7 @@ pub struct AppState {
     pub db: Arc<Database>,
     pub config: Config,
     pub config_path: Option<PathBuf>,
-    pub llm: Arc<dyn crate::llm::LlmProvider>,
+    pub llm_override: Option<Arc<dyn crate::llm::LlmProvider>>,
     pub channels: Arc<ChannelRegistry>,
     pub skills: Arc<SkillManager>,
     pub tools: Arc<ToolRegistry>,
@@ -38,7 +42,7 @@ impl Clone for AppState {
             db: Arc::clone(&self.db),
             config: self.config.clone(),
             config_path: self.config_path.clone(),
-            llm: Arc::clone(&self.llm),
+            llm_override: self.llm_override.clone(),
             channels: Arc::clone(&self.channels),
             skills: Arc::clone(&self.skills),
             tools: Arc::clone(&self.tools),
@@ -47,22 +51,60 @@ impl Clone for AppState {
     }
 }
 
+impl AppState {
+    /// 現在の設定スナップショットを返す。
+    pub fn current_config(&self) -> Arc<Config> {
+        Arc::new(self.config.clone())
+    }
+
+    /// 設定ファイルパスがある場合はディスクから再読込した最新設定を返す。
+    pub fn try_current_config(&self) -> Result<Arc<Config>, EgoPulseError> {
+        match self.config_path.as_deref() {
+            Some(path) => Ok(Arc::new(Config::load_allow_missing_api_key(Some(path))?)),
+            None => Ok(self.current_config()),
+        }
+    }
+
+    /// Returns the LLM provider resolved for the given channel.
+    pub fn llm_for_channel(
+        &self,
+        channel: &str,
+    ) -> Result<Arc<dyn crate::llm::LlmProvider>, EgoPulseError> {
+        if let Some(provider) = self.llm_override.clone() {
+            return Ok(provider);
+        }
+
+        let config = self.try_current_config()?;
+        Ok(Arc::from(create_provider(
+            &config.resolve_llm_for_channel(channel)?,
+        )?))
+    }
+
+    /// Returns the global default LLM provider for CLI/TUI surfaces.
+    pub fn global_llm(&self) -> Result<Arc<dyn crate::llm::LlmProvider>, EgoPulseError> {
+        if let Some(provider) = self.llm_override.clone() {
+            return Ok(provider);
+        }
+
+        let config = self.try_current_config()?;
+        Ok(Arc::from(create_provider(&config.resolve_global_llm())?))
+    }
+}
+
 /// Builds the application state without recording a config file path.
-pub fn build_app_state(config: Config) -> Result<AppState, EgoPulseError> {
-    build_app_state_with_path(config, None)
+pub async fn build_app_state(config: Config) -> Result<AppState, EgoPulseError> {
+    build_app_state_with_path(config, None).await
 }
 
 /// Builds the application state and keeps the config path for later saves.
-pub fn build_app_state_with_path(
+pub async fn build_app_state_with_path(
     config: Config,
     config_path: Option<PathBuf>,
 ) -> Result<AppState, EgoPulseError> {
     let db = Arc::new(Database::new(&config.data_dir)?);
     let assets = Arc::new(AssetStore::new(&config.data_dir)?);
-    let llm = Arc::from(create_provider(&config)?);
-    let skills = Arc::new(SkillManager::from_skills_dir(config.skills_dir()));
+    let skills = Arc::new(SkillManager::from_skills_dir(config.skills_dir()?));
 
-    // Build channel registry
     let mut channels = ChannelRegistry::new();
     channels.register(Arc::new(WebAdapter));
 
@@ -82,13 +124,20 @@ pub fn build_app_state_with_path(
     }
 
     let channels = Arc::new(channels);
-    let tools = Arc::new(ToolRegistry::new(&config, Arc::clone(&skills)));
+    let mut tools = ToolRegistry::new(&config, Arc::clone(&skills));
+
+    let workspace_dir = config.workspace_dir()?;
+    let mcp_manager = crate::mcp::McpManager::new(&workspace_dir).await?;
+    let mcp_arc = Arc::new(tokio::sync::RwLock::new(mcp_manager));
+    tools.set_mcp_manager(mcp_arc);
+
+    let tools = Arc::new(tools);
 
     Ok(AppState {
         db,
         config,
         config_path,
-        llm,
+        llm_override: None,
         channels,
         skills,
         tools,
@@ -98,7 +147,7 @@ pub fn build_app_state_with_path(
 
 /// Sends a single prompt to the configured LLM without session state.
 pub async fn ask(config: Config, prompt: &str) -> Result<String, EgoPulseError> {
-    let llm = create_provider(&config)?;
+    let llm = create_provider(&config.resolve_global_llm())?;
     let messages = vec![Message::text("user", prompt)];
 
     tokio::select! {
@@ -108,8 +157,8 @@ pub async fn ask(config: Config, prompt: &str) -> Result<String, EgoPulseError> 
 }
 
 /// Starts the local TUI channel with a fully built application state.
-pub async fn run_tui(config: Config) -> Result<(), EgoPulseError> {
-    let state = build_app_state(config)?;
+pub async fn run_tui(config: Config, config_path: Option<PathBuf>) -> Result<(), EgoPulseError> {
+    let state = build_app_state_with_path(config, config_path).await?;
     channels::tui::run(state).await
 }
 
@@ -122,6 +171,8 @@ pub async fn run_tui(config: Config) -> Result<(), EgoPulseError> {
 /// spawn したタスクの JoinHandle を監視し、即時終了 (起動失敗) を検知する。
 /// Starts all enabled channels and supervises them until shutdown or failure.
 pub async fn start_channels(state: AppState) -> Result<(), EgoPulseError> {
+    write_startup_status(&state).await;
+
     let mut has_active_channels = false;
     let mut handles: Vec<(&'static str, JoinHandle<Result<(), EgoPulseError>>)> = Vec::new();
 
@@ -129,7 +180,7 @@ pub async fn start_channels(state: AppState) -> Result<(), EgoPulseError> {
     if state.config.web_enabled() {
         has_active_channels = true;
         let web_state = state.clone();
-        let host = state.config.web_host();
+        let host = state.config.web_host().to_owned();
         let port = state.config.web_port();
         info!("Starting Web UI server on {host}:{port}");
         let handle =
@@ -255,4 +306,66 @@ fn channel_join_error(name: &str, error: JoinError) -> EgoPulseError {
     EgoPulseError::Channel(ChannelError::SendFailed(format!(
         "channel '{name}' task join failed: {error}"
     )))
+}
+
+async fn write_startup_status(state: &AppState) {
+    let mcp = if let Some(m) = state.tools.mcp_manager() {
+        m.read().await.status_snapshot()
+    } else {
+        Default::default()
+    };
+
+    let resolved_llm = state.config.resolve_global_llm();
+
+    let web = if state.config.web_enabled() {
+        Some(WebChannelStatus {
+            enabled: true,
+            host: Some(state.config.web_host().to_owned()),
+            port: Some(state.config.web_port()),
+        })
+    } else {
+        None
+    };
+
+    let discord = state
+        .config
+        .channel_enabled("discord")
+        .then_some(ChannelEntry { enabled: true });
+
+    let telegram = state
+        .config
+        .channel_enabled("telegram")
+        .then_some(ChannelEntry { enabled: true });
+
+    let snapshot = StatusSnapshot {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        pid: std::process::id(),
+        started_at: Utc::now().to_rfc3339(),
+        config_path: state
+            .config_path
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| "unknown".to_string()),
+        mcp,
+        channels: ChannelsStatus {
+            web,
+            discord,
+            telegram,
+        },
+        provider: ProviderStatus {
+            default: resolved_llm.provider.clone(),
+            model: resolved_llm.model.clone(),
+        },
+    };
+
+    let state_root = match crate::config::default_state_root() {
+        Ok(path) => path,
+        Err(error) => {
+            tracing::warn!("failed to resolve state root for startup status: {error}");
+            return;
+        }
+    };
+    if let Err(error) = status::write_status(&state_root, &snapshot) {
+        tracing::warn!("failed to write startup status: {error}");
+    }
 }

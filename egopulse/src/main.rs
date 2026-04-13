@@ -14,6 +14,7 @@ use egopulse::gateway::{self, GatewayAction};
 use egopulse::logging::init_logging;
 use egopulse::runtime;
 use egopulse::setup;
+use egopulse::status;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -49,6 +50,12 @@ enum Command {
         action: Option<GatewayAction>,
     },
     Update,
+    /// Show last startup status (MCP, channels, provider).
+    Status {
+        /// Output raw JSON instead of formatted text
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 /// Parses the CLI, runs the requested command, and exits with status 1 on failure.
@@ -70,6 +77,11 @@ async fn run() -> Result<(), EgoPulseError> {
             .map_err(EgoPulseError::Internal);
     }
 
+    // status は設定ファイル不要で即座に実行する。
+    if let Some(Command::Status { json }) = cli.command {
+        return status::run_status(json).map_err(EgoPulseError::Internal);
+    }
+
     match cli.command {
         Some(Command::Run) => run_foreground(cli.config.as_ref()).await,
         Some(Command::Gateway { action }) => {
@@ -87,7 +99,7 @@ async fn run_foreground(cli_config: Option<&PathBuf>) -> Result<(), EgoPulseErro
     };
     let config = Config::load_allow_missing_api_key(resolved_config_path.as_deref())?;
     init_logging(&config.log_level)?;
-    let state = runtime::build_app_state_with_path(config, resolved_config_path)?;
+    let state = runtime::build_app_state_with_path(config, resolved_config_path).await?;
     runtime::start_channels(state).await
 }
 
@@ -103,7 +115,7 @@ async fn run_with_config(cli: &Cli) -> Result<(), EgoPulseError> {
                     return Ok(());
                 }
                 return Err(EgoPulseError::Config(ConfigError::AutoConfigNotFound {
-                    searched_paths: vec![default_config_path()],
+                    searched_paths: vec![default_config_path()?],
                 }));
             }
             Err(e) => return Err(EgoPulseError::Config(e)),
@@ -126,7 +138,8 @@ async fn run_with_config(cli: &Cli) -> Result<(), EgoPulseError> {
             Err(error) => Err(error),
         },
         Some(Command::Chat { session }) => {
-            let state = runtime::build_app_state_with_path(config, resolved_config_path.clone())?;
+            let state =
+                runtime::build_app_state_with_path(config, resolved_config_path.clone()).await?;
             let session = session
                 .as_ref()
                 .cloned()
@@ -138,9 +151,9 @@ async fn run_with_config(cli: &Cli) -> Result<(), EgoPulseError> {
         }
         Some(Command::Run) => unreachable!("handled without standard config flow"),
         Some(Command::Setup) => unreachable!("handled before config loading"),
-        Some(Command::Gateway { .. }) | Some(Command::Update) => {
+        Some(Command::Gateway { .. }) | Some(Command::Update) | Some(Command::Status { .. }) => {
             unreachable!("handled without config")
         }
-        None => runtime::run_tui(config).await,
+        None => runtime::run_tui(config, resolved_config_path).await,
     }
 }
