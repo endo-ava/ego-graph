@@ -33,17 +33,6 @@ def create_mcp_server(config: BackendConfig) -> FastMCP:
 
     registry = build_tool_registry(config.r2)
 
-    @mcp.tool(
-        name="list_available_tools",
-        description="List all available data tools and their descriptions",
-    )
-    def list_available_tools() -> str:
-        """利用可能なツールの一覧を返す。"""
-        tools_info = [
-            f"- {name}: {tool.description}" for name, tool in registry._tools.items()
-        ]
-        return "\n".join(tools_info)
-
     server = mcp._mcp_server
 
     @server.list_tools()
