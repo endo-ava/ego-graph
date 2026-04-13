@@ -287,7 +287,7 @@ gh pr create --title "feat: Backend MCP Server 化" --body "..."
 | `egograph/backend/mcp_server.py` | **新規** | FastMCP サーバーエントリーポイント |
 | `egograph/backend/main.py` | 変更 | `--mcp` / `--transport` CLI引数追加 |
 | `egograph/backend/usecases/tools/factory.py` | 変更 | DataQueryTool 登録追加 |
-| `egograph/backend/tests/test_data_query.py` | **新規** | DataQueryTool テスト |
+| `egograph/backend/tests/domain/tools/test_data_query.py` | **新規** | DataQueryTool テスト |
 | `egograph/backend/tests/test_mcp_server.py` | **新規** | MCP Server テスト |
 
 ---
