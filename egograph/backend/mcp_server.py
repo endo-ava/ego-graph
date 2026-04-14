@@ -29,6 +29,7 @@ def create_mcp_server(config: BackendConfig) -> FastMCP:
             "Personal data warehouse. Access Spotify, GitHub, browser history "
             "data via tools. Use data_query for raw SQL queries (SELECT only)."
         ),
+        streamable_http_path="/",
     )
 
     registry = build_tool_registry(config.r2)
