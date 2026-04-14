@@ -40,11 +40,11 @@ def create_mcp_server(config: BackendConfig) -> FastMCP:
         """MCPツール一覧を返す。"""
         return [
             MCPTool(
-                name=tool.name,
-                description=tool.description,
-                inputSchema=tool.input_schema,
+                name=schema.name,
+                description=schema.description,
+                inputSchema=schema.inputSchema,
             )
-            for tool in registry._tools.values()
+            for schema in registry.get_all_schemas()
         ]
 
     @server.call_tool()

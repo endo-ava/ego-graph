@@ -7,12 +7,26 @@ import logging
 from collections.abc import Generator
 
 import duckdb
-from fastapi import Depends
+from fastapi import Depends, Security
+from fastapi.security import APIKeyHeader
 
 from backend.config import BackendConfig
 from backend.infrastructure.database import DuckDBConnection
 
 logger = logging.getLogger(__name__)
+
+# OpenAPIドキュメントにX-API-Key認証を表示するためのno-opセキュリティ依存。
+# 実際の認証は _ApiKeyAuthMiddleware が行う。
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+async def verify_api_key_docs(api_key: str | None = Security(api_key_header)) -> None:
+    """OpenAPIスキーマに認証要件を表示するためのno-op依存関数。
+
+    実際のAPIキー検証は _ApiKeyAuthMiddleware で行うため、
+    この関数は何も検証しない。/docs にセキュリティ定義を表示する目的のみ。
+    """
+
 
 # グローバル設定（1回だけロード）
 _config: BackendConfig | None = None

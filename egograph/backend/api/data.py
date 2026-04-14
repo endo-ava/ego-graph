@@ -17,7 +17,7 @@ from backend.constants import (
     MAX_LIMIT,
     MIN_LIMIT,
 )
-from backend.dependencies import get_config, get_db_connection
+from backend.dependencies import get_config, get_db_connection, verify_api_key_docs
 from backend.infrastructure.database import (
     QueryParams,
     get_listening_stats,
@@ -43,6 +43,7 @@ async def get_top_tracks_endpoint(
     ),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
+    _api_key: None = Depends(verify_api_key_docs),
 ):
     """指定期間で最も再生された曲を取得します。
 
@@ -84,6 +85,7 @@ async def get_listening_stats_endpoint(
     ),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
+    _api_key: None = Depends(verify_api_key_docs),
 ):
     """期間別の視聴統計を取得します。
 

@@ -14,8 +14,8 @@ from backend.api.schemas import (
     ActivityStatsResponse,
     CommitResponse,
     PullRequestResponse,
-    RepoSummaryStatsResponse,
     RepositoryResponse,
+    RepoSummaryStatsResponse,
 )
 from backend.config import BackendConfig
 from backend.constants import (
@@ -23,14 +23,14 @@ from backend.constants import (
     MAX_LIMIT,
     MIN_LIMIT,
 )
-from backend.dependencies import get_config, get_db_connection
+from backend.dependencies import get_config, get_db_connection, verify_api_key_docs
 from backend.infrastructure.database import (
     GitHubQueryParams,
     get_activity_stats,
     get_commits,
     get_pull_requests,
-    get_repositories,
     get_repo_summary_stats,
+    get_repositories,
 )
 from backend.validators import (
     validate_date_range,
@@ -55,6 +55,7 @@ def get_pull_requests_endpoint(
     ),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
+    _api_key: None = Depends(verify_api_key_docs),
 ):
     """指定期間のPull Requestイベントを取得します。
 
@@ -111,6 +112,7 @@ def get_commits_endpoint(
     ),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
+    _api_key: None = Depends(verify_api_key_docs),
 ):
     """指定期間のCommitイベントを取得します。
 
@@ -160,6 +162,7 @@ def get_repositories_endpoint(
     ),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
+    _api_key: None = Depends(verify_api_key_docs),
 ):
     """Repositoryマスターを取得します。
 
@@ -195,6 +198,7 @@ def get_activity_stats_endpoint(
     ),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
+    _api_key: None = Depends(verify_api_key_docs),
 ):
     """期間別のアクティビティ統計を取得します。
 
@@ -240,6 +244,7 @@ def get_repo_summary_stats_endpoint(
     repo: str | None = Query(None, description="フィルタ対象のリポジトリ"),
     db_connection: duckdb.DuckDBPyConnection = Depends(get_db_connection),
     config: BackendConfig = Depends(get_config),
+    _api_key: None = Depends(verify_api_key_docs),
 ):
     """リポジトリ別のサマリー統計を取得します。
 
