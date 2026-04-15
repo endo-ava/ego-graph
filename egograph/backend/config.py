@@ -100,8 +100,9 @@ class BackendConfig(BaseSettings):
     def mcp_transport_security(self):
         """MCP transport security設定を返す。
 
-        テスト環境では許可リスト経由でtestserver等を許可し、
-        本番環境ではデフォルトのDNS rebinding保護を適用する。
+        テスト環境では許可リスト経由でtestserver等を許可する。
+        本番環境ではDNS rebinding保護を無効化する（Tailscaleネットワーク内で
+        WireGuard暗号化・認証済みのため、追加の保護は不要）。
         """
         from mcp.server.transport_security import TransportSecuritySettings
 
@@ -111,7 +112,9 @@ class BackendConfig(BaseSettings):
                 allowed_hosts=self.mcp_allowed_hosts,
                 allowed_origins=self.mcp_allowed_hosts,
             )
-        return None
+        return TransportSecuritySettings(
+            enable_dns_rebinding_protection=False,
+        )
 
 
 class R2Settings(BaseSettings):
