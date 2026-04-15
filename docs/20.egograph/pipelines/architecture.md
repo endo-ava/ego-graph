@@ -32,7 +32,7 @@ flowchart TB
         end
 
         subgraph "Queue Layer"
-            Q[(SQLite)<br/>workflow_runs]
+            Q[(SQLite workflow_runs)]
         end
 
         subgraph "Dispatch Layer"
@@ -55,7 +55,7 @@ flowchart TB
     end
 
     subgraph Storage
-        R2[(Cloudflare R2)<br/>raw/events/state]
+        R2[(Cloudflare R2 - raw/events/state)]
     end
 
     S -->|enqueue| Q
@@ -88,7 +88,7 @@ flowchart TB
 flowchart LR
     subgraph "ScheduleTriggerApp"
         R[Registry<br/>workflow definitions]
-        D[(SQLite)<br/>schedules]
+        D[(SQLite schedules)]
         A[APScheduler<br/>BackgroundScheduler]
     end
 

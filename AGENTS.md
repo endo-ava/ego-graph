@@ -119,6 +119,7 @@ coderabbit --prompt-only -t committed --base main
 ### セキュリティ
 
 - `.env` 系・ローカル秘密設定ファイルの読み取り禁止。秘密が必要な場合はユーザーに明示してもらう
+- `/root/.egopulse/egopulse.config.yaml`も読み取り禁止
 
 ## デバッグ
 
