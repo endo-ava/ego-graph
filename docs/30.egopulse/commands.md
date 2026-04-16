@@ -257,7 +257,7 @@ Available skills:
 
 #### CommandDef レジストリ
 
-全チャネルのコマンド定義は `slash_commands.rs` の `CommandDef` 配列（`all_commands()`）に一元化されている。各チャネルはこのレジストリを通じてコマンドメタデータ（名前・説明・使用法）を参照する。コマンド定義の重複を排除し、単一ソースオブテュースを実現している。
+全チャネルのコマンド定義は `slash_commands.rs` の `CommandDef` 配列（`all_commands()`）に一元化されている。各チャネルはこのレジストリを通じてコマンドメタデータ（名前・説明・使用法）を参照する。コマンド定義の重複を排除し、単一ソースオブトゥルース（Single Source of Truth）を実現している。
 
 #### Discord: Application Commands (ネイティブ UI)
 
